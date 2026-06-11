@@ -5920,6 +5920,19 @@ function App() {
     });
   }, [session]);
 
+  // Restore screen from hash on first load (e.g. after refresh)
+  useEffect(() => {
+    if (!session) return;
+    const { screen: s, instId } = parseHash();
+    if (s === 'detail' && instId) {
+      api('GET', `/institutes/${instId}`, null, session.token)
+        .then(full => { setSelectedInstitute(normInst(full)); setScreen('detail'); })
+        .catch(() => { window.location.hash = 'institutes'; setScreen('institutes'); });
+    } else if (s && s !== 'dashboard') {
+      setScreen(s);
+    }
+  }, []);
+
   if (!session) {
     return <LoginPage onLogin={(s) => setSession(s)} />;
   }
@@ -5973,18 +5986,6 @@ function App() {
     setScreen(id);
     if (id !== 'institutes') setSelectedInstitute(null);
   };
-
-  // Restore screen from hash on first load (e.g. after refresh)
-  useEffect(() => {
-    const { screen: s, instId } = parseHash();
-    if (s === 'detail' && instId && session) {
-      api('GET', `/institutes/${instId}`, null, session.token)
-        .then(full => { setSelectedInstitute(normInst(full)); setScreen('detail'); })
-        .catch(() => { window.location.hash = 'institutes'; setScreen('institutes'); });
-    } else if (s && s !== 'dashboard') {
-      setScreen(s);
-    }
-  }, []);
 
   const navItems = [
     {id:'dashboard', icon:'dashboard', label:'Dashboard'},
