@@ -101,11 +101,15 @@ app.use((err, req, res, next) => {
   res.status(err.status || 500).json({ error: err.message || 'Internal server error' });
 });
 
-const server = app.listen(PORT, async () => {
-  console.log(`TVETtrack API running on port ${PORT}`);
-  try { await runMigrations(); console.log('Migrations OK'); }
-  catch(e) { console.error('Migration error:', e.message); }
-});
-server.keepAliveTimeout = 120000;
-server.headersTimeout = 125000;
+// Run migrations before accepting connections
+runMigrations()
+  .then(() => console.log('Migrations OK'))
+  .catch(e => console.error('Migration error:', e.message))
+  .finally(() => {
+    const server = app.listen(PORT, () => {
+      console.log(`TVETtrack API running on port ${PORT}`);
+    });
+    server.keepAliveTimeout = 120000;
+    server.headersTimeout = 125000;
+  });
 module.exports = app;
