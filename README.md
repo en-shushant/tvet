@@ -6,11 +6,7 @@ A registry and reporting system for TVET (Technical and Vocational Education and
 
 ## Live URL
 
-**[https://tvettrack.vercel.app](https://tvettrack.vercel.app)**
-
-Default admin login:
-- Email: `admin@tvettrack.np`
-- Password: `admin123`
+**Working on it**
 
 ---
 
