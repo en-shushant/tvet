@@ -4,6 +4,33 @@ const bcrypt = require('bcrypt');
 const { pool } = require('../db/pool');
 const { signToken, authenticate } = require('../middleware/auth');
 
+const CAP_SECRET = process.env.CAP_SECRET_KEY;
+const CAP_SITEVERIFY = 'http://185.199.53.214:32769/355cfb251c/siteverify';
+
+async function verifyCapToken(token) {
+  if (!token) return { ok: false, reason: 'Please complete the CAPTCHA' };
+  if (!CAP_SECRET) {
+    // If no secret configured, skip verification (dev mode)
+    console.warn('CAP_SECRET_KEY not set — skipping CAPTCHA verification');
+    return { ok: true };
+  }
+  try {
+    const res = await fetch(CAP_SITEVERIFY, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ secret: CAP_SECRET, response: token }),
+      signal: AbortSignal.timeout(5000),
+    });
+    if (!res.ok) return { ok: false, reason: 'CAPTCHA verification failed' };
+    const data = await res.json();
+    return data.success ? { ok: true } : { ok: false, reason: 'CAPTCHA verification failed' };
+  } catch (e) {
+    // Cap server unreachable — fail open with a warning rather than locking users out
+    console.error('Cap server unreachable:', e.message);
+    return { ok: true };
+  }
+}
+
 router.post('/register', async (req, res, next) => {
   try {
     const { name, email, password, role = 'user' } = req.body;
@@ -24,6 +51,10 @@ router.post('/login', async (req, res, next) => {
   try {
     const { email, password } = req.body;
     if (!email || !password) return res.status(400).json({ error: 'email and password required' });
+
+    const capResult = await verifyCapToken(req.body['cap-token']);
+    if (!capResult.ok) return res.status(400).json({ error: capResult.reason });
+
     const { rows } = await pool.query('SELECT * FROM users WHERE email = $1', [email]);
     if (!rows.length) return res.status(401).json({ error: 'Invalid credentials' });
     const user = rows[0];

@@ -14,6 +14,7 @@
 <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<script type="module" src="https://cdn.jsdelivr.net/npm/cap-widget@0.1.56"></script>
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -5884,17 +5885,29 @@ function LoginPage({ onLogin }) {
   const [password, setPassword] = React.useState('');
   const [error, setError] = React.useState('');
   const [loading, setLoading] = React.useState(false);
+  const [capToken, setCapToken] = React.useState('');
+  const [widgetKey, setWidgetKey] = React.useState(0);
+  const capRef = React.useRef(null);
   const [showSettings, setShowSettings] = React.useState(false);
   const [apiUrl, setApiUrl] = React.useState(() => {
     try { return localStorage.getItem(API_URL_KEY) || ''; } catch { return ''; }
   });
 
+  React.useEffect(() => {
+    const el = capRef.current;
+    if (!el) return;
+    const handler = (e) => setCapToken(e.detail.token);
+    el.addEventListener('solve', handler);
+    return () => el.removeEventListener('solve', handler);
+  }, [widgetKey]);
+
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!capToken) { setError('Please complete the CAPTCHA verification.'); return; }
     setError('');
     setLoading(true);
     try {
-      const data = await api('POST', '/auth/login', { email, password });
+      const data = await api('POST', '/auth/login', { email, password, 'cap-token': capToken });
       const session = {
         id: data.user.id,
         fullName: data.user.name,
@@ -5907,6 +5920,9 @@ function LoginPage({ onLogin }) {
       onLogin(session);
     } catch (err) {
       setError(err.message || 'Invalid credentials.');
+      // Token is single-use — remount widget so user can solve a fresh challenge
+      setCapToken('');
+      setWidgetKey(k => k + 1);
     } finally {
       setLoading(false);
     }
@@ -5971,11 +5987,19 @@ function LoginPage({ onLogin }) {
                   style={{width:'100%'}}
                 />
               </div>
-              <div style={{marginBottom:28}}>
+              <div style={{marginBottom:20}}>
                 <label style={{display:'block',fontSize:12.5,fontWeight:600,color:'var(--text2)',marginBottom:7}}>Password</label>
                 <input
                   type="password" value={password} onChange={e=>setPassword(e.target.value)}
                   placeholder="Enter your password" required style={{width:'100%'}}
+                />
+              </div>
+              <div style={{marginBottom:20}}>
+                <cap-widget
+                  key={widgetKey}
+                  ref={capRef}
+                  data-cap-api-endpoint="http://185.199.53.214:32769/355cfb251c/"
+                  style={{'--cap-background':'var(--surface)','--cap-border-color':'var(--border)','--cap-border-radius':'10px','--cap-color':'var(--text)','--cap-font':'var(--font)'}}
                 />
               </div>
               {error && (
