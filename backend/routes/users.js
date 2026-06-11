@@ -6,12 +6,13 @@ const { authenticate, requireAdmin, requireSuperAdmin, signToken } = require('..
 
 router.use(authenticate);
 
-// List all users
+// List all users (non-superadmin callers cannot see superadmin accounts)
 router.get('/', requireAdmin, async (req, res, next) => {
   try {
-    const { rows } = await pool.query(
-      'SELECT id, name, email, role, is_active, photo, created_at FROM users ORDER BY created_at DESC'
-    );
+    const query = req.user.role === 'superadmin'
+      ? 'SELECT id, name, email, role, is_active, photo, created_at FROM users ORDER BY created_at DESC'
+      : "SELECT id, name, email, role, is_active, photo, created_at FROM users WHERE role != 'superadmin' ORDER BY created_at DESC";
+    const { rows } = await pool.query(query);
     res.json(rows);
   } catch(e) { next(e); }
 });
