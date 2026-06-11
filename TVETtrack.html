@@ -1865,33 +1865,37 @@ function ExperienceForm({exp, clients, onSave, onClose, onDuplicate, onSaveClien
   const set = (k, v) => setForm(f => ({...f, [k]: v}));
 
   const addOcc = () => set('occupations', [...form.occupations, {id:uid(), nameInLetter:'', ctevtOccupationId:'', trainees:'', duration:'', level:'', skillTestProvisioned:false, skillTestAppeared:'', skillTestPass:'', employmentProvisioned:false, employmentActual:'', locations:[]}]);
-  const setOcc = (i, k, v) => set('occupations', form.occupations.map((o,idx)=>idx===i?{...o,[k]:v}:o));
-  const removeOcc = (i) => set('occupations', form.occupations.filter((_,idx)=>idx!==i));
-  const addOccLoc = (oi) => setOcc(oi, 'locations', [...(form.occupations[oi].locations||[]), {id:uid(), province:'', district:'', localLevel:'', localLevelType:''}]);
+  const setOcc = (i, k, v) => setForm(f => ({...f, occupations: f.occupations.map((o,idx)=>idx===i?{...o,[k]:v}:o)}));
+  const removeOcc = (i) => setForm(f => ({...f, occupations: f.occupations.filter((_,idx)=>idx!==i)}));
+  const addOccLoc = (oi) => setForm(f => ({...f, occupations: f.occupations.map((o,idx)=>idx===oi?{...o,locations:[...(o.locations||[]),{id:uid(),province:'',district:'',localLevel:'',localLevelType:''}]}:o)}));
   const setOccLoc = (oi, li, k, v) => {
-    const locs = form.occupations[oi].locations.map((l,idx) => {
-      if(idx!==li) return l;
-      const updated = {...l, [k]:v};
-      if(k==='province'){updated.district='';updated.localLevel='';updated.localLevelType='';}
-      if(k==='district'){updated.localLevel='';updated.localLevelType='';}
-      return updated;
+    setForm(f => {
+      const locs = f.occupations[oi].locations.map((l,idx) => {
+        if(idx!==li) return l;
+        const updated = {...l, [k]:v};
+        if(k==='province'){updated.district='';updated.localLevel='';updated.localLevelType='';}
+        if(k==='district'){updated.localLevel='';updated.localLevelType='';}
+        return updated;
+      });
+      return {...f, occupations: f.occupations.map((o,idx)=>idx===oi?{...o,locations:locs}:o)};
     });
-    setOcc(oi, 'locations', locs);
   };
-  const removeOccLoc = (oi, li) => setOcc(oi, 'locations', form.occupations[oi].locations.filter((_,idx)=>idx!==li));
+  const removeOccLoc = (oi, li) => setForm(f => ({...f, occupations: f.occupations.map((o,idx)=>idx===oi?{...o,locations:o.locations.filter((_,i)=>i!==li)}:o)}));
 
   const addLoc = () => set('locations', [...form.locations, {id:uid(), province:'', district:'', localLevel:'', localLevelType:''}]);
   const setLoc = (i, k, v) => {
-    const newLocs = form.locations.map((l,idx)=>{
-      if(idx!==i) return l;
-      const updated = {...l,[k]:v};
-      if(k==='province') { updated.district=''; updated.localLevel=''; updated.localLevelType=''; }
-      if(k==='district') { updated.localLevel=''; updated.localLevelType=''; }
-      return updated;
+    setForm(f => {
+      const newLocs = f.locations.map((l,idx)=>{
+        if(idx!==i) return l;
+        const updated = {...l,[k]:v};
+        if(k==='province') { updated.district=''; updated.localLevel=''; updated.localLevelType=''; }
+        if(k==='district') { updated.localLevel=''; updated.localLevelType=''; }
+        return updated;
+      });
+      return {...f, locations: newLocs};
     });
-    set('locations', newLocs);
   };
-  const removeLoc = (i) => set('locations', form.locations.filter((_,idx)=>idx!==i));
+  const removeLoc = (i) => setForm(f => ({...f, locations: f.locations.filter((_,idx)=>idx!==i)}));
 
   // Namespace custom occ IDs to avoid collision with built-in IDs (both start at 1)
   const toOccValue = (rawId) => {
