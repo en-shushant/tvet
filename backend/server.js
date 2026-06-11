@@ -22,6 +22,16 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 // ─── STARTUP MIGRATIONS ───────────────────────────────────────────────────────
 async function runMigrations() {
+  // Run full schema first (idempotent — uses IF NOT EXISTS / IF EXISTS)
+  const fs = require('fs');
+  const schemaPath = require('path').join(__dirname, 'db', 'schema.sql');
+  if (fs.existsSync(schemaPath)) {
+    try {
+      const schema = fs.readFileSync(schemaPath, 'utf8');
+      await pool.query(schema);
+      console.log('Schema OK');
+    } catch(e) { console.warn('Schema warning:', e.message); }
+  }
   const migrations = [
     `ALTER TABLE assignments ADD COLUMN IF NOT EXISTS client_name_manual TEXT`,
     `ALTER TABLE assignment_occupations ADD COLUMN IF NOT EXISTS locations JSONB DEFAULT '[]'`,
