@@ -5715,6 +5715,80 @@ function LoginPage({ onLogin }) {
   );
 }
 
+function AssignFirmsModal({ user, institutes, onSave, onClose }) {
+  const token = getSession()?.token;
+  const [assignedIds, setAssignedIds] = React.useState([]);
+  const [search, setSearch] = React.useState('');
+  const [saving, setSaving] = React.useState(false);
+  const [err, setErr] = React.useState('');
+
+  React.useEffect(() => {
+    api('GET', `/users/${user.id}/institutes`, null, token)
+      .then(ids => setAssignedIds(ids.map(id => parseInt(id))))
+      .catch(() => {});
+  }, []);
+
+  const sorted = React.useMemo(() => [...(institutes||[])].sort((a,b)=>a.name.localeCompare(b.name)), [institutes]);
+  const filtered = sorted.filter(i => {
+    const q = search.toLowerCase();
+    return !q || i.name.toLowerCase().includes(q) || (i.acronym||'').toLowerCase().includes(q);
+  });
+
+  const toggle = (id) => setAssignedIds(prev => prev.includes(id) ? prev.filter(x=>x!==id) : [...prev, id]);
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      await api('PUT', `/users/${user.id}/institutes`, { institute_ids: assignedIds }, token);
+      onSave(assignedIds);
+    } catch(e) {
+      setErr(e.message || 'Failed to save');
+    } finally { setSaving(false); }
+  };
+
+  return ReactDOM.createPortal(
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal" style={{maxWidth:480}} onClick={e=>e.stopPropagation()}>
+        <div className="modal-header">
+          <div className="modal-title">Assign firms — {user.name}</div>
+          <button className="btn btn-ghost btn-sm" onClick={onClose}>✕</button>
+        </div>
+        <div style={{padding:'16px 24px 24px'}}>
+          <div className="search-wrap" style={{marginBottom:12}}>
+            <span className="search-icon material-icons-round" style={{fontSize:16}}>search</span>
+            <input className="search-input" placeholder="Search firms…" value={search} autoFocus
+              onChange={e=>setSearch(e.target.value)}/>
+          </div>
+          <div style={{maxHeight:320,overflowY:'auto',border:'1px solid var(--border)',borderRadius:8}}>
+            {filtered.length === 0
+              ? <div style={{padding:'12px 16px',color:'var(--text3)',fontSize:13}}>No firms found</div>
+              : filtered.map(inst => {
+                const checked = assignedIds.includes(inst.id);
+                return (
+                  <label key={inst.id} style={{display:'flex',alignItems:'center',gap:10,padding:'8px 14px',cursor:'pointer',
+                    borderBottom:'1px solid var(--border)',background:checked?'color-mix(in srgb, var(--primary) 8%, transparent)':'transparent'}}>
+                    <input type="checkbox" checked={checked} onChange={()=>toggle(inst.id)}
+                      style={{width:'auto',padding:0,border:'none',background:'none',flexShrink:0,accentColor:'var(--primary)'}}/>
+                    {inst.acronym && <span style={{fontWeight:700,fontSize:12,color:'var(--primary)',minWidth:52,fontFamily:'var(--font-mono)'}}>{inst.acronym}</span>}
+                    <span style={{fontSize:13,color:'var(--text)'}}>{inst.name}</span>
+                  </label>
+                );
+              })
+            }
+          </div>
+          <div style={{fontSize:12,color:'var(--text3)',marginTop:8}}>{assignedIds.length} firm{assignedIds.length!==1?'s':''} selected</div>
+          {err && <div style={{color:'var(--error)',fontSize:12,marginTop:6}}>{err}</div>}
+          <div style={{display:'flex',gap:8,justifyContent:'flex-end',marginTop:16}}>
+            <button className="btn btn-secondary" onClick={onClose}>Cancel</button>
+            <button className="btn btn-primary" onClick={handleSave} disabled={saving}>{saving?'Saving…':'Save'}</button>
+          </div>
+        </div>
+      </div>
+    </div>,
+    document.body
+  );
+}
+
 function UserModal({ user, institutes, onSave, onClose }) {
   const token = getSession()?.token;
   const isEdit = !!user;
@@ -5726,36 +5800,18 @@ function UserModal({ user, institutes, onSave, onClose }) {
     is_active: user?.is_active !== false,
     photo: user?.photo || null,
   });
-  const [assignedIds, setAssignedIds] = React.useState([]);
   const [err, setErr] = React.useState('');
   const [saving, setSaving] = React.useState(false);
-
-  React.useEffect(() => {
-    if (isEdit && user.role === 'editor') {
-      api('GET', `/users/${user.id}/institutes`, null, token)
-        .then(ids => setAssignedIds(ids))
-        .catch(() => {});
-    }
-  }, []);
-
-  const toggleInstitute = (id) => {
-    setAssignedIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
-  };
 
   const handleSave = async () => {
     if (!form.name.trim() || !form.email.trim()) return setErr('Name and email are required.');
     if (!isEdit && !form.password.trim()) return setErr('Password is required.');
     setSaving(true);
     try {
-      let saved;
       if (isEdit) {
-        saved = await api('PUT', `/users/${user.id}`, form, token);
+        await api('PUT', `/users/${user.id}`, form, token);
       } else {
-        saved = await api('POST', '/users', form, token);
-      }
-      if (form.role === 'editor') {
-        const intIds = assignedIds.map(id => parseInt(id)).filter(id => !isNaN(id));
-        await api('PUT', `/users/${saved.id}/institutes`, { institute_ids: intIds }, token);
+        await api('POST', '/users', form, token);
       }
       onSave();
     } catch(e) {
@@ -5764,8 +5820,6 @@ function UserModal({ user, institutes, onSave, onClose }) {
       setSaving(false);
     }
   };
-
-  const sortedInstitutes = React.useMemo(() => [...(institutes||[])].sort((a,b)=>a.name.localeCompare(b.name)), [institutes]);
 
   return ReactDOM.createPortal(
     <div className="modal-overlay" onClick={onClose}>
@@ -5833,24 +5887,6 @@ function UserModal({ user, institutes, onSave, onClose }) {
               </div>
             </div>
           )}
-          {form.role === 'editor' && (
-            <div className="form-group" style={{ marginTop: 8 }}>
-              <label className="form-label">Assigned institutes ({assignedIds.length} selected)</label>
-              <div style={{ maxHeight: 180, overflowY: 'auto', border: '1px solid var(--border)', borderRadius: 6, padding: '6px 0' }}>
-                {sortedInstitutes.length === 0
-                  ? <div style={{ padding: '8px 12px', color: 'var(--text3)', fontSize: 13 }}>No institutes available</div>
-                  : sortedInstitutes.map(inst => (
-                    <label key={inst.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '5px 12px', cursor: 'pointer', fontSize: 13,
-                      background: assignedIds.includes(inst.id) ? 'color-mix(in srgb, var(--accent) 10%, transparent)' : 'none' }}>
-                      <input type="checkbox" checked={assignedIds.includes(inst.id)} onChange={() => toggleInstitute(inst.id)}
-                        style={{ width: 'auto', padding: 0, border: 'none', background: 'none', flexShrink: 0 }} />
-                      <span>{inst.name}{inst.acronym ? ` (${inst.acronym})` : ''}</span>
-                    </label>
-                  ))
-                }
-              </div>
-            </div>
-          )}
           {err && <div style={{ color: 'var(--red)', fontSize: 12, margin: '8px 0' }}>{err}</div>}
           <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 16 }}>
             <button className="btn btn-secondary" onClick={onClose}>Cancel</button>
@@ -5868,12 +5904,23 @@ function UserManagement({institutes}) {
   const [users, setUsers] = React.useState([]);
   const [loading, setLoading] = React.useState(true);
   const [modal, setModal] = React.useState(null);
+  const [assignModal, setAssignModal] = React.useState(null);
   const [search, setSearch] = React.useState('');
+  const [userInstitutes, setUserInstitutes] = React.useState({});
+
+  const loadUserInstitutes = (userList) => {
+    const editors = userList.filter(u => u.role === 'editor');
+    editors.forEach(u => {
+      api('GET', `/users/${u.id}/institutes`, null, token)
+        .then(ids => setUserInstitutes(prev => ({ ...prev, [u.id]: ids.map(id => parseInt(id)) })))
+        .catch(() => {});
+    });
+  };
 
   const reload = () => {
     setLoading(true);
     api('GET', '/users', null, token)
-      .then(rows => { setUsers(rows); setLoading(false); })
+      .then(rows => { setUsers(rows); setLoading(false); loadUserInstitutes(rows); })
       .catch(() => setLoading(false));
   };
   React.useEffect(reload, []);
@@ -5919,13 +5966,17 @@ function UserManagement({institutes}) {
           <table>
             <thead>
               <tr>
-                <th>Name</th><th>Email</th><th>Role</th><th>Status</th><th>Created</th><th></th>
+                <th>Name</th><th>Email</th><th>Role</th><th>Assigned Firms</th><th>Status</th><th>Created</th><th></th>
               </tr>
             </thead>
             <tbody>
               {loading
-                ? <tr><td colSpan="6" style={{textAlign:'center',padding:20,color:'var(--text3)'}}>Loading…</td></tr>
-                : filtered.map(u => (
+                ? <tr><td colSpan="7" style={{textAlign:'center',padding:20,color:'var(--text3)'}}>Loading…</td></tr>
+                : filtered.map(u => {
+                const assignedInsts = u.role === 'editor'
+                  ? (userInstitutes[u.id] || []).map(id => institutes.find(i => i.id === id)).filter(Boolean)
+                  : [];
+                return (
                 <tr key={u.id}>
                   <td>
                     <div style={{display:'flex',alignItems:'center',gap:10}}>
@@ -5938,10 +5989,32 @@ function UserManagement({institutes}) {
                   </td>
                   <td style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--text2)' }}>{u.email}</td>
                   <td>{roleBadge(u.role)}</td>
+                  <td>
+                    {u.role === 'editor' ? (
+                      <div style={{display:'flex',flexWrap:'wrap',gap:4,alignItems:'center'}}>
+                        {assignedInsts.length === 0
+                          ? <span style={{fontSize:12,color:'var(--text3)'}}>None</span>
+                          : assignedInsts.map(i => (
+                              <span key={i.id} title={i.name} style={{fontSize:11,fontWeight:700,fontFamily:'var(--font-mono)',
+                                background:'color-mix(in srgb, var(--primary) 12%, transparent)',
+                                color:'var(--primary)',borderRadius:4,padding:'2px 6px'}}>
+                                {i.acronym || i.name.slice(0,6)}
+                              </span>
+                            ))
+                        }
+                      </div>
+                    ) : <span style={{color:'var(--text3)',fontSize:12}}>—</span>}
+                  </td>
                   <td><span className={`badge ${u.is_active ? 'badge-active' : 'badge-gray'}`}>{u.is_active ? 'Active' : 'Inactive'}</span></td>
                   <td style={{ color: 'var(--text3)', fontSize: 12 }}>{u.created_at?.slice(0,10)}</td>
                   <td>
                     <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
+                      {u.role === 'editor' && (
+                        <button className="btn btn-secondary btn-sm" onClick={() => setAssignModal(u)}>
+                          <span className="material-icons-round" style={{fontSize:13,verticalAlign:'middle',marginRight:3}}>business</span>
+                          Assign Firms
+                        </button>
+                      )}
                       <button className="btn btn-ghost btn-sm" onClick={() => setModal(u)}>Edit</button>
                       <button className={`btn btn-sm ${u.is_active ? 'btn-danger' : 'btn-secondary'}`}
                         onClick={() => toggleActive(u)}>
@@ -5951,13 +6024,17 @@ function UserManagement({institutes}) {
                     </div>
                   </td>
                 </tr>
-              ))}
+                );
+              })}
             </tbody>
           </table>
         </div>
       </div>
       {modal === 'add' && <UserModal institutes={institutes} onSave={()=>{setModal(null);reload();}} onClose={() => setModal(null)} />}
       {modal && modal !== 'add' && <UserModal user={modal} institutes={institutes} onSave={()=>{setModal(null);reload();}} onClose={() => setModal(null)} />}
+      {assignModal && <AssignFirmsModal user={assignModal} institutes={institutes}
+        onSave={(ids) => { setUserInstitutes(prev => ({...prev, [assignModal.id]: ids})); setAssignModal(null); }}
+        onClose={() => setAssignModal(null)} />}
     </div>
   );
 }
