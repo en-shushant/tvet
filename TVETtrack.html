@@ -5896,7 +5896,7 @@ function AssignFirmsModal({ user, institutes, onSave, onClose }) {
   );
 }
 
-function UserModal({ user, institutes, onSave, onClose }) {
+function UserModal({ user, institutes, isSuperAdmin, onSave, onClose }) {
   const token = getSession()?.token;
   const isEdit = !!user;
   const [form, setForm] = React.useState({
@@ -5972,7 +5972,8 @@ function UserModal({ user, institutes, onSave, onClose }) {
             <div className="form-group">
               <label className="form-label">Role</label>
               <select className="form-input" value={form.role} onChange={e => setForm(f=>({...f,role:e.target.value}))}>
-                <option value="admin">Admin</option>
+                {isSuperAdmin && <option value="superadmin">Superadmin</option>}
+                {isSuperAdmin && <option value="admin">Admin</option>}
                 <option value="editor">Editor</option>
                 <option value="viewer">Viewer</option>
               </select>
@@ -6006,7 +6007,7 @@ function UserModal({ user, institutes, onSave, onClose }) {
   );
 }
 
-function UserManagement({institutes}) {
+function UserManagement({institutes, isSuperAdmin}) {
   const token = getSession()?.token;
   const [users, setUsers] = React.useState([]);
   const [loading, setLoading] = React.useState(true);
@@ -6033,7 +6034,8 @@ function UserManagement({institutes}) {
   React.useEffect(reload, []);
 
   const roleBadge = (role) => {
-    if (role === 'admin') return <span className="badge badge-purple">👑 Admin</span>;
+    if (role === 'superadmin') return <span className="badge badge-purple">⭐ Superadmin</span>;
+    if (role === 'admin') return <span className="badge badge-purple" style={{opacity:0.8}}>👑 Admin</span>;
     if (role === 'editor') return <span className="badge badge-active">✏ Editor</span>;
     return <span className="badge badge-info">👁 Viewer</span>;
   };
@@ -6127,7 +6129,7 @@ function UserManagement({institutes}) {
                         onClick={() => toggleActive(u)}>
                         {u.is_active ? 'Deactivate' : 'Activate'}
                       </button>
-                      <button className="btn btn-danger btn-sm" onClick={() => deleteUser(u)}>🗑</button>
+                      {isSuperAdmin && <button className="btn btn-danger btn-sm" onClick={() => deleteUser(u)}>🗑</button>}
                     </div>
                   </td>
                 </tr>
@@ -6137,8 +6139,8 @@ function UserManagement({institutes}) {
           </table>
         </div>
       </div>
-      {modal === 'add' && <UserModal institutes={institutes} onSave={()=>{setModal(null);reload();}} onClose={() => setModal(null)} />}
-      {modal && modal !== 'add' && <UserModal user={modal} institutes={institutes} onSave={()=>{setModal(null);reload();}} onClose={() => setModal(null)} />}
+      {modal === 'add' && <UserModal institutes={institutes} isSuperAdmin={isSuperAdmin} onSave={()=>{setModal(null);reload();}} onClose={() => setModal(null)} />}
+      {modal && modal !== 'add' && <UserModal user={modal} institutes={institutes} isSuperAdmin={isSuperAdmin} onSave={()=>{setModal(null);reload();}} onClose={() => setModal(null)} />}
       {assignModal && <AssignFirmsModal user={assignModal} institutes={institutes}
         onSave={(ids) => { setUserInstitutes(prev => ({...prev, [assignModal.id]: ids})); setAssignModal(null); }}
         onClose={() => setAssignModal(null)} />}
@@ -6188,7 +6190,8 @@ function App() {
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
 
 
-  const isAdmin = session?.role === 'admin';
+  const isSuperAdmin = session?.role === 'superadmin';
+  const isAdmin = session?.role === 'admin' || isSuperAdmin;
   const isEditor = session?.role === 'editor';
 
   const token = session?.token;
@@ -6596,7 +6599,7 @@ function App() {
               <div style={{fontSize:13}}>Admin role required to manage master data.</div>
             </div>
           )}
-          {screen === 'users' && isAdmin && <UserManagement institutes={institutes}/>}
+          {screen === 'users' && isAdmin && <UserManagement institutes={institutes} isSuperAdmin={isSuperAdmin}/>}
           {screen === 'users' && !isAdmin && (
             <div style={{display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',height:'60%',gap:12,color:'var(--text3)'}}>
               <div style={{fontSize:40}}>🔒</div>

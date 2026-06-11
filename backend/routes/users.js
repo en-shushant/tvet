@@ -2,7 +2,7 @@
 const router = require('express').Router();
 const bcrypt = require('bcrypt');
 const { pool } = require('../db/pool');
-const { authenticate, requireAdmin, signToken } = require('../middleware/auth');
+const { authenticate, requireAdmin, requireSuperAdmin, signToken } = require('../middleware/auth');
 
 router.use(authenticate);
 
@@ -19,8 +19,12 @@ router.get('/', requireAdmin, async (req, res, next) => {
 // Create user
 router.post('/', requireAdmin, async (req, res, next) => {
   try {
-    const { name, email, password, role = 'user', photo } = req.body;
+    const { name, email, password, role = 'editor', photo } = req.body;
     if (!name || !email || !password) return res.status(400).json({ error: 'name, email and password required' });
+    // Only superadmin can create admin/superadmin users
+    if ((role === 'admin' || role === 'superadmin') && req.user.role !== 'superadmin') {
+      return res.status(403).json({ error: 'Only superadmin can create admin users' });
+    }
     const hash = await bcrypt.hash(password, 10);
     const { rows } = await pool.query(
       'INSERT INTO users (name, email, password, role, is_active, photo) VALUES ($1,$2,$3,$4,TRUE,$5) RETURNING id, name, email, role, is_active, photo, created_at',
@@ -37,6 +41,10 @@ router.post('/', requireAdmin, async (req, res, next) => {
 router.put('/:id', requireAdmin, async (req, res, next) => {
   try {
     const { name, email, password, role, is_active, photo } = req.body;
+    // Only superadmin can assign admin/superadmin roles
+    if ((role === 'admin' || role === 'superadmin') && req.user.role !== 'superadmin') {
+      return res.status(403).json({ error: 'Only superadmin can assign admin roles' });
+    }
     let q, params;
     if (password) {
       const hash = await bcrypt.hash(password, 10);
@@ -52,8 +60,8 @@ router.put('/:id', requireAdmin, async (req, res, next) => {
   } catch(e) { next(e); }
 });
 
-// Delete user
-router.delete('/:id', requireAdmin, async (req, res, next) => {
+// Delete user — superadmin only
+router.delete('/:id', requireSuperAdmin, async (req, res, next) => {
   try {
     await pool.query('DELETE FROM users WHERE id=$1', [req.params.id]);
     res.json({ deleted: true });

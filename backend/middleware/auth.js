@@ -18,10 +18,18 @@ function authenticate(req, res, next) {
   }
 }
 
-// Require admin role
+// Require admin or superadmin role
 function requireAdmin(req, res, next) {
-  if (!req.user || req.user.role !== 'admin') {
+  if (!req.user || (req.user.role !== 'admin' && req.user.role !== 'superadmin')) {
     return res.status(403).json({ error: 'Admin access required' });
+  }
+  next();
+}
+
+// Require superadmin only
+function requireSuperAdmin(req, res, next) {
+  if (!req.user || req.user.role !== 'superadmin') {
+    return res.status(403).json({ error: 'Superadmin access required' });
   }
   next();
 }
@@ -40,4 +48,4 @@ function signToken(payload) {
   return jwt.sign(payload, JWT_SECRET, { expiresIn: '7d' });
 }
 
-module.exports = { authenticate, requireAdmin, requireWriter, signToken };
+module.exports = { authenticate, requireAdmin, requireSuperAdmin, requireWriter, signToken };

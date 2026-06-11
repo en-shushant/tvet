@@ -53,9 +53,9 @@ async function runMigrations() {
     `ALTER TABLE assignment_occupations DROP CONSTRAINT IF EXISTS assignment_occupations_ctevt_occupation_id_fkey`,
     `ALTER TABLE assignments ADD COLUMN IF NOT EXISTS is_gesi BOOLEAN DEFAULT FALSE`,
     `ALTER TABLE assignments ADD COLUMN IF NOT EXISTS is_residential BOOLEAN DEFAULT FALSE`,
-    // Migration: relax users.role CHECK to allow 'editor' (Stage D)
+    // Migration: relax users.role CHECK to allow 'editor' and 'superadmin'
     `ALTER TABLE users DROP CONSTRAINT IF EXISTS users_role_check`,
-    `ALTER TABLE users ADD CONSTRAINT users_role_check CHECK (role IN ('admin','user','editor'))`,
+    `ALTER TABLE users ADD CONSTRAINT users_role_check CHECK (role IN ('admin','user','editor','viewer','superadmin'))`,
     `ALTER TABLE occupations ADD COLUMN IF NOT EXISTS level TEXT`,
     `DELETE FROM occupations WHERE is_custom = FALSE`,
     `ALTER TABLE assignment_occupations ADD COLUMN IF NOT EXISTS level TEXT`,
@@ -64,6 +64,23 @@ async function runMigrations() {
     try { await pool.query(sql); }
     catch(e) { console.warn('Migration skipped:', e.message); }
   }
+
+  // Seed superadmin user if not exists
+  try {
+    const bcrypt = require('bcrypt');
+    const existing = await pool.query(`SELECT id FROM users WHERE email='admin@tvettrack.local'`);
+    if (existing.rows.length === 0) {
+      const hash = await bcrypt.hash('Admin@2024!', 10);
+      await pool.query(
+        `INSERT INTO users (name, email, password, role, is_active) VALUES ($1,$2,$3,'superadmin',TRUE)`,
+        ['Super Admin', 'admin@tvettrack.local', hash]
+      );
+      console.log('Superadmin user created: admin@tvettrack.local');
+    } else {
+      // Ensure role is superadmin in case it was created with wrong role
+      await pool.query(`UPDATE users SET role='superadmin' WHERE email='admin@tvettrack.local' AND role != 'superadmin'`);
+    }
+  } catch(e) { console.warn('Superadmin seed:', e.message); }
 }
 
 // ─── HEALTH CHECK ─────────────────────────────────────────────────────────────
