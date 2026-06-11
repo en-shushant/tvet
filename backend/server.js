@@ -46,7 +46,7 @@ async function runMigrations() {
     `ALTER TABLE institutes ADD COLUMN IF NOT EXISTS longitude NUMERIC`,
     `ALTER TABLE users ADD COLUMN IF NOT EXISTS photo TEXT`,
     `CREATE TABLE IF NOT EXISTS user_institutes (
-      user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+      user_id UUID REFERENCES users(id) ON DELETE CASCADE,
       institute_id INTEGER REFERENCES institutes(id) ON DELETE CASCADE,
       PRIMARY KEY (user_id, institute_id)
     )`,
