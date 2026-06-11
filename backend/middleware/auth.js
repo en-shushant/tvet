@@ -38,8 +38,9 @@ function requireSuperAdmin(req, res, next) {
 // users can add/edit assignments, NSTB, tax, affiliations, but cannot create
 // or delete institutes, nor manage users / master data.
 function requireWriter(req, res, next) {
-  if (!req.user || (req.user.role !== 'admin' && req.user.role !== 'editor')) {
-    return res.status(403).json({ error: 'Editor or admin access required' });
+  const r = req.user?.role;
+  if (!r || (r !== 'admin' && r !== 'editor' && r !== 'superadmin')) {
+    return res.status(403).json({ error: 'Write access required. Contact your administrator.' });
   }
   next();
 }
