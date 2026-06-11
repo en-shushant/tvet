@@ -26,36 +26,36 @@
     --secondary: #49BEFF;
     --secondary-light: #E8F7FF;
     --success: #13DEB9;
-    --success-light: #E6FFFA;
+    --success-light: #D4FAF4;
     --warning: #FFAE1F;
-    --warning-light: #FEF5E5;
+    --warning-light: #FEF0CE;
     --error: #FA896B;
-    --error-light: #FDEDE8;
+    --error-light: #FDDDD6;
     --purple: #763EBD;
-    --purple-light: #F2ECF9;
+    --purple-light: #EDE4F9;
     --teal: #0BA39A;
-    --teal-light: #E9F6F6;
+    --teal-light: #D6F1EF;
 
-    /* ── Neutrals ── */
-    --bg: #F2F6FA;
-    --bg2: #E8EEF5;
-    --bg3: #D8E2EF;
+    /* ── Neutrals — strong contrast ── */
+    --bg: #EEF2F7;
+    --bg2: #E2E8F2;
+    --bg3: #CBD5E8;
     --surface: #FFFFFF;
-    --border: #E5EDF5;
-    --border2: #C8D8EA;
-    --text: #1E2A3B;
-    --text2: #455570;
-    --text3: #6B7F96;
+    --border: #D9E3EF;
+    --border2: #B8CCDE;
+    --text: #13202F;
+    --text2: #344563;
+    --text3: #5E7491;
 
-    /* ── Legacy aliases so existing JSX still works ── */
+    /* ── Legacy aliases ── */
     --accent: var(--primary-dark);
     --accent2: var(--primary);
     --accent3: #6990FF;
     --accent-light: var(--primary-light);
     --accent-mid: var(--primary-mid);
-    --amber: #B06200;
+    --amber: #A05A00;
     --amber-light: var(--warning-light);
-    --red: #C0392B;
+    --red: #B83220;
     --red-light: var(--error-light);
     --blue: var(--primary-dark);
     --blue-light: var(--primary-light);
@@ -64,17 +64,16 @@
     --radius: 8px;
     --radius-lg: 12px;
     --radius-xl: 16px;
-    --shadow: 0 2px 10px rgba(42,53,71,0.07);
-    --shadow-md: 0 4px 24px rgba(42,53,71,0.10);
-    --shadow-lg: 0 8px 40px rgba(42,53,71,0.14);
-    --shadow-accent: 0 4px 20px rgba(93,135,255,0.28);
+    --shadow: 0 2px 14px rgba(18,38,63,0.10), 0 1px 4px rgba(18,38,63,0.06);
+    --shadow-md: 0 6px 28px rgba(18,38,63,0.13), 0 2px 8px rgba(18,38,63,0.07);
+    --shadow-lg: 0 12px 48px rgba(18,38,63,0.18), 0 4px 14px rgba(18,38,63,0.09);
+    --shadow-accent: 0 4px 20px rgba(93,135,255,0.35);
 
-    --font: 'Plus Jakarta Sans', 'Inter', sans-serif;
-    --font-mono: 'DM Mono', monospace;
-    --font-serif: 'Plus Jakarta Sans', sans-serif;
+    --font: 'Plus Jakarta Sans', 'Inter', system-ui, sans-serif;
+    --font-mono: 'DM Mono', 'Fira Code', monospace;
     --sidebar-w: 265px;
     --topbar-h: 70px;
-    --sidebar-bg: #2A3547;
+    --sidebar-bg: #1E2D42;
   }
 
   html, body, #root { height: 100%; }
@@ -83,9 +82,11 @@
     font-family: var(--font);
     background: var(--bg);
     color: var(--text);
-    font-size: 14px;
+    font-size: 14.5px;
+    font-weight: 450;
     line-height: 1.6;
     -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
 
   /* ── Layout ─────────────────────────────────────────────── */
@@ -273,12 +274,12 @@
     padding: 0 28px;
     gap: 16px;
     flex-shrink: 0;
-    box-shadow: 0 1px 0 var(--border), 0 4px 12px rgba(42,53,71,0.05);
+    box-shadow: 0 2px 10px rgba(18,38,63,0.08);
   }
 
   .topbar-title {
-    font-size: 18px; font-weight: 700; flex: 1;
-    color: var(--text); letter-spacing: -0.3px;
+    font-size: 19px; font-weight: 800; flex: 1;
+    color: var(--text); letter-spacing: -0.4px;
   }
   .topbar-title .page-sub {
     font-size: 13px; color: var(--text3); font-weight: 400; margin-left: 10px;
@@ -396,16 +397,16 @@
   }
 
   .stat-label {
-    font-size: 12px; font-weight: 600; color: var(--text2);
-    margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.6px;
+    font-size: 11.5px; font-weight: 700; color: var(--text3);
+    margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.8px;
   }
 
   .stat-value {
-    font-size: 32px; font-weight: 700; color: var(--text);
-    line-height: 1; margin-bottom: 6px; letter-spacing: -1px;
+    font-size: 34px; font-weight: 800; color: var(--text);
+    line-height: 1; margin-bottom: 8px; letter-spacing: -1.5px;
   }
 
-  .stat-sub { font-size: 12px; color: var(--text2); }
+  .stat-sub { font-size: 12.5px; color: var(--text2); font-weight: 500; }
 
   /* thin accent line on top of card */
   .stat-accent {
@@ -454,6 +455,7 @@
     font-size: 13.5px;
     vertical-align: middle;
     color: var(--text);
+    font-weight: 450;
   }
 
   tbody tr:last-child td { border-bottom: none; }
@@ -506,12 +508,12 @@
   }
   .tab {
     padding: 11px 20px; font-size: 13.5px; font-weight: 500;
-    color: var(--text3); cursor: pointer; border: none; background: none;
+    color: var(--text2); cursor: pointer; border: none; background: none;
     border-bottom: 2px solid transparent; margin-bottom: -2px;
     transition: all 0.15s; font-family: var(--font);
     border-radius: 8px 8px 0 0;
   }
-  .tab:hover { color: var(--text2); background: var(--bg); }
+  .tab:hover { color: var(--text); background: var(--bg); }
   .tab.active { color: var(--primary); border-bottom-color: var(--primary); font-weight: 700; }
 
   /* ── Modals ─────────────────────────────────────────────── */
@@ -561,7 +563,7 @@
   /* close btn */
   .modal-close {
     background: var(--bg); border: 1.5px solid var(--border);
-    color: var(--text3); border-radius: 8px;
+    color: var(--text2); border-radius: 8px;
     width: 32px; height: 32px;
     display: flex; align-items: center; justify-content: center;
     cursor: pointer; font-size: 18px;
@@ -606,8 +608,8 @@
   .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px; }
   .grid-4 { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 20px; }
   .section-title {
-    font-size: 12.5px; font-weight: 700; color: var(--text2);
-    margin-bottom: 14px; text-transform: uppercase; letter-spacing: 0.7px;
+    font-size: 11.5px; font-weight: 800; color: var(--text);
+    margin-bottom: 14px; text-transform: uppercase; letter-spacing: 0.9px;
   }
 
   /* ── FY accordion ─────────────────────────────────────────────── */
@@ -808,8 +810,8 @@
     display: flex; align-items: center; justify-content: space-between;
     margin-bottom: 24px;
   }
-  .page-header-title { font-size: 22px; font-weight: 700; color: var(--text); letter-spacing: -0.4px; }
-  .page-header-sub { font-size: 13px; color: var(--text2); margin-top: 3px; }
+  .page-header-title { font-size: 23px; font-weight: 800; color: var(--text); letter-spacing: -0.5px; }
+  .page-header-sub { font-size: 13px; color: var(--text3); margin-top: 3px; font-weight: 500; }
 
   /* ── Sidebar search input ─────────────────────────────────────────────── */
   .sidebar-search-input {
@@ -3456,13 +3458,13 @@ function InstituteList({institutes, onSelect, onAdd, initialSearch=''}) {
               <StatusBadge status={inst.status}/>
             </div>
             {inst.acronym && <div style={{marginBottom:6}}><span className="badge badge-info" style={{fontSize:11}}>{inst.acronym}</span></div>}
-            <div style={{fontSize:12.5, color:'var(--text3)', marginBottom:5, display:'flex', alignItems:'center', gap:4}}>
+            <div style={{fontSize:12.5, color:'var(--text2)', marginBottom:5, display:'flex', alignItems:'center', gap:4, fontWeight:500}}>
               <span className="material-icons-round" style={{fontSize:13}}>badge</span>
               <span className="mono">{inst.regNo}</span>
               <span style={{color:'var(--border2)'}}>·</span>
               <span>{inst.type}</span>
             </div>
-            <div style={{fontSize:12.5, color:'var(--text3)', marginBottom:14, display:'flex', alignItems:'center', gap:4}}>
+            <div style={{fontSize:12.5, color:'var(--text2)', marginBottom:14, display:'flex', alignItems:'center', gap:4, fontWeight:500}}>
               <span className="material-icons-round" style={{fontSize:13}}>location_on</span>
               {inst.address}
             </div>
@@ -3475,7 +3477,7 @@ function InstituteList({institutes, onSelect, onAdd, initialSearch=''}) {
               ].map((m,i,arr)=>(
                 <div key={m.label} style={{flex:1, textAlign:'center', borderRight: i<arr.length-1 ? '1px solid var(--border)' : 'none', padding:'0 4px'}}>
                   <div style={{fontWeight:700, fontSize:16, color:m.color}}>{m.value}</div>
-                  <div style={{fontSize:10, color:'var(--text3)', textTransform:'uppercase', letterSpacing:'0.5px', marginTop:2}}>{m.label}</div>
+                  <div style={{fontSize:10.5, color:'var(--text2)', textTransform:'uppercase', letterSpacing:'0.5px', marginTop:2, fontWeight:600}}>{m.label}</div>
                 </div>
               ))}
             </div>
