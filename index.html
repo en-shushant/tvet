@@ -6201,7 +6201,7 @@ function App() {
           {screen === 'institutes' && <InstituteList institutes={institutes} onSelect={handleSelectInstitute} onAdd={isAdmin ? ()=>setShowAddInstitute(true) : null} initialSearch={globalSearch}/>}
           {screen === 'detail' && selectedInstitute && (
             <InstituteDetail
-              institute={institutes.find(i=>i.id===selectedInstitute.id) || selectedInstitute}
+              institute={selectedInstitute}
               clients={clients}
               onUpdateClients={handleUpdateClients}
               onBack={()=>{ window.location.hash='institutes'; setScreen('institutes'); setJumpToTab(null); }}
@@ -6212,8 +6212,8 @@ function App() {
               isAdmin={isAdmin}
               isEditor={isEditor}
               jumpToTab={jumpToTab}
-              onBulkAdd={()=>{ setBulkAddInstitute(institutes.find(i=>i.id===selectedInstitute.id)||selectedInstitute); window.location.hash=`bulkAdd/${selectedInstitute.id}`; setScreen('bulkAdd'); }}
-              onAddNSTB={()=>{ setNstbAddInstitute(institutes.find(i=>i.id===selectedInstitute.id)||selectedInstitute); window.location.hash=`nstbAdd/${selectedInstitute.id}`; setScreen('nstbAdd'); }}
+              onBulkAdd={()=>{ setBulkAddInstitute(selectedInstitute); window.location.hash=`bulkAdd/${selectedInstitute.id}`; setScreen('bulkAdd'); }}
+              onAddNSTB={()=>{ setNstbAddInstitute(selectedInstitute); window.location.hash=`nstbAdd/${selectedInstitute.id}`; setScreen('nstbAdd'); }}
             />
           )}
           {screen === 'bulkAdd' && bulkAddInstitute && (
