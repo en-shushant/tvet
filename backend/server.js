@@ -93,6 +93,29 @@ app.get('/health', async (req, res) => {
   }
 });
 
+// ─── CAP CAPTCHA PROXY ───────────────────────────────────────────────────────
+// Proxies /cap-api/* to the Cap server so the browser never makes HTTP requests
+// from an HTTPS page (mixed content would be blocked).
+const CAP_UPSTREAM = 'http://127.0.0.1:32769';
+app.all('/cap-api/*', async (req, res) => {
+  const upstreamPath = req.url.replace('/cap-api', '');
+  const upstreamUrl  = `${CAP_UPSTREAM}${upstreamPath}`;
+  try {
+    const headers = { 'Content-Type': req.headers['content-type'] || 'application/json' };
+    const body    = req.method === 'GET' || req.method === 'HEAD' ? undefined : JSON.stringify(req.body);
+    const upstream = await fetch(upstreamUrl, { method: req.method, headers, body, signal: AbortSignal.timeout(10000) });
+    const contentType = upstream.headers.get('content-type') || 'application/octet-stream';
+    res.status(upstream.status).set('Content-Type', contentType);
+    if (contentType.includes('json')) {
+      res.json(await upstream.json());
+    } else {
+      res.send(Buffer.from(await upstream.arrayBuffer()));
+    }
+  } catch (e) {
+    res.status(502).json({ error: 'Cap server unreachable' });
+  }
+});
+
 // ─── ROUTES ──────────────────────────────────────────────────────────────────
 app.use('/api/auth',         require('./routes/auth'));
 app.use('/api/users',        require('./routes/users'));
