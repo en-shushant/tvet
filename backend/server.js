@@ -96,7 +96,7 @@ app.get('/health', async (req, res) => {
 // ─── CAP CAPTCHA PROXY ───────────────────────────────────────────────────────
 // Proxies /cap-api/* to the Cap server so the browser never makes HTTP requests
 // from an HTTPS page (mixed content would be blocked).
-const CAP_UPSTREAM = 'http://127.0.0.1:32769';
+const CAP_UPSTREAM = process.env.CAP_SERVER_URL || 'http://185.199.53.214:32769';
 app.all('/cap-api/*', async (req, res) => {
   const upstreamPath = req.url.replace('/cap-api', '');
   const upstreamUrl  = `${CAP_UPSTREAM}${upstreamPath}`;
