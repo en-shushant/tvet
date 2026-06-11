@@ -3528,7 +3528,71 @@ function InstituteDetail({institute, clients, onUpdateClients, onBack, onUpdate,
 
 // ─── DASHBOARD ───────────────────────────────────────────────────────────────
 
+function ChangePasswordModal({ onClose }) {
+  const token = getSession()?.token;
+  const [form, setForm] = React.useState({ current: '', next: '', confirm: '' });
+  const [err, setErr] = React.useState('');
+  const [success, setSuccess] = React.useState(false);
+  const [saving, setSaving] = React.useState(false);
+  const set = (k,v) => setForm(f=>({...f,[k]:v}));
+  const handleSave = async () => {
+    if (!form.current) return setErr('Enter your current password.');
+    if (form.next.length < 6) return setErr('New password must be at least 6 characters.');
+    if (form.next !== form.confirm) return setErr('New passwords do not match.');
+    setSaving(true); setErr('');
+    try {
+      await api('PUT', '/auth/password', { current_password: form.current, new_password: form.next }, token);
+      setSuccess(true);
+    } catch(e) { setErr(e.message || 'Failed to change password'); }
+    finally { setSaving(false); }
+  };
+  return ReactDOM.createPortal(
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal" style={{maxWidth:400}} onClick={e=>e.stopPropagation()}>
+        <div className="modal-header">
+          <div className="modal-title">Change Password</div>
+          <button className="btn btn-ghost btn-sm" onClick={onClose}>✕</button>
+        </div>
+        <div style={{padding:'20px 24px 24px'}}>
+          {success ? (
+            <div style={{textAlign:'center',padding:'16px 0'}}>
+              <span className="material-icons-round" style={{fontSize:48,color:'var(--success)'}}>check_circle</span>
+              <div style={{fontWeight:600,marginTop:12,marginBottom:8}}>Password changed!</div>
+              <button className="btn btn-primary" onClick={onClose}>Done</button>
+            </div>
+          ) : (
+            <>
+              <div className="form-group">
+                <label className="form-label">Current password</label>
+                <input className="form-input" type="password" autoFocus value={form.current} onChange={e=>set('current',e.target.value)} placeholder="Current password"/>
+              </div>
+              <div className="form-group">
+                <label className="form-label">New password</label>
+                <input className="form-input" type="password" value={form.next} onChange={e=>set('next',e.target.value)} placeholder="At least 6 characters"/>
+              </div>
+              <div className="form-group">
+                <label className="form-label">Confirm new password</label>
+                <input className="form-input" type="password" value={form.confirm} onChange={e=>set('confirm',e.target.value)} placeholder="Repeat new password"
+                  onKeyDown={e=>e.key==='Enter'&&handleSave()}/>
+              </div>
+              {err && <div style={{color:'var(--error)',fontSize:12,marginBottom:10}}>{err}</div>}
+              <div style={{display:'flex',gap:8,justifyContent:'flex-end'}}>
+                <button className="btn btn-secondary" onClick={onClose}>Cancel</button>
+                <button className="btn btn-primary" onClick={handleSave} disabled={saving}>{saving?'Saving…':'Change Password'}</button>
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+    </div>, document.body
+  );
+}
+
 function Dashboard({institutes, isEditor, onNavigate}) {
+  const session = getSession();
+  const nd = React.useMemo(()=>getNepaliDate(),[]);
+  const hour = new Date().getHours();
+  const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
   const active = institutes.filter(i=>i.status==='Active').length;
   const pending = institutes.filter(i=>i.status==='Pending Renewal').length;
   const expired = institutes.filter(i=>i.status==='Expired').length;
@@ -3561,9 +3625,18 @@ function Dashboard({institutes, isEditor, onNavigate}) {
 
   return (
     <div className="fade-in">
-      <div style={{marginBottom:28}}>
-        <div className="page-header-title">Dashboard</div>
-        <div className="page-header-sub">Overview of Nepal TVET institute registry</div>
+      <div style={{display:'flex',alignItems:'flex-end',justifyContent:'space-between',flexWrap:'wrap',gap:12,marginBottom:28,
+        background:'var(--surface)',borderRadius:16,padding:'20px 24px',border:'1px solid var(--border)',boxShadow:'var(--shadow)'}}>
+        <div>
+          <div style={{fontSize:22,fontWeight:800,color:'var(--text)',marginBottom:4}}>
+            {greeting}, {session?.fullName?.split(' ')[0] || 'there'} 👋
+          </div>
+          <div style={{fontSize:13,color:'var(--text3)'}}>Here's your TVET registry overview</div>
+        </div>
+        <div style={{textAlign:'right'}}>
+          <div style={{fontSize:17,fontWeight:700,color:'var(--primary)',letterSpacing:0.2}}>{nd.npDay}, {nd.npDate}</div>
+          <div style={{fontSize:12,color:'var(--text3)',marginTop:2}}>{nd.enDay}, {nd.enDate} · Kathmandu</div>
+        </div>
       </div>
 
       <div className="grid-4 mb-6">
@@ -5384,6 +5457,54 @@ function getApiBase() {
 }
 const API_BASE_PATH = '/api';
 
+// ── Nepali (BS) date converter ────────────────────────────────────────────────
+const BS_MONTHS = ['बैशाख','जेठ','असार','साउन','भदौ','असोज','कार्तिक','मंसिर','पुस','माघ','फाल्गुन','चैत'];
+const BS_DAYS   = ['आइतबार','सोमबार','मंगलबार','बुधबार','बिहीबार','शुक्रबार','शनिबार'];
+const NP_DIGITS = ['०','१','२','३','४','५','६','७','८','९'];
+const toNpNum   = n => String(n).split('').map(d=>NP_DIGITS[+d]||d).join('');
+// Month lengths per BS year (index 0 = Baisakh)
+const BS_DATA = {
+  2079:[31,32,31,32,31,30,30,30,29,29,30,31],
+  2080:[31,31,32,32,31,30,30,30,29,30,30,30],
+  2081:[31,31,32,32,31,30,30,30,29,30,29,31],
+  2082:[31,32,31,32,31,30,30,30,29,30,30,30],
+  2083:[31,31,32,31,31,31,30,30,29,30,30,30],
+  2084:[31,31,32,31,31,31,30,30,29,30,30,30],
+  2085:[31,32,31,32,31,30,30,30,29,30,30,30],
+  2086:[31,32,31,32,31,30,30,30,29,30,29,31],
+};
+// Reference: BS 2079/01/01 = AD 2022/04/14
+const BS_REF = { bs:{y:2079,m:1,d:1}, ad: new Date(2022,3,14) };
+function adToBS(date) {
+  let days = Math.floor((date - BS_REF.ad) / 86400000);
+  let y = BS_REF.bs.y, m = 1, d = 1;
+  outer: for(;;) {
+    const months = BS_DATA[y];
+    if(!months) break;
+    for(let mi=0; mi<12; mi++) {
+      const len = months[mi];
+      if(days < len) { m=mi+1; d=days+1; break outer; }
+      days -= len;
+    }
+    y++;
+  }
+  return {y,m,d};
+}
+function getNepaliDate() {
+  // Kathmandu = UTC+5:45
+  const now = new Date();
+  const ktm = new Date(now.getTime() + (5*60+45)*60000);
+  const bs = adToBS(ktm);
+  const dayIndex = ktm.getUTCDay();
+  return {
+    bs, dayIndex,
+    npDay: BS_DAYS[dayIndex],
+    npDate: `${toNpNum(bs.d)} ${BS_MONTHS[bs.m-1]} ${toNpNum(bs.y)}`,
+    enDate: ktm.toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric',timeZone:'UTC'}),
+    enDay: ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'][dayIndex],
+  };
+}
+
 async function api(method, path, body, token, _retry = 0) {
   const base = getApiBase();
   const url = (base || '') + API_BASE_PATH + path;
@@ -6188,6 +6309,7 @@ function App() {
   const [jumpToTab, setJumpToTab] = useState(null);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+  const [showChangePwd, setShowChangePwd] = useState(false);
 
 
   const isSuperAdmin = session?.role === 'superadmin';
@@ -6482,9 +6604,14 @@ function App() {
               </div>
             )}
             {!sidebarCollapsed && (
-              <button className="logout-btn" title="Sign out" onClick={handleLogout}>
-                <span className="material-icons-round" style={{fontSize:18}}>logout</span>
-              </button>
+              <div style={{display:'flex',gap:2}}>
+                <button className="logout-btn" title="Change password" onClick={()=>setShowChangePwd(true)}>
+                  <span className="material-icons-round" style={{fontSize:18}}>lock</span>
+                </button>
+                <button className="logout-btn" title="Sign out" onClick={handleLogout}>
+                  <span className="material-icons-round" style={{fontSize:18}}>logout</span>
+                </button>
+              </div>
             )}
           </div>
         </div>
@@ -6614,6 +6741,7 @@ function App() {
       {showAddInstitute && (
         <InstituteForm onSave={handleAddInstitute} onClose={()=>setShowAddInstitute(false)}/>
       )}
+      {showChangePwd && <ChangePasswordModal onClose={()=>setShowChangePwd(false)}/>}
     </div>
   );
 }
