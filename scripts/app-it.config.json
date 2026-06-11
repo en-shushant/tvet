@@ -1,0 +1,13 @@
+{
+  "apps": [
+    {
+      "name": "TVETtrack",
+      "slug": "tvettrack",
+      "port": 3000,
+      "start_command": "node scripts/serve-local.js",
+      "bundle_id": "com.user.tvettrack",
+      "version": "1.0.0",
+      "polyfill_path": ""
+    }
+  ]
+}

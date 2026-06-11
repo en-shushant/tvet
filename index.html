@@ -3459,13 +3459,11 @@ function Dashboard({institutes, isEditor, onNavigate}) {
       </div>
 
       <div className="grid-4 mb-6">
-        {!isEditor && (
-          <KpiCard
-            icon="account_balance" iconBg="var(--primary-light)" iconColor="var(--primary)"
-            label="Total Institutes" value={institutes.length}
-            sub={<><span style={{color:'var(--success)',fontWeight:600}}>{active} active</span>{' · '}<span style={{color:'var(--warning)',fontWeight:600}}>{pending} pending</span>{' · '}<span style={{color:'var(--error)',fontWeight:600}}>{expired} expired</span></>}
-          />
-        )}
+        <KpiCard
+          icon="account_balance" iconBg="var(--primary-light)" iconColor="var(--primary)"
+          label="Total Institutes" value={institutes.length}
+          sub={<><span style={{color:'var(--success)',fontWeight:600}}>{active} active</span>{' · '}<span style={{color:'var(--warning)',fontWeight:600}}>{pending} pending</span>{' · '}<span style={{color:'var(--error)',fontWeight:600}}>{expired} expired</span></>}
+        />
         <KpiCard
           icon="receipt_long" iconBg="var(--error-light)" iconColor="var(--error)"
           label="Missing Tax Clearance" value={missingTax}

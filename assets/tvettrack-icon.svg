@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
+  <rect width="1024" height="1024" rx="224" fill="#1a2b4a"/>
+  <text x="80" y="580" font-family="sans-serif" font-weight="800" font-size="420" fill="#4ade80">TV</text>
+  <text x="80" y="760" font-family="sans-serif" font-weight="700" font-size="210" fill="#a3e4bc" letter-spacing="12">TRACK</text>
+  <rect x="640" y="190" width="290" height="290" rx="64" fill="#4ade80" opacity=".25"/>
+  <rect x="640" y="544" width="290" height="290" rx="64" fill="#4ade80" opacity=".5"/>
+</svg>
