@@ -5123,10 +5123,9 @@ function NepalMap({institutes, onSelect}) {
       });
 
       window.L.tileLayer(
-        'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
+        'https://tiles.stadiamaps.com/tiles/alidade_smooth/{z}/{x}/{y}{r}.png?api_key=57ef08c2-4393-4cba-8ca4-fb40a65b34b5',
         {
-          attribution: '© OpenStreetMap contributors © CARTO',
-          subdomains: 'abcd',
+          attribution: '© Stadia Maps © OpenMapTiles © OpenStreetMap contributors',
           maxZoom: 14,
         }
       ).addTo(mapInstanceRef.current);
