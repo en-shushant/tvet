@@ -1,0 +1,17 @@
+node_modules
+backend/node_modules
+.env
+.DS_Store
+*.log
+deploy
+docs
+desktop
+scripts
+assets
+TVETtrack.html
+vercel.json
+_redirects
+proxy.php
+Makefile
+README.md
+nepal_locations_final.json
