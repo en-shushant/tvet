@@ -2560,12 +2560,15 @@ function ExpCard({exp, clients, showFY, setModal, deleteExperience, canEdit, isA
           )}
         </div>
         <div style={{display:'flex', gap:6, flexShrink:0}}>
-          {canEdit && <>
-          <button className="btn btn-ghost btn-sm" onClick={()=>setModal({type:'editExp', data:exp})}>✏ Edit</button>
-          <button className="btn btn-ghost btn-sm" onClick={()=>setModal({type:'addExp', data:{...exp, id:undefined}})}>⊕ Dup</button>
-          <button className="btn btn-ghost btn-sm" onClick={()=>setModal({type:'dupFY', data:exp})}>📅 Dup to FY</button>
-          </>}
-          {isAdmin && <button className="btn btn-danger btn-sm" onClick={()=>deleteExperience(exp.id)}>🗑</button>}
+          <button className="btn btn-secondary btn-sm" style={{gap:5}} onClick={()=>setModal({type:'viewExp', data:exp})}>
+            <span className="material-icons-round" style={{fontSize:14}}>visibility</span> View
+          </button>
+          {canEdit && <button className="btn btn-ghost btn-sm" style={{gap:5}} onClick={()=>setModal({type:'editExp', data:exp})}>
+            <span className="material-icons-round" style={{fontSize:14}}>edit</span> Edit
+          </button>}
+          {isAdmin && <button className="btn btn-danger btn-sm" onClick={()=>deleteExperience(exp.id)}>
+            <span className="material-icons-round" style={{fontSize:14}}>delete</span>
+          </button>}
         </div>
       </div>
       <div style={{display:'flex', gap:8, flexWrap:'wrap'}}>
@@ -3245,6 +3248,156 @@ function InstituteDetail({institute, clients, onUpdateClients, onBack, onUpdate,
           </div>
         </Modal>
       )}
+      {modal?.type === 'viewExp' && (() => {
+        const exp = modal.data;
+        const client = getClient(clients, exp.clientId);
+        const allLocs = exp.occupations.flatMap(o=>(o.locations||[]));
+        const districts = [...new Set(allLocs.map(l=>l.district).filter(Boolean))];
+        const totalTrainees = exp.occupations.reduce((s,o)=>s+(parseInt(o.trainees)||0),0);
+        const totalSTA = exp.occupations.reduce((s,o)=>s+(parseInt(o.skillTestAppeared)||0),0);
+        const totalSTP = exp.occupations.reduce((s,o)=>s+(parseInt(o.skillTestPass)||0),0);
+        const passRate = totalSTA > 0 ? Math.round(totalSTP/totalSTA*100) : null;
+        return (
+          <div className="modal-overlay" onClick={()=>setModal(null)}>
+            <div className="modal modal-lg" onClick={e=>e.stopPropagation()} style={{maxHeight:'90vh'}}>
+              {/* Header */}
+              <div className="modal-header" style={{background:'linear-gradient(135deg,var(--sidebar-bg) 0%,#2a4a6b 100%)', borderRadius:'var(--radius-xl) var(--radius-xl) 0 0', border:'none', padding:'22px 28px'}}>
+                <div style={{flex:1}}>
+                  <div style={{display:'flex', alignItems:'center', gap:10, marginBottom:6}}>
+                    <span style={{background:'rgba(93,135,255,0.25)', color:'#a8c4ff', fontSize:11, fontWeight:700, padding:'2px 10px', borderRadius:20, letterSpacing:'0.5px', textTransform:'uppercase'}}>
+                      FY {exp.fy}{fyToAD(exp.fy)?` · ${fyToAD(exp.fy)}`:''}
+                    </span>
+                    {exp.trainingType && <span style={{background:'rgba(255,255,255,0.12)', color:'rgba(255,255,255,0.8)', fontSize:11, fontWeight:600, padding:'2px 10px', borderRadius:20}}>{exp.trainingType}</span>}
+                    {exp.isGesi && <span style={{background:'rgba(168,85,247,0.25)', color:'#d8b4fe', fontSize:11, fontWeight:700, padding:'2px 10px', borderRadius:20}}>GESI</span>}
+                    {exp.isResidential && <span style={{background:'rgba(59,130,246,0.25)', color:'#93c5fd', fontSize:11, fontWeight:700, padding:'2px 10px', borderRadius:20}}>Residential</span>}
+                  </div>
+                  <div style={{fontSize:20, fontWeight:800, color:'#fff', lineHeight:1.3}}>{exp.assignmentName}</div>
+                  <div style={{fontSize:13, color:'rgba(255,255,255,0.65)', marginTop:5}}>
+                    {client.fullName || exp.clientName || 'Unknown client'}
+                    {client.shortName ? <span style={{opacity:0.7}}> ({client.shortName})</span> : ''}
+                  </div>
+                </div>
+                <button className="modal-close" onClick={()=>setModal(null)} style={{background:'rgba(255,255,255,0.1)', border:'1px solid rgba(255,255,255,0.2)', color:'#fff'}}>
+                  <span className="material-icons-round" style={{fontSize:16}}>close</span>
+                </button>
+              </div>
+
+              <div className="modal-body" style={{padding:'24px 28px'}}>
+                {/* KPI strip */}
+                <div style={{display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:12, marginBottom:24}}>
+                  {[
+                    {label:'Total Trainees', value:totalTrainees.toLocaleString(), icon:'groups', color:'var(--primary)', bg:'var(--primary-light)'},
+                    {label:'ST Appeared', value:totalSTA||'—', icon:'quiz', color:'var(--warning)', bg:'var(--warning-light)'},
+                    {label:'Pass Rate', value:passRate!==null?`${passRate}%`:'—', icon:'verified', color:passRate>=70?'var(--success)':'var(--error)', bg:passRate>=70?'var(--success-light)':'var(--error-light)'},
+                    {label:'Contract Value', value:exp.contractValue?`NPR ${parseInt(exp.contractValue).toLocaleString()}`:'—', icon:'payments', color:'var(--purple)', bg:'var(--purple-light)'},
+                  ].map(k=>(
+                    <div key={k.label} style={{background:'var(--bg)', borderRadius:10, padding:'14px 16px', border:'1px solid var(--border)'}}>
+                      <div style={{display:'flex', alignItems:'center', gap:8, marginBottom:8}}>
+                        <div style={{width:32, height:32, borderRadius:8, background:k.bg, display:'flex', alignItems:'center', justifyContent:'center'}}>
+                          <span className="material-icons-round" style={{fontSize:16, color:k.color}}>{k.icon}</span>
+                        </div>
+                      </div>
+                      <div style={{fontSize:20, fontWeight:800, color:'var(--text)', lineHeight:1}}>{k.value}</div>
+                      <div style={{fontSize:11, color:'var(--text3)', textTransform:'uppercase', letterSpacing:'0.6px', marginTop:4, fontWeight:600}}>{k.label}</div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Meta row */}
+                {(exp.startFY || exp.endFY) && (
+                  <div style={{display:'flex', alignItems:'center', gap:8, marginBottom:20, padding:'10px 14px', background:'var(--primary-light)', borderRadius:8, border:'1px solid var(--primary-mid)'}}>
+                    <span className="material-icons-round" style={{fontSize:16, color:'var(--primary)'}}>date_range</span>
+                    <span style={{fontSize:13, color:'var(--primary-dark)', fontWeight:600}}>Contract period: FY {exp.startFY||exp.fy} – {exp.endFY||exp.fy}</span>
+                  </div>
+                )}
+
+                {/* Occupations */}
+                <div style={{marginBottom:20}}>
+                  <div style={{fontSize:11.5, fontWeight:800, color:'var(--text)', textTransform:'uppercase', letterSpacing:'0.8px', marginBottom:12}}>
+                    Occupations &amp; Trainees
+                  </div>
+                  <div style={{display:'flex', flexDirection:'column', gap:8}}>
+                    {exp.occupations.map((occ,i)=>{
+                      const occName = getOccupation(occ.ctevtOccupationId).name || occ.nameInLetter || 'Unknown';
+                      const sta = parseInt(occ.skillTestAppeared)||0;
+                      const stp = parseInt(occ.skillTestPass)||0;
+                      const pr = sta>0 ? Math.round(stp/sta*100) : null;
+                      return (
+                        <div key={i} style={{display:'flex', alignItems:'center', gap:12, padding:'12px 16px', background:'var(--surface)', border:'1px solid var(--border)', borderRadius:10, boxShadow:'0 1px 4px rgba(18,38,63,0.05)'}}>
+                          <div style={{width:36, height:36, borderRadius:8, background:'var(--primary-light)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0}}>
+                            <span className="material-icons-round" style={{fontSize:18, color:'var(--primary)'}}>school</span>
+                          </div>
+                          <div style={{flex:1, minWidth:0}}>
+                            <div style={{fontWeight:700, fontSize:13.5, color:'var(--text)'}}>{occName}</div>
+                            {occ.level && <span style={{fontSize:10, fontWeight:700, padding:'1px 6px', borderRadius:8, background:'var(--purple-light)', color:'var(--purple)', marginTop:2, display:'inline-block'}}>{occ.level}</span>}
+                          </div>
+                          <div style={{display:'flex', gap:16, flexShrink:0}}>
+                            <div style={{textAlign:'center'}}>
+                              <div style={{fontWeight:800, fontSize:18, color:'var(--primary)'}}>{parseInt(occ.trainees)||0}</div>
+                              <div style={{fontSize:10, color:'var(--text3)', fontWeight:600, textTransform:'uppercase', letterSpacing:'0.4px'}}>Trainees</div>
+                            </div>
+                            {occ.duration && <div style={{textAlign:'center'}}>
+                              <div style={{fontWeight:700, fontSize:15, color:'var(--text2)'}}>{occ.duration}h</div>
+                              <div style={{fontSize:10, color:'var(--text3)', fontWeight:600, textTransform:'uppercase', letterSpacing:'0.4px'}}>Duration</div>
+                            </div>}
+                            {sta > 0 && <div style={{textAlign:'center'}}>
+                              <div style={{fontWeight:700, fontSize:15, color:pr>=70?'var(--success)':'var(--warning)'}}>{pr}%</div>
+                              <div style={{fontSize:10, color:'var(--text3)', fontWeight:600, textTransform:'uppercase', letterSpacing:'0.4px'}}>Pass rate</div>
+                            </div>}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Locations */}
+                {districts.length > 0 && (
+                  <div style={{marginBottom:20}}>
+                    <div style={{fontSize:11.5, fontWeight:800, color:'var(--text)', textTransform:'uppercase', letterSpacing:'0.8px', marginBottom:10}}>Districts</div>
+                    <div style={{display:'flex', flexWrap:'wrap', gap:6}}>
+                      {districts.map(d=>(
+                        <span key={d} style={{display:'inline-flex', alignItems:'center', gap:4, fontSize:12.5, fontWeight:600, padding:'4px 10px', borderRadius:20, background:'var(--success-light)', color:'#0a7a68', border:'1px solid rgba(19,222,185,0.2)'}}>
+                          <span className="material-icons-round" style={{fontSize:13}}>location_on</span>{d}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Reference file */}
+                {exp.referenceFileName && (
+                  <div style={{display:'flex', alignItems:'center', gap:10, padding:'12px 16px', background:'var(--bg)', borderRadius:10, border:'1px solid var(--border)'}}>
+                    <span className="material-icons-round" style={{fontSize:18, color:'var(--primary)'}}>attach_file</span>
+                    <span style={{fontSize:13, fontWeight:600, color:'var(--primary-dark)', cursor:'pointer', textDecoration:'underline'}}
+                      onClick={()=>{ if(exp.referenceFile){ if(exp.referenceFileName.match(/\.pdf$/i)){const w=window.open();w.document.write(`<iframe src="${exp.referenceFile}" width="100%" height="100%" style="border:none"/>`);} else {window.open(exp.referenceFile);}} }}>
+                      {exp.referenceFileName}
+                    </span>
+                  </div>
+                )}
+
+                {/* Remarks */}
+                {exp.remarks && (
+                  <div style={{marginTop:16, padding:'12px 16px', background:'var(--warning-light)', borderRadius:10, border:'1px solid rgba(255,174,31,0.2)'}}>
+                    <div style={{fontSize:11, fontWeight:700, color:'var(--text2)', textTransform:'uppercase', letterSpacing:'0.6px', marginBottom:4}}>Remarks</div>
+                    <div style={{fontSize:13, color:'var(--text)'}}>{exp.remarks}</div>
+                  </div>
+                )}
+              </div>
+
+              <div className="modal-footer" style={{justifyContent:'space-between'}}>
+                <div style={{fontSize:12, color:'var(--text3)'}}>Assignment ID #{exp.id}</div>
+                <div style={{display:'flex', gap:8}}>
+                  {canEdit && <button className="btn btn-secondary btn-sm" onClick={()=>setModal({type:'editExp', data:exp})}>
+                    <span className="material-icons-round" style={{fontSize:14}}>edit</span> Edit
+                  </button>}
+                  <button className="btn btn-primary btn-sm" onClick={()=>setModal(null)}>Close</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
       {modal?.type === 'editNSTB' && <NSTBForm record={modal.data} onSave={saveNSTB} onClose={()=>setModal(null)}/>}
       {modal?.type === 'addTax' && <TaxForm onSave={saveTax} onClose={()=>setModal(null)}/>}
       {modal?.type === 'editTax' && <TaxForm record={modal.data} onSave={saveTax} onClose={()=>setModal(null)}/>}
