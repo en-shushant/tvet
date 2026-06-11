@@ -1790,19 +1790,15 @@ function LocalLevelSearch({ province, district, value, onChange }) {
     : allLL.slice(0,14);
   return (
     <div ref={ref} style={{position:'relative'}}>
-      <input value={open ? q : (value||'')} placeholder={district ? 'Search local level…' : '— District first —'}
+      <input value={q} placeholder={district ? '+ Add local level…' : '— District first —'}
         disabled={!district}
-        onFocus={() => { setOpen(true); setQ(''); }}
+        onFocus={() => setOpen(true)}
         onChange={e => { setQ(e.target.value); setOpen(true); }}
-        style={{paddingRight: value && !open ? 28 : 12}}
       />
-      {value && !open && district && (
-        <button onClick={e=>{e.stopPropagation(); onChange('',''); setQ('');}} style={{position:'absolute',right:6,top:'50%',transform:'translateY(-50%)',background:'none',border:'none',cursor:'pointer',color:'var(--text3)',fontSize:14,padding:0,lineHeight:1}}>✕</button>
-      )}
       {open && district && ReactDOM.createPortal(
         <DropdownPanel anchor={ref} search={q} setSearch={setQ}
           filtered={filtered.map(l=>({value:l.name, label:l.name+' ('+l.type+')'}))}
-          value={value||''}
+          value=''
           onChange={v=>{ const ll=allLL.find(l=>l.name===v); onChange(v, ll?.type||''); setOpen(false); setQ(''); }}
           setOpen={setOpen}
         />, document.body
@@ -1867,19 +1863,33 @@ function ExperienceForm({exp, clients, onSave, onClose, onDuplicate, onSaveClien
   const addOcc = () => set('occupations', [...form.occupations, {id:uid(), nameInLetter:'', ctevtOccupationId:'', trainees:'', duration:'', level:'', skillTestProvisioned:false, skillTestAppeared:'', skillTestPass:'', employmentProvisioned:false, employmentActual:'', locations:[]}]);
   const setOcc = (i, k, v) => setForm(f => ({...f, occupations: f.occupations.map((o,idx)=>idx===i?{...o,[k]:v}:o)}));
   const removeOcc = (i) => setForm(f => ({...f, occupations: f.occupations.filter((_,idx)=>idx!==i)}));
-  const addOccLoc = (oi) => setForm(f => ({...f, occupations: f.occupations.map((o,idx)=>idx===oi?{...o,locations:[...(o.locations||[]),{id:uid(),province:'',district:'',localLevel:'',localLevelType:''}]}:o)}));
+  const addOccLoc = (oi) => setForm(f => ({...f, occupations: f.occupations.map((o,idx)=>idx===oi?{...o,locations:[...(o.locations||[]),{id:uid(),province:'',district:'',localLevels:[]}]}:o)}));
   const setOccLoc = (oi, li, k, v) => {
     setForm(f => {
       const locs = f.occupations[oi].locations.map((l,idx) => {
         if(idx!==li) return l;
         const updated = {...l, [k]:v};
-        if(k==='province'){updated.district='';updated.localLevel='';updated.localLevelType='';}
-        if(k==='district'){updated.localLevel='';updated.localLevelType='';}
+        if(k==='province'){updated.district='';updated.localLevels=[];}
+        if(k==='district'){updated.localLevels=[];}
         return updated;
       });
       return {...f, occupations: f.occupations.map((o,idx)=>idx===oi?{...o,locations:locs}:o)};
     });
   };
+  const addOccLocLL = (oi, li, name, type) => setForm(f => {
+    const locs = f.occupations[oi].locations.map((l,idx) => {
+      if(idx!==li) return l;
+      if((l.localLevels||[]).find(x=>x.name===name)) return l;
+      return {...l, localLevels:[...(l.localLevels||[]),{name,type:type||''}]};
+    });
+    return {...f, occupations: f.occupations.map((o,idx)=>idx===oi?{...o,locations:locs}:o)};
+  });
+  const removeOccLocLL = (oi, li, llName) => setForm(f => {
+    const locs = f.occupations[oi].locations.map((l,idx) =>
+      idx!==li ? l : {...l, localLevels:(l.localLevels||[]).filter(x=>x.name!==llName)}
+    );
+    return {...f, occupations: f.occupations.map((o,idx)=>idx===oi?{...o,locations:locs}:o)};
+  });
   const removeOccLoc = (oi, li) => setForm(f => ({...f, occupations: f.occupations.map((o,idx)=>idx===oi?{...o,locations:o.locations.filter((_,i)=>i!==li)}:o)}));
 
   const addLoc = () => set('locations', [...form.locations, {id:uid(), province:'', district:'', localLevel:'', localLevelType:''}]);
@@ -2146,22 +2156,33 @@ function ExperienceForm({exp, clients, onSave, onClose, onDuplicate, onSaveClien
             <div style={{background:'var(--bg2)', borderRadius:6, padding:'8px 10px'}}>
               <div style={{fontSize:11, fontWeight:600, color:'var(--text2)', marginBottom:6}}>LOCATIONS</div>
               {(occ.locations||[]).map((loc, li) => (
-                <div key={loc.id||li} style={{display:'grid', gridTemplateColumns:'1fr 1fr auto', gap:6, marginBottom:6, alignItems:'end'}}>
-                  <div style={{position:'relative'}}>
-                    {li===0 && <label>District</label>}
-                    <DistrictSearch value={loc.district} onChange={(district, province) => {
-                      setOccLoc(i,li,'district',district);
-                      setOccLoc(i,li,'province',province);
-                    }}/>
+                <div key={loc.id||li} style={{marginBottom:8,padding:'8px 10px',background:'var(--surface)',borderRadius:6,border:'1px solid var(--border)'}}>
+                  <div style={{display:'grid', gridTemplateColumns:'1fr auto', gap:6, marginBottom:6, alignItems:'end'}}>
+                    <div style={{position:'relative'}}>
+                      {li===0 && <label>District</label>}
+                      <DistrictSearch value={loc.district} onChange={(district, province) => {
+                        setOccLoc(i,li,'district',district);
+                        setOccLoc(i,li,'province',province);
+                      }}/>
+                    </div>
+                    <button onClick={()=>removeOccLoc(i,li)} style={{background:'none',border:'none',cursor:'pointer',color:'var(--text3)',fontSize:16,padding:'0 4px',alignSelf:'center',marginBottom:2}}>✕</button>
                   </div>
-                  <div style={{position:'relative'}}>
-                    {li===0 && <label>Local level</label>}
-                    <LocalLevelSearch province={loc.province} district={loc.district} value={loc.localLevel} onChange={(ll, type) => {
-                      setOccLoc(i,li,'localLevel',ll);
-                      setOccLoc(i,li,'localLevelType',type||'');
-                    }}/>
-                  </div>
-                  <button onClick={()=>removeOccLoc(i,li)} style={{background:'none',border:'none',cursor:'pointer',color:'var(--text3)',fontSize:16,padding:'0 4px',alignSelf:'center',marginBottom:2}}>✕</button>
+                  {loc.district && (
+                    <div>
+                      <div style={{display:'flex',flexWrap:'wrap',gap:4,marginBottom:6}}>
+                        {(loc.localLevels||[]).map(ll => (
+                          <span key={ll.name} style={{display:'inline-flex',alignItems:'center',gap:4,fontSize:11,fontWeight:500,
+                            background:'color-mix(in srgb,var(--primary) 12%,transparent)',color:'var(--primary)',
+                            borderRadius:4,padding:'2px 6px'}}>
+                            {ll.name}
+                            <button onClick={()=>removeOccLocLL(i,li,ll.name)} style={{background:'none',border:'none',cursor:'pointer',color:'var(--primary)',fontSize:11,padding:0,lineHeight:1,opacity:0.7}}>✕</button>
+                          </span>
+                        ))}
+                      </div>
+                      <LocalLevelSearch province={loc.province} district={loc.district} value=''
+                        onChange={(ll, type) => { if(ll) addOccLocLL(i,li,ll,type); }}/>
+                    </div>
+                  )}
                 </div>
               ))}
               <div style={{display:'flex', gap:12, alignItems:'center', flexWrap:'wrap', marginTop:4}}>
@@ -2541,7 +2562,7 @@ function ExpCard({exp, clients, showFY, setModal, deleteExperience, canEdit, isA
   const client = getClient(clients, exp.clientId);
   const allLocs = exp.occupations.flatMap(o=>(o.locations||[]));
   const districts = [...new Set(allLocs.map(l=>l.district).filter(Boolean))];
-  const localLevels = [...new Set(allLocs.map(l=>l.localLevel).filter(Boolean))];
+  const localLevels = [...new Set(allLocs.flatMap(l=>(l.localLevels||[]).map(x=>x.name)).filter(Boolean))];
   return (
     <div style={{padding:'14px 16px', borderBottom:'1px solid var(--border)'}}>
       <div style={{display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:8}}>
@@ -5385,8 +5406,7 @@ function normExp(r) {
         id: uid(),
         province: l.province || '',
         district: l.district || '',
-        localLevel: l.local_level || l.localLevel || '',
-        localLevelType: l.local_level_type || l.localLevelType || '',
+        localLevels: l.local_levels || (l.local_level ? [{name: l.local_level, type: l.local_level_type || ''}] : []),
       })),
     })),
     locations: [],
@@ -5505,7 +5525,7 @@ function expToAPI(f, instituteId) {
       employment_actual_pct: (o.employmentActual === '' || o.employmentActual == null) ? null : o.employmentActual,
       locations: (o.locations || []).filter(l => l.district).map(l => ({
         province: l.province, district: l.district,
-        local_level: l.localLevel, local_level_type: l.localLevelType,
+        local_levels: (l.localLevels || []),
       })),
     })),
     locations: [],
@@ -6453,7 +6473,7 @@ function App() {
                       ctevt_occupation_id: (() => { const v=o.ctevtOccupationId; return v?(typeof v==='string'&&v.startsWith('c:')?parseInt(v.slice(2)):v):null; })(),
                       trainees: o.trainees ? parseInt(o.trainees) : null,
                       sort_order: i,
-                      locations: (row.districts||[]).map(d=>({province:d.province,district:d.district,local_level:'',local_level_type:''})),
+                      locations: (row.districts||[]).map(d=>({province:d.province,district:d.district,local_levels:[]})),
                     })),
                     locations: [],
                   };
