@@ -3917,12 +3917,13 @@ function SummaryView({institutes, clients}) {
         const occName = ctevtOcc.name || occ.nameInLetter;
         if(selectedOccs.length > 0 && !selectedOccs.includes(occName)) return;
 
-        const key = `${occName}`;
+        const occLevel = occ.level || ctevtOcc.level || '';
+        const key = `${occName}__${occLevel}`;
         if(!rows[key]) {
           rows[key] = {
             occupation: occName,
             sector: ctevtOcc.sector || '—',
-            level: occ.level || ctevtOcc.level || '—',
+            level: occLevel || '—',
             clientIds: new Set(), clientNames: new Set(), clientTypes: new Set(),
             trainees: 0, stAppeared: 0, stPass: 0, hasOptional: false,
             districts: new Set(),
