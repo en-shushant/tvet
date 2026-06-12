@@ -22,7 +22,9 @@ const R2 = R2_ENABLED ? new S3Client({
   },
 }) : null;
 
+let tableReady = false;
 const ensureTable = async () => {
+  if (tableReady) return;
   await pool.query(`CREATE TABLE IF NOT EXISTS institute_documents (
     id SERIAL PRIMARY KEY,
     institute_id INTEGER NOT NULL,
@@ -37,8 +39,13 @@ const ensureTable = async () => {
     uploaded_by UUID
   )`);
   await pool.query(`ALTER TABLE institute_documents ADD COLUMN IF NOT EXISTS file_data TEXT`).catch(() => {});
-  // Fix client_id column type if it was created as UUID
-  await pool.query(`ALTER TABLE institute_documents ALTER COLUMN client_id TYPE INTEGER USING NULL`).catch(() => {});
+  // Fix client_id if it was previously created as UUID — drop and recreate as INTEGER
+  const col = await pool.query(`SELECT data_type FROM information_schema.columns WHERE table_name='institute_documents' AND column_name='client_id'`);
+  if (col.rows.length && col.rows[0].data_type !== 'integer') {
+    await pool.query(`ALTER TABLE institute_documents DROP COLUMN client_id`).catch(() => {});
+    await pool.query(`ALTER TABLE institute_documents ADD COLUMN client_id INTEGER`).catch(() => {});
+  }
+  tableReady = true;
 };
 
 async function getDownloadUrl(doc) {
