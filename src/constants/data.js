@@ -1,11 +1,15 @@
-export const FISCAL_YEARS = (() => {
+const FY_KEY = 'tvettrack_fiscal_years';
+function defaultFYs() {
   const fys = [];
-  const currentBS = 2082;
-  for (let y = 2069; y <= currentBS + 1; y++) {
-    fys.push(`${y}/${String(y + 1).slice(-2)}`);
-  }
+  for (let y = 2065; y <= 2083; y++) fys.push(`${y}/${String(y + 1).slice(-2)}`);
   return fys;
-})();
+}
+export function getFiscalYears() {
+  try { const s = localStorage.getItem(FY_KEY); return s ? JSON.parse(s) : defaultFYs(); } catch { return defaultFYs(); }
+}
+export function saveFiscalYears(list) { localStorage.setItem(FY_KEY, JSON.stringify(list)); }
+export let FISCAL_YEARS = getFiscalYears();
+export function setFiscalYearsVar(list) { FISCAL_YEARS = list; }
 
 export const CLIENT_TYPES = ['Government','NGO','INGO','Association','Private Limited','Public Limited','Other'];
 

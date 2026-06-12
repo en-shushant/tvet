@@ -4,7 +4,7 @@ import Pagination from './ui/Pagination.jsx';
 import Modal from './ui/Modal.jsx';
 import { ErrorBanner } from './ui/Modal.jsx';
 import LocationsEditor from './LocationsEditor.jsx';
-import { CLIENT_TYPES, TRAINING_TYPES, SECTORS, NSTB_LEVELS, INSTITUTE_TYPES, INSTITUTE_STATUSES, AFFILIATION_TYPES, LOCAL_LEVEL_TYPES, FISCAL_YEARS, OCCUPATIONS, getTrainingTypes, saveTrainingTypes, setTrainingTypesVar } from '../constants/data.js';
+import { CLIENT_TYPES, TRAINING_TYPES, TRAINING_TYPES_DEFAULT, SECTORS, NSTB_LEVELS, INSTITUTE_TYPES, INSTITUTE_STATUSES, AFFILIATION_TYPES, LOCAL_LEVEL_TYPES, FISCAL_YEARS, OCCUPATIONS, getTrainingTypes, saveTrainingTypes, setTrainingTypesVar, getFiscalYears, saveFiscalYears, setFiscalYearsVar } from '../constants/data.js';
 import { api, clientToAPI, normClient } from '../utils/api.js';
 import { getSession } from '../utils/auth.js';
 
@@ -18,7 +18,10 @@ function MasterData({clients, onUpdateClients, token, isAdmin, isEditor, isSuper
   const [occModal, setOccModal] = useState(null);
   const [trainingTypes, setTrainingTypes] = useState(getTrainingTypes());
   const [ttInput, setTtInput] = useState('');
-  const [editTt, setEditTt] = useState(null); // {idx, val}
+  const [editTt, setEditTt] = useState(null);
+  const [fiscalYears, setFiscalYears] = useState(getFiscalYears());
+  const [fyInput, setFyInput] = useState('');
+  const [editFy, setEditFy] = useState(null);
 
   const canManageOccs = !!(isAdmin || isEditor);
 
@@ -31,6 +34,18 @@ function MasterData({clients, onUpdateClients, token, isAdmin, isEditor, isSuper
   const addTT = () => { const v = ttInput.trim(); if (!v) return; saveTT([...trainingTypes, v]); setTtInput(''); };
   const removeTT = (i) => saveTT(trainingTypes.filter((_,idx)=>idx!==i));
   const updateTT = (i, v) => { const l = [...trainingTypes]; l[i]=v; saveTT(l); setEditTt(null); };
+
+  const saveFY = (list) => { saveFiscalYears(list); setFiscalYearsVar(list); setFiscalYears(list); };
+  const addFY = () => {
+    const v = fyInput.trim();
+    if (!v) return;
+    if (!/^\d{4}\/\d{2}$/.test(v)) { alert('Format must be YYYY/YY e.g. 2083/84'); return; }
+    if (fiscalYears.includes(v)) return;
+    const sorted = [...fiscalYears, v].sort();
+    saveFY(sorted); setFyInput('');
+  };
+  const removeFY = (i) => saveFY(fiscalYears.filter((_,idx)=>idx!==i));
+  const updateFY = (i, v) => { if (!/^\d{4}\/\d{2}$/.test(v)) return; const l=[...fiscalYears]; l[i]=v; saveFY(l.sort()); setEditFy(null); };
 
   const ClientForm = ({client, onSave, onClose}) => {
     const [form, setForm] = useState(client || {fullName:'', shortName:'', type:'Government', address:'', remarks:''});
@@ -155,6 +170,7 @@ function MasterData({clients, onUpdateClients, token, isAdmin, isEditor, isSuper
         <button className={`tab ${tab==='clients'?'active':''}`} onClick={()=>setTab('clients')}>Clients ({clients.length})</button>
         <button className={`tab ${tab==='occupations'?'active':''}`} onClick={()=>setTab('occupations')}>Occupations ({OCCUPATIONS.length})</button>
         <button className={`tab ${tab==='training_types'?'active':''}`} onClick={()=>setTab('training_types')}>Training Types ({trainingTypes.length})</button>
+        {isSuperAdmin && <button className={`tab ${tab==='fiscal_years'?'active':''}`} onClick={()=>setTab('fiscal_years')}>Fiscal Years ({fiscalYears.length})</button>}
         {isSuperAdmin && <button className={`tab ${tab==='locations'?'active':''}`} onClick={()=>setTab('locations')}>Locations</button>}
       </div>
 
@@ -279,6 +295,64 @@ function MasterData({clients, onUpdateClients, token, isAdmin, isEditor, isSuper
             <button className="btn btn-ghost btn-sm" onClick={()=>saveTT([...TRAINING_TYPES_DEFAULT])}>
               ↺ Reset to defaults
             </button>
+          </div>
+        </div>
+      )}
+
+      {tab==='fiscal_years' && isSuperAdmin && (
+        <div style={{maxWidth:520}}>
+          <div style={{marginBottom:16, fontSize:13, color:'var(--text3)'}}>
+            Fiscal years available in dropdowns. Format: <span className="mono">YYYY/YY</span> (e.g. 2083/84). Changes are saved locally.
+          </div>
+          <div style={{display:'flex', gap:8, marginBottom:20}}>
+            <input value={fyInput} onChange={e=>setFyInput(e.target.value)}
+              onKeyDown={e=>e.key==='Enter'&&addFY()}
+              placeholder="e.g. 2084/85" style={{flex:1}} maxLength={7}/>
+            <button className="btn btn-primary btn-sm" onClick={addFY}>+ Add</button>
+          </div>
+          <div className="card" style={{padding:0, overflow:'hidden'}}>
+            <table>
+              <thead><tr><th>#</th><th>Fiscal Year (BS)</th><th>AD</th><th></th></tr></thead>
+              <tbody>
+                {fiscalYears.map((fy, i) => {
+                  const y = parseInt(fy);
+                  const ad = isNaN(y) ? '' : `${y-57}/${String(y-56).slice(-2)}`;
+                  return (
+                    <tr key={i}>
+                      <td className="mono text-muted" style={{fontSize:11}}>{i+1}</td>
+                      <td style={{fontSize:13}}>
+                        {editFy?.idx===i
+                          ? <input autoFocus value={editFy.val} onChange={e=>setEditFy({idx:i,val:e.target.value})}
+                              onKeyDown={e=>{if(e.key==='Enter')updateFY(i,editFy.val);if(e.key==='Escape')setEditFy(null);}}
+                              style={{width:90}} maxLength={7}/>
+                          : <span className="mono">{fy}</span>
+                        }
+                      </td>
+                      <td className="mono text-muted" style={{fontSize:11}}>{ad}</td>
+                      <td style={{display:'flex', gap:4}}>
+                        {editFy?.idx===i
+                          ? <>
+                              <button className="btn btn-primary btn-sm" onClick={()=>updateFY(i,editFy.val)}>Save</button>
+                              <button className="btn btn-ghost btn-sm" onClick={()=>setEditFy(null)}>✕</button>
+                            </>
+                          : <>
+                              <button className="btn btn-ghost btn-sm" onClick={()=>setEditFy({idx:i,val:fy})}>✏</button>
+                              <button className="btn btn-danger btn-sm" onClick={()=>removeFY(i)}>🗑</button>
+                            </>
+                        }
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+          <div style={{marginTop:12, display:'flex', gap:8}}>
+            <button className="btn btn-ghost btn-sm" onClick={()=>{
+              const fys=[];
+              for(let y=2065;y<=2083;y++) fys.push(`${y}/${String(y+1).slice(-2)}`);
+              saveFY(fys);
+            }}>↺ Reset to defaults</button>
           </div>
         </div>
       )}
