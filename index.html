@@ -4108,7 +4108,7 @@ function SummaryView({institutes, clients}) {
                 const taxRows = institute.taxClearance.filter(t => selectedFYs.length===0 || selectedFYs.includes(t.fy));
                 const tot = summaryRows.reduce((a,r)=>({t:a.t+r.trainees,d:new Set([...a.d,...r.districts])}),{t:0,d:new Set()});
                 const allClients = new Set(summaryRows.flatMap(r=>[...r.clientNames]));
-                // Count unique provinces, local levels by type from filtered experiences
+                // Count unique provinces, local levels by type — respects all active filters
                 const provinces = new Set();
                 const metro = new Set(), submetro = new Set(), muni = new Set(), rural = new Set();
                 institute.experience.filter(exp => {
@@ -4117,6 +4117,10 @@ function SummaryView({institutes, clients}) {
                   const ctMatch = selectedClientTypes.length === 0 || selectedClientTypes.includes(client.type);
                   return fyMatch && ctMatch;
                 }).forEach(exp => exp.occupations.forEach(occ => {
+                  if (minDuration && (parseInt(occ.duration)||0) < parseInt(minDuration)) return;
+                  const ctevtOcc = getOccupation(occ.ctevtOccupationId);
+                  const occName = ctevtOcc.name || occ.nameInLetter;
+                  if (selectedOccs.length > 0 && !selectedOccs.includes(occName)) return;
                   (occ.locations||[]).forEach(loc => {
                     if (loc.province) provinces.add(loc.province);
                     (loc.localLevels||[]).forEach(ll => {
@@ -4136,7 +4140,7 @@ function SummaryView({institutes, clients}) {
                   rural.size > 0 && ['Rural Municipality', rural.size],
                 ].filter(Boolean);
                 const provinceList = [...provinces].sort();
-                // Client breakdown by type
+                // Client breakdown by type — respects all active filters
                 const clientTypeMap = {};
                 institute.experience.filter(exp => {
                   const fyMatch = selectedFYs.length === 0 || selectedFYs.includes(exp.fy);
@@ -4144,6 +4148,13 @@ function SummaryView({institutes, clients}) {
                   const ctMatch = selectedClientTypes.length === 0 || selectedClientTypes.includes(client.type);
                   return fyMatch && ctMatch;
                 }).forEach(exp => {
+                  const hasMatchingOcc = exp.occupations.some(occ => {
+                    if (minDuration && (parseInt(occ.duration)||0) < parseInt(minDuration)) return false;
+                    const ctevtOcc = getOccupation(occ.ctevtOccupationId);
+                    const occName = ctevtOcc.name || occ.nameInLetter;
+                    return selectedOccs.length === 0 || selectedOccs.includes(occName);
+                  });
+                  if (!hasMatchingOcc) return;
                   const client = getClient(clients, exp.clientId);
                   const type = client.type || 'Unknown';
                   if (!clientTypeMap[type]) clientTypeMap[type] = new Set();
