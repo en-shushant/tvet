@@ -3,6 +3,8 @@ import { FISCAL_YEARS, OCCUPATIONS } from '../constants/data.js';
 import { exportComparisonToCSV } from '../utils/export.js';
 import { getSession } from '../utils/auth.js';
 import { api, normInst } from '../utils/api.js';
+import StatusBadge from './ui/StatusBadge.jsx';
+import JVGroupPanel from './JVGroupPanel.jsx';
 
 const fmt = (n) => n ? Number(n).toLocaleString('en-IN') : '—';
 const pct = (n, d) => d > 0 ? ((n/d)*100).toFixed(1) + '%' : '—';

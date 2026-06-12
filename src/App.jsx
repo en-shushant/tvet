@@ -14,6 +14,8 @@ import ChangePasswordModal from './components/ChangePasswordModal.jsx';
 import { NSTBBulkPage } from './components/NSTBForms.jsx';
 import { UserManagement } from './components/LoginPage.jsx';
 import { ErrorBanner } from './components/ui/Modal.jsx';
+import StatusBadge from './components/ui/StatusBadge.jsx';
+import { BulkAssignmentForm } from './components/BulkDistrictPicker.jsx';
 import { PROVINCES, OCCUPATIONS, FISCAL_YEARS, getAllDistricts } from './constants/data.js';
 import { getNepaliDate } from './constants/nepali.js';
 import { api, normInst, normClient } from './utils/api.js';

@@ -3,6 +3,7 @@ import StatusBadge from './ui/StatusBadge.jsx';
 import { FISCAL_YEARS } from '../constants/data.js';
 import { getSession } from '../utils/auth.js';
 import { getNepaliDate } from '../constants/nepali.js';
+import NepalMap from './NepalMap.jsx';
 
 const fmt = (n) => n ? Number(n).toLocaleString('en-IN') : '—';
 const pct = (n, d) => d > 0 ? ((n/d)*100).toFixed(1) + '%' : '—';

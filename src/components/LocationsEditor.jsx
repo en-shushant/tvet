@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { PROVINCES, setProvinces, LOCAL_LEVEL_TYPES } from '../constants/data.js';
 import { api } from '../utils/api.js';
+import Modal from './ui/Modal.jsx';
+import { ErrorBanner } from './ui/Modal.jsx';
 
 function LocationsEditor({token}) {
   const [provinces, setProvinces] = useState([]);
