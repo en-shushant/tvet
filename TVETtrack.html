@@ -2767,23 +2767,21 @@ function ClientDocuments({ client, instituteId, token, canEdit, isAdmin }) {
     setDocErr('');
     try {
       for (const file of files) {
-        // Try R2 presign first; fall back to base64 DB storage if R2 not configured
-        let presign = null;
-        try { presign = await api('POST', '/documents/presign', { file_name: file.name, content_type: file.type, institute_id: instituteId, client_id: client.id || null }, token); } catch(_) {}
-
-        if (presign?.upload_url) {
-          const r = await fetch(presign.upload_url, { method: 'PUT', body: file, headers: { 'Content-Type': file.type } });
-          if (!r.ok) throw new Error('Upload to R2 failed');
-          await api('POST', '/documents', { institute_id: instituteId, client_id: client.id || null, client_name: client.fullName, file_name: file.name, file_key: presign.key, file_size: file.size, content_type: file.type }, token);
-        } else {
-          const file_data = await new Promise((resolve, reject) => {
-            const reader = new FileReader();
-            reader.onload = ev => resolve(ev.target.result.split(',')[1]);
-            reader.onerror = reject;
-            reader.readAsDataURL(file);
-          });
-          await api('POST', '/documents', { institute_id: instituteId, client_id: client.id || null, client_name: client.fullName, file_name: file.name, file_size: file.size, content_type: file.type, file_data }, token);
-        }
+        const file_data = await new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = ev => resolve(ev.target.result.split(',')[1]);
+          reader.onerror = reject;
+          reader.readAsDataURL(file);
+        });
+        await api('POST', '/documents', {
+          institute_id: instituteId,
+          client_id: client.id || null,
+          client_name: client.fullName,
+          file_name: file.name,
+          file_size: file.size,
+          content_type: file.type,
+          file_data,
+        }, token);
       }
       loadDocs();
     } catch(err) { setDocErr('Upload failed: ' + err.message); }

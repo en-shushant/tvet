@@ -81,35 +81,35 @@ router.get('/:id/download', async (req, res, next) => {
   } catch(e) { next(e); }
 });
 
-// Get presigned upload URL (R2 mode)
-router.post('/presign', requireWriter, async (req, res, next) => {
-  try {
-    if (!R2_ENABLED) return res.status(503).json({ error: 'R2 not configured' });
-    const { file_name, content_type, institute_id, client_id } = req.body;
-    if (!file_name || !institute_id) return res.status(400).json({ error: 'file_name and institute_id required' });
-    const ext = file_name.split('.').pop();
-    const key = `institutes/${institute_id}/${client_id || 'general'}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
-    const upload_url = await getSignedUrl(R2,
-      new PutObjectCommand({ Bucket: BUCKET, Key: key, ContentType: content_type || 'application/octet-stream' }),
-      { expiresIn: 300 }
-    );
-    res.json({ upload_url, key });
-  } catch(e) { next(e); }
-});
-
-// Save document — either metadata (R2) or base64 (DB fallback)
+// Upload document — backend receives base64 and uploads to R2 (or stores in DB)
 router.post('/', requireWriter, async (req, res, next) => {
   try {
     await ensureTable();
-    const { institute_id, client_id, client_name, file_name, file_key, file_size, content_type, file_data } = req.body;
-    if (!institute_id || !file_name) return res.status(400).json({ error: 'institute_id and file_name required' });
-    if (!file_key && !file_data) return res.status(400).json({ error: 'file_key (R2) or file_data (base64) required' });
+    const { institute_id, client_id, client_name, file_name, file_size, content_type, file_data } = req.body;
+    if (!institute_id || !file_name || !file_data) return res.status(400).json({ error: 'institute_id, file_name, file_data required' });
 
-    const key = file_key || `db/${institute_id}/${client_id || 'general'}/${Date.now()}-${file_name}`;
+    const ext = (file_name.split('.').pop() || 'bin').toLowerCase();
+    const key = `institutes/${institute_id}/${client_id || 'general'}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+    let stored_key = key;
+    let stored_data = null;
+
+    if (R2_ENABLED) {
+      const buf = Buffer.from(file_data, 'base64');
+      await R2.send(new PutObjectCommand({
+        Bucket: BUCKET,
+        Key: key,
+        Body: buf,
+        ContentType: content_type || 'application/octet-stream',
+      }));
+    } else {
+      stored_key = `db/${key}`;
+      stored_data = file_data;
+    }
+
     const { rows } = await pool.query(
       `INSERT INTO institute_documents (institute_id,client_id,client_name,file_name,file_key,file_size,content_type,file_data,uploaded_by)
        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING id,institute_id,client_id,client_name,file_name,file_key,file_size,content_type,uploaded_at`,
-      [institute_id, client_id||null, client_name||null, file_name, key, file_size||null, content_type||null, file_data||null, req.user.id]
+      [institute_id, client_id||null, client_name||null, file_name, stored_key, file_size||null, content_type||null, stored_data, req.user.id]
     );
     const doc = rows[0];
     res.status(201).json({ ...doc, url: await getDownloadUrl(doc) });
