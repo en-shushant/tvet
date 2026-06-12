@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import StatusBadge from './ui/StatusBadge.jsx';
 import Pagination from './ui/Pagination.jsx';
 import { usePagination } from '../utils/hooks.js';

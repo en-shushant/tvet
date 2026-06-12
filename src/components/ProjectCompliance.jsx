@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { FISCAL_YEARS, CLIENT_TYPES, OCCUPATIONS } from '../constants/data.js';
 import { exportToCSV } from '../utils/export.js';
 import { getSession } from '../utils/auth.js';

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { PROVINCES, setProvinces, LOCAL_LEVEL_TYPES } from '../constants/data.js';
 import { api } from '../utils/api.js';
 import Modal from './ui/Modal.jsx';
