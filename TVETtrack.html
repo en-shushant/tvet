@@ -3820,9 +3820,9 @@ function InstituteList({institutes, onSelect, onAdd, initialSearch=''}) {
             <div style={{display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:10}}>
               <div style={{display:'flex', alignItems:'center', gap:10, flex:1, paddingRight:10}}>
                 {inst.logo
-                  ? <img src={inst.logo} alt="" style={{width:36,height:36,objectFit:'contain',borderRadius:8,border:'1px solid var(--border)',background:'#fff',padding:3,flexShrink:0}}/>
-                  : <div style={{width:36,height:36,borderRadius:8,background:'var(--primary-light)',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
-                      <span className="material-icons-round" style={{fontSize:18,color:'var(--primary)'}}>account_balance</span>
+                  ? <img src={inst.logo} alt="" style={{width:56,height:56,objectFit:'contain',borderRadius:10,border:'1px solid var(--border)',background:'#fff',padding:4,flexShrink:0}}/>
+                  : <div style={{width:56,height:56,borderRadius:10,background:'var(--primary-light)',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
+                      <span className="material-icons-round" style={{fontSize:28,color:'var(--primary)'}}>account_balance</span>
                     </div>
                 }
                 <div style={{fontWeight:700, fontSize:14, lineHeight:1.4, color:'var(--text)'}}>{inst.name}</div>
