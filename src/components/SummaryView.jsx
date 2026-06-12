@@ -4,6 +4,7 @@ import { exportSummaryToMD, exportSummaryToPDF, exportSummaryToCSV } from '../ut
 import { getSession } from '../utils/auth.js';
 import { api, normInst } from '../utils/api.js';
 
+const getClient = (clients, id) => (clients || []).find(c => c.id === id) || {};
 const fmt = (n) => n ? Number(n).toLocaleString('en-IN') : '—';
 const pct = (n, d) => d > 0 ? ((n/d)*100).toFixed(1) + '%' : '—';
 const fyToAD = (fy) => {
