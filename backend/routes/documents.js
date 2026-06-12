@@ -1,7 +1,26 @@
-// routes/documents.js — institute client documents stored in PostgreSQL
+// routes/documents.js — institute client documents
+// Stores files in Cloudflare R2 when configured, falls back to PostgreSQL base64
 const router = require('express').Router();
 const { pool } = require('../db/pool');
 const { authenticate, requireWriter } = require('../middleware/auth');
+const { S3Client, PutObjectCommand, DeleteObjectCommand, GetObjectCommand } = require('@aws-sdk/client-s3');
+const { getSignedUrl } = require('@aws-sdk/s3-request-presigner');
+
+const ACCOUNT_ID = process.env.CLOUDFLARE_ACCOUNT_ID || '';
+const BUCKET     = process.env.CLOUDFLARE_R2_BUCKET_NAME || '';
+const PUBLIC_URL = (process.env.CLOUDFLARE_R2_PUBLIC_URL || '').replace(/\/$/, '');
+const R2_ENABLED = !!(ACCOUNT_ID && BUCKET &&
+  process.env.CLOUDFLARE_R2_ACCESS_KEY_ID &&
+  process.env.CLOUDFLARE_R2_SECRET_ACCESS_KEY);
+
+const R2 = R2_ENABLED ? new S3Client({
+  region: 'auto',
+  endpoint: `https://${ACCOUNT_ID}.r2.cloudflarestorage.com`,
+  credentials: {
+    accessKeyId: process.env.CLOUDFLARE_R2_ACCESS_KEY_ID,
+    secretAccessKey: process.env.CLOUDFLARE_R2_SECRET_ACCESS_KEY,
+  },
+}) : null;
 
 const ensureTable = async () => {
   await pool.query(`CREATE TABLE IF NOT EXISTS institute_documents (
@@ -17,13 +36,20 @@ const ensureTable = async () => {
     uploaded_at TIMESTAMPTZ DEFAULT NOW(),
     uploaded_by UUID
   )`);
-  // Add file_data column to existing tables
   await pool.query(`ALTER TABLE institute_documents ADD COLUMN IF NOT EXISTS file_data TEXT`).catch(() => {});
 };
 
+async function getDownloadUrl(doc) {
+  if (R2_ENABLED) {
+    if (PUBLIC_URL) return `${PUBLIC_URL}/${doc.file_key}`;
+    return getSignedUrl(R2, new GetObjectCommand({ Bucket: BUCKET, Key: doc.file_key }), { expiresIn: 3600 }).catch(() => null);
+  }
+  return `/api/documents/${doc.id}/download`;
+}
+
 router.use(authenticate);
 
-// List documents for an institute (optionally filter by client_id)
+// List documents
 router.get('/', async (req, res, next) => {
   try {
     await ensureTable();
@@ -34,13 +60,12 @@ router.get('/', async (req, res, next) => {
     if (client_id) { params.push(client_id); q += ` AND client_id=$${params.length}`; }
     q += ' ORDER BY uploaded_at DESC';
     const { rows } = await pool.query(q, params);
-    // Attach download URL (served by this API)
-    const docs = rows.map(doc => ({ ...doc, url: `/api/documents/${doc.id}/download` }));
+    const docs = await Promise.all(rows.map(async doc => ({ ...doc, url: await getDownloadUrl(doc) })));
     res.json(docs);
   } catch(e) { next(e); }
 });
 
-// Download a document
+// Download from DB (fallback when R2 not configured)
 router.get('/:id/download', async (req, res, next) => {
   try {
     const { rows } = await pool.query('SELECT file_name,content_type,file_data FROM institute_documents WHERE id=$1', [req.params.id]);
@@ -54,28 +79,50 @@ router.get('/:id/download', async (req, res, next) => {
   } catch(e) { next(e); }
 });
 
-// Upload document (base64 encoded in request body)
+// Get presigned upload URL (R2 mode)
+router.post('/presign', requireWriter, async (req, res, next) => {
+  try {
+    if (!R2_ENABLED) return res.status(503).json({ error: 'R2 not configured' });
+    const { file_name, content_type, institute_id, client_id } = req.body;
+    if (!file_name || !institute_id) return res.status(400).json({ error: 'file_name and institute_id required' });
+    const ext = file_name.split('.').pop();
+    const key = `institutes/${institute_id}/${client_id || 'general'}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+    const upload_url = await getSignedUrl(R2,
+      new PutObjectCommand({ Bucket: BUCKET, Key: key, ContentType: content_type || 'application/octet-stream' }),
+      { expiresIn: 300 }
+    );
+    res.json({ upload_url, key });
+  } catch(e) { next(e); }
+});
+
+// Save document — either metadata (R2) or base64 (DB fallback)
 router.post('/', requireWriter, async (req, res, next) => {
   try {
     await ensureTable();
-    const { institute_id, client_id, client_name, file_name, file_size, content_type, file_data } = req.body;
-    if (!institute_id || !file_name || !file_data) return res.status(400).json({ error: 'institute_id, file_name, file_data required' });
-    const ext = file_name.split('.').pop();
-    const file_key = `institutes/${institute_id}/${client_id || 'general'}/${Date.now()}.${ext}`;
+    const { institute_id, client_id, client_name, file_name, file_key, file_size, content_type, file_data } = req.body;
+    if (!institute_id || !file_name) return res.status(400).json({ error: 'institute_id and file_name required' });
+    if (!file_key && !file_data) return res.status(400).json({ error: 'file_key (R2) or file_data (base64) required' });
+
+    const key = file_key || `db/${institute_id}/${client_id || 'general'}/${Date.now()}-${file_name}`;
     const { rows } = await pool.query(
       `INSERT INTO institute_documents (institute_id,client_id,client_name,file_name,file_key,file_size,content_type,file_data,uploaded_by)
        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING id,institute_id,client_id,client_name,file_name,file_key,file_size,content_type,uploaded_at`,
-      [institute_id, client_id||null, client_name||null, file_name, file_key, file_size||null, content_type||null, file_data, req.user.id]
+      [institute_id, client_id||null, client_name||null, file_name, key, file_size||null, content_type||null, file_data||null, req.user.id]
     );
-    res.status(201).json({ ...rows[0], url: `/api/documents/${rows[0].id}/download` });
+    const doc = rows[0];
+    res.status(201).json({ ...doc, url: await getDownloadUrl(doc) });
   } catch(e) { next(e); }
 });
 
 // Delete document
 router.delete('/:id', requireWriter, async (req, res, next) => {
   try {
-    const { rows } = await pool.query('SELECT id FROM institute_documents WHERE id=$1', [req.params.id]);
+    const { rows } = await pool.query('SELECT * FROM institute_documents WHERE id=$1', [req.params.id]);
     if (!rows.length) return res.status(404).json({ error: 'Not found' });
+    const doc = rows[0];
+    if (R2_ENABLED && doc.file_key && !doc.file_key.startsWith('db/')) {
+      await R2.send(new DeleteObjectCommand({ Bucket: BUCKET, Key: doc.file_key })).catch(() => {});
+    }
     await pool.query('DELETE FROM institute_documents WHERE id=$1', [req.params.id]);
     res.json({ deleted: true });
   } catch(e) { next(e); }
