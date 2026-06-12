@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import Modal from './ui/Modal.jsx';
 import { ErrorBanner } from './ui/Modal.jsx';
 import SearchableSelect from './ui/SearchableSelect.jsx';
