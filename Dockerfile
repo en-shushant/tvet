@@ -1,3 +1,17 @@
+# ── Stage 1: build Vite frontend ─────────────────────────────────────────────
+FROM node:20-alpine AS build-frontend
+
+WORKDIR /frontend
+
+COPY package.json package-lock.json* ./
+RUN npm install
+
+COPY index.html vite.config.js ./
+COPY src/ ./src/
+
+RUN npm run build
+
+# ── Stage 2: production backend ───────────────────────────────────────────────
 FROM node:20-alpine
 
 WORKDIR /app
@@ -9,8 +23,8 @@ RUN npm install --omit=dev
 # Copy backend source
 COPY backend/ ./
 
-# Copy frontend into public/ so Express serves it
-COPY index.html ./public/index.html
+# Copy built frontend into backend's public/ folder
+COPY --from=build-frontend /frontend/dist ./public/
 
 EXPOSE 4000
 
