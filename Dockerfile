@@ -4,7 +4,7 @@ FROM node:20-alpine AS build-frontend
 WORKDIR /frontend
 
 COPY package.json package-lock.json* ./
-RUN npm install
+RUN npm install --include=dev
 
 COPY index.html vite.config.js ./
 COPY src/ ./src/
