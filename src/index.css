@@ -104,14 +104,16 @@ body {
 .sidebar.collapsed .user-pill > div { display: none; }
 
 .sidebar-toggle {
-  position: absolute; top: 20px; right: -14px; z-index: 200;
+  position: fixed; top: 20px; left: calc(var(--sidebar-w) - 14px); z-index: 300;
   width: 28px; height: 28px; border-radius: 50%;
   background: var(--primary); border: 2px solid var(--surface);
   color: #fff; font-size: 12px;
   display: flex; align-items: center; justify-content: center;
-  cursor: pointer; transition: all 0.15s;
+  cursor: pointer; transition: left 0.22s cubic-bezier(.4,0,.2,1);
   box-shadow: 0 2px 8px rgba(93,135,255,0.4);
 }
+.sidebar.collapsed ~ * .sidebar-toggle,
+.sidebar.collapsed .sidebar-toggle { left: calc(72px - 14px); }
 .sidebar-toggle:hover { background: var(--primary-dark); transform: scale(1.1); }
 
 .sidebar-logo {
