@@ -4108,6 +4108,29 @@ function SummaryView({institutes, clients}) {
                 const taxRows = institute.taxClearance.filter(t => selectedFYs.length===0 || selectedFYs.includes(t.fy));
                 const tot = summaryRows.reduce((a,r)=>({t:a.t+r.trainees,d:new Set([...a.d,...r.districts])}),{t:0,d:new Set()});
                 const allClients = new Set(summaryRows.flatMap(r=>[...r.clientNames]));
+                // Count unique local levels by type from filtered experiences
+                const metro = new Set(), submetro = new Set(), muni = new Set(), rural = new Set();
+                institute.experience.filter(exp => {
+                  const fyMatch = selectedFYs.length === 0 || selectedFYs.includes(exp.fy);
+                  const client = getClient(clients, exp.clientId);
+                  const ctMatch = selectedClientTypes.length === 0 || selectedClientTypes.includes(client.type);
+                  return fyMatch && ctMatch;
+                }).forEach(exp => exp.occupations.forEach(occ => {
+                  (occ.locations||[]).forEach(loc => (loc.localLevels||[]).forEach(ll => {
+                    if (!ll.name) return;
+                    const key = `${loc.district}__${ll.name}`;
+                    if (ll.type === 'Metropolitan City') metro.add(key);
+                    else if (ll.type === 'Sub-Metropolitan City') submetro.add(key);
+                    else if (ll.type === 'Municipality') muni.add(key);
+                    else if (ll.type === 'Rural Municipality') rural.add(key);
+                  }));
+                }));
+                const muniStats = [
+                  metro.size > 0 && ['Metropolitan', metro.size],
+                  submetro.size > 0 && ['Sub-Metro', submetro.size],
+                  muni.size > 0 && ['Municipality', muni.size],
+                  rural.size > 0 && ['Rural Municipality', rural.size],
+                ].filter(Boolean);
                 return (
                   <div style={{display:'flex',flexWrap:'wrap',gap:'6px 0',marginTop:10,paddingTop:10,borderTop:'1px solid var(--border)'}}>
                     {[
@@ -4122,6 +4145,17 @@ function SummaryView({institutes, clients}) {
                         <span style={{fontSize:13,fontWeight:700,color:'var(--text)'}}>{val}</span>
                       </div>
                     ))}
+                    {muniStats.length > 0 && (
+                      <div style={{display:'flex',alignItems:'center',gap:5,paddingRight:16,marginRight:16,borderRight:'1px solid var(--border)',flexWrap:'wrap'}}>
+                        <span className="material-icons-round" style={{fontSize:14,color:'var(--warning,#f59e0b)'}}>account_balance</span>
+                        <span style={{fontSize:11,color:'var(--text3)'}}>Local Govts</span>
+                        {muniStats.map(([label, count]) => (
+                          <span key={label} style={{fontSize:11,background:'var(--primary-light)',borderRadius:4,padding:'1px 6px',color:'var(--text2)'}}>
+                            <strong style={{color:'var(--text)'}}>{count}</strong> {label}
+                          </span>
+                        ))}
+                      </div>
+                    )}
                     {selectedFYs.length > 0 && <div style={{fontSize:11,color:'var(--text3)',alignSelf:'center',marginLeft:'auto'}}>FY: {selectedFYs.join(', ')}</div>}
                   </div>
                 );
