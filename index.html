@@ -3819,30 +3819,35 @@ function InstituteList({institutes, onSelect, onAdd, initialSearch=''}) {
             <div className="card-accent" style={{
               background: inst.status==='Active'?'var(--success)':inst.status==='Pending Renewal'?'var(--warning)':'var(--error)'
             }}/>
-            <div style={{display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:10}}>
-              <div style={{display:'flex', alignItems:'center', gap:10, flex:1, paddingRight:10}}>
-                {inst.logo
-                  ? <img src={inst.logo} alt="" style={{width:56,height:56,objectFit:'contain',borderRadius:10,border:'1px solid var(--border)',background:'#fff',padding:4,flexShrink:0}}/>
-                  : <div style={{width:56,height:56,borderRadius:10,background:'var(--primary-light)',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
-                      <span className="material-icons-round" style={{fontSize:28,color:'var(--primary)'}}>account_balance</span>
-                    </div>
-                }
-                <div style={{fontWeight:700, fontSize:14, lineHeight:1.4, color:'var(--text)'}}>{inst.name}</div>
+            {/* Header row: logo + name + status */}
+            <div style={{display:'flex', alignItems:'center', gap:10, marginBottom:6}}>
+              {inst.logo
+                ? <img src={inst.logo} alt="" style={{width:44,height:44,objectFit:'contain',borderRadius:8,border:'1px solid var(--border)',background:'#fff',padding:3,flexShrink:0}}/>
+                : <div style={{width:44,height:44,borderRadius:8,background:'var(--primary-light)',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
+                    <span className="material-icons-round" style={{fontSize:22,color:'var(--primary)'}}>account_balance</span>
+                  </div>
+              }
+              <div style={{flex:1, minWidth:0}}>
+                <div style={{fontWeight:700, fontSize:13.5, lineHeight:1.35, color:'var(--text)'}}>{inst.name}</div>
+                <div style={{display:'flex', alignItems:'center', gap:6, marginTop:3, flexWrap:'wrap'}}>
+                  {inst.acronym && <span className="badge badge-info" style={{fontSize:10.5}}>{inst.acronym}</span>}
+                  <StatusBadge status={inst.status}/>
+                </div>
               </div>
-              <StatusBadge status={inst.status}/>
             </div>
-            {inst.acronym && <div style={{marginBottom:6}}><span className="badge badge-info" style={{fontSize:11}}>{inst.acronym}</span></div>}
-            <div style={{fontSize:12.5, color:'var(--text2)', marginBottom:5, display:'flex', alignItems:'center', gap:4, fontWeight:500}}>
-              <span className="material-icons-round" style={{fontSize:13}}>badge</span>
+            {/* Meta row */}
+            <div style={{fontSize:12, color:'var(--text2)', marginBottom:3, display:'flex', alignItems:'center', gap:4}}>
+              <span className="material-icons-round" style={{fontSize:12}}>badge</span>
               <span className="mono">{inst.regNo}</span>
               <span style={{color:'var(--border2)'}}>·</span>
               <span>{inst.type}</span>
             </div>
-            <div style={{fontSize:12.5, color:'var(--text2)', marginBottom:14, display:'flex', alignItems:'center', gap:4, fontWeight:500}}>
-              <span className="material-icons-round" style={{fontSize:13}}>location_on</span>
-              {inst.address}
+            <div style={{fontSize:12, color:'var(--text2)', marginBottom:10, display:'flex', alignItems:'center', gap:4}}>
+              <span className="material-icons-round" style={{fontSize:12}}>location_on</span>
+              <span style={{overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap'}}>{inst.address}</span>
             </div>
-            <div style={{display:'flex', gap:0, borderTop:'1px solid var(--border)', paddingTop:12, marginTop:4}}>
+            {/* Stats row */}
+            <div style={{display:'flex', gap:0, borderTop:'1px solid var(--border)', paddingTop:8}}>
               {[
                 {label:'Trainees', value:inst.totalTrainees.toLocaleString(), color:'var(--primary)'},
                 {label:'ST Appeared', value:inst.totalStAppeared.toLocaleString(), color:'var(--success)'},
@@ -3850,8 +3855,8 @@ function InstituteList({institutes, onSelect, onAdd, initialSearch=''}) {
                 {label:'Affiliations', value:inst.totalAffPrograms, color:'var(--purple)'},
               ].map((m,i,arr)=>(
                 <div key={m.label} style={{flex:1, textAlign:'center', borderRight: i<arr.length-1 ? '1px solid var(--border)' : 'none', padding:'0 4px'}}>
-                  <div style={{fontWeight:700, fontSize:16, color:m.color}}>{m.value}</div>
-                  <div style={{fontSize:10.5, color:'var(--text2)', textTransform:'uppercase', letterSpacing:'0.5px', marginTop:2, fontWeight:600}}>{m.label}</div>
+                  <div style={{fontWeight:700, fontSize:14, color:m.color}}>{m.value}</div>
+                  <div style={{fontSize:10, color:'var(--text2)', textTransform:'uppercase', letterSpacing:'0.4px', marginTop:1, fontWeight:600}}>{m.label}</div>
                 </div>
               ))}
             </div>
