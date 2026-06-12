@@ -144,12 +144,15 @@ function ExperienceForm({exp, clients, onSave, onClose, onDuplicate, onSaveClien
   const [saveClientModal, setSaveClientModal] = useState(null);
   const [saveClientErr, setSaveClientErr] = useState('');
   const [formErr, setFormErr] = useState('');
-  const [form, setForm] = useState(exp || {
-    clientId:'', clientName:'', manualClient:false,
-    fy:'2081/82', assignmentName:'', trainingType:'Short Term',
-    contractValue:'', startDate:'', endDate:'', startFY:'', endFY:'', remarks:'',
-    isGesi:false, isResidential:false, isJV:false, jvRole:'Lead', jvPartners:'',
-    occupations:[], locations:[], referenceFile:null, referenceFileName:''
+  const [form, setForm] = useState(() => {
+    const defaults = {
+      clientId:'', clientName:'', manualClient:false,
+      fy:'2081/82', assignmentName:'', trainingType:'Short Term',
+      contractValue:'', startDate:'', endDate:'', startFY:'', endFY:'', remarks:'',
+      isGesi:false, isResidential:false, isJV:false, jvRole:'Lead', jvPartners:'',
+      occupations:[], locations:[], referenceFile:null, referenceFileName:''
+    };
+    return exp ? {...defaults, ...exp} : defaults;
   });
 
   const fileInputRef = useRef(null);
