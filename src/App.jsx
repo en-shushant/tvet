@@ -112,25 +112,21 @@ function App() {
           }))
         }));
       }
+      // Restore hash-based route after data is loaded
+      const { screen: s, instId } = parseHash();
+      if (s === 'detail' && instId) {
+        api('GET', `/institutes/${instId}`, null, token)
+          .then(full => { setSelectedInstitute(normInst(full)); setScreen('detail'); })
+          .catch(() => { window.location.hash = 'institutes'; setScreen('institutes'); });
+      } else if (s && s !== 'dashboard') {
+        setScreen(s);
+      }
       setLoading(false);
     }).catch(err => {
       setApiError(err.message);
       setLoading(false);
     });
   }, [session]);
-
-  // Restore screen from hash on first load (e.g. after refresh)
-  useEffect(() => {
-    if (!session) return;
-    const { screen: s, instId } = parseHash();
-    if (s === 'detail' && instId) {
-      api('GET', `/institutes/${instId}`, null, session.token)
-        .then(full => { setSelectedInstitute(normInst(full)); setScreen('detail'); })
-        .catch(() => { window.location.hash = 'institutes'; setScreen('institutes'); });
-    } else if (s && s !== 'dashboard') {
-      setScreen(s);
-    }
-  }, []);
 
   if (!session) {
     return <LoginPage onLogin={(s) => setSession(s)} />;
