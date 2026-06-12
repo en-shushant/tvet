@@ -26,7 +26,7 @@ const ensureTable = async () => {
   await pool.query(`CREATE TABLE IF NOT EXISTS institute_documents (
     id SERIAL PRIMARY KEY,
     institute_id INTEGER NOT NULL,
-    client_id UUID,
+    client_id INTEGER,
     client_name TEXT,
     file_name TEXT NOT NULL,
     file_key TEXT NOT NULL,
@@ -37,6 +37,8 @@ const ensureTable = async () => {
     uploaded_by UUID
   )`);
   await pool.query(`ALTER TABLE institute_documents ADD COLUMN IF NOT EXISTS file_data TEXT`).catch(() => {});
+  // Fix client_id column type if it was created as UUID
+  await pool.query(`ALTER TABLE institute_documents ALTER COLUMN client_id TYPE INTEGER USING NULL`).catch(() => {});
 };
 
 async function getDownloadUrl(doc) {
