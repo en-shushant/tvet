@@ -3566,7 +3566,7 @@ function InstituteDetail({institute, clients, onUpdateClients, onBack, onUpdate,
   );
 }
 
-// ─── DASHBOARD ───────────────────────────────────────────────────────────────
+// ─── CHANGE PASSWORD MODAL ───────────────────────────────────────────────────
 
 function ChangePasswordModal({ onClose }) {
   const token = getSession()?.token;
@@ -3627,6 +3627,8 @@ function ChangePasswordModal({ onClose }) {
     </div>, document.body
   );
 }
+
+// ─── DASHBOARD ───────────────────────────────────────────────────────────────
 
 function Dashboard({institutes, isEditor, onNavigate}) {
   const session = getSession();
@@ -5379,6 +5381,8 @@ function MasterData({clients, onUpdateClients, token, isAdmin, isEditor, isSuper
     </div>
   );
 }
+
+// ─── LOCATIONS EDITOR ────────────────────────────────────────────────────────
 
 function LocationsEditor({token}) {
   const [provinces, setProvinces] = React.useState([]);
