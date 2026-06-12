@@ -129,6 +129,7 @@ app.use('/api/occupations',  require('./routes/occupations'));
 app.use('/api/templates',    require('./routes/templates'));
 app.use('/api/summary',      require('./routes/summary'));
 app.use('/api/documents',    require('./routes/documents'));
+app.use('/api/locations',    require('./routes/locations'));
 
 // ─── SPA FALLBACK ─────────────────────────────────────────────────────────────
 app.get('*', (req, res) => {
