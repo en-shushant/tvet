@@ -79,10 +79,14 @@ function NSTBBulkPage({instituteName, onSave, onBack}) {
   const removeRow = (id) => setRows(rs => rs.filter(r => r._id !== id));
 
   const [err, setErr] = useState('');
-  const handleSave = () => {
+  const [saving, setSaving] = useState(false);
+  const handleSave = async () => {
     const valid = rows.filter(r => r.occupation.trim());
     if (!valid.length) { setErr('Fill at least one occupation name.'); return; }
-    onSave(valid.map(row => ({ ...shared, ...row })));
+    setSaving(true); setErr('');
+    try { await onSave(valid.map(row => ({ ...shared, ...row }))); }
+    catch(e) { setErr(e.message || 'Failed to save'); }
+    finally { setSaving(false); }
   };
 
   const thS = {fontSize:11, fontWeight:600, color:'var(--text3)', padding:'6px 8px', background:'var(--bg2)', borderBottom:'1px solid var(--border)', whiteSpace:'nowrap'};
@@ -101,7 +105,7 @@ function NSTBBulkPage({instituteName, onSave, onBack}) {
         <div style={{display:'flex', gap:8}}>
           <button className="btn btn-ghost" onClick={addRow}>+ Add row</button>
           <button className="btn btn-secondary" onClick={onBack}>Cancel</button>
-          <button className="btn btn-primary" onClick={handleSave}>Save {rows.length} record{rows.length>1?'s':''}</button>
+          <button className="btn btn-primary" onClick={handleSave} disabled={saving}>{saving ? 'Saving…' : `Save ${rows.length} record${rows.length>1?'s':''}`}</button>
         </div>
       </div>
 

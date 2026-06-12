@@ -20,8 +20,8 @@ router.post('/', requireWriter, async (req, res, next) => {
   try {
     const { institute_id, fiscal_year, occupation, level, applied, appeared, pass,
       letter_no, letter_date, letter_type, remarks } = req.body;
-    if (!institute_id || !occupation || applied == null || appeared == null || pass == null)
-      return res.status(400).json({ error: 'institute_id, occupation, applied, appeared, pass required' });
+    if (!institute_id || !occupation)
+      return res.status(400).json({ error: 'institute_id and occupation are required' });
     const { rows } = await pool.query(
       `INSERT INTO nstb_records (institute_id,fiscal_year,occupation,level,applied,appeared,pass,
         letter_no,letter_date,letter_type,remarks)
