@@ -4136,6 +4136,23 @@ function SummaryView({institutes, clients}) {
                   rural.size > 0 && ['Rural Municipality', rural.size],
                 ].filter(Boolean);
                 const provinceList = [...provinces].sort();
+                // Client breakdown by type
+                const clientTypeMap = {};
+                institute.experience.filter(exp => {
+                  const fyMatch = selectedFYs.length === 0 || selectedFYs.includes(exp.fy);
+                  const client = getClient(clients, exp.clientId);
+                  const ctMatch = selectedClientTypes.length === 0 || selectedClientTypes.includes(client.type);
+                  return fyMatch && ctMatch;
+                }).forEach(exp => {
+                  const client = getClient(clients, exp.clientId);
+                  const type = client.type || 'Unknown';
+                  if (!clientTypeMap[type]) clientTypeMap[type] = new Set();
+                  clientTypeMap[type].add(exp.clientId || ('m:' + exp.clientName));
+                });
+                const clientTypeBreakdown = Object.entries(clientTypeMap).map(([type, ids]) => [type, ids.size]).sort((a,b)=>b[1]-a[1]);
+                // Unique occupations trained and skill-tested
+                const uniqueOccs = new Set(summaryRows.map(r => r.occupation));
+                const stOccs = new Set(summaryRows.filter(r => r.stAppeared > 0).map(r => r.occupation));
                 return (
                   <div style={{marginTop:10,paddingTop:10,borderTop:'1px solid var(--border)'}}>
                     <div style={{display:'flex',flexWrap:'wrap',gap:'6px 0'}}>
@@ -4143,6 +4160,8 @@ function SummaryView({institutes, clients}) {
                         ['groups','Trainees',tot.t.toLocaleString(),'var(--primary)'],
                         ['location_on','Districts',tot.d.size,'var(--accent)'],
                         ['business','Clients',allClients.size,'var(--blue)'],
+                        ['school','Occupations Trained',uniqueOccs.size,'var(--accent)'],
+                        ...(stOccs.size > 0 ? [['verified','Occupations ST',stOccs.size,'var(--success,#16a34a)']] : []),
                         ...(taxRows.length ? [['payments','Avg Turnover',`NPR ${fmt(Math.round(taxRows.reduce((s,t)=>s+(parseInt(t.turnover)||0),0)/taxRows.length))}`, 'var(--success)']] : []),
                       ].map(([icon,label,val,color])=>(
                         <div key={label} style={{display:'flex',alignItems:'center',gap:5,paddingRight:16,marginRight:16,borderRight:'1px solid var(--border)'}}>
@@ -4171,6 +4190,16 @@ function SummaryView({institutes, clients}) {
                       )}
                       {selectedFYs.length > 0 && <div style={{fontSize:11,color:'var(--text3)',alignSelf:'center',marginLeft:'auto'}}>FY: {selectedFYs.join(', ')}</div>}
                     </div>
+                    {clientTypeBreakdown.length > 0 && (
+                      <div style={{marginTop:6,display:'flex',flexWrap:'wrap',gap:'3px 6px',alignItems:'center'}}>
+                        <span style={{fontSize:10,color:'var(--text3)',marginRight:2}}>Clients by type:</span>
+                        {clientTypeBreakdown.map(([type, count]) => (
+                          <span key={type} style={{fontSize:10,background:'color-mix(in srgb,var(--blue,#3b82f6) 12%,transparent)',color:'var(--blue,#3b82f6)',borderRadius:4,padding:'1px 7px',fontWeight:500}}>
+                            <strong>{count}</strong> {type}
+                          </span>
+                        ))}
+                      </div>
+                    )}
                     {provinceList.length > 0 && (
                       <div style={{marginTop:6,display:'flex',flexWrap:'wrap',gap:'3px 6px',alignItems:'center'}}>
                         <span style={{fontSize:10,color:'var(--text3)',marginRight:2}}>Provinces:</span>
