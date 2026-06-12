@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+import { usePagination } from '../utils/hooks.js';
 import Modal from './ui/Modal.jsx';
 import { ErrorBanner } from './ui/Modal.jsx';
 import LocationsEditor from './LocationsEditor.jsx';

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { PROVINCES, setProvinces } from '../constants/data.js';
+import { PROVINCES, setProvinces, LOCAL_LEVEL_TYPES } from '../constants/data.js';
 import { api } from '../utils/api.js';
 
 function LocationsEditor({token}) {

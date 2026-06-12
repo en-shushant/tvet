@@ -1,6 +1,8 @@
 import { useState, useMemo } from 'react';
 import { FISCAL_YEARS, CLIENT_TYPES, OCCUPATIONS } from '../constants/data.js';
 import { exportToCSV } from '../utils/export.js';
+import { getSession } from '../utils/auth.js';
+import { api, normInst } from '../utils/api.js';
 
 const fmt = (n) => n ? Number(n).toLocaleString('en-IN') : '—';
 const pct = (n, d) => d > 0 ? ((n/d)*100).toFixed(1) + '%' : '—';

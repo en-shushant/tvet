@@ -5,7 +5,7 @@ import { ErrorBanner } from './ui/Modal.jsx';
 import SearchableSelect from './ui/SearchableSelect.jsx';
 import { DropdownPanel } from './ui/SearchableSelect.jsx';
 import { BulkDistrictPicker } from './BulkDistrictPicker.jsx';
-import { PROVINCES, FISCAL_YEARS, TRAINING_TYPES, SECTORS, OCCUPATIONS } from '../constants/data.js';
+import { PROVINCES, FISCAL_YEARS, TRAINING_TYPES, SECTORS, OCCUPATIONS, CLIENT_TYPES, getAllDistricts } from '../constants/data.js';
 import { api } from '../utils/api.js';
 import { getSession } from '../utils/auth.js';
 
