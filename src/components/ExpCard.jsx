@@ -67,15 +67,27 @@ function ExpCard({exp, clients, showFY, setModal, deleteExperience, canEdit, isA
           📍 {districts.join(', ')}{localLevels.length > 0 && <span style={{color:'var(--text3)', opacity:0.8}}> — {localLevels.join(', ')}</span>}
         </div>
       )}
-      {exp.referenceFileName && (
-        <div style={{fontSize:12, color:'var(--accent)', marginTop:4, display:'flex', alignItems:'center', gap:4}}>
-          📎 <span style={{cursor:'pointer', textDecoration:'underline'}} onClick={e=>{e.stopPropagation();
-            if(exp.referenceFile) {
-              if(exp.referenceFileName.match(/\.pdf$/i)) {
+      {exp.referenceFile && (
+        <div style={{marginTop:8, display:'flex', alignItems:'center', gap:8}}>
+          {exp.referenceFileName?.match(/\.(jpg|jpeg|png|gif|webp)$/i) ? (
+            <img src={exp.referenceFile} alt={exp.referenceFileName || 'letter'}
+              style={{width:56, height:56, objectFit:'cover', borderRadius:6, border:'1px solid var(--border)', cursor:'pointer', flexShrink:0}}
+              onClick={e=>{e.stopPropagation(); window.open(exp.referenceFile);}}/>
+          ) : (
+            <div style={{width:56, height:56, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', borderRadius:6, border:'1px solid var(--border)', background:'var(--bg2)', cursor:'pointer', flexShrink:0}}
+              onClick={e=>{e.stopPropagation(); const w=window.open(); w.document.write(`<iframe src="${exp.referenceFile}" width="100%" height="100%" style="border:none"/>`)}}>
+              <span style={{fontSize:22}}>📄</span>
+              <span style={{fontSize:9, color:'var(--text3)', marginTop:1}}>PDF</span>
+            </div>
+          )}
+          <span style={{fontSize:11, color:'var(--accent)', cursor:'pointer', textDecoration:'underline'}}
+            onClick={e=>{e.stopPropagation();
+              if(exp.referenceFileName?.match(/\.pdf$/i)) {
                 const w=window.open(); w.document.write(`<iframe src="${exp.referenceFile}" width="100%" height="100%" style="border:none"/>`);
               } else { window.open(exp.referenceFile); }
-            }
-          }}>{exp.referenceFileName}</span>
+            }}>
+            {exp.referenceFileName || 'View letter'}
+          </span>
         </div>
       )}
     </div>

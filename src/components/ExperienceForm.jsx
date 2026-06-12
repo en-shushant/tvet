@@ -409,30 +409,47 @@ function ExperienceForm({exp, clients, onSave, onClose, onDuplicate, onSaveClien
         </div>
       </div>
 
-      {/* Reference letter upload — item 9 */}
+      {/* Reference letter upload */}
       <div className="form-group">
         <label>Reference letter / document</label>
-        <div style={{display:'flex', gap:8, alignItems:'center'}}>
-          <button className="btn btn-secondary btn-sm" onClick={()=>fileInputRef.current?.click()}>
-            📎 {form.referenceFileName ? 'Change file' : 'Attach file'}
-          </button>
-          {form.referenceFileName && (
-            <span style={{fontSize:12, color:'var(--accent)', display:'flex', alignItems:'center', gap:6}}>
-              📄 {form.referenceFileName}
-              <button style={{background:'none', border:'none', cursor:'pointer', color:'var(--text3)', fontSize:14}} onClick={()=>{set('referenceFile',null);set('referenceFileName','');}}>✕</button>
-            </span>
-          )}
-          {form.referenceFile && form.referenceFileName?.match(/\.(jpg|jpeg|png|gif)$/i) && (
-            <button className="btn btn-ghost btn-sm" onClick={()=>window.open(form.referenceFile)}>👁 Preview</button>
+        <div style={{display:'flex', gap:8, alignItems:'flex-start'}}>
+          <div style={{flex:1}}>
+            <div style={{display:'flex', gap:8, alignItems:'center', marginBottom: form.referenceFile ? 8 : 0}}>
+              <button className="btn btn-secondary btn-sm" onClick={()=>fileInputRef.current?.click()}>
+                📎 {form.referenceFileName ? 'Change file' : 'Attach file'}
+              </button>
+              {form.referenceFile && (
+                <button className="btn btn-ghost btn-sm" onClick={()=>{set('referenceFile',null);set('referenceFileName','');}}>✕ Remove</button>
+              )}
+              {form.referenceFile && form.referenceFileName?.match(/\.pdf$/i) && (
+                <button className="btn btn-ghost btn-sm" onClick={()=>{
+                  const w=window.open(); w.document.write(`<iframe src="${form.referenceFile}" width="100%" height="100%" style="border:none"/>`);
+                }}>👁 Preview PDF</button>
+              )}
+            </div>
+            {form.referenceFile && (
+              <div>
+                <input className="form-input" style={{fontSize:12}}
+                  placeholder="File label (e.g. Experience Letter – CTEVT 2081)"
+                  value={form.referenceFileName}
+                  onChange={e=>set('referenceFileName', e.target.value)}/>
+              </div>
+            )}
+          </div>
+          {form.referenceFile && form.referenceFileName?.match(/\.(jpg|jpeg|png|gif|webp)$/i) && (
+            <img src={form.referenceFile} alt="preview"
+              style={{width:64, height:64, objectFit:'cover', borderRadius:'var(--radius)', border:'1px solid var(--border)', cursor:'pointer', flexShrink:0}}
+              onClick={()=>window.open(form.referenceFile)}/>
           )}
           {form.referenceFile && form.referenceFileName?.match(/\.pdf$/i) && (
-            <button className="btn btn-ghost btn-sm" onClick={()=>{
-              const w=window.open(); w.document.write(`<iframe src="${form.referenceFile}" width="100%" height="100%" style="border:none"/>`);
-            }}>👁 Preview PDF</button>
+            <div style={{width:64, height:64, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', borderRadius:'var(--radius)', border:'1px solid var(--border)', background:'var(--bg2)', fontSize:10, color:'var(--text3)', flexShrink:0, cursor:'pointer'}}
+              onClick={()=>{const w=window.open(); w.document.write(`<iframe src="${form.referenceFile}" width="100%" height="100%" style="border:none"/>`)}}>
+              <span style={{fontSize:24}}>📄</span>PDF
+            </div>
           )}
         </div>
-        <input ref={fileInputRef} type="file" accept=".pdf,.jpg,.jpeg,.png,.gif" style={{display:'none'}} onChange={handleFileChange}/>
-        <div className="input-hint">Attach the scanned experience letter (PDF or image)</div>
+        <input ref={fileInputRef} type="file" accept=".pdf,.jpg,.jpeg,.png,.gif,.webp" style={{display:'none'}} onChange={handleFileChange}/>
+        <div className="input-hint">Attach the scanned experience letter (PDF or image) and set a display label</div>
       </div>
 
       {/* Occupations */}

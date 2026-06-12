@@ -706,12 +706,22 @@ function InstituteDetail({institute, clients, onUpdateClients, onBack, onUpdate,
                 )}
 
                 {/* Reference file */}
-                {exp.referenceFileName && (
-                  <div style={{display:'flex', alignItems:'center', gap:10, padding:'12px 16px', background:'var(--bg)', borderRadius:10, border:'1px solid var(--border)'}}>
-                    <span className="material-icons-round" style={{fontSize:18, color:'var(--primary)'}}>attach_file</span>
+                {exp.referenceFile && (
+                  <div style={{display:'flex', alignItems:'center', gap:12, padding:'12px 16px', background:'var(--bg)', borderRadius:10, border:'1px solid var(--border)'}}>
+                    {exp.referenceFileName?.match(/\.(jpg|jpeg|png|gif|webp)$/i) ? (
+                      <img src={exp.referenceFile} alt={exp.referenceFileName||'letter'}
+                        style={{width:64, height:64, objectFit:'cover', borderRadius:6, border:'1px solid var(--border)', cursor:'pointer', flexShrink:0}}
+                        onClick={()=>window.open(exp.referenceFile)}/>
+                    ) : (
+                      <div style={{width:64, height:64, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', borderRadius:6, border:'1px solid var(--border)', background:'var(--bg2)', cursor:'pointer', flexShrink:0}}
+                        onClick={()=>{const w=window.open(); w.document.write(`<iframe src="${exp.referenceFile}" width="100%" height="100%" style="border:none"/>`)}}>
+                        <span style={{fontSize:28}}>📄</span>
+                        <span style={{fontSize:9, color:'var(--text3)'}}>PDF</span>
+                      </div>
+                    )}
                     <span style={{fontSize:13, fontWeight:600, color:'var(--primary-dark)', cursor:'pointer', textDecoration:'underline'}}
-                      onClick={()=>{ if(exp.referenceFile){ if(exp.referenceFileName.match(/\.pdf$/i)){const w=window.open();w.document.write(`<iframe src="${exp.referenceFile}" width="100%" height="100%" style="border:none"/>`);} else {window.open(exp.referenceFile);}} }}>
-                      {exp.referenceFileName}
+                      onClick={()=>{ if(exp.referenceFile){ if(exp.referenceFileName?.match(/\.pdf$/i)){const w=window.open();w.document.write(`<iframe src="${exp.referenceFile}" width="100%" height="100%" style="border:none"/>`);} else {window.open(exp.referenceFile);}} }}>
+                      {exp.referenceFileName || 'View letter'}
                     </span>
                   </div>
                 )}
