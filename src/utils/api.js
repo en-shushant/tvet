@@ -108,6 +108,9 @@ export function normExp(r) {
     referenceFileName: r.reference_file_name || r.letter_file_name || '',
     isGesi: !!r.is_gesi,
     isResidential: !!r.is_residential,
+    isJV: !!r.is_jv,
+    jvRole: r.jv_role || 'Lead',
+    jvPartners: r.jv_partners != null ? String(r.jv_partners) : '',
     occupations: (r.occupations || []).map(o => ({
       id: o.id,
       nameInLetter: o.name_in_letter || '',
@@ -231,6 +234,9 @@ export function expToAPI(f, instituteId) {
     reference_file_name: f.referenceFileName || '',
     is_gesi: !!f.isGesi,
     is_residential: !!f.isResidential,
+    is_jv: !!f.isJV,
+    jv_role: f.isJV ? (f.jvRole || 'Lead') : null,
+    jv_partners: f.isJV ? (f.jvPartners || null) : null,
     occupations: (f.occupations || []).filter(o => o.nameInLetter || o.ctevtOccupationId).map(o => ({
       name_in_letter: o.nameInLetter || getOccupation(o.ctevtOccupationId).name || '',
       ctevt_occupation_id: (() => { const v = o.ctevtOccupationId; return v ? (typeof v === 'string' && v.startsWith('c:') ? parseInt(v.slice(2)) : v) : null; })(),

@@ -56,6 +56,7 @@ router.post('/', requireWriter, async (req, res, next) => {
     const { institute_id, client_id, client_name_manual, fiscal_year, assignment_name, training_type,
       contract_value, contract_amount, start_date, end_date, start_fy, end_fy,
       remarks, reference_file, reference_file_name, is_gesi, is_residential,
+      is_jv, jv_role, jv_partners,
       occupations = [], locations = [] } = req.body;
 
     if (!institute_id || !fiscal_year || !assignment_name)
@@ -64,12 +65,12 @@ router.post('/', requireWriter, async (req, res, next) => {
     const { rows: [asgn] } = await client.query(
       `INSERT INTO assignments (institute_id,client_id,client_name_manual,fiscal_year,assignment_name,training_type,
         contract_value,start_date,end_date,start_fy,end_fy,remarks,reference_file,reference_file_name,
-        is_gesi,is_residential)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16) RETURNING *`,
+        is_gesi,is_residential,is_jv,jv_role,jv_partners)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19) RETURNING *`,
       [institute_id, client_id||null, client_name_manual||null, fiscal_year, assignment_name, training_type,
        contract_value||contract_amount||null, start_date||null, end_date||null, start_fy||null, end_fy||null,
        remarks, reference_file||null, reference_file_name||null,
-       !!is_gesi, !!is_residential]
+       !!is_gesi, !!is_residential, !!is_jv, is_jv ? (jv_role||'Lead') : null, is_jv ? (jv_partners||null) : null]
     );
 
     for (let i = 0; i < occupations.length; i++) {
@@ -90,17 +91,20 @@ router.put('/:id', requireWriter, async (req, res, next) => {
     const { client_id, client_name_manual, fiscal_year, assignment_name, training_type,
       contract_value, contract_amount, start_date, end_date, start_fy, end_fy,
       remarks, reference_file, reference_file_name, is_gesi, is_residential,
+      is_jv, jv_role, jv_partners,
       occupations = [], locations = [] } = req.body;
 
     const { rows } = await client.query(
       `UPDATE assignments SET client_id=$1,client_name_manual=$2,fiscal_year=$3,assignment_name=$4,training_type=$5,
         contract_value=$6,start_date=$7,end_date=$8,start_fy=$9,end_fy=$10,remarks=$11,
-        reference_file=$12,reference_file_name=$13,is_gesi=$14,is_residential=$15
-       WHERE id=$16 RETURNING *`,
+        reference_file=$12,reference_file_name=$13,is_gesi=$14,is_residential=$15,
+        is_jv=$16,jv_role=$17,jv_partners=$18
+       WHERE id=$19 RETURNING *`,
       [client_id||null, client_name_manual||null, fiscal_year, assignment_name, training_type,
        contract_value||contract_amount||null, start_date||null, end_date||null, start_fy||null, end_fy||null,
        remarks, reference_file||null, reference_file_name||null,
-       !!is_gesi, !!is_residential, id]
+       !!is_gesi, !!is_residential,
+       !!is_jv, is_jv ? (jv_role||'Lead') : null, is_jv ? (jv_partners||null) : null, id]
     );
     if (!rows.length) { await client.query('ROLLBACK'); return res.status(404).json({ error: 'Not found' }); }
 

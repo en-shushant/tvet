@@ -53,6 +53,9 @@ async function runMigrations() {
     `ALTER TABLE assignment_occupations DROP CONSTRAINT IF EXISTS assignment_occupations_ctevt_occupation_id_fkey`,
     `ALTER TABLE assignments ADD COLUMN IF NOT EXISTS is_gesi BOOLEAN DEFAULT FALSE`,
     `ALTER TABLE assignments ADD COLUMN IF NOT EXISTS is_residential BOOLEAN DEFAULT FALSE`,
+    `ALTER TABLE assignments ADD COLUMN IF NOT EXISTS is_jv BOOLEAN DEFAULT FALSE`,
+    `ALTER TABLE assignments ADD COLUMN IF NOT EXISTS jv_role TEXT`,
+    `ALTER TABLE assignments ADD COLUMN IF NOT EXISTS jv_partners INTEGER`,
     // Migration: relax users.role CHECK to allow 'editor' and 'superadmin'
     `ALTER TABLE users DROP CONSTRAINT IF EXISTS users_role_check`,
     `ALTER TABLE users ADD CONSTRAINT users_role_check CHECK (role IN ('admin','user','editor','viewer','superadmin'))`,

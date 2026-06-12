@@ -148,7 +148,7 @@ function ExperienceForm({exp, clients, onSave, onClose, onDuplicate, onSaveClien
     clientId:'', clientName:'', manualClient:false,
     fy:'2081/82', assignmentName:'', trainingType:'Short Term',
     contractValue:'', startDate:'', endDate:'', startFY:'', endFY:'', remarks:'',
-    isGesi:false, isResidential:false,
+    isGesi:false, isResidential:false, isJV:false, jvRole:'Lead', jvPartners:'',
     occupations:[], locations:[], referenceFile:null, referenceFileName:''
   });
 
@@ -357,7 +357,32 @@ function ExperienceForm({exp, clients, onSave, onClose, onDuplicate, onSaveClien
             <div style={{fontSize:11, color:'var(--text3)'}}>Trainees provided accommodation</div>
           </div>
         </label>
+        <label style={{display:'flex', alignItems:'center', gap:8, cursor:'pointer', userSelect:'none'}}>
+          <input type="checkbox" checked={!!form.isJV} onChange={e=>set('isJV', e.target.checked)}
+            style={{width:16, height:16, accentColor:'var(--orange,#f59e0b)', cursor:'pointer'}}/>
+          <div>
+            <div style={{fontSize:13, fontWeight:600}}>JV</div>
+            <div style={{fontSize:11, color:'var(--text3)'}}>Joint Venture assignment</div>
+          </div>
+        </label>
       </div>
+      {form.isJV && (
+        <div style={{display:'flex', gap:16, marginBottom:16, padding:'12px 14px', background:'color-mix(in srgb, var(--orange,#f59e0b) 8%, var(--bg2))', borderRadius:'var(--radius)', border:'1px solid color-mix(in srgb, var(--orange,#f59e0b) 30%, var(--border))'}}>
+          <div style={{flex:1}}>
+            <label className="form-label">JV Role</label>
+            <select className="form-input" value={form.jvRole} onChange={e=>set('jvRole', e.target.value)}>
+              <option value="Lead">Lead</option>
+              <option value="JV Member">JV Member</option>
+              <option value="Subconsultant">Subconsultant</option>
+            </select>
+          </div>
+          <div style={{flex:1}}>
+            <label className="form-label">Number of JV Partners</label>
+            <input type="number" className="form-input" min="1" placeholder="e.g. 3"
+              value={form.jvPartners} onChange={e=>set('jvPartners', e.target.value)}/>
+          </div>
+        </div>
+      )}
       <div className="form-row form-row-2">
         <div className="form-group">
           <label>Start FY (multi-year contract)</label>
