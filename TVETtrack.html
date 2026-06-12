@@ -2761,30 +2761,28 @@ function ClientDocuments({ client, instituteId, token, canEdit, isAdmin }) {
   React.useEffect(() => { if (expanded) loadDocs(); }, [expanded]);
 
   const handleUpload = async (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
+    const files = Array.from(e.target.files);
+    if (!files.length) return;
     setUploading(true);
+    setDocErr('');
     try {
-      // Step 1: get presigned URL
-      const { upload_url, key } = await api('POST', '/documents/presign', {
-        file_name: file.name,
-        content_type: file.type,
-        institute_id: instituteId,
-        client_id: client.id || null,
-      }, token);
-      // Step 2: upload directly to R2
-      const r = await fetch(upload_url, { method: 'PUT', body: file, headers: { 'Content-Type': file.type } });
-      if (!r.ok) throw new Error('Upload to storage failed');
-      // Step 3: save metadata
-      await api('POST', '/documents', {
-        institute_id: instituteId,
-        client_id: client.id || null,
-        client_name: client.fullName,
-        file_name: file.name,
-        file_key: key,
-        file_size: file.size,
-        content_type: file.type,
-      }, token);
+      for (const file of files) {
+        const file_data = await new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = ev => resolve(ev.target.result.split(',')[1]);
+          reader.onerror = reject;
+          reader.readAsDataURL(file);
+        });
+        await api('POST', '/documents', {
+          institute_id: instituteId,
+          client_id: client.id || null,
+          client_name: client.fullName,
+          file_name: file.name,
+          file_size: file.size,
+          content_type: file.type,
+          file_data,
+        }, token);
+      }
       loadDocs();
     } catch(err) { setDocErr('Upload failed: ' + err.message); }
     finally { setUploading(false); e.target.value = ''; }
@@ -2839,9 +2837,9 @@ function ClientDocuments({ client, instituteId, token, canEdit, isAdmin }) {
           }
           {canEdit && (
             <div style={{marginTop:10}}>
-              <input ref={fileRef} type="file" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx" style={{display:'none'}} onChange={handleUpload}/>
+              <input ref={fileRef} type="file" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx" multiple style={{display:'none'}} onChange={handleUpload}/>
               <button className="btn btn-secondary btn-sm" onClick={()=>fileRef.current?.click()} disabled={uploading}>
-                {uploading ? '⏳ Uploading…' : '📎 Upload experience letter'}
+                {uploading ? '⏳ Uploading…' : '📎 Upload experience letters'}
               </button>
               <span style={{fontSize:11, color:'var(--text3)', marginLeft:10}}>PDF, image, or Word document</span>
             </div>
