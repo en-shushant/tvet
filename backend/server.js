@@ -56,6 +56,16 @@ async function runMigrations() {
     `ALTER TABLE assignments ADD COLUMN IF NOT EXISTS is_jv BOOLEAN DEFAULT FALSE`,
     `ALTER TABLE assignments ADD COLUMN IF NOT EXISTS jv_role TEXT`,
     `ALTER TABLE assignments ADD COLUMN IF NOT EXISTS jv_partners INTEGER`,
+    // EOI report fields (3A General / 3B Specific / 3C Geographic experience)
+    `ALTER TABLE assignments ADD COLUMN IF NOT EXISTS country TEXT DEFAULT 'Nepal'`,
+    `ALTER TABLE assignments ADD COLUMN IF NOT EXISTS description_of_work TEXT`,
+    `ALTER TABLE assignments ADD COLUMN IF NOT EXISTS duration_months NUMERIC`,
+    `ALTER TABLE assignments ADD COLUMN IF NOT EXISTS total_person_months NUMERIC`,
+    `ALTER TABLE assignments ADD COLUMN IF NOT EXISTS own_service_value NUMERIC`,
+    `ALTER TABLE assignments ADD COLUMN IF NOT EXISTS jv_partner_names TEXT`,
+    `ALTER TABLE assignments ADD COLUMN IF NOT EXISTS jv_partner_person_months NUMERIC`,
+    `ALTER TABLE assignments ADD COLUMN IF NOT EXISTS narrative_description TEXT`,
+    `ALTER TABLE assignments ADD COLUMN IF NOT EXISTS actual_services_description TEXT`,
     // Migration: relax users.role CHECK to allow 'editor' and 'superadmin'
     `ALTER TABLE users DROP CONSTRAINT IF EXISTS users_role_check`,
     `ALTER TABLE users ADD CONSTRAINT users_role_check CHECK (role IN ('admin','user','editor','viewer','superadmin'))`,

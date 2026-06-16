@@ -150,10 +150,14 @@ function ExperienceForm({exp, clients, onSave, onClose, onDuplicate, onSaveClien
       fy:'2081/82', assignmentName:'', trainingType:'Short Term',
       contractValue:'', startDate:'', endDate:'', startFY:'', endFY:'', remarks:'',
       isGesi:false, isResidential:false, isJV:false, jvRole:'Lead', jvPartners:'',
-      occupations:[], locations:[], referenceFile:null, referenceFileName:''
+      occupations:[], locations:[], referenceFile:null, referenceFileName:'',
+      country:'Nepal', descriptionOfWork:'', durationMonths:'', totalPersonMonths:'',
+      ownServiceValue:'', jvPartnerNames:'', jvPartnerPersonMonths:'',
+      narrativeDescription:'', actualServicesDescription:''
     };
     return exp ? {...defaults, ...exp} : defaults;
   });
+  const [showReportFields, setShowReportFields] = useState(false);
 
   const fileInputRef = useRef(null);
 
@@ -450,6 +454,63 @@ function ExperienceForm({exp, clients, onSave, onClose, onDuplicate, onSaveClien
         </div>
         <input ref={fileInputRef} type="file" accept=".pdf,.jpg,.jpeg,.png,.gif,.webp" style={{display:'none'}} onChange={handleFileChange}/>
         <div className="input-hint">Attach the scanned experience letter (PDF or image) and set a display label</div>
+      </div>
+
+      {/* EOI report details */}
+      <div className="sub-section" style={{marginBottom:16}}>
+        <button type="button" onClick={()=>setShowReportFields(s=>!s)}
+          style={{width:'100%', background:'none', border:'1px solid var(--border)', borderRadius:'var(--radius)', cursor:'pointer', padding:'10px 14px', display:'flex', alignItems:'center', justifyContent:'space-between', fontFamily:'var(--font)'}}>
+          <span style={{fontSize:13, fontWeight:600}}>📋 EOI report details (3A / 3B / 3C)</span>
+          <span style={{fontSize:11, color:'var(--text3)'}}>{showReportFields ? '▲ Hide' : '▼ Optional — used for generating reports'}</span>
+        </button>
+        {showReportFields && (
+          <div style={{padding:'14px', border:'1px solid var(--border)', borderTop:'none', borderRadius:'0 0 var(--radius) var(--radius)'}}>
+            <div className="form-row form-row-2">
+              <div className="form-group">
+                <label>Country</label>
+                <input value={form.country} onChange={e=>set('country', e.target.value)} placeholder="Nepal"/>
+              </div>
+              <div className="form-group">
+                <label>Duration of assignment (months)</label>
+                <input type="number" value={form.durationMonths} onChange={e=>set('durationMonths', e.target.value)} placeholder="e.g. 8"/>
+              </div>
+            </div>
+            <div className="form-row form-row-2">
+              <div className="form-group">
+                <label>Total person-months of assignment</label>
+                <input type="number" value={form.totalPersonMonths} onChange={e=>set('totalPersonMonths', e.target.value)} placeholder="e.g. 24"/>
+              </div>
+              <div className="form-group">
+                <label>Value of services provided by your firm (NPR/US$)</label>
+                <input type="number" value={form.ownServiceValue} onChange={e=>set('ownServiceValue', e.target.value)} placeholder="If different from total contract value"/>
+              </div>
+            </div>
+            {form.isJV && (
+              <div className="form-row form-row-2">
+                <div className="form-group">
+                  <label>Name of JV partner(s) / sub-consultants</label>
+                  <input value={form.jvPartnerNames} onChange={e=>set('jvPartnerNames', e.target.value)} placeholder="e.g. ABC Consultants, XYZ Pvt. Ltd."/>
+                </div>
+                <div className="form-group">
+                  <label>Professional person-months by JV partners</label>
+                  <input type="number" value={form.jvPartnerPersonMonths} onChange={e=>set('jvPartnerPersonMonths', e.target.value)} placeholder="e.g. 10"/>
+                </div>
+              </div>
+            )}
+            <div className="form-group">
+              <label>Description of work carried out (3A)</label>
+              <textarea rows={2} value={form.descriptionOfWork} onChange={e=>set('descriptionOfWork', e.target.value)} placeholder="Brief description of the work carried out under this assignment"/>
+            </div>
+            <div className="form-group">
+              <label>Narrative description of project (3B)</label>
+              <textarea rows={2} value={form.narrativeDescription} onChange={e=>set('narrativeDescription', e.target.value)} placeholder="Narrative description of the project"/>
+            </div>
+            <div className="form-group">
+              <label>Description of actual services provided (3B)</label>
+              <textarea rows={2} value={form.actualServicesDescription} onChange={e=>set('actualServicesDescription', e.target.value)} placeholder="Description of the actual services your firm provided in this assignment"/>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Occupations */}
