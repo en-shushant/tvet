@@ -93,14 +93,17 @@ router.put('/:id', requireWriter, async (req, res, next) => {
       if (!assigned.length) return res.status(403).json({ error: 'Not assigned to this institute' });
     }
     const { name, acronym, reg_no, reg_date, pan, permanent_account_no,
-      contact_person, phone, email, address, type, status, renewal_due, remarks, logo, website } = req.body;
+      contact_person, phone, email, address, type, status, renewal_due, remarks, logo, website,
+      desc_template_id } = req.body;
     const { rows } = await pool.query(
       `UPDATE institutes SET name=$1,acronym=$2,reg_no=$3,reg_date=$4,pan=$5,
         permanent_account_no=$6,contact_person=$7,phone=$8,email=$9,address=$10,
-        type=$11,status=$12,renewal_due=$13,remarks=$14,logo=$15,website=$16
-       WHERE id=$17 RETURNING *`,
+        type=$11,status=$12,renewal_due=$13,remarks=$14,logo=$15,website=$16,
+        desc_template_id=$17
+       WHERE id=$18 RETURNING *`,
       [name,acronym,reg_no,reg_date,pan,permanent_account_no,
-       contact_person,phone,email,address,type,status,renewal_due,remarks,logo||null,website||null,id]
+       contact_person,phone,email,address,type,status,renewal_due,remarks,logo||null,website||null,
+       desc_template_id||null,id]
     );
     if (!rows.length) return res.status(404).json({ error: 'Not found' });
     res.json(rows[0]);

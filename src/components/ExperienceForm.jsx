@@ -8,6 +8,7 @@ import { BulkDistrictPicker } from './BulkDistrictPicker.jsx';
 import { PROVINCES, FISCAL_YEARS, TRAINING_TYPES, SECTORS, OCCUPATIONS, CLIENT_TYPES, getAllDistricts } from '../constants/data.js';
 import { api } from '../utils/api.js';
 import { getSession } from '../utils/auth.js';
+import { DESCRIPTION_VARIATIONS, fillDescriptionTemplate } from '../utils/descriptionTemplates.js';
 
 const fmt = (n) => n ? Number(n).toLocaleString('en-IN') : '—';
 const fyToAD = (fy) => {
@@ -137,7 +138,7 @@ function QuickAddOccupationModal({name, onSave, onClose}) {
   );
 }
 
-function ExperienceForm({exp, clients, onSave, onClose, onDuplicate, onSaveClient}) {
+function ExperienceForm({exp, clients, institute, onSave, onClose, onDuplicate, onSaveClient}) {
   const _sess = getSession();
   const token = _sess?.token;
   const canManageOccs = _sess?.role === 'admin' || _sess?.role === 'editor' || _sess?.role === 'superadmin';
@@ -154,7 +155,8 @@ function ExperienceForm({exp, clients, onSave, onClose, onDuplicate, onSaveClien
       occupations:[], locations:[], referenceFile:null, referenceFileName:'',
       country:'Nepal', descriptionOfWork:'', durationMonths:'', totalPersonMonths:'',
       ownServiceValue:'', jvPartnerNames:'', jvPartnerPersonMonths:'',
-      narrativeDescription:'', actualServicesDescription:''
+      narrativeDescription:'', actualServicesDescription:'',
+      numGroups:'', durationDays:''
     };
     return exp ? {...defaults, ...exp} : defaults;
   });
@@ -478,6 +480,16 @@ function ExperienceForm({exp, clients, onSave, onClose, onDuplicate, onSaveClien
             </div>
             <div className="form-row form-row-2">
               <div className="form-group">
+                <label>No. of training groups / events</label>
+                <input type="number" value={form.numGroups} onChange={e=>set('numGroups', e.target.value)} placeholder="e.g. 14"/>
+              </div>
+              <div className="form-group">
+                <label>Duration of training (days)</label>
+                <input type="number" value={form.durationDays} onChange={e=>set('durationDays', e.target.value)} placeholder="e.g. 7"/>
+              </div>
+            </div>
+            <div className="form-row form-row-2">
+              <div className="form-group">
                 <label>Total person-months of assignment</label>
                 <input type="number" value={form.totalPersonMonths} onChange={e=>set('totalPersonMonths', e.target.value)} placeholder="e.g. 24"/>
               </div>
@@ -499,8 +511,22 @@ function ExperienceForm({exp, clients, onSave, onClose, onDuplicate, onSaveClien
               </div>
             )}
             <div className="form-group">
-              <label>Description of work carried out (3A)</label>
+              <div style={{display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:4}}>
+                <label style={{marginBottom:0}}>Description of work carried out (3A)</label>
+                {_sess?.role === 'superadmin' && institute?.descTemplateId && (
+                  <button type="button" className="btn btn-ghost btn-sm" style={{fontSize:11, color:'var(--primary)'}}
+                    onClick={()=>{
+                      const text = fillDescriptionTemplate(institute.descTemplateId, form, institute, clients);
+                      if (text) set('descriptionOfWork', text);
+                    }}>
+                    ✨ Auto-fill
+                  </button>
+                )}
+              </div>
               <textarea rows={2} value={form.descriptionOfWork} onChange={e=>set('descriptionOfWork', e.target.value)} placeholder="Brief description of the work carried out under this assignment"/>
+              {_sess?.role === 'superadmin' && !institute?.descTemplateId && (
+                <div style={{fontSize:11, color:'var(--text3)', marginTop:3}}>Assign a description template to this firm to enable auto-fill.</div>
+              )}
             </div>
             <div className="form-group">
               <label>Narrative description of project (3B)</label>

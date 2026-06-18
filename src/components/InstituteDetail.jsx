@@ -15,6 +15,7 @@ import ExpCard from './ExpCard.jsx';
 import ClientDocuments from './ClientDocuments.jsx';
 import { FISCAL_YEARS, NSTB_LEVELS, OCCUPATIONS } from '../constants/data.js';
 import { api, instToAPI, expToAPI, nstbToAPI, taxToAPI, affToAPI, clientToAPI, normClient } from '../utils/api.js';
+import { DESCRIPTION_VARIATIONS } from '../utils/descriptionTemplates.js';
 import { getSession } from '../utils/auth.js';
 import { usePagination } from '../utils/hooks.js';
 import { exportSummaryToMD, exportSummaryToPDF, exportSummaryToCSV } from '../utils/export.js';
@@ -230,6 +231,7 @@ function InstituteDetail({institute, clients, onUpdateClients, onBack, onUpdate,
 
       {/* Profile tab */}
       {tab==='profile' && (
+        <>
         <div className="grid-2">
           <div className="card">
             <div className="section-title">Identity</div>
@@ -276,7 +278,39 @@ function InstituteDetail({institute, clients, onUpdateClients, onBack, onUpdate,
               </div>
             ))}
           </div>
-        </div>
+        </div>{/* end grid-2 */}
+
+        {/* Superadmin: description template assignment */}
+        {getSession()?.role === 'superadmin' && (
+          <div className="card" style={{marginTop:16}}>
+            <div className="section-title">✨ Description template (superadmin)</div>
+            <div style={{fontSize:13, color:'var(--text3)', marginBottom:10}}>
+              Assign a variation template used to auto-fill the "Description of work carried out" field when adding or editing assignments for this firm.
+            </div>
+            <div style={{display:'flex', gap:10, alignItems:'center', flexWrap:'wrap'}}>
+              <select className="form-input" style={{maxWidth:340}}
+                value={institute.descTemplateId || ''}
+                onChange={async e => {
+                  const val = e.target.value;
+                  try {
+                    await api('PUT', `/institutes/${institute.id}`, instToAPI({...institute, descTemplateId: val}), token);
+                    if (onUpdate) onUpdate({...institute, descTemplateId: val});
+                  } catch(err) { alert('Failed to save: ' + err.message); }
+                }}>
+                <option value="">— No template assigned —</option>
+                {DESCRIPTION_VARIATIONS.map(v => (
+                  <option key={v.id} value={v.id}>{v.label}</option>
+                ))}
+              </select>
+              {institute.descTemplateId && (
+                <div style={{fontSize:12, color:'var(--text2)', background:'var(--bg2)', border:'1px solid var(--border)', borderRadius:'var(--radius)', padding:'6px 10px', maxWidth:480, fontStyle:'italic'}}>
+                  {DESCRIPTION_VARIATIONS.find(v=>v.id===institute.descTemplateId)?.preview}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+        </>
       )}
 
       {/* Experience tab */}
@@ -565,8 +599,8 @@ function InstituteDetail({institute, clients, onUpdateClients, onBack, onUpdate,
         </div>,
         document.body
       )}
-      {modal?.type === 'addExp' && <ExperienceForm clients={clients} exp={modal.data} onSave={saveExperience} onClose={()=>setModal(null)} onDuplicate={(f)=>setModal({type:'addExp', data:{...f, id:undefined}})} onSaveClient={saveClientToMaster}/>}
-      {modal?.type === 'editExp' && <ExperienceForm clients={clients} exp={modal.data} onSave={saveExperience} onClose={()=>setModal(null)} onDuplicate={(f)=>setModal({type:'addExp', data:{...f, id:undefined}})} onSaveClient={saveClientToMaster}/>}
+      {modal?.type === 'addExp' && <ExperienceForm institute={institute} clients={clients} exp={modal.data} onSave={saveExperience} onClose={()=>setModal(null)} onDuplicate={(f)=>setModal({type:'addExp', data:{...f, id:undefined}})} onSaveClient={saveClientToMaster}/>}
+      {modal?.type === 'editExp' && <ExperienceForm institute={institute} clients={clients} exp={modal.data} onSave={saveExperience} onClose={()=>setModal(null)} onDuplicate={(f)=>setModal({type:'addExp', data:{...f, id:undefined}})} onSaveClient={saveClientToMaster}/>}
       {modal?.type === 'dupFY' && (
         <Modal title="Duplicate assignment to another FY" onClose={()=>setModal(null)}
           footer={<>

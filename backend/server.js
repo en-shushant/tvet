@@ -72,6 +72,10 @@ async function runMigrations() {
     `ALTER TABLE occupations ADD COLUMN IF NOT EXISTS level TEXT`,
     `DELETE FROM occupations WHERE is_custom = FALSE`,
     `ALTER TABLE assignment_occupations ADD COLUMN IF NOT EXISTS level TEXT`,
+    // Description template + generation helper fields
+    `ALTER TABLE institutes ADD COLUMN IF NOT EXISTS desc_template_id TEXT`,
+    `ALTER TABLE assignments ADD COLUMN IF NOT EXISTS num_groups INTEGER`,
+    `ALTER TABLE assignments ADD COLUMN IF NOT EXISTS duration_days INTEGER`,
   ];
   for (const sql of migrations) {
     try { await pool.query(sql); }

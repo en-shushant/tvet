@@ -59,6 +59,7 @@ router.post('/', requireWriter, async (req, res, next) => {
       is_jv, jv_role, jv_partners,
       country, description_of_work, duration_months, total_person_months, own_service_value,
       jv_partner_names, jv_partner_person_months, narrative_description, actual_services_description,
+      num_groups, duration_days,
       occupations = [], locations = [] } = req.body;
 
     if (!institute_id || !fiscal_year || !assignment_name)
@@ -69,15 +70,17 @@ router.post('/', requireWriter, async (req, res, next) => {
         contract_value,start_date,end_date,start_fy,end_fy,remarks,reference_file,reference_file_name,
         is_gesi,is_residential,is_jv,jv_role,jv_partners,
         country,description_of_work,duration_months,total_person_months,own_service_value,
-        jv_partner_names,jv_partner_person_months,narrative_description,actual_services_description)
+        jv_partner_names,jv_partner_person_months,narrative_description,actual_services_description,
+        num_groups,duration_days)
        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,
-        $20,$21,$22,$23,$24,$25,$26,$27,$28) RETURNING *`,
+        $20,$21,$22,$23,$24,$25,$26,$27,$28,$29,$30) RETURNING *`,
       [institute_id, client_id||null, client_name_manual||null, fiscal_year, assignment_name, training_type,
        contract_value||contract_amount||null, start_date||null, end_date||null, start_fy||null, end_fy||null,
        remarks, reference_file||null, reference_file_name||null,
        !!is_gesi, !!is_residential, !!is_jv, is_jv ? (jv_role||'Lead') : null, is_jv ? (jv_partners||null) : null,
        country||'Nepal', description_of_work||null, duration_months||null, total_person_months||null, own_service_value||null,
-       jv_partner_names||null, jv_partner_person_months||null, narrative_description||null, actual_services_description||null]
+       jv_partner_names||null, jv_partner_person_months||null, narrative_description||null, actual_services_description||null,
+       num_groups||null, duration_days||null]
     );
 
     for (let i = 0; i < occupations.length; i++) {
@@ -101,6 +104,7 @@ router.put('/:id', requireWriter, async (req, res, next) => {
       is_jv, jv_role, jv_partners,
       country, description_of_work, duration_months, total_person_months, own_service_value,
       jv_partner_names, jv_partner_person_months, narrative_description, actual_services_description,
+      num_groups, duration_days,
       occupations = [], locations = [] } = req.body;
 
     const { rows } = await client.query(
@@ -109,15 +113,17 @@ router.put('/:id', requireWriter, async (req, res, next) => {
         reference_file=$12,reference_file_name=$13,is_gesi=$14,is_residential=$15,
         is_jv=$16,jv_role=$17,jv_partners=$18,
         country=$19,description_of_work=$20,duration_months=$21,total_person_months=$22,own_service_value=$23,
-        jv_partner_names=$24,jv_partner_person_months=$25,narrative_description=$26,actual_services_description=$27
-       WHERE id=$28 RETURNING *`,
+        jv_partner_names=$24,jv_partner_person_months=$25,narrative_description=$26,actual_services_description=$27,
+        num_groups=$28,duration_days=$29
+       WHERE id=$30 RETURNING *`,
       [client_id||null, client_name_manual||null, fiscal_year, assignment_name, training_type,
        contract_value||contract_amount||null, start_date||null, end_date||null, start_fy||null, end_fy||null,
        remarks, reference_file||null, reference_file_name||null,
        !!is_gesi, !!is_residential,
        !!is_jv, is_jv ? (jv_role||'Lead') : null, is_jv ? (jv_partners||null) : null,
        country||'Nepal', description_of_work||null, duration_months||null, total_person_months||null, own_service_value||null,
-       jv_partner_names||null, jv_partner_person_months||null, narrative_description||null, actual_services_description||null, id]
+       jv_partner_names||null, jv_partner_person_months||null, narrative_description||null, actual_services_description||null,
+       num_groups||null, duration_days||null, id]
     );
     if (!rows.length) { await client.query('ROLLBACK'); return res.status(404).json({ error: 'Not found' }); }
 

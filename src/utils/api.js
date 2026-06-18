@@ -75,6 +75,7 @@ export function normInst(r) {
     remarks: r.remarks || '',
     logo: r.logo || null,
     website: r.website || '',
+    descTemplateId: r.desc_template_id || '',
     googleMapLink: r.google_map_link || '',
     latitude: r.latitude != null ? String(r.latitude) : '',
     longitude: r.longitude != null ? String(r.longitude) : '',
@@ -120,6 +121,8 @@ export function normExp(r) {
     jvPartnerPersonMonths: r.jv_partner_person_months != null ? String(r.jv_partner_person_months) : '',
     narrativeDescription: r.narrative_description || '',
     actualServicesDescription: r.actual_services_description || '',
+    numGroups: r.num_groups != null ? String(r.num_groups) : '',
+    durationDays: r.duration_days != null ? String(r.duration_days) : '',
     occupations: (r.occupations || []).map(o => ({
       id: o.id,
       nameInLetter: o.name_in_letter || '',
@@ -219,6 +222,7 @@ export function instToAPI(f) {
     renewal_due: f.renewalDue || null, remarks: f.remarks,
     logo: f.logo || null,
     website: f.website || null,
+    desc_template_id: f.descTemplateId || null,
     google_map_link: f.googleMapLink || null,
     latitude: f.latitude ? parseFloat(f.latitude) : null,
     longitude: f.longitude ? parseFloat(f.longitude) : null,
@@ -255,6 +259,8 @@ export function expToAPI(f, instituteId) {
     jv_partner_person_months: f.isJV ? (f.jvPartnerPersonMonths || null) : null,
     narrative_description: f.narrativeDescription || null,
     actual_services_description: f.actualServicesDescription || null,
+    num_groups: f.numGroups || null,
+    duration_days: f.durationDays || null,
     occupations: (f.occupations || []).filter(o => o.nameInLetter || o.ctevtOccupationId).map(o => ({
       name_in_letter: o.nameInLetter || getOccupation(o.ctevtOccupationId).name || '',
       ctevt_occupation_id: (() => { const v = o.ctevtOccupationId; return v ? (typeof v === 'string' && v.startsWith('c:') ? parseInt(v.slice(2)) : v) : null; })(),
