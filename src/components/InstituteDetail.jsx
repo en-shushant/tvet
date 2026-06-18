@@ -16,6 +16,7 @@ import ClientDocuments from './ClientDocuments.jsx';
 import { FISCAL_YEARS, NSTB_LEVELS, OCCUPATIONS } from '../constants/data.js';
 import { api, instToAPI, expToAPI, nstbToAPI, taxToAPI, affToAPI, clientToAPI, normClient } from '../utils/api.js';
 import { DESCRIPTION_VARIATIONS } from '../utils/descriptionTemplates.js';
+import { NARRATIVE_VARIATIONS, SERVICES_VARIATIONS } from '../utils/specificTemplates.js';
 import { getSession } from '../utils/auth.js';
 import { usePagination } from '../utils/hooks.js';
 import { exportSummaryToMD, exportSummaryToPDF, exportSummaryToCSV } from '../utils/export.js';
@@ -283,31 +284,39 @@ function InstituteDetail({institute, clients, onUpdateClients, onBack, onUpdate,
         {/* Superadmin: description template assignment */}
         {getSession()?.role === 'superadmin' && (
           <div className="card" style={{marginTop:16}}>
-            <div className="section-title">✨ Description template (superadmin)</div>
-            <div style={{fontSize:13, color:'var(--text3)', marginBottom:10}}>
-              Assign a variation template used to auto-fill the "Description of work carried out" field when adding or editing assignments for this firm.
+            <div className="section-title">✨ Auto-fill templates (superadmin)</div>
+            <div style={{fontSize:13, color:'var(--text3)', marginBottom:14}}>
+              Assign variation templates for this firm. The matching ✨ Auto-fill button appears in the assignment form when adding or editing assignments.
             </div>
-            <div style={{display:'flex', gap:10, alignItems:'center', flexWrap:'wrap'}}>
-              <select className="form-input" style={{maxWidth:340}}
-                value={institute.descTemplateId || ''}
-                onChange={async e => {
-                  const val = e.target.value;
-                  try {
-                    await api('PUT', `/institutes/${institute.id}`, instToAPI({...institute, descTemplateId: val}), token);
-                    if (onUpdate) onUpdate({...institute, descTemplateId: val});
-                  } catch(err) { alert('Failed to save: ' + err.message); }
-                }}>
-                <option value="">— No template assigned —</option>
-                {DESCRIPTION_VARIATIONS.map(v => (
-                  <option key={v.id} value={v.id}>{v.label}</option>
-                ))}
-              </select>
-              {institute.descTemplateId && (
-                <div style={{fontSize:12, color:'var(--text2)', background:'var(--bg2)', border:'1px solid var(--border)', borderRadius:'var(--radius)', padding:'6px 10px', maxWidth:480, fontStyle:'italic'}}>
-                  {DESCRIPTION_VARIATIONS.find(v=>v.id===institute.descTemplateId)?.preview}
+            {[
+              { label: '3(A) Description of work carried out', key: 'descTemplateId', apiKey: 'desc_template_id', variations: DESCRIPTION_VARIATIONS },
+              { label: '3(B) Narrative description of project', key: 'narrativeTemplateId', apiKey: 'narrative_template_id', variations: NARRATIVE_VARIATIONS },
+              { label: '3(B) Description of actual services provided', key: 'servicesTemplateId', apiKey: 'services_template_id', variations: SERVICES_VARIATIONS },
+            ].map(slot => (
+              <div key={slot.key} style={{marginBottom:16, paddingBottom:16, borderBottom:'1px solid var(--border)'}}>
+                <div style={{fontSize:12, fontWeight:600, color:'var(--text2)', marginBottom:6}}>{slot.label}</div>
+                <div style={{display:'flex', gap:10, alignItems:'flex-start', flexWrap:'wrap'}}>
+                  <select className="form-input" style={{maxWidth:360}}
+                    value={institute[slot.key] || ''}
+                    onChange={async e => {
+                      const val = e.target.value;
+                      try {
+                        const updated = {...institute, [slot.key]: val};
+                        await api('PUT', `/institutes/${institute.id}`, instToAPI(updated), token);
+                        if (onUpdate) onUpdate(updated);
+                      } catch(err) { alert('Failed to save: ' + err.message); }
+                    }}>
+                    <option value="">— No template —</option>
+                    {slot.variations.map(v => <option key={v.id} value={v.id}>{v.label}</option>)}
+                  </select>
+                  {institute[slot.key] && (
+                    <div style={{fontSize:11, color:'var(--text2)', background:'var(--bg2)', border:'1px solid var(--border)', borderRadius:'var(--radius)', padding:'6px 10px', maxWidth:460, fontStyle:'italic', whiteSpace:'pre-wrap', lineHeight:1.5}}>
+                      {slot.variations.find(v => v.id === institute[slot.key])?.preview?.slice(0, 200)}{slot.variations.find(v => v.id === institute[slot.key])?.preview?.length > 200 ? '…' : ''}
+                    </div>
+                  )}
                 </div>
-              )}
-            </div>
+              </div>
+            ))}
           </div>
         )}
         </>

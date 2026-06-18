@@ -9,6 +9,7 @@ import { PROVINCES, FISCAL_YEARS, TRAINING_TYPES, SECTORS, OCCUPATIONS, CLIENT_T
 import { api } from '../utils/api.js';
 import { getSession } from '../utils/auth.js';
 import { DESCRIPTION_VARIATIONS, fillDescriptionTemplate } from '../utils/descriptionTemplates.js';
+import { fillNarrativeTemplate, fillServicesTemplate } from '../utils/specificTemplates.js';
 
 const fmt = (n) => n ? Number(n).toLocaleString('en-IN') : '—';
 const fyToAD = (fy) => {
@@ -529,12 +530,30 @@ function ExperienceForm({exp, clients, institute, onSave, onClose, onDuplicate, 
               )}
             </div>
             <div className="form-group">
-              <label>Narrative description of project (3B)</label>
-              <textarea rows={2} value={form.narrativeDescription} onChange={e=>set('narrativeDescription', e.target.value)} placeholder="Narrative description of the project"/>
+              <div style={{display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:4}}>
+                <label style={{marginBottom:0}}>Narrative description of project (3B)</label>
+                {_sess?.role === 'superadmin' && institute?.narrativeTemplateId && (
+                  <button type="button" className="btn btn-ghost btn-sm" style={{fontSize:11, color:'var(--primary)'}}
+                    onClick={()=>{
+                      const text = fillNarrativeTemplate(institute.narrativeTemplateId, form, institute, clients);
+                      if (text) set('narrativeDescription', text);
+                    }}>✨ Auto-fill</button>
+                )}
+              </div>
+              <textarea rows={3} value={form.narrativeDescription} onChange={e=>set('narrativeDescription', e.target.value)} placeholder="Narrative description of the project"/>
             </div>
             <div className="form-group">
-              <label>Description of actual services provided (3B)</label>
-              <textarea rows={2} value={form.actualServicesDescription} onChange={e=>set('actualServicesDescription', e.target.value)} placeholder="Description of the actual services your firm provided in this assignment"/>
+              <div style={{display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:4}}>
+                <label style={{marginBottom:0}}>Description of actual services provided (3B)</label>
+                {_sess?.role === 'superadmin' && institute?.servicesTemplateId && (
+                  <button type="button" className="btn btn-ghost btn-sm" style={{fontSize:11, color:'var(--primary)'}}
+                    onClick={()=>{
+                      const text = fillServicesTemplate(institute.servicesTemplateId, form, institute, clients);
+                      if (text) set('actualServicesDescription', text);
+                    }}>✨ Auto-fill</button>
+                )}
+              </div>
+              <textarea rows={3} value={form.actualServicesDescription} onChange={e=>set('actualServicesDescription', e.target.value)} placeholder="Description of the actual services your firm provided in this assignment"/>
             </div>
           </div>
         )}

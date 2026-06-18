@@ -94,16 +94,16 @@ router.put('/:id', requireWriter, async (req, res, next) => {
     }
     const { name, acronym, reg_no, reg_date, pan, permanent_account_no,
       contact_person, phone, email, address, type, status, renewal_due, remarks, logo, website,
-      desc_template_id } = req.body;
+      desc_template_id, narrative_template_id, services_template_id } = req.body;
     const { rows } = await pool.query(
       `UPDATE institutes SET name=$1,acronym=$2,reg_no=$3,reg_date=$4,pan=$5,
         permanent_account_no=$6,contact_person=$7,phone=$8,email=$9,address=$10,
         type=$11,status=$12,renewal_due=$13,remarks=$14,logo=$15,website=$16,
-        desc_template_id=$17
-       WHERE id=$18 RETURNING *`,
+        desc_template_id=$17,narrative_template_id=$18,services_template_id=$19
+       WHERE id=$20 RETURNING *`,
       [name,acronym,reg_no,reg_date,pan,permanent_account_no,
        contact_person,phone,email,address,type,status,renewal_due,remarks,logo||null,website||null,
-       desc_template_id||null,id]
+       desc_template_id||null,narrative_template_id||null,services_template_id||null,id]
     );
     if (!rows.length) return res.status(404).json({ error: 'Not found' });
     res.json(rows[0]);
