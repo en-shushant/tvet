@@ -176,7 +176,8 @@ function App() {
   };
 
   const handleNavigate = (id) => {
-    if ((id === 'master' || id === 'users') && !isAdmin) return;
+    if (id === 'master' && !isAdmin && !isEditor) return;
+    if (id === 'users' && !isAdmin) return;
     if ((id === 'summary' || id === 'comparison' || id === 'compliance') && isEditor) return;
     window.location.hash = id;
     setScreen(id);
@@ -191,7 +192,7 @@ function App() {
     {id:'comparison', icon:'compare_arrows', label:'Comparison', editorHidden: true},
     {id:'compliance', icon:'fact_check', label:'Project Compliance', editorHidden: true},
     {id:'reports', icon:'description', label:'Reports'},
-    {id:'master', icon:'category', label:'Master Data', adminOnly: true},
+    {id:'master', icon:'category', label:'Master Data', adminOnly: false, editorHidden: false},
     {id:'users', icon:'manage_accounts', label:'User Management', adminOnly: true},
   ];
 
@@ -481,8 +482,8 @@ function App() {
           {screen === 'comparison' && <ComparisonView institutes={institutes} clients={clients}/>}
           {screen === 'compliance' && <ProjectCompliance institutes={institutes} clients={clients}/>}
           {screen === 'reports' && <ReportsView institutes={institutes} clients={clients}/>}
-          {screen === 'master' && isAdmin && <MasterData clients={clients} onUpdateClients={handleUpdateClients} token={token} isAdmin={isAdmin} isEditor={isEditor} isSuperAdmin={isSuperAdmin}/>}
-          {screen === 'master' && !isAdmin && (
+          {screen === 'master' && (isAdmin || isEditor) && <MasterData clients={clients} onUpdateClients={handleUpdateClients} token={token} isAdmin={isAdmin} isEditor={isEditor} isSuperAdmin={isSuperAdmin}/>}
+          {screen === 'master' && !isAdmin && !isEditor && (
             <div style={{display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',height:'60%',gap:12,color:'var(--text3)'}}>
               <div style={{fontSize:40}}>🔒</div>
               <div style={{fontSize:16,fontWeight:600,color:'var(--text2)'}}>Access restricted</div>

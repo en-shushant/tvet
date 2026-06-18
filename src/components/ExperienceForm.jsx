@@ -301,7 +301,7 @@ function ExperienceForm({exp, clients, onSave, onClose, onDuplicate, onSaveClien
                 <input style={{flex:1}} value={form.clientName||''} onChange={e=>set('clientName',e.target.value)} placeholder="Type client name"/>
                 {onSaveClient && form.clientName?.trim() && token && (() => {
                   // Decode JWT payload (no verify — server is the source of truth) to check role.
-                  try { const p = JSON.parse(atob(token.split('.')[1])); if (p.role === 'admin') return (
+                  try { const p = JSON.parse(atob(token.split('.')[1])); if (p.role === 'admin' || p.role === 'editor' || p.role === 'superadmin') return (
                     <button type="button" className="btn btn-ghost btn-sm" style={{fontSize:11, whiteSpace:'nowrap'}}
                       onClick={()=>setSaveClientModal({fullName: form.clientName.trim(), shortName:'', type:'Government', address:'', remarks:''})}>
                       💾 Save to list

@@ -1,7 +1,7 @@
 // routes/clients.js
 const router = require('express').Router();
 const { pool } = require('../db/pool');
-const { authenticate, requireAdmin } = require('../middleware/auth');
+const { authenticate, requireAdmin, requireWriter } = require('../middleware/auth');
 router.use(authenticate);
 
 router.get('/', async (req, res, next) => {
@@ -10,7 +10,7 @@ router.get('/', async (req, res, next) => {
   } catch(e) { next(e); }
 });
 
-router.post('/', requireAdmin, async (req, res, next) => {
+router.post('/', requireWriter, async (req, res, next) => {
   try {
     const { full_name, short_name, type, address, remarks } = req.body;
     if (!full_name || !short_name) return res.status(400).json({ error: 'full_name and short_name required' });
@@ -22,7 +22,7 @@ router.post('/', requireAdmin, async (req, res, next) => {
   } catch(e) { next(e); }
 });
 
-router.put('/:id', requireAdmin, async (req, res, next) => {
+router.put('/:id', requireWriter, async (req, res, next) => {
   try {
     const { full_name, short_name, type, address, remarks } = req.body;
     const { rows } = await pool.query(
