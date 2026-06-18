@@ -88,21 +88,19 @@ function ReportsView({ institutes, clients }) {
     <div className="fade-in" style={{display:'flex', flexDirection:'column', gap:14}}>
 
       {/* ── Top selector bar ── */}
-      <div className="card" style={{padding:'12px 16px', display:'flex', alignItems:'center', gap:16, flexWrap:'wrap'}}>
-        <span style={{fontSize:13, fontWeight:600, color:'var(--text2)', whiteSpace:'nowrap'}}>📊 Report</span>
-        {REPORT_FAMILIES.length > 1 && (
+      <div className="card" style={{padding:'14px 18px', display:'flex', alignItems:'center', gap:20, flexWrap:'wrap'}}>
+        <div style={{display:'flex', alignItems:'center', gap:8}}>
+          <span style={{fontSize:12, fontWeight:600, color:'var(--text3)', whiteSpace:'nowrap'}}>REPORT FAMILY</span>
           <select className="form-input" style={{width:'auto', minWidth:160}} value={familyId} onChange={e => setFamilyId(e.target.value)}>
             {REPORT_FAMILIES.map(f => <option key={f.id} value={f.id}>{f.label}</option>)}
           </select>
-        )}
-        <div style={{display:'flex', gap:8, flexWrap:'wrap'}}>
-          {family.reports.map(r => (
-            <button key={r.id} type="button"
-              onClick={() => setReportId(r.id)}
-              className={reportId === r.id ? 'btn btn-primary btn-sm' : 'btn btn-secondary btn-sm'}>
-              {r.label}
-            </button>
-          ))}
+        </div>
+        <div style={{width:1, height:28, background:'var(--border)'}}/>
+        <div style={{display:'flex', alignItems:'center', gap:8}}>
+          <span style={{fontSize:12, fontWeight:600, color:'var(--text3)', whiteSpace:'nowrap'}}>REPORT TYPE</span>
+          <select className="form-input" style={{width:'auto', minWidth:220}} value={reportId} onChange={e => setReportId(e.target.value)}>
+            {family.reports.map(r => <option key={r.id} value={r.id}>{r.label}</option>)}
+          </select>
         </div>
       </div>
 
