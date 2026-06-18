@@ -85,34 +85,37 @@ function ReportsView({ institutes, clients }) {
   };
 
   return (
-    <div className="fade-in" style={{display:'flex', gap:20, alignItems:'flex-start'}}>
+    <div className="fade-in" style={{display:'flex', flexDirection:'column', gap:14}}>
+
+      {/* ── Top selector bar ── */}
+      <div className="card" style={{padding:'12px 16px', display:'flex', alignItems:'center', gap:16, flexWrap:'wrap'}}>
+        <span style={{fontSize:13, fontWeight:600, color:'var(--text2)', whiteSpace:'nowrap'}}>📊 Report</span>
+        {REPORT_FAMILIES.length > 1 && (
+          <select className="form-input" style={{width:'auto', minWidth:160}} value={familyId} onChange={e => setFamilyId(e.target.value)}>
+            {REPORT_FAMILIES.map(f => <option key={f.id} value={f.id}>{f.label}</option>)}
+          </select>
+        )}
+        <div style={{display:'flex', gap:8, flexWrap:'wrap'}}>
+          {family.reports.map(r => (
+            <button key={r.id} type="button"
+              onClick={() => setReportId(r.id)}
+              className={reportId === r.id ? 'btn btn-primary btn-sm' : 'btn btn-secondary btn-sm'}>
+              {r.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* ── Two-column layout ── */}
+      <div style={{display:'flex', gap:20, alignItems:'flex-start'}}>
 
       {/* ── Filter panel ── */}
       <div className="filter-panel">
         <div className="filter-panel-header">
-          <span style={{fontSize:14}}>📊</span>
-          <span className="filter-panel-header-title">Reports</span>
+          <span style={{fontSize:14}}>🔍</span>
+          <span className="filter-panel-header-title">Filters</span>
         </div>
         <div className="filter-panel-body">
-
-          {/* Report family */}
-          <div className="filter-section">
-            <div className="filter-label">Report family</div>
-            <select className="form-input" value={familyId} onChange={e => setFamilyId(e.target.value)}>
-              {REPORT_FAMILIES.map(f => <option key={f.id} value={f.id}>{f.label}</option>)}
-            </select>
-          </div>
-
-          {/* Report type */}
-          <div className="filter-section">
-            <div className="filter-label">Report type</div>
-            {family.reports.map(r => (
-              <label key={r.id} className="multi-select-item">
-                <input type="radio" name="report-type" checked={reportId === r.id} onChange={() => setReportId(r.id)}/>
-                {r.label}
-              </label>
-            ))}
-          </div>
 
           {/* Institute */}
           <div className="filter-section">
@@ -241,6 +244,7 @@ function ReportsView({ institutes, clients }) {
           </div>
         )}
       </div>
+    </div>{/* end two-column */}
     </div>
   );
 }
