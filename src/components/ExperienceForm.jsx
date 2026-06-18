@@ -139,6 +139,7 @@ function QuickAddOccupationModal({name, onSave, onClose}) {
 
 function ExperienceForm({exp, clients, onSave, onClose, onDuplicate, onSaveClient}) {
   const _sess = getSession();
+  const token = _sess?.token;
   const canManageOccs = _sess?.role === 'admin' || _sess?.role === 'editor' || _sess?.role === 'superadmin';
   const [quickAddOcc, setQuickAddOcc] = useState(null); // {name, occIdx}
   const [saveClientModal, setSaveClientModal] = useState(null);
