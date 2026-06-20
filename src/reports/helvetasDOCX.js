@@ -130,12 +130,11 @@ function makeTable2(fullInst, activeExps) {
         ],
       }));
     });
-    // sub-total row
     dataRows.push(new TableRow({
       children: [
-        dataCell('', { shading: SUBTOTAL_FILL }),
+        dataCell(i + 1, { center: true, shading: SUBTOTAL_FILL }),
+        dataCell(occ.name, { bold: true, shading: SUBTOTAL_FILL }),
         dataCell('Sub-total', { bold: true, shading: SUBTOTAL_FILL }),
-        dataCell('', { shading: SUBTOTAL_FILL }),
         dataCell(occ.subtotal.trainees || '—', { right: true, bold: true, shading: SUBTOTAL_FILL }),
         dataCell(occ.subtotal.skillTestPass || '—', { right: true, bold: true, shading: SUBTOTAL_FILL }),
         dataCell(occ.subtotal.employed || '—', { right: true, bold: true, shading: SUBTOTAL_FILL }),
