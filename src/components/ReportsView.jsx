@@ -16,6 +16,7 @@ function ReportsView({ institutes, clients }) {
   const [toFY, setToFY]                 = useState('');
   const [selectedOccs, setSelectedOccs] = useState([]); // for Table 3 occupation filter
   const [occupations, setOccupations]   = useState([]);
+  const [sortBy, setSortBy]             = useState('default'); // for Table 2 occupation sort
 
   const family = REPORT_FAMILIES.find(f => f.id === familyId) || REPORT_FAMILIES[0];
   const report = family.reports.find(r => r.id === reportId) || family.reports[0];
@@ -105,7 +106,7 @@ function ReportsView({ institutes, clients }) {
     (report.requiredFields || []).filter(([key]) => !exp[key]).map(([, label]) => label);
 
   const fyRangeLabel = fromFY || toFY ? `FY ${fromFY || '…'} – ${toFY || '…'}` : null;
-  const opts = { fromFY, toFY, selectedOccs, occupations };
+  const opts = { fromFY, toFY, selectedOccs, occupations, sortBy };
 
   const handlePrint = () => {
     const w = window.open('', '_blank');
@@ -186,6 +187,18 @@ function ReportsView({ institutes, clients }) {
                     ✕ Clear range
                   </button>
                 )}
+              </div>
+            )}
+
+            {/* Sort order — only for Table 2 */}
+            {fullInst && report.id === 'h2' && (
+              <div className="filter-section">
+                <div className="filter-label">Sort occupations by</div>
+                <select className="form-input" value={sortBy} onChange={e => setSortBy(e.target.value)}>
+                  <option value="default">Default (data order)</option>
+                  <option value="alpha">Alphabetical (A → Z)</option>
+                  <option value="fy">Fiscal year (earliest first)</option>
+                </select>
               </div>
             )}
 

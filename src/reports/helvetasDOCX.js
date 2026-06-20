@@ -98,8 +98,8 @@ function makeTable1(fullInst, fromFY, toFY) {
 
 // ── Table 2 ───────────────────────────────────────────────────────────────────
 
-function makeTable2(fullInst, activeExps, occupations = []) {
-  const { occs, grandTotal, allFYs } = buildGeneralExpData(fullInst, activeExps, occupations);
+function makeTable2(fullInst, activeExps, occupations = [], sortBy = 'default') {
+  const { occs, grandTotal, allFYs } = buildGeneralExpData(fullInst, activeExps, occupations, sortBy);
   if (!occs.length) return null;
 
   const SUBTOTAL_FILL = 'F5F7FA';
@@ -214,12 +214,12 @@ function makeTable3(fullInst, activeExps, selectedOccs, occupations = []) {
 // ── Entry point ───────────────────────────────────────────────────────────────
 
 export async function downloadHelvetasDOCX(fullInst, activeExps, reportId, opts = {}) {
-  const { fromFY, toFY, selectedOccs = [], occupations = [] } = opts;
+  const { fromFY, toFY, selectedOccs = [], occupations = [], sortBy = 'default' } = opts;
 
   let sections = [];
 
   if (reportId === 'h1') sections = makeTable1(fullInst, fromFY, toFY) || [];
-  else if (reportId === 'h2') sections = makeTable2(fullInst, activeExps, occupations) || [];
+  else if (reportId === 'h2') sections = makeTable2(fullInst, activeExps, occupations, sortBy) || [];
   else if (reportId === 'h3') sections = makeTable3(fullInst, activeExps, selectedOccs, occupations) || [];
 
   if (!sections.length) {

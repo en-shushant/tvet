@@ -21,7 +21,7 @@ export function buildTurnoverData(fullInst, fromFY, toFY) {
   return { fys, byFY, total };
 }
 
-export function buildGeneralExpData(fullInst, activeExps, occupations = []) {
+export function buildGeneralExpData(fullInst, activeExps, occupations = [], sortBy = 'default') {
   const allFYs = [...new Set(activeExps.map(e => e.fy).filter(Boolean))].sort();
 
   // byOcc[name][fy] = { trainees, employed }
@@ -64,8 +64,12 @@ export function buildGeneralExpData(fullInst, activeExps, occupations = []) {
       skillTestPass: fyRows.reduce((s, r) => s + r.skillTestPass, 0),
       employed:     fyRows.reduce((s, r) => s + r.employed, 0),
     };
-    return { name, fyRows, subtotal };
+    return { name, fyRows, subtotal, firstFY: fys[0] || '' };
   });
+
+  if (sortBy === 'alpha') occs.sort((a, b) => a.name.localeCompare(b.name));
+  else if (sortBy === 'fy')   occs.sort((a, b) => a.firstFY.localeCompare(b.firstFY));
+  // 'default' keeps insertion order
 
   const grandTotal = {
     trainees:     occs.reduce((s, o) => s + o.subtotal.trainees, 0),

@@ -78,8 +78,8 @@ function Table1({ fullInst, fromFY, toFY }) {
   );
 }
 
-function Table2({ fullInst, activeExps, occupations }) {
-  const { occs, grandTotal, allFYs } = buildGeneralExpData(fullInst, activeExps, occupations);
+function Table2({ fullInst, activeExps, occupations, sortBy }) {
+  const { occs, grandTotal, allFYs } = buildGeneralExpData(fullInst, activeExps, occupations, sortBy);
   if (!occs.length) return (
     <div style={{padding:16, color:'var(--text3)', fontSize:13}}>
       No occupation data found in selected assignments.
@@ -188,9 +188,9 @@ function Table3({ fullInst, activeExps, selectedOccs, occupations }) {
 }
 
 export function renderAggregateTable(fullInst, activeExps, clients, reportId, opts = {}) {
-  const { fromFY, toFY, selectedOccs = [], occupations = [] } = opts;
+  const { fromFY, toFY, selectedOccs = [], occupations = [], sortBy = 'default' } = opts;
   if (reportId === 'h1') return <Table1 fullInst={fullInst} fromFY={fromFY} toFY={toFY} />;
-  if (reportId === 'h2') return <Table2 fullInst={fullInst} activeExps={activeExps} occupations={occupations} />;
+  if (reportId === 'h2') return <Table2 fullInst={fullInst} activeExps={activeExps} occupations={occupations} sortBy={sortBy} />;
   if (reportId === 'h3') return <Table3 fullInst={fullInst} activeExps={activeExps} selectedOccs={selectedOccs} occupations={occupations} />;
   return null;
 }
@@ -198,7 +198,7 @@ export function renderAggregateTable(fullInst, activeExps, clients, reportId, op
 // ── Print HTML ────────────────────────────────────────────────────────────────
 
 function buildPrintHTML(fullInst, activeExps, clients, reportId, fyRangeLabel, opts = {}) {
-  const { fromFY, toFY, selectedOccs = [], occupations = [] } = opts;
+  const { fromFY, toFY, selectedOccs = [], occupations = [], sortBy = 'default' } = opts;
   const firmName = fullInst?.name || '';
   let bodyHTML = '';
 
@@ -210,7 +210,7 @@ function buildPrintHTML(fullInst, activeExps, clients, reportId, fyRangeLabel, o
     const dataRow = ['Annual turnover (as per audit report)', ...fys.map(fy => fmt(byFY[fy])), fmt(total), ''];
     bodyHTML = `<h3>${esc(title)}</h3><table><thead><tr>${headers.map(h => `<th>${esc(h)}</th>`).join('')}</tr></thead><tbody><tr>${dataRow.map(c => `<td>${esc(String(c ?? ''))}</td>`).join('')}</tr></tbody></table>`;
   } else if (reportId === 'h2') {
-    const { occs, grandTotal, allFYs } = buildGeneralExpData(fullInst, activeExps, occupations);
+    const { occs, grandTotal, allFYs } = buildGeneralExpData(fullInst, activeExps, occupations, sortBy);
     const title = 'Table 2: Training, skill test and employment placement experience (Level I vocational skill training comprising all the sectors; general experience)';
     const headers = ['S.N.', 'Occupation', 'Year', 'No. of trainees completed the training', 'No. of skill test passed trainees', 'No. of employed graduates'];
     let rowsHTML = '';
