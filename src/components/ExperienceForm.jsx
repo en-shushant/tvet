@@ -479,16 +479,7 @@ function ExperienceForm({exp, clients, institute, onSave, onClose, onDuplicate, 
                 <input type="number" value={form.durationMonths} onChange={e=>set('durationMonths', e.target.value)} placeholder="e.g. 8"/>
               </div>
             </div>
-            <div className="form-row form-row-2">
-              <div className="form-group">
-                <label>No. of training groups / events</label>
-                <input type="number" value={form.numGroups} onChange={e=>set('numGroups', e.target.value)} placeholder="e.g. 14"/>
-              </div>
-              <div className="form-group">
-                <label>Duration of training (days)</label>
-                <input type="number" value={form.durationDays} onChange={e=>set('durationDays', e.target.value)} placeholder="e.g. 7"/>
-              </div>
-            </div>
+            {/* PPMO-specific fields — hidden until PPMO format is finalized */}
             <div className="form-row form-row-2">
               <div className="form-group">
                 <label>Total person-months of assignment</label>
@@ -511,50 +502,7 @@ function ExperienceForm({exp, clients, institute, onSave, onClose, onDuplicate, 
                 </div>
               </div>
             )}
-            <div className="form-group">
-              <div style={{display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:4}}>
-                <label style={{marginBottom:0}}>Description of work carried out (3A)</label>
-                {_sess?.role === 'superadmin' && institute?.descTemplateId && (
-                  <button type="button" className="btn btn-ghost btn-sm" style={{fontSize:11, color:'var(--primary)'}}
-                    onClick={()=>{
-                      const text = fillDescriptionTemplate(institute.descTemplateId, form, institute, clients);
-                      if (text) set('descriptionOfWork', text);
-                    }}>
-                    ✨ Auto-fill
-                  </button>
-                )}
-              </div>
-              <textarea rows={2} value={form.descriptionOfWork} onChange={e=>set('descriptionOfWork', e.target.value)} placeholder="Brief description of the work carried out under this assignment"/>
-              {_sess?.role === 'superadmin' && !institute?.descTemplateId && (
-                <div style={{fontSize:11, color:'var(--text3)', marginTop:3}}>Assign a description template to this firm to enable auto-fill.</div>
-              )}
-            </div>
-            <div className="form-group">
-              <div style={{display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:4}}>
-                <label style={{marginBottom:0}}>Narrative description of project (3B)</label>
-                {_sess?.role === 'superadmin' && institute?.narrativeTemplateId && (
-                  <button type="button" className="btn btn-ghost btn-sm" style={{fontSize:11, color:'var(--primary)'}}
-                    onClick={()=>{
-                      const text = fillNarrativeTemplate(institute.narrativeTemplateId, form, institute, clients);
-                      if (text) set('narrativeDescription', text);
-                    }}>✨ Auto-fill</button>
-                )}
-              </div>
-              <textarea rows={3} value={form.narrativeDescription} onChange={e=>set('narrativeDescription', e.target.value)} placeholder="Narrative description of the project"/>
-            </div>
-            <div className="form-group">
-              <div style={{display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:4}}>
-                <label style={{marginBottom:0}}>Description of actual services provided (3B)</label>
-                {_sess?.role === 'superadmin' && institute?.servicesTemplateId && (
-                  <button type="button" className="btn btn-ghost btn-sm" style={{fontSize:11, color:'var(--primary)'}}
-                    onClick={()=>{
-                      const text = fillServicesTemplate(institute.servicesTemplateId, form, institute, clients);
-                      if (text) set('actualServicesDescription', text);
-                    }}>✨ Auto-fill</button>
-                )}
-              </div>
-              <textarea rows={3} value={form.actualServicesDescription} onChange={e=>set('actualServicesDescription', e.target.value)} placeholder="Description of the actual services your firm provided in this assignment"/>
-            </div>
+            {/* 3A / 3B PPMO fields — hidden until PPMO format is finalized */}
           </div>
         )}
       </div>

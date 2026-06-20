@@ -281,8 +281,8 @@ function InstituteDetail({institute, clients, onUpdateClients, onBack, onUpdate,
           </div>
         </div>{/* end grid-2 */}
 
-        {/* Superadmin: description template assignment */}
-        {getSession()?.role === 'superadmin' && (
+        {/* Superadmin: description template assignment — hidden until PPMO format is finalized */}
+        {false && getSession()?.role === 'superadmin' && (
           <div className="card" style={{marginTop:16}}>
             <div className="section-title">✨ Auto-fill templates (superadmin)</div>
             <div style={{fontSize:13, color:'var(--text3)', marginBottom:14}}>
