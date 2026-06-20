@@ -79,8 +79,8 @@ function Table1({ fullInst, fromFY, toFY }) {
 }
 
 function Table2({ fullInst, activeExps }) {
-  const { rows, totals, allFYs } = buildGeneralExpData(fullInst, activeExps);
-  if (!rows.length) return (
+  const { occs, grandTotal, allFYs } = buildGeneralExpData(fullInst, activeExps);
+  if (!occs.length) return (
     <div style={{padding:16, color:'var(--text3)', fontSize:13}}>
       No occupation data found in selected assignments.
     </div>
@@ -96,29 +96,38 @@ function Table2({ fullInst, activeExps }) {
           <tr>
             <th style={{...TH, width:40}}>S.N.</th>
             <th style={TH}>Occupation</th>
-            {allFYs.map(fy => <th key={fy} style={TH}>{fy}</th>)}
-            <th style={TH}>Total trainees</th>
+            <th style={TH}>Year</th>
+            <th style={TH}>No. of trainees completed the training</th>
             <th style={TH}>No. of skill test passed trainees</th>
             <th style={TH}>No. of employed graduates</th>
           </tr>
         </thead>
         <tbody>
-          {rows.map((row, i) => (
-            <tr key={row.name}>
-              <td style={{...TD, textAlign:'center'}}>{i + 1}</td>
-              <td style={TD}>{row.name}</td>
-              {allFYs.map(fy => <td key={fy} style={TDN}>{row.traineesByFY[fy] || '—'}</td>)}
-              <td style={TDN}>{row.totalTrainees || '—'}</td>
-              <td style={TDN}>{row.skillTestPass || '—'}</td>
-              <td style={TDN}>{row.employed || '—'}</td>
-            </tr>
+          {occs.map((occ, i) => (
+            <>
+              {occ.fyRows.map((row, j) => (
+                <tr key={`${occ.name}-${row.fy}`}>
+                  {j === 0 && <td style={{...TD, textAlign:'center', verticalAlign:'top'}} rowSpan={occ.fyRows.length + 1}>{i + 1}</td>}
+                  {j === 0 && <td style={{...TD, verticalAlign:'top'}} rowSpan={occ.fyRows.length + 1}>{occ.name}</td>}
+                  <td style={TD}>{row.fy}</td>
+                  <td style={TDN}>{row.trainees || '—'}</td>
+                  <td style={TDN}>{row.skillTestPass || '—'}</td>
+                  <td style={TDN}>{row.employed || '—'}</td>
+                </tr>
+              ))}
+              <tr key={`${occ.name}-total`} style={{background:'#f5f7fa'}}>
+                <td style={{...TD, fontWeight:600}}>Sub-total</td>
+                <td style={{...TDN, fontWeight:600}}>{occ.subtotal.trainees || '—'}</td>
+                <td style={{...TDN, fontWeight:600}}>{occ.subtotal.skillTestPass || '—'}</td>
+                <td style={{...TDN, fontWeight:600}}>{occ.subtotal.employed || '—'}</td>
+              </tr>
+            </>
           ))}
           <tr style={TOTAL_STYLE}>
-            <td style={TD} colSpan={2}>Total of {allFYs.length} year{allFYs.length !== 1 ? 's' : ''}</td>
-            {allFYs.map(fy => <td key={fy} style={TDN}>{totals.traineesByFY[fy] || '—'}</td>)}
-            <td style={TDN}>{totals.totalTrainees || '—'}</td>
-            <td style={TDN}>{totals.skillTestPass || '—'}</td>
-            <td style={TDN}>{totals.employed || '—'}</td>
+            <td style={TD} colSpan={3}>Total of {allFYs.length} year{allFYs.length !== 1 ? 's' : ''}</td>
+            <td style={TDN}>{grandTotal.trainees || '—'}</td>
+            <td style={TDN}>{grandTotal.skillTestPass || '—'}</td>
+            <td style={TDN}>{grandTotal.employed || '—'}</td>
           </tr>
         </tbody>
       </table>
@@ -199,13 +208,19 @@ function buildPrintHTML(fullInst, activeExps, clients, reportId, fyRangeLabel, o
     const dataRow = ['Annual turnover (as per audit report)', ...fys.map(fy => fmt(byFY[fy])), fmt(total), ''];
     bodyHTML = `<h3>${esc(title)}</h3><table><thead><tr>${headers.map(h => `<th>${esc(h)}</th>`).join('')}</tr></thead><tbody><tr>${dataRow.map(c => `<td>${esc(String(c ?? ''))}</td>`).join('')}</tr></tbody></table>`;
   } else if (reportId === 'h2') {
-    const { rows, totals, allFYs } = buildGeneralExpData(fullInst, activeExps);
+    const { occs, grandTotal, allFYs } = buildGeneralExpData(fullInst, activeExps);
     const title = 'Table 2: Training, skill test and employment placement experience (Level I vocational skill training comprising all the sectors; general experience)';
-    const headers = ['S.N.', 'Occupation', ...allFYs, 'Total trainees', 'No. of skill test passed trainees', 'No. of employed graduates'];
-    const dataRows = rows.map((r, i) => [i+1, r.name, ...allFYs.map(fy => r.traineesByFY[fy] || '—'), r.totalTrainees || '—', r.skillTestPass || '—', r.employed || '—']);
-    const foot = ['', `Total of ${allFYs.length} year${allFYs.length !== 1 ? 's' : ''}`, ...allFYs.map(fy => totals.traineesByFY[fy] || '—'), totals.totalTrainees || '—', totals.skillTestPass || '—', totals.employed || '—'];
-    const rowsHTML = dataRows.map(cells => `<tr>${cells.map(c => `<td>${esc(String(c ?? ''))}</td>`).join('')}</tr>`).join('');
-    const footHTML = `<tr class="total">${foot.map(c => `<td>${esc(String(c ?? ''))}</td>`).join('')}</tr>`;
+    const headers = ['S.N.', 'Occupation', 'Year', 'No. of trainees completed the training', 'No. of skill test passed trainees', 'No. of employed graduates'];
+    let rowsHTML = '';
+    occs.forEach((occ, i) => {
+      occ.fyRows.forEach((row, j) => {
+        const snCell = j === 0 ? `<td rowspan="${occ.fyRows.length + 1}">${i + 1}</td>` : '';
+        const nameCell = j === 0 ? `<td rowspan="${occ.fyRows.length + 1}">${esc(occ.name)}</td>` : '';
+        rowsHTML += `<tr>${snCell}${nameCell}<td>${esc(row.fy)}</td><td class="num">${row.trainees || '—'}</td><td class="num">${row.skillTestPass || '—'}</td><td class="num">${row.employed || '—'}</td></tr>`;
+      });
+      rowsHTML += `<tr class="subtotal"><td><em>Sub-total</em></td><td class="num"><strong>${occ.subtotal.trainees || '—'}</strong></td><td class="num"><strong>${occ.subtotal.skillTestPass || '—'}</strong></td><td class="num"><strong>${occ.subtotal.employed || '—'}</strong></td></tr>`;
+    });
+    const footHTML = `<tr class="total"><td colspan="3">Total of ${allFYs.length} year${allFYs.length !== 1 ? 's' : ''}</td><td class="num">${grandTotal.trainees || '—'}</td><td class="num">${grandTotal.skillTestPass || '—'}</td><td class="num">${grandTotal.employed || '—'}</td></tr>`;
     bodyHTML = `<h3>${esc(title)}</h3><table><thead><tr>${headers.map(h => `<th>${esc(h)}</th>`).join('')}</tr></thead><tbody>${rowsHTML}${footHTML}</tbody></table>`;
   } else if (reportId === 'h3') {
     const { rows, totals } = buildSpecificOccData(fullInst, activeExps, selectedOccs);
@@ -230,8 +245,9 @@ function buildPrintHTML(fullInst, activeExps, clients, reportId, fyRangeLabel, o
   th, td { border: 1px solid #888; padding: 5px 8px; font-size: 11.5px; }
   th { background: #d5dde8; font-weight: 600; text-align: center; vertical-align: middle; }
   td { text-align: left; }
-  td:nth-child(n+3) { text-align: right; }
+  td.num { text-align: right; }
   tr.total td { font-weight: 700; background: #eef2f7; }
+  tr.subtotal td { background: #f5f7fa; }
   @media print { body { margin: 10mm; } }
 </style></head><body>
 <h2>${esc(firmName)}</h2>

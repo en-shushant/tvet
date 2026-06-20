@@ -13,53 +13,58 @@ export function buildTurnoverData(fullInst, fromFY, toFY) {
 }
 
 export function buildGeneralExpData(fullInst, activeExps) {
-  // All FYs in sorted order across active assignments
   const allFYs = [...new Set(activeExps.map(e => e.fy).filter(Boolean))].sort();
 
-  // byOcc[name] = { traineesByFY: {fy: count}, employed: total }
+  // byOcc[name][fy] = { trainees, employed }
   const byOcc = {};
   for (const exp of activeExps) {
     const fy = exp.fy;
     for (const occ of (exp.occupations || [])) {
       const name = occ.nameInLetter || '(unknown)';
-      if (!byOcc[name]) byOcc[name] = { traineesByFY: {}, employed: 0 };
-      const t = parseInt(occ.trainees) || 0;
-      if (fy) byOcc[name].traineesByFY[fy] = (byOcc[name].traineesByFY[fy] || 0) + t;
-      byOcc[name].employed += Math.round(t * (parseFloat(occ.employmentActual) || 0) / 100);
+      if (!byOcc[name]) byOcc[name] = {};
+      if (fy) {
+        if (!byOcc[name][fy]) byOcc[name][fy] = { trainees: 0, employed: 0 };
+        const t = parseInt(occ.trainees) || 0;
+        byOcc[name][fy].trainees += t;
+        byOcc[name][fy].employed += Math.round(t * (parseFloat(occ.employmentActual) || 0) / 100);
+      }
     }
   }
 
-  // NSTB skill-test pass — match by occupation name (case-insensitive), sum across all FYs
-  const activeFYs = new Set(allFYs);
-  const nstbByOcc = {};
+  // NSTB skill-test pass — per occupation per FY
+  const nstbByOccFY = {};
   for (const n of (fullInst?.nstb || [])) {
-    if (!activeFYs.has(n.fy)) continue;
+    if (!allFYs.includes(n.fy)) continue;
     const key = (n.occupation || '').toLowerCase().trim();
-    nstbByOcc[key] = (nstbByOcc[key] || 0) + (parseInt(n.pass) || 0);
+    if (!nstbByOccFY[key]) nstbByOccFY[key] = {};
+    nstbByOccFY[key][n.fy] = (nstbByOccFY[key][n.fy] || 0) + (parseInt(n.pass) || 0);
   }
 
-  const rows = Object.entries(byOcc).map(([name, d]) => {
-    const totalTrainees = allFYs.reduce((s, fy) => s + (d.traineesByFY[fy] || 0), 0);
-    return {
-      name,
-      traineesByFY:  d.traineesByFY,
-      totalTrainees,
-      skillTestPass: nstbByOcc[name.toLowerCase().trim()] || 0,
-      employed:      d.employed,
+  // Build rows: one occupation with FY sub-rows + subtotal
+  const occs = Object.entries(byOcc).map(([name, fyData]) => {
+    const fys = allFYs.filter(fy => fyData[fy]);
+    const nstbKey = name.toLowerCase().trim();
+    const fyRows = fys.map(fy => ({
+      fy,
+      trainees:     fyData[fy].trainees || 0,
+      skillTestPass: (nstbByOccFY[nstbKey] || {})[fy] || 0,
+      employed:     fyData[fy].employed || 0,
+    }));
+    const subtotal = {
+      trainees:     fyRows.reduce((s, r) => s + r.trainees, 0),
+      skillTestPass: fyRows.reduce((s, r) => s + r.skillTestPass, 0),
+      employed:     fyRows.reduce((s, r) => s + r.employed, 0),
     };
+    return { name, fyRows, subtotal };
   });
 
-  const totals = {
-    traineesByFY:  allFYs.reduce((acc, fy) => {
-      acc[fy] = rows.reduce((s, r) => s + (r.traineesByFY[fy] || 0), 0);
-      return acc;
-    }, {}),
-    totalTrainees: rows.reduce((s, r) => s + r.totalTrainees, 0),
-    skillTestPass: rows.reduce((s, r) => s + r.skillTestPass, 0),
-    employed:      rows.reduce((s, r) => s + r.employed, 0),
+  const grandTotal = {
+    trainees:     occs.reduce((s, o) => s + o.subtotal.trainees, 0),
+    skillTestPass: occs.reduce((s, o) => s + o.subtotal.skillTestPass, 0),
+    employed:     occs.reduce((s, o) => s + o.subtotal.employed, 0),
   };
 
-  return { rows, totals, allFYs };
+  return { occs, grandTotal, allFYs };
 }
 
 export function buildSpecificOccData(fullInst, activeExps, selectedOccs) {

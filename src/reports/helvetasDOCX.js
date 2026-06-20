@@ -99,40 +99,58 @@ function makeTable1(fullInst, fromFY, toFY) {
 // ── Table 2 ───────────────────────────────────────────────────────────────────
 
 function makeTable2(fullInst, activeExps) {
-  const { rows, totals, allFYs } = buildGeneralExpData(fullInst, activeExps);
-  if (!rows.length) return null;
+  const { occs, grandTotal, allFYs } = buildGeneralExpData(fullInst, activeExps);
+  if (!occs.length) return null;
+
+  const SUBTOTAL_FILL = 'F5F7FA';
 
   const headerRow = new TableRow({
     tableHeader: true,
     children: [
       hdrCell('S.N.'),
       hdrCell('Occupation'),
-      ...allFYs.map(fy => hdrCell(fy)),
-      hdrCell('Total trainees'),
+      hdrCell('Year'),
+      hdrCell('No. of trainees completed the training'),
       hdrCell('No. of skill test passed trainees'),
       hdrCell('No. of employed graduates'),
     ],
   });
 
-  const dataRows = rows.map((row, i) => new TableRow({
-    children: [
-      dataCell(i + 1, { center: true }),
-      dataCell(row.name),
-      ...allFYs.map(fy => dataCell(row.traineesByFY[fy] || '—', { right: true })),
-      dataCell(row.totalTrainees || '—', { right: true, bold: true }),
-      dataCell(row.skillTestPass || '—', { right: true }),
-      dataCell(row.employed || '—', { right: true }),
-    ],
-  }));
+  const dataRows = [];
+  occs.forEach((occ, i) => {
+    occ.fyRows.forEach(row => {
+      dataRows.push(new TableRow({
+        children: [
+          dataCell(i + 1, { center: true }),
+          dataCell(occ.name),
+          dataCell(row.fy),
+          dataCell(row.trainees || '—', { right: true }),
+          dataCell(row.skillTestPass || '—', { right: true }),
+          dataCell(row.employed || '—', { right: true }),
+        ],
+      }));
+    });
+    // sub-total row
+    dataRows.push(new TableRow({
+      children: [
+        dataCell('', { shading: SUBTOTAL_FILL }),
+        dataCell('Sub-total', { bold: true, shading: SUBTOTAL_FILL }),
+        dataCell('', { shading: SUBTOTAL_FILL }),
+        dataCell(occ.subtotal.trainees || '—', { right: true, bold: true, shading: SUBTOTAL_FILL }),
+        dataCell(occ.subtotal.skillTestPass || '—', { right: true, bold: true, shading: SUBTOTAL_FILL }),
+        dataCell(occ.subtotal.employed || '—', { right: true, bold: true, shading: SUBTOTAL_FILL }),
+      ],
+    }));
+  });
 
   const totalRow = new TableRow({
     children: [
       dataCell('', { shading: TOTAL_FILL }),
       dataCell(`Total of ${allFYs.length} year${allFYs.length !== 1 ? 's' : ''}`, { bold: true, shading: TOTAL_FILL }),
-      ...allFYs.map(fy => dataCell(totals.traineesByFY[fy] || '—', { right: true, bold: true, shading: TOTAL_FILL })),
-      dataCell(totals.totalTrainees || '—', { right: true, bold: true, shading: TOTAL_FILL }),
-      dataCell(totals.skillTestPass || '—', { right: true, bold: true, shading: TOTAL_FILL }),
-      dataCell(totals.employed || '—', { right: true, bold: true, shading: TOTAL_FILL }),
+      dataCell('', { shading: TOTAL_FILL }),
+      dataCell(grandTotal.trainees || '—', { right: true, bold: true, shading: TOTAL_FILL }),
+      dataCell(grandTotal.skillTestPass || '—', { right: true, bold: true, shading: TOTAL_FILL }),
+      dataCell(grandTotal.employed || '—', { right: true, bold: true, shading: TOTAL_FILL }),
     ],
   });
 
