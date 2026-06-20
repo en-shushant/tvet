@@ -99,20 +99,18 @@ function makeTable1(fullInst, fromFY, toFY) {
 // ── Table 2 ───────────────────────────────────────────────────────────────────
 
 function makeTable2(fullInst, activeExps) {
-  const { rows, totals } = buildGeneralExpData(fullInst, activeExps);
+  const { rows, totals, allFYs } = buildGeneralExpData(fullInst, activeExps);
   if (!rows.length) return null;
-
-  const fyCount = new Set(activeExps.map(e => e.fy).filter(Boolean)).size;
 
   const headerRow = new TableRow({
     tableHeader: true,
     children: [
       hdrCell('S.N.'),
       hdrCell('Occupation'),
-      hdrCell('No. of trainees completed the training'),
+      ...allFYs.map(fy => hdrCell(fy)),
+      hdrCell('Total trainees'),
       hdrCell('No. of skill test passed trainees'),
       hdrCell('No. of employed graduates'),
-      hdrCell('Training completed Year'),
     ],
   });
 
@@ -120,21 +118,21 @@ function makeTable2(fullInst, activeExps) {
     children: [
       dataCell(i + 1, { center: true }),
       dataCell(row.name),
-      dataCell(row.trainees || '—', { right: true }),
+      ...allFYs.map(fy => dataCell(row.traineesByFY[fy] || '—', { right: true })),
+      dataCell(row.totalTrainees || '—', { right: true, bold: true }),
       dataCell(row.skillTestPass || '—', { right: true }),
       dataCell(row.employed || '—', { right: true }),
-      dataCell(row.fys.join(', ')),
     ],
   }));
 
   const totalRow = new TableRow({
     children: [
       dataCell('', { shading: TOTAL_FILL }),
-      dataCell(`Total of ${fyCount} year${fyCount !== 1 ? 's' : ''}`, { bold: true, shading: TOTAL_FILL }),
-      dataCell(totals.trainees || '—', { right: true, bold: true, shading: TOTAL_FILL }),
+      dataCell(`Total of ${allFYs.length} year${allFYs.length !== 1 ? 's' : ''}`, { bold: true, shading: TOTAL_FILL }),
+      ...allFYs.map(fy => dataCell(totals.traineesByFY[fy] || '—', { right: true, bold: true, shading: TOTAL_FILL })),
+      dataCell(totals.totalTrainees || '—', { right: true, bold: true, shading: TOTAL_FILL }),
       dataCell(totals.skillTestPass || '—', { right: true, bold: true, shading: TOTAL_FILL }),
       dataCell(totals.employed || '—', { right: true, bold: true, shading: TOTAL_FILL }),
-      dataCell('', { shading: TOTAL_FILL }),
     ],
   });
 

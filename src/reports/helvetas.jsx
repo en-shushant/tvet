@@ -79,13 +79,12 @@ function Table1({ fullInst, fromFY, toFY }) {
 }
 
 function Table2({ fullInst, activeExps }) {
-  const { rows, totals } = buildGeneralExpData(fullInst, activeExps);
+  const { rows, totals, allFYs } = buildGeneralExpData(fullInst, activeExps);
   if (!rows.length) return (
     <div style={{padding:16, color:'var(--text3)', fontSize:13}}>
       No occupation data found in selected assignments.
     </div>
   );
-  const fyCount = new Set(activeExps.map(e => e.fy).filter(Boolean)).size;
   return (
     <div>
       <div style={TITLE_STYLE}>
@@ -97,10 +96,10 @@ function Table2({ fullInst, activeExps }) {
           <tr>
             <th style={{...TH, width:40}}>S.N.</th>
             <th style={TH}>Occupation</th>
-            <th style={TH}>No. of trainees completed the training</th>
+            {allFYs.map(fy => <th key={fy} style={TH}>{fy}</th>)}
+            <th style={TH}>Total trainees</th>
             <th style={TH}>No. of skill test passed trainees</th>
             <th style={TH}>No. of employed graduates</th>
-            <th style={TH}>Training completed Year</th>
           </tr>
         </thead>
         <tbody>
@@ -108,18 +107,18 @@ function Table2({ fullInst, activeExps }) {
             <tr key={row.name}>
               <td style={{...TD, textAlign:'center'}}>{i + 1}</td>
               <td style={TD}>{row.name}</td>
-              <td style={TDN}>{row.trainees || '—'}</td>
+              {allFYs.map(fy => <td key={fy} style={TDN}>{row.traineesByFY[fy] || '—'}</td>)}
+              <td style={TDN}>{row.totalTrainees || '—'}</td>
               <td style={TDN}>{row.skillTestPass || '—'}</td>
               <td style={TDN}>{row.employed || '—'}</td>
-              <td style={TD}>{row.fys.join(', ')}</td>
             </tr>
           ))}
           <tr style={TOTAL_STYLE}>
-            <td style={TD} colSpan={2}>Total of {fyCount} year{fyCount !== 1 ? 's' : ''}</td>
-            <td style={TDN}>{totals.trainees || '—'}</td>
+            <td style={TD} colSpan={2}>Total of {allFYs.length} year{allFYs.length !== 1 ? 's' : ''}</td>
+            {allFYs.map(fy => <td key={fy} style={TDN}>{totals.traineesByFY[fy] || '—'}</td>)}
+            <td style={TDN}>{totals.totalTrainees || '—'}</td>
             <td style={TDN}>{totals.skillTestPass || '—'}</td>
             <td style={TDN}>{totals.employed || '—'}</td>
-            <td style={TD}></td>
           </tr>
         </tbody>
       </table>
@@ -200,12 +199,11 @@ function buildPrintHTML(fullInst, activeExps, clients, reportId, fyRangeLabel, o
     const dataRow = ['Annual turnover (as per audit report)', ...fys.map(fy => fmt(byFY[fy])), fmt(total), ''];
     bodyHTML = `<h3>${esc(title)}</h3><table><thead><tr>${headers.map(h => `<th>${esc(h)}</th>`).join('')}</tr></thead><tbody><tr>${dataRow.map(c => `<td>${esc(String(c ?? ''))}</td>`).join('')}</tr></tbody></table>`;
   } else if (reportId === 'h2') {
-    const { rows, totals } = buildGeneralExpData(fullInst, activeExps);
-    const fyCount = new Set(activeExps.map(e => e.fy).filter(Boolean)).size;
+    const { rows, totals, allFYs } = buildGeneralExpData(fullInst, activeExps);
     const title = 'Table 2: Training, skill test and employment placement experience (Level I vocational skill training comprising all the sectors; general experience)';
-    const headers = ['S.N.', 'Occupation', 'No. of trainees completed the training', 'No. of skill test passed trainees', 'No. of employed graduates', 'Training completed Year'];
-    const dataRows = rows.map((r, i) => [i+1, r.name, r.trainees || '—', r.skillTestPass || '—', r.employed || '—', r.fys.join(', ')]);
-    const foot = ['', `Total of ${fyCount} year${fyCount !== 1 ? 's' : ''}`, totals.trainees || '—', totals.skillTestPass || '—', totals.employed || '—', ''];
+    const headers = ['S.N.', 'Occupation', ...allFYs, 'Total trainees', 'No. of skill test passed trainees', 'No. of employed graduates'];
+    const dataRows = rows.map((r, i) => [i+1, r.name, ...allFYs.map(fy => r.traineesByFY[fy] || '—'), r.totalTrainees || '—', r.skillTestPass || '—', r.employed || '—']);
+    const foot = ['', `Total of ${allFYs.length} year${allFYs.length !== 1 ? 's' : ''}`, ...allFYs.map(fy => totals.traineesByFY[fy] || '—'), totals.totalTrainees || '—', totals.skillTestPass || '—', totals.employed || '—'];
     const rowsHTML = dataRows.map(cells => `<tr>${cells.map(c => `<td>${esc(String(c ?? ''))}</td>`).join('')}</tr>`).join('');
     const footHTML = `<tr class="total">${foot.map(c => `<td>${esc(String(c ?? ''))}</td>`).join('')}</tr>`;
     bodyHTML = `<h3>${esc(title)}</h3><table><thead><tr>${headers.map(h => `<th>${esc(h)}</th>`).join('')}</tr></thead><tbody>${rowsHTML}${footHTML}</tbody></table>`;
