@@ -98,8 +98,8 @@ function makeTable1(fullInst, fromFY, toFY) {
 
 // ── Table 2 ───────────────────────────────────────────────────────────────────
 
-function makeTable2(fullInst, activeExps) {
-  const { occs, grandTotal, allFYs } = buildGeneralExpData(fullInst, activeExps);
+function makeTable2(fullInst, activeExps, occupations = []) {
+  const { occs, grandTotal, allFYs } = buildGeneralExpData(fullInst, activeExps, occupations);
   if (!occs.length) return null;
 
   const SUBTOTAL_FILL = 'F5F7FA';
@@ -164,8 +164,8 @@ function makeTable2(fullInst, activeExps) {
 
 // ── Table 3 ───────────────────────────────────────────────────────────────────
 
-function makeTable3(fullInst, activeExps, selectedOccs) {
-  const { rows, totals } = buildSpecificOccData(fullInst, activeExps, selectedOccs);
+function makeTable3(fullInst, activeExps, selectedOccs, occupations = []) {
+  const { rows, totals } = buildSpecificOccData(fullInst, activeExps, selectedOccs, occupations);
   if (!rows.length) return null;
 
   const occLabel = selectedOccs.length ? selectedOccs.join(', ') : 'All Occupations';
@@ -214,13 +214,13 @@ function makeTable3(fullInst, activeExps, selectedOccs) {
 // ── Entry point ───────────────────────────────────────────────────────────────
 
 export async function downloadHelvetasDOCX(fullInst, activeExps, reportId, opts = {}) {
-  const { fromFY, toFY, selectedOccs = [] } = opts;
+  const { fromFY, toFY, selectedOccs = [], occupations = [] } = opts;
 
   let sections = [];
 
   if (reportId === 'h1') sections = makeTable1(fullInst, fromFY, toFY) || [];
-  else if (reportId === 'h2') sections = makeTable2(fullInst, activeExps) || [];
-  else if (reportId === 'h3') sections = makeTable3(fullInst, activeExps, selectedOccs) || [];
+  else if (reportId === 'h2') sections = makeTable2(fullInst, activeExps, occupations) || [];
+  else if (reportId === 'h3') sections = makeTable3(fullInst, activeExps, selectedOccs, occupations) || [];
 
   if (!sections.length) {
     alert('No data to export for the selected filters.');

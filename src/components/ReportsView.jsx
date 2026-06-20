@@ -15,10 +15,18 @@ function ReportsView({ institutes, clients }) {
   const [fromFY, setFromFY]             = useState('');
   const [toFY, setToFY]                 = useState('');
   const [selectedOccs, setSelectedOccs] = useState([]); // for Table 3 occupation filter
+  const [occupations, setOccupations]   = useState([]);
 
   const family = REPORT_FAMILIES.find(f => f.id === familyId) || REPORT_FAMILIES[0];
   const report = family.reports.find(r => r.id === reportId) || family.reports[0];
   const isAggregate = !!report.aggregate;
+
+  // Load occupations once for name lookup in reports
+  useEffect(() => {
+    api('GET', '/occupations', null, getSession()?.token)
+      .then(data => setOccupations(data || []))
+      .catch(() => {});
+  }, []);
 
   // Reset report type when family changes
   useEffect(() => {
@@ -69,11 +77,16 @@ function ReportsView({ institutes, clients }) {
     const names = new Set();
     for (const exp of activeExps) {
       for (const occ of (exp.occupations || [])) {
-        if (occ.nameInLetter) names.add(occ.nameInLetter);
+        let name = occ.nameInLetter || '';
+        if (occupations.length && occ.ctevtOccupationId) {
+          const found = occupations.find(o => String(o.id) === String(occ.ctevtOccupationId));
+          if (found) name = found.name;
+        }
+        if (name) names.add(name);
       }
     }
     return [...names].sort();
-  }, [activeExps]);
+  }, [activeExps, occupations]);
 
   const toggleOcc = (name) =>
     setSelectedOccs(prev => prev.includes(name) ? prev.filter(x => x !== name) : [...prev, name]);
@@ -92,7 +105,7 @@ function ReportsView({ institutes, clients }) {
     (report.requiredFields || []).filter(([key]) => !exp[key]).map(([, label]) => label);
 
   const fyRangeLabel = fromFY || toFY ? `FY ${fromFY || '…'} – ${toFY || '…'}` : null;
-  const opts = { fromFY, toFY, selectedOccs };
+  const opts = { fromFY, toFY, selectedOccs, occupations };
 
   const handlePrint = () => {
     const w = window.open('', '_blank');

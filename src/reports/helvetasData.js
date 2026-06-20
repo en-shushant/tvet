@@ -3,6 +3,15 @@ import { fyInRange, fmt } from './helpers.js';
 
 export { fmt };
 
+function occName(occ, occupations) {
+  if (occupations && occupations.length && occ.ctevtOccupationId) {
+    const id = occ.ctevtOccupationId;
+    const found = occupations.find(o => String(o.id) === String(id));
+    if (found) return found.name;
+  }
+  return occ.nameInLetter || '(unknown)';
+}
+
 export function buildTurnoverData(fullInst, fromFY, toFY) {
   const tax = (fullInst?.taxClearance || []).filter(t => fyInRange(t.fy, fromFY, toFY));
   const fys = [...new Set(tax.map(t => t.fy).filter(Boolean))].sort();
@@ -12,7 +21,7 @@ export function buildTurnoverData(fullInst, fromFY, toFY) {
   return { fys, byFY, total };
 }
 
-export function buildGeneralExpData(fullInst, activeExps) {
+export function buildGeneralExpData(fullInst, activeExps, occupations = []) {
   const allFYs = [...new Set(activeExps.map(e => e.fy).filter(Boolean))].sort();
 
   // byOcc[name][fy] = { trainees, employed }
@@ -20,7 +29,7 @@ export function buildGeneralExpData(fullInst, activeExps) {
   for (const exp of activeExps) {
     const fy = exp.fy;
     for (const occ of (exp.occupations || [])) {
-      const name = occ.nameInLetter || '(unknown)';
+      const name = occName(occ, occupations);
       if (!byOcc[name]) byOcc[name] = {};
       if (fy) {
         if (!byOcc[name][fy]) byOcc[name][fy] = { trainees: 0, employed: 0 };
@@ -67,7 +76,7 @@ export function buildGeneralExpData(fullInst, activeExps) {
   return { occs, grandTotal, allFYs };
 }
 
-export function buildSpecificOccData(fullInst, activeExps, selectedOccs) {
+export function buildSpecificOccData(fullInst, activeExps, selectedOccs, occupations = []) {
   const fys = [...new Set(activeExps.map(e => e.fy).filter(Boolean))].sort();
   const byFY = {};
   for (const fy of fys) byFY[fy] = { trainees: 0, skillTestPass: 0, employed: 0 };
@@ -76,7 +85,7 @@ export function buildSpecificOccData(fullInst, activeExps, selectedOccs) {
     const fy = exp.fy;
     if (!fy || !byFY[fy]) continue;
     for (const occ of (exp.occupations || [])) {
-      const name = occ.nameInLetter || '';
+      const name = occName(occ, occupations);
       if (selectedOccs.length > 0 && !selectedOccs.includes(name)) continue;
       byFY[fy].trainees += parseInt(occ.trainees) || 0;
       byFY[fy].employed += Math.round((parseInt(occ.trainees) || 0) * (parseFloat(occ.employmentActual) || 0) / 100);

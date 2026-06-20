@@ -78,8 +78,8 @@ function Table1({ fullInst, fromFY, toFY }) {
   );
 }
 
-function Table2({ fullInst, activeExps }) {
-  const { occs, grandTotal, allFYs } = buildGeneralExpData(fullInst, activeExps);
+function Table2({ fullInst, activeExps, occupations }) {
+  const { occs, grandTotal, allFYs } = buildGeneralExpData(fullInst, activeExps, occupations);
   if (!occs.length) return (
     <div style={{padding:16, color:'var(--text3)', fontSize:13}}>
       No occupation data found in selected assignments.
@@ -137,8 +137,8 @@ function Table2({ fullInst, activeExps }) {
   );
 }
 
-function Table3({ fullInst, activeExps, selectedOccs }) {
-  const { rows, totals } = buildSpecificOccData(fullInst, activeExps, selectedOccs);
+function Table3({ fullInst, activeExps, selectedOccs, occupations }) {
+  const { rows, totals } = buildSpecificOccData(fullInst, activeExps, selectedOccs, occupations);
   if (!rows.length) return (
     <div style={{padding:16, color:'var(--text3)', fontSize:13}}>
       No data for selected occupations and FY range.
@@ -188,17 +188,17 @@ function Table3({ fullInst, activeExps, selectedOccs }) {
 }
 
 export function renderAggregateTable(fullInst, activeExps, clients, reportId, opts = {}) {
-  const { fromFY, toFY, selectedOccs = [] } = opts;
+  const { fromFY, toFY, selectedOccs = [], occupations = [] } = opts;
   if (reportId === 'h1') return <Table1 fullInst={fullInst} fromFY={fromFY} toFY={toFY} />;
-  if (reportId === 'h2') return <Table2 fullInst={fullInst} activeExps={activeExps} />;
-  if (reportId === 'h3') return <Table3 fullInst={fullInst} activeExps={activeExps} selectedOccs={selectedOccs} />;
+  if (reportId === 'h2') return <Table2 fullInst={fullInst} activeExps={activeExps} occupations={occupations} />;
+  if (reportId === 'h3') return <Table3 fullInst={fullInst} activeExps={activeExps} selectedOccs={selectedOccs} occupations={occupations} />;
   return null;
 }
 
 // ── Print HTML ────────────────────────────────────────────────────────────────
 
 function buildPrintHTML(fullInst, activeExps, clients, reportId, fyRangeLabel, opts = {}) {
-  const { fromFY, toFY, selectedOccs = [] } = opts;
+  const { fromFY, toFY, selectedOccs = [], occupations = [] } = opts;
   const firmName = fullInst?.name || '';
   let bodyHTML = '';
 
@@ -210,7 +210,7 @@ function buildPrintHTML(fullInst, activeExps, clients, reportId, fyRangeLabel, o
     const dataRow = ['Annual turnover (as per audit report)', ...fys.map(fy => fmt(byFY[fy])), fmt(total), ''];
     bodyHTML = `<h3>${esc(title)}</h3><table><thead><tr>${headers.map(h => `<th>${esc(h)}</th>`).join('')}</tr></thead><tbody><tr>${dataRow.map(c => `<td>${esc(String(c ?? ''))}</td>`).join('')}</tr></tbody></table>`;
   } else if (reportId === 'h2') {
-    const { occs, grandTotal, allFYs } = buildGeneralExpData(fullInst, activeExps);
+    const { occs, grandTotal, allFYs } = buildGeneralExpData(fullInst, activeExps, occupations);
     const title = 'Table 2: Training, skill test and employment placement experience (Level I vocational skill training comprising all the sectors; general experience)';
     const headers = ['S.N.', 'Occupation', 'Year', 'No. of trainees completed the training', 'No. of skill test passed trainees', 'No. of employed graduates'];
     let rowsHTML = '';
@@ -223,7 +223,7 @@ function buildPrintHTML(fullInst, activeExps, clients, reportId, fyRangeLabel, o
     const footHTML = `<tr class="total"><td colspan="3">Total of ${allFYs.length} year${allFYs.length !== 1 ? 's' : ''}</td><td class="num">${grandTotal.trainees || '—'}</td><td class="num">${grandTotal.skillTestPass || '—'}</td><td class="num">${grandTotal.employed || '—'}</td></tr>`;
     bodyHTML = `<h3>${esc(title)}</h3><table><thead><tr>${headers.map(h => `<th>${esc(h)}</th>`).join('')}</tr></thead><tbody>${rowsHTML}${footHTML}</tbody></table>`;
   } else if (reportId === 'h3') {
-    const { rows, totals } = buildSpecificOccData(fullInst, activeExps, selectedOccs);
+    const { rows, totals } = buildSpecificOccData(fullInst, activeExps, selectedOccs, occupations);
     const title = 'Table 3: Training, skill test and employment placement experience (at least level I vocational skill training only the proposed occupation)';
     const occLabel = selectedOccs.length ? selectedOccs.join(', ') : 'All Occupations';
     const headers = ['Year', 'No. of trained person', 'No. of skill test passed trainee', 'No. of employed graduates', 'Remarks'];
