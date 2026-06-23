@@ -158,12 +158,19 @@ function ReportsView({ institutes, clients }) {
 
   const allDonorTypes = useMemo(() => {
     const types = new Set();
-    for (const e of rangeFiltered) {
-      const client = (clients || []).find(c => c.id === e.clientId);
-      types.add(client?.type || 'Other');
+    const addFromExps = (exps) => {
+      for (const e of exps) {
+        const client = (clients || []).find(c => c.id === e.clientId);
+        types.add(client?.type || 'Other');
+      }
+    };
+    if (isMultiInst) {
+      for (const inst of Object.values(fwFullInsts)) addFromExps(inst.experience || []);
+    } else {
+      addFromExps(rangeFiltered);
     }
     return [...types].sort();
-  }, [rangeFiltered, clients]);
+  }, [rangeFiltered, clients, isMultiInst, fwFullInsts]);
 
   const toggleDonorType = (t) =>
     setFilterDonorTypes(prev => prev.includes(t) ? prev.filter(x => x !== t) : [...prev, t]);
@@ -171,18 +178,25 @@ function ReportsView({ institutes, clients }) {
   // All unique occupation names across active assignments (for occupation filter)
   const allOccNames = useMemo(() => {
     const names = new Set();
-    for (const exp of activeExps) {
-      for (const occ of (exp.occupations || [])) {
-        let name = occ.nameInLetter || '';
-        if (occupations.length && occ.ctevtOccupationId) {
-          const found = occupations.find(o => String(o.id) === String(occ.ctevtOccupationId));
-          if (found) name = found.name;
+    const addFromExps = (exps) => {
+      for (const exp of exps) {
+        for (const occ of (exp.occupations || [])) {
+          let name = occ.nameInLetter || '';
+          if (occupations.length && occ.ctevtOccupationId) {
+            const found = occupations.find(o => String(o.id) === String(occ.ctevtOccupationId));
+            if (found) name = found.name;
+          }
+          if (name) names.add(name);
         }
-        if (name) names.add(name);
       }
+    };
+    if (isMultiInst) {
+      for (const inst of Object.values(fwFullInsts)) addFromExps(inst.experience || []);
+    } else {
+      addFromExps(activeExps);
     }
     return [...names].sort();
-  }, [activeExps, occupations]);
+  }, [activeExps, occupations, isMultiInst, fwFullInsts]);
 
   const toggleOcc = (name) =>
     setSelectedOccs(prev => prev.includes(name) ? prev.filter(x => x !== name) : [...prev, name]);
@@ -430,7 +444,7 @@ function ReportsView({ institutes, clients }) {
             )}
 
             {/* Donor type */}
-            {!noInstitute && !isMultiInst && fullInst && allDonorTypes.length > 0 && (
+            {!noInstitute && (fullInst || isMultiInst) && allDonorTypes.length > 0 && (
               <div className="filter-section">
                 <div className="filter-label">Donor type</div>
                 <div className="multi-select-list">
@@ -457,7 +471,7 @@ function ReportsView({ institutes, clients }) {
             )}
 
             {/* Occupation */}
-            {!noInstitute && !isMultiInst && fullInst && report.hasOccupationFilter && allOccNames.length > 0 && (
+            {!noInstitute && (fullInst || isMultiInst) && report.hasOccupationFilter && allOccNames.length > 0 && (
               <div className="filter-section">
                 <div className="filter-label">Occupation</div>
                 <input className="form-input" value={occSearch} onChange={e => setOccSearch(e.target.value)}
@@ -541,7 +555,22 @@ function ReportsView({ institutes, clients }) {
                       const sections = fwInstIds.map(id => {
                         const inst = fwFullInsts[id];
                         if (!inst) return '';
-                        const exps = (inst.experience || []).filter(e => fyInRange(e.fy, fromFY, toFY));
+                        let exps = (inst.experience || []).filter(e => fyInRange(e.fy, fromFY, toFY));
+                        if (filterDonorTypes.length > 0) {
+                          exps = exps.filter(e => {
+                            const client = (clients || []).find(c => c.id === e.clientId);
+                            return filterDonorTypes.includes(client?.type || 'Other');
+                          });
+                        }
+                        if (filterDuration) {
+                          exps = exps.filter(e => (e.occupations || []).some(occ => {
+                            const d = parseFloat(occ.duration) || 0;
+                            if (filterDuration === '160plus') return d >= 160;
+                            if (filterDuration === '390plus') return d >= 390;
+                            if (filterDuration === '390more') return d > 390;
+                            return true;
+                          }));
+                        }
                         return family.buildPrintHTML(inst, exps, clients, report.id, fyRangeLabel, opts);
                       }).filter(Boolean);
                       if (!sections.length) return;
@@ -564,7 +593,22 @@ function ReportsView({ institutes, clients }) {
                 {fwInstIds.map(id => {
                   const inst = fwFullInsts[id];
                   if (!inst) return null;
-                  const exps = (inst.experience || []).filter(e => fyInRange(e.fy, fromFY, toFY));
+                  let exps = (inst.experience || []).filter(e => fyInRange(e.fy, fromFY, toFY));
+                  if (filterDonorTypes.length > 0) {
+                    exps = exps.filter(e => {
+                      const client = (clients || []).find(c => c.id === e.clientId);
+                      return filterDonorTypes.includes(client?.type || 'Other');
+                    });
+                  }
+                  if (filterDuration) {
+                    exps = exps.filter(e => (e.occupations || []).some(occ => {
+                      const d = parseFloat(occ.duration) || 0;
+                      if (filterDuration === '160plus') return d >= 160;
+                      if (filterDuration === '390plus') return d >= 390;
+                      if (filterDuration === '390more') return d > 390;
+                      return true;
+                    }));
+                  }
                   return (
                     <div key={id} className="card" style={{padding:20}}>
                       {family.renderAggregateTable(inst, exps, clients, report.id, opts)}
