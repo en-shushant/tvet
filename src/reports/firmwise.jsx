@@ -17,6 +17,8 @@ export const REPORTS = [
   },
 ];
 
+export const MULTI_INSTITUTE = true;
+
 const TH = { background:'#dce6f1', padding:'7px 10px', border:'1px solid #aab8c8', fontWeight:600, fontSize:12, textAlign:'center', verticalAlign:'middle' };
 const TD = { padding:'6px 10px', border:'1px solid #c0c8d0', fontSize:12, verticalAlign:'middle' };
 const TDN = { ...TD, textAlign:'right' };
@@ -236,6 +238,7 @@ function renderRowCells() { return null; }
 export default {
   id: 'firmwise',
   label: 'Firm-wise Summary',
+  multiInstitute: true,
   reports: REPORTS,
   renderRowCells,
   buildCSVRow,

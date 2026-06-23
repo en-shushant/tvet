@@ -22,6 +22,12 @@ function ReportsView({ institutes, clients }) {
   const [filterDonorTypes, setFilterDonorTypes] = useState([]); // Donor/client type filter
   const [occSearch, setOccSearch] = useState('');
 
+  // Multi-institute state (firm-wise report)
+  const [fwInstIds, setFwInstIds] = useState([]);
+  const [fwFullInsts, setFwFullInsts] = useState({});
+  const [fwLoading, setFwLoading] = useState(false);
+  const [fwInstSearch, setFwInstSearch] = useState('');
+
   // Tools report state
   const [toolsOccIds, setToolsOccIds]       = useState([]);
   const [toolsLevel, setToolsLevel]         = useState('');
@@ -64,15 +70,47 @@ function ReportsView({ institutes, clients }) {
       .catch(() => setLoadingInst(false));
   }, [selectedInst]);
 
+  // Load multi-institute data for firm-wise
+  const isMultiInst = !!family.multiInstitute;
+  useEffect(() => {
+    if (!isMultiInst) return;
+    const token = getSession()?.token;
+    const toLoad = fwInstIds.filter(id => !fwFullInsts[id]);
+    if (!toLoad.length) return;
+    setFwLoading(true);
+    Promise.all(toLoad.map(id =>
+      api('GET', `/institutes/${id}`, null, token).then(d => [id, normInst(d)]).catch(() => [id, null])
+    )).then(results => {
+      setFwFullInsts(prev => {
+        const next = { ...prev };
+        for (const [id, data] of results) { if (data) next[id] = data; }
+        return next;
+      });
+      setFwLoading(false);
+    });
+  }, [fwInstIds, isMultiInst]);
+
+  const toggleFwInst = (id) =>
+    setFwInstIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
+
   const experience = fullInst?.experience || [];
 
   // All FYs across assignments + tax clearance + NSTB records
   const allFYs = useMemo(() => {
+    if (isMultiInst) {
+      const fys = new Set();
+      for (const inst of Object.values(fwFullInsts)) {
+        for (const e of (inst.experience || [])) if (e.fy) fys.add(e.fy);
+        for (const n of (inst.nstb || [])) if (n.fy) fys.add(n.fy);
+        for (const t of (inst.taxClearance || [])) if (t.fy) fys.add(t.fy);
+      }
+      return [...fys].sort();
+    }
     const taxFYs  = (fullInst?.taxClearance || []).map(t => t.fy).filter(Boolean);
     const nstbFYs = (fullInst?.nstb || []).map(n => n.fy).filter(Boolean);
     const expFYs  = experience.map(e => e.fy).filter(Boolean);
     return [...new Set([...expFYs, ...taxFYs, ...nstbFYs])].sort();
-  }, [experience, fullInst]);
+  }, [experience, fullInst, isMultiInst, fwFullInsts]);
 
   // Assignments visible in the checklist (FY range applied)
   const rangeFiltered = useMemo(() =>
@@ -240,7 +278,7 @@ function ReportsView({ institutes, clients }) {
             {family.reports.map(r => <option key={r.id} value={r.id}>{r.label}</option>)}
           </select>
         </div>
-        {!noInstitute && <>
+        {!noInstitute && !isMultiInst && <>
           <div style={{width:1, height:28, background:'var(--border)'}}/>
           <div style={{display:'flex', alignItems:'center', gap:8}}>
             <span style={{fontSize:12, fontWeight:600, color:'var(--text3)', whiteSpace:'nowrap'}}>FIRM</span>
@@ -253,7 +291,7 @@ function ReportsView({ institutes, clients }) {
       </div>
 
       {/* ── Second row: FY range + duration ── */}
-      {!noInstitute && fullInst && (
+      {!noInstitute && (fullInst || isMultiInst) && (
         <div className="card" style={{padding:'10px 18px', display:'flex', alignItems:'center', gap:16, flexWrap:'wrap'}}>
           {allFYs.length > 0 && (
             <div style={{display:'flex', alignItems:'center', gap:8}}>
@@ -298,6 +336,23 @@ function ReportsView({ institutes, clients }) {
             <span className="filter-panel-header-title">Filters</span>
           </div>
           <div className="filter-panel-body">
+
+            {/* Multi-institute selector (firm-wise) */}
+            {isMultiInst && (
+              <div className="filter-section">
+                <div className="filter-label">Firms</div>
+                <input className="form-input" value={fwInstSearch} onChange={e => setFwInstSearch(e.target.value)}
+                  placeholder="Search…" style={{fontSize:12, marginBottom:6}}/>
+                <div className="multi-select-list" style={{maxHeight:220, overflowY:'auto'}}>
+                  {institutes.filter(i => !fwInstSearch || i.name.toLowerCase().includes(fwInstSearch.toLowerCase()) || (i.acronym||'').toLowerCase().includes(fwInstSearch.toLowerCase())).map(i => (
+                    <label key={i.id} className="multi-select-item">
+                      <input type="checkbox" checked={fwInstIds.includes(i.id)} onChange={() => toggleFwInst(i.id)}/>
+                      <span>{i.acronym || i.name}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {/* Tools-specific filters */}
             {noInstitute && (
@@ -360,7 +415,7 @@ function ReportsView({ institutes, clients }) {
             )}
 
             {/* Training type */}
-            {!noInstitute && fullInst && allTrainingTypes.length > 0 && (
+            {!noInstitute && !isMultiInst && fullInst && allTrainingTypes.length > 0 && (
               <div className="filter-section">
                 <div className="filter-label">Training type</div>
                 <div className="multi-select-list">
@@ -375,7 +430,7 @@ function ReportsView({ institutes, clients }) {
             )}
 
             {/* Donor type */}
-            {!noInstitute && fullInst && allDonorTypes.length > 0 && (
+            {!noInstitute && !isMultiInst && fullInst && allDonorTypes.length > 0 && (
               <div className="filter-section">
                 <div className="filter-label">Donor type</div>
                 <div className="multi-select-list">
@@ -390,7 +445,7 @@ function ReportsView({ institutes, clients }) {
             )}
 
             {/* Sort — Table 2 only */}
-            {!noInstitute && fullInst && report.id === 'h2' && (
+            {!noInstitute && !isMultiInst && fullInst && report.id === 'h2' && (
               <div className="filter-section">
                 <div className="filter-label">Sort by</div>
                 <select className="form-input" value={sortBy} onChange={e => setSortBy(e.target.value)}>
@@ -402,7 +457,7 @@ function ReportsView({ institutes, clients }) {
             )}
 
             {/* Occupation */}
-            {!noInstitute && fullInst && report.hasOccupationFilter && allOccNames.length > 0 && (
+            {!noInstitute && !isMultiInst && fullInst && report.hasOccupationFilter && allOccNames.length > 0 && (
               <div className="filter-section">
                 <div className="filter-label">Occupation</div>
                 <input className="form-input" value={occSearch} onChange={e => setOccSearch(e.target.value)}
@@ -419,7 +474,7 @@ function ReportsView({ institutes, clients }) {
             )}
 
             {/* Assignments */}
-            {!noInstitute && fullInst && (
+            {!noInstitute && !isMultiInst && fullInst && (
               <div className="filter-section">
                 <div className="filter-label" style={{justifyContent:'space-between'}}>
                   <span>Assignments</span>
@@ -447,7 +502,7 @@ function ReportsView({ institutes, clients }) {
           </div>
 
           {/* Reset */}
-          {!noInstitute && fullInst && (
+          {!noInstitute && (fullInst || isMultiInst) && (
             <button className="filter-reset-btn" onClick={() => {
               setFromFY(''); setToFY(''); setFilterDuration('');
               setFilterTrainingTypes([]); setFilterDonorTypes([]);
@@ -460,7 +515,65 @@ function ReportsView({ institutes, clients }) {
 
         {/* ── Results ── */}
         <div style={{flex:1, minWidth:0}}>
-          {!noInstitute && !selectedInst ? (
+          {isMultiInst ? (
+            fwInstIds.length === 0 ? (
+              <div className="empty-state" style={{background:'var(--surface)', border:'1px solid var(--border)', borderRadius:'var(--radius-lg)'}}>
+                <div className="empty-state-icon">📊</div>
+                <div className="empty-state-title">Select firms</div>
+                <div className="empty-state-sub">Check one or more firms in the sidebar</div>
+              </div>
+            ) : fwLoading ? (
+              <div className="empty-state" style={{background:'var(--surface)', border:'1px solid var(--border)', borderRadius:'var(--radius-lg)'}}>
+                <div className="empty-state-icon">⏳</div>
+                <div className="empty-state-title">Loading…</div>
+              </div>
+            ) : (
+              <div style={{display:'flex', flexDirection:'column', gap:16}}>
+                {/* Multi-inst header */}
+                <div className="card" style={{padding:'14px 20px', display:'flex', alignItems:'center', gap:10, flexWrap:'wrap'}}>
+                  <div>
+                    <span style={{fontWeight:600, fontSize:14}}>{report.label}</span>
+                    <span style={{fontSize:12, color:'var(--text3)', marginLeft:8}}>{fwInstIds.length} firm{fwInstIds.length !== 1 ? 's' : ''}</span>
+                    {fyRangeLabel && <span style={{fontSize:11, color:'var(--primary)', background:'var(--primary-light,#eff6ff)', borderRadius:4, padding:'1px 7px', marginLeft:8}}>{fyRangeLabel}</span>}
+                  </div>
+                  <div style={{marginLeft:'auto', display:'flex', gap:8}}>
+                    <button className="btn btn-primary btn-sm" onClick={() => {
+                      const sections = fwInstIds.map(id => {
+                        const inst = fwFullInsts[id];
+                        if (!inst) return '';
+                        const exps = (inst.experience || []).filter(e => fyInRange(e.fy, fromFY, toFY));
+                        return family.buildPrintHTML(inst, exps, clients, report.id, fyRangeLabel, opts);
+                      }).filter(Boolean);
+                      if (!sections.length) return;
+                      const first = sections[0];
+                      const bodyParts = sections.map(html => {
+                        const m = html.match(/<body[^>]*>([\s\S]*)<\/body>/i);
+                        return m ? m[1] : '';
+                      });
+                      const combined = first.replace(/<body[^>]*>[\s\S]*<\/body>/i,
+                        `<body>${bodyParts.join('<div style="page-break-before:always"></div>')}</body>`);
+                      const w = window.open('', '_blank');
+                      w.document.write(combined);
+                      w.document.close();
+                      setTimeout(() => w.print(), 300);
+                    }} disabled={fwInstIds.length === 0}>🖨 Print / PDF</button>
+                  </div>
+                </div>
+
+                {/* Per-firm tables */}
+                {fwInstIds.map(id => {
+                  const inst = fwFullInsts[id];
+                  if (!inst) return null;
+                  const exps = (inst.experience || []).filter(e => fyInRange(e.fy, fromFY, toFY));
+                  return (
+                    <div key={id} className="card" style={{padding:20}}>
+                      {family.renderAggregateTable(inst, exps, clients, report.id, opts)}
+                    </div>
+                  );
+                })}
+              </div>
+            )
+          ) : !noInstitute && !selectedInst ? (
             <div className="empty-state" style={{background:'var(--surface)', border:'1px solid var(--border)', borderRadius:'var(--radius-lg)'}}>
               <div className="empty-state-icon">📊</div>
               <div className="empty-state-title">Select an institute</div>
