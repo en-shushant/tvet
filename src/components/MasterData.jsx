@@ -37,6 +37,30 @@ function MasterData({clients, onUpdateClients, token, isAdmin, isEditor, isSuper
   const [bulkRows, setBulkRows] = useState([]);
   const [bulkSaving, setBulkSaving] = useState(false);
   const [toolsSelected, setToolsSelected] = useState([]);
+  const [toolCounts, setToolCounts] = useState([]);
+  const [toolsSearch, setToolsSearch] = useState('');
+
+  const loadToolCounts = async () => {
+    try {
+      const data = await api('GET', '/occupation-tools/counts', null, token);
+      setToolCounts(data || []);
+    } catch { setToolCounts([]); }
+  };
+
+  useEffect(() => { if (tab === 'tools') loadToolCounts(); }, [tab]);
+
+  const getToolCount = (occId, level) => {
+    const c = toolCounts.find(r => r.occupation_id === occId && r.level === level);
+    return c ? c.count : 0;
+  };
+  const getOccTotalCount = (occId) => toolCounts.filter(r => r.occupation_id === occId).reduce((s, r) => s + r.count, 0);
+  const getOccLevelsWithTools = (occId) => toolCounts.filter(r => r.occupation_id === occId).map(r => ({ level: r.level, count: r.count }));
+
+  const selectOccTool = (occId, level) => {
+    setToolsOccId(String(occId));
+    setToolsLevel(level);
+    loadTools(String(occId), level);
+  };
 
   const emptyRow = () => ({_key: uid(), name:'', description:'', unit:'', quantity:'', ownership:'Own', type:'Tool', remarks:''});
   const addBulkRows = (n) => setBulkRows(prev => [...prev, ...Array.from({length:n}, emptyRow)]);
@@ -78,7 +102,7 @@ function MasterData({clients, onUpdateClients, token, isAdmin, isEditor, isSuper
       } catch (err) { setMasterErr(`Failed to save row "${row.description}": ${err.message}`); }
     }
     setBulkSaving(false);
-    if (created > 0) { setToolsBulkMode(false); setBulkRows([]); }
+    if (created > 0) { setToolsBulkMode(false); setBulkRows([]); loadToolCounts(); }
   };
 
   const deleteTool = async (id) => {
@@ -87,6 +111,7 @@ function MasterData({clients, onUpdateClients, token, isAdmin, isEditor, isSuper
       await api('DELETE', `/occupation-tools/${id}`, null, token);
       setToolsList(prev => prev.filter(t => t.id !== id));
       setToolsSelected(prev => prev.filter(x => x !== id));
+      loadToolCounts();
     } catch (err) { setMasterErr('Failed to delete: ' + err.message); }
   };
 
@@ -100,6 +125,7 @@ function MasterData({clients, onUpdateClients, token, isAdmin, isEditor, isSuper
       } catch (err) { setMasterErr('Failed to delete: ' + err.message); }
     }
     setToolsSelected([]);
+    loadToolCounts();
   };
 
   const toggleToolSelect = (id) => setToolsSelected(prev => prev.includes(id) ? prev.filter(x=>x!==id) : [...prev, id]);
@@ -369,177 +395,212 @@ function MasterData({clients, onUpdateClients, token, isAdmin, isEditor, isSuper
 
       {tab==='tools' && (
         <>
-          <div style={{display:'flex', gap:12, marginBottom:16, flexWrap:'wrap', alignItems:'end'}}>
-            <div className="form-group" style={{margin:0, flex:'1 1 220px', position:'relative'}}>
-              <label style={{fontSize:12}}>Occupation</label>
-              <input
-                value={toolsOccSearch !== null ? toolsOccSearch : (OCCUPATIONS.find(o=>String(o.id)===String(toolsOccId))?.name || '')}
-                onChange={e=>{ setToolsOccSearch(e.target.value); setToolsOccDropdown(true); }}
-                onFocus={()=>setToolsOccDropdown(true)}
-                placeholder="Search occupation..."
-              />
-              {toolsOccDropdown && (
-                <>
-                  <div style={{position:'fixed', inset:0, zIndex:99}} onClick={()=>{ setToolsOccDropdown(false); setToolsOccSearch(null); }}/>
-                  <div style={{position:'absolute', top:'100%', left:0, right:0, zIndex:100, background:'var(--surface)', border:'1px solid var(--border)', borderRadius:6, maxHeight:240, overflowY:'auto', boxShadow:'0 4px 16px rgba(0,0,0,.2)'}}>
-                    {OCCUPATIONS.filter(o => !toolsOccSearch || o.name.toLowerCase().includes(toolsOccSearch.toLowerCase())).map(o=>(
-                      <div key={o.id} style={{padding:'7px 12px', fontSize:13, cursor:'pointer', background: String(o.id)===String(toolsOccId)?'var(--primary-light,#eff6ff)':'transparent'}}
-                        onMouseDown={e=>e.preventDefault()}
-                        onClick={()=>{ setToolsOccId(String(o.id)); loadTools(String(o.id), toolsLevel); setToolsOccDropdown(false); setToolsOccSearch(null); }}>
-                        {o.name}{o.level ? ` (${o.level})` : ''}
-                      </div>
-                    ))}
-                  </div>
-                </>
-              )}
+          {/* ── Occupation list with tool counts ── */}
+          <div style={{display:'flex', gap:12, marginBottom:12}}>
+            <div className="search-wrap" style={{flex:1}}>
+              <span className="search-icon">🔍</span>
+              <input value={toolsSearch} onChange={e=>setToolsSearch(e.target.value)} placeholder="Search occupations..."/>
             </div>
-            <div className="form-group" style={{margin:0, width:160}}>
-              <label style={{fontSize:12}}>Level</label>
-              <select value={toolsLevel} onChange={e=>{ setToolsLevel(e.target.value); loadTools(toolsOccId, e.target.value); }}>
-                <option value="">— Level —</option>
-                <option>Level 1</option>
-                <option>Level 2</option>
-                <option>Level 3</option>
-                <option>Professional</option>
-              </select>
-            </div>
-            {toolsOccId && toolsLevel && canManageOccs && !toolsBulkMode && (
-              <button className="btn btn-primary btn-sm" onClick={enterBulkMode}>+ Add items</button>
-            )}
+          </div>
+          <div className="card" style={{padding:0, overflow:'hidden', marginBottom:16}}>
+            <table>
+              <thead>
+                <tr>
+                  <th style={{width:40}}>#</th>
+                  <th>Occupation</th>
+                  <th>Sector</th>
+                  <th style={{width:80}}>Level 1</th>
+                  <th style={{width:80}}>Level 2</th>
+                  <th style={{width:80}}>Level 3</th>
+                  <th style={{width:90}}>Professional</th>
+                  <th style={{width:60}}>Total</th>
+                </tr>
+              </thead>
+              <tbody>
+                {OCCUPATIONS.filter(o => !toolsSearch || o.name.toLowerCase().includes(toolsSearch.toLowerCase())).map((o, idx) => {
+                  const total = getOccTotalCount(o.id);
+                  const isActive = String(o.id) === String(toolsOccId);
+                  return (
+                    <tr key={o.id} style={{background: isActive ? 'var(--primary-light,#eff6ff)' : undefined}}>
+                      <td className="mono text-muted" style={{fontSize:11}}>{idx+1}</td>
+                      <td>
+                        <span style={{fontWeight:500, fontSize:13, cursor:'pointer', color:'var(--primary)'}}
+                          onClick={()=>{ setToolsOccId(String(o.id)); setToolsLevel('Level 1'); loadTools(String(o.id), 'Level 1'); }}>
+                          {o.name}
+                        </span>
+                      </td>
+                      <td><span className="badge badge-gray" style={{fontSize:10}}>{o.sector}</span></td>
+                      {['Level 1','Level 2','Level 3','Professional'].map(lv => {
+                        const cnt = getToolCount(o.id, lv);
+                        return (
+                          <td key={lv} style={{textAlign:'center'}}>
+                            {cnt > 0 ? (
+                              <span style={{cursor:'pointer', color:'var(--primary)', fontWeight:600, fontSize:12}}
+                                onClick={()=>selectOccTool(o.id, lv)}>{cnt}</span>
+                            ) : (
+                              <span className="text-muted" style={{fontSize:11, cursor:'pointer'}}
+                                onClick={()=>selectOccTool(o.id, lv)}>—</span>
+                            )}
+                          </td>
+                        );
+                      })}
+                      <td style={{textAlign:'center', fontWeight: total > 0 ? 600 : 400, fontSize:12}}>
+                        {total > 0 ? total : '—'}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
           </div>
 
-          {/* ── Bulk entry form ── */}
-          {toolsBulkMode && toolsOccId && toolsLevel && (
-            <div className="card" style={{padding:16, marginBottom:16}}>
-              <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:12}}>
-                <div style={{fontWeight:600, fontSize:14}}>Add Tools / Consumables</div>
-                <div style={{display:'flex', gap:6, alignItems:'center'}}>
-                  <span style={{fontSize:12, color:'var(--text3)'}}>Add rows:</span>
-                  {[1,2,3,5,10,20].map(n=>(
-                    <button key={n} className="btn btn-ghost btn-sm" style={{padding:'2px 8px', fontSize:11}} onClick={()=>addBulkRows(n)}>+{n}</button>
-                  ))}
+          {/* ── Selected occupation detail ── */}
+          {toolsOccId && toolsLevel && (
+            <div className="card" style={{padding:0, overflow:'hidden'}}>
+              <div style={{padding:'12px 16px', borderBottom:'1px solid var(--border)', display:'flex', justifyContent:'space-between', alignItems:'center', flexWrap:'wrap', gap:8}}>
+                <div>
+                  <span style={{fontWeight:600, fontSize:14}}>
+                    {OCCUPATIONS.find(o=>String(o.id)===String(toolsOccId))?.name || ''}
+                  </span>
+                  <span style={{margin:'0 8px', color:'var(--text3)'}}>—</span>
+                  <select value={toolsLevel} onChange={e=>{ setToolsLevel(e.target.value); loadTools(toolsOccId, e.target.value); setToolsSelected([]); }} style={{fontSize:13, padding:'3px 8px', borderRadius:4, border:'1px solid var(--border)'}}>
+                    <option>Level 1</option>
+                    <option>Level 2</option>
+                    <option>Level 3</option>
+                    <option>Professional</option>
+                  </select>
+                </div>
+                <div style={{display:'flex', gap:8, alignItems:'center'}}>
+                  {canManageOccs && toolsSelected.length > 0 && (
+                    <button className="btn btn-danger btn-sm" onClick={deleteSelectedTools}>Delete {toolsSelected.length} selected</button>
+                  )}
+                  {canManageOccs && !toolsBulkMode && (
+                    <button className="btn btn-primary btn-sm" onClick={enterBulkMode}>+ Add items</button>
+                  )}
+                  <button className="btn btn-ghost btn-sm" onClick={()=>{ setToolsOccId(''); setToolsLevel(''); setToolsList([]); setToolsSelected([]); setToolsBulkMode(false); }}>✕ Close</button>
                 </div>
               </div>
-              <div style={{overflowX:'auto'}}>
-                <table style={{width:'100%', borderCollapse:'collapse'}}>
-                  <thead>
-                    <tr>
-                      <th style={{width:30, padding:'6px 4px', fontSize:11}}></th>
-                      <th style={{padding:'6px 8px', fontSize:11}}>#</th>
-                      <th style={{padding:'6px 8px', fontSize:11, width:130}}>Name</th>
-                      <th style={{padding:'6px 8px', fontSize:11}}>Description *</th>
-                      <th style={{padding:'6px 8px', fontSize:11, width:80}}>Unit</th>
-                      <th style={{padding:'6px 8px', fontSize:11, width:60}}>Qty</th>
-                      <th style={{padding:'6px 8px', fontSize:11, width:100}}>Ownership</th>
-                      <th style={{padding:'6px 8px', fontSize:11, width:110}}>Type</th>
-                      <th style={{padding:'6px 8px', fontSize:11}}>Remarks</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {bulkRows.map((row, i) => (
-                      <tr key={row._key}>
-                        <td style={{padding:'3px 4px', textAlign:'center'}}>
-                          <button className="btn btn-ghost btn-sm" style={{padding:'1px 4px', fontSize:11, color:'var(--danger,#ef4444)'}}
-                            onClick={()=>setBulkRows(prev=>prev.filter((_,idx)=>idx!==i))}>✕</button>
-                        </td>
-                        <td style={{padding:'3px 4px', fontSize:11, textAlign:'center', color:'var(--text3)'}}>{i+1}</td>
-                        <td style={{padding:'3px 4px'}}><input value={row.name} onChange={e=>setBulkRows(prev=>{const n=[...prev];n[i]={...n[i],name:e.target.value};return n;})} placeholder="Name" style={{fontSize:12, padding:'4px 6px'}}/></td>
-                        <td style={{padding:'3px 4px'}}><input value={row.description} onChange={e=>setBulkRows(prev=>{const n=[...prev];n[i]={...n[i],description:e.target.value};return n;})} placeholder="Description" style={{fontSize:12, padding:'4px 6px'}}/></td>
-                        <td style={{padding:'3px 4px'}}><input value={row.unit} onChange={e=>setBulkRows(prev=>{const n=[...prev];n[i]={...n[i],unit:e.target.value};return n;})} placeholder="Unit" style={{fontSize:12, padding:'4px 6px'}}/></td>
-                        <td style={{padding:'3px 4px'}}><input type="number" value={row.quantity} onChange={e=>setBulkRows(prev=>{const n=[...prev];n[i]={...n[i],quantity:e.target.value};return n;})} style={{fontSize:12, padding:'4px 6px'}}/></td>
-                        <td style={{padding:'3px 4px'}}>
-                          <select value={row.ownership} onChange={e=>setBulkRows(prev=>{const n=[...prev];n[i]={...n[i],ownership:e.target.value};return n;})} style={{fontSize:12, padding:'4px 6px'}}>
-                            <option>Own</option><option>Rented</option>
-                          </select>
-                        </td>
-                        <td style={{padding:'3px 4px'}}>
-                          <select value={row.type} onChange={e=>setBulkRows(prev=>{const n=[...prev];n[i]={...n[i],type:e.target.value};return n;})} style={{fontSize:12, padding:'4px 6px'}}>
-                            <option>Tool</option><option>Consumable</option><option>Safety Tool</option><option>Stationery</option>
-                          </select>
-                        </td>
-                        <td style={{padding:'3px 4px'}}><input value={row.remarks} onChange={e=>setBulkRows(prev=>{const n=[...prev];n[i]={...n[i],remarks:e.target.value};return n;})} placeholder="Remarks" style={{fontSize:12, padding:'4px 6px'}}/></td>
+
+              {/* Bulk entry form */}
+              {toolsBulkMode && (
+                <div style={{padding:16, borderBottom:'1px solid var(--border)', background:'var(--surface-raised,#fafbfc)'}}>
+                  <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:10}}>
+                    <div style={{fontWeight:600, fontSize:13}}>Add Items</div>
+                    <div style={{display:'flex', gap:6, alignItems:'center'}}>
+                      <span style={{fontSize:12, color:'var(--text3)'}}>Add rows:</span>
+                      {[1,2,3,5,10,20].map(n=>(
+                        <button key={n} className="btn btn-ghost btn-sm" style={{padding:'2px 8px', fontSize:11}} onClick={()=>addBulkRows(n)}>+{n}</button>
+                      ))}
+                    </div>
+                  </div>
+                  <div style={{overflowX:'auto'}}>
+                    <table style={{width:'100%', borderCollapse:'collapse'}}>
+                      <thead>
+                        <tr>
+                          <th style={{width:30, padding:'6px 4px', fontSize:11}}></th>
+                          <th style={{padding:'6px 8px', fontSize:11}}>#</th>
+                          <th style={{padding:'6px 8px', fontSize:11, width:130}}>Name</th>
+                          <th style={{padding:'6px 8px', fontSize:11}}>Description *</th>
+                          <th style={{padding:'6px 8px', fontSize:11, width:80}}>Unit</th>
+                          <th style={{padding:'6px 8px', fontSize:11, width:60}}>Qty</th>
+                          <th style={{padding:'6px 8px', fontSize:11, width:100}}>Ownership</th>
+                          <th style={{padding:'6px 8px', fontSize:11, width:110}}>Type</th>
+                          <th style={{padding:'6px 8px', fontSize:11}}>Remarks</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {bulkRows.map((row, i) => (
+                          <tr key={row._key}>
+                            <td style={{padding:'3px 4px', textAlign:'center'}}>
+                              <button className="btn btn-ghost btn-sm" style={{padding:'1px 4px', fontSize:11, color:'var(--danger,#ef4444)'}}
+                                onClick={()=>setBulkRows(prev=>prev.filter((_,idx)=>idx!==i))}>✕</button>
+                            </td>
+                            <td style={{padding:'3px 4px', fontSize:11, textAlign:'center', color:'var(--text3)'}}>{i+1}</td>
+                            <td style={{padding:'3px 4px'}}><input value={row.name} onChange={e=>setBulkRows(prev=>{const n=[...prev];n[i]={...n[i],name:e.target.value};return n;})} placeholder="Name" style={{fontSize:12, padding:'4px 6px'}}/></td>
+                            <td style={{padding:'3px 4px'}}><input value={row.description} onChange={e=>setBulkRows(prev=>{const n=[...prev];n[i]={...n[i],description:e.target.value};return n;})} placeholder="Description" style={{fontSize:12, padding:'4px 6px'}}/></td>
+                            <td style={{padding:'3px 4px'}}><input value={row.unit} onChange={e=>setBulkRows(prev=>{const n=[...prev];n[i]={...n[i],unit:e.target.value};return n;})} placeholder="Unit" style={{fontSize:12, padding:'4px 6px'}}/></td>
+                            <td style={{padding:'3px 4px'}}><input type="number" value={row.quantity} onChange={e=>setBulkRows(prev=>{const n=[...prev];n[i]={...n[i],quantity:e.target.value};return n;})} style={{fontSize:12, padding:'4px 6px'}}/></td>
+                            <td style={{padding:'3px 4px'}}>
+                              <select value={row.ownership} onChange={e=>setBulkRows(prev=>{const n=[...prev];n[i]={...n[i],ownership:e.target.value};return n;})} style={{fontSize:12, padding:'4px 6px'}}>
+                                <option>Own</option><option>Rented</option>
+                              </select>
+                            </td>
+                            <td style={{padding:'3px 4px'}}>
+                              <select value={row.type} onChange={e=>setBulkRows(prev=>{const n=[...prev];n[i]={...n[i],type:e.target.value};return n;})} style={{fontSize:12, padding:'4px 6px'}}>
+                                <option>Tool</option><option>Consumable</option><option>Safety Tool</option><option>Stationery</option>
+                              </select>
+                            </td>
+                            <td style={{padding:'3px 4px'}}><input value={row.remarks} onChange={e=>setBulkRows(prev=>{const n=[...prev];n[i]={...n[i],remarks:e.target.value};return n;})} placeholder="Remarks" style={{fontSize:12, padding:'4px 6px'}}/></td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                  <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginTop:10}}>
+                    <span style={{fontSize:12, color:'var(--text3)'}}>{bulkRows.length} row{bulkRows.length!==1?'s':''} · {bulkRows.filter(r=>r.description.trim()).length} with data</span>
+                    <div style={{display:'flex', gap:8}}>
+                      <button className="btn btn-secondary btn-sm" onClick={()=>{setToolsBulkMode(false);setBulkRows([]);}}>Cancel</button>
+                      <button className="btn btn-primary btn-sm" onClick={saveBulkRows} disabled={bulkSaving || !bulkRows.some(r=>r.description.trim())}>
+                        {bulkSaving ? 'Saving...' : `Save ${bulkRows.filter(r=>r.description.trim()).length} item${bulkRows.filter(r=>r.description.trim()).length!==1?'s':''}`}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Existing items table */}
+              {toolsLoading ? (
+                <div style={{padding:24, textAlign:'center', color:'var(--text3)'}}>Loading...</div>
+              ) : (
+                <div style={{overflowX:'auto'}}>
+                  <table>
+                    <thead>
+                      <tr>
+                        {canManageOccs && <th style={{width:30}}><input type="checkbox" checked={toolsList.length>0 && toolsSelected.length===toolsList.length} onChange={toggleAllTools}/></th>}
+                        <th style={{width:40}}>S.N.</th>
+                        <th>Name</th>
+                        <th>Description</th>
+                        <th>Unit</th>
+                        <th>Qty</th>
+                        <th>Ownership</th>
+                        <th>Type</th>
+                        <th>Remarks</th>
+                        {canManageOccs && <th></th>}
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-              <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginTop:12}}>
-                <span style={{fontSize:12, color:'var(--text3)'}}>{bulkRows.length} row{bulkRows.length!==1?'s':''} · {bulkRows.filter(r=>r.description.trim()).length} with data</span>
-                <div style={{display:'flex', gap:8}}>
-                  <button className="btn btn-secondary btn-sm" onClick={()=>{setToolsBulkMode(false);setBulkRows([]);}}>Cancel</button>
-                  <button className="btn btn-primary btn-sm" onClick={saveBulkRows} disabled={bulkSaving || !bulkRows.some(r=>r.description.trim())}>
-                    {bulkSaving ? 'Saving...' : `Save ${bulkRows.filter(r=>r.description.trim()).length} item${bulkRows.filter(r=>r.description.trim()).length!==1?'s':''}`}
-                  </button>
+                    </thead>
+                    <tbody>
+                      {toolsList.length === 0 && (
+                        <tr><td colSpan={canManageOccs ? 10 : 8} style={{textAlign:'center', color:'var(--text3)', padding:20}}>No items yet. Click "+ Add items" above.</td></tr>
+                      )}
+                      {toolsList.map((t, i) => (
+                        <tr key={t.id} style={{background: toolsSelected.includes(t.id) ? 'var(--primary-light,#eff6ff)' : undefined}}>
+                          {canManageOccs && <td style={{textAlign:'center'}}><input type="checkbox" checked={toolsSelected.includes(t.id)} onChange={()=>toggleToolSelect(t.id)}/></td>}
+                          <td className="mono" style={{textAlign:'center'}}>{i+1}</td>
+                          <td style={{fontSize:13, fontWeight:500}}>{t.name || '—'}</td>
+                          <td style={{fontSize:13}}>{t.description}</td>
+                          <td>{t.unit || '—'}</td>
+                          <td className="mono" style={{textAlign:'right'}}>{t.quantity ?? '—'}</td>
+                          <td>{t.ownership || '—'}</td>
+                          <td><span className="badge" style={{fontSize:10,
+                            background:{Tool:'#d1ecf1',Consumable:'#fef3cd','Safety Tool':'#d4edda',Stationery:'#e2d9f3'}[t.type]||'#eee',
+                            color:{Tool:'#0c5460',Consumable:'#856404','Safety Tool':'#155724',Stationery:'#4a1d96'}[t.type]||'#333',
+                          }}>{t.type}</span></td>
+                          <td style={{fontSize:12, color:'var(--text3)'}}>{t.remarks || ''}</td>
+                          {canManageOccs && (
+                            <td style={{display:'flex', gap:4}}>
+                              <button className="btn btn-ghost btn-sm" onClick={()=>setToolModal(t)}>✏</button>
+                              <button className="btn btn-danger btn-sm" onClick={()=>deleteTool(t.id)}>🗑</button>
+                            </td>
+                          )}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
                 </div>
-              </div>
+              )}
             </div>
           )}
 
-          {!toolsOccId || !toolsLevel ? (
-            <div style={{padding:24, color:'var(--text3)', fontSize:13, textAlign:'center'}}>
-              Select an occupation and level to view or manage tools and consumables.
-            </div>
-          ) : toolsLoading ? (
-            <div style={{padding:24, textAlign:'center', color:'var(--text3)'}}>Loading...</div>
-          ) : (
-            <>
-              <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:8}}>
-                <div style={{fontSize:12, color:'var(--text3)'}}>
-                  {toolsList.length} item{toolsList.length!==1?'s':''} for {OCCUPATIONS.find(o=>String(o.id)===String(toolsOccId))?.name || ''} — {toolsLevel}
-                </div>
-                {canManageOccs && toolsSelected.length > 0 && (
-                  <button className="btn btn-danger btn-sm" onClick={deleteSelectedTools}>
-                    Delete {toolsSelected.length} selected
-                  </button>
-                )}
-              </div>
-              <div className="card" style={{padding:0, overflow:'auto'}}>
-                <table>
-                  <thead>
-                    <tr>
-                      {canManageOccs && <th style={{width:30}}><input type="checkbox" checked={toolsList.length>0 && toolsSelected.length===toolsList.length} onChange={toggleAllTools}/></th>}
-                      <th style={{width:40}}>S.N.</th>
-                      <th>Name</th>
-                      <th>Description</th>
-                      <th>Unit</th>
-                      <th>Qty</th>
-                      <th>Ownership</th>
-                      <th>Type</th>
-                      <th>Remarks</th>
-                      {canManageOccs && <th></th>}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {toolsList.length === 0 && (
-                      <tr><td colSpan={canManageOccs ? 10 : 8} style={{textAlign:'center', color:'var(--text3)', padding:20}}>No items yet. Click "+ Add items" to add tools or consumables.</td></tr>
-                    )}
-                    {toolsList.map((t, i) => (
-                      <tr key={t.id} style={{background: toolsSelected.includes(t.id) ? 'var(--primary-light,#eff6ff)' : undefined}}>
-                        {canManageOccs && <td style={{textAlign:'center'}}><input type="checkbox" checked={toolsSelected.includes(t.id)} onChange={()=>toggleToolSelect(t.id)}/></td>}
-                        <td className="mono" style={{textAlign:'center'}}>{i+1}</td>
-                        <td style={{fontSize:13, fontWeight:500}}>{t.name || '—'}</td>
-                        <td style={{fontSize:13}}>{t.description}</td>
-                        <td>{t.unit || '—'}</td>
-                        <td className="mono" style={{textAlign:'right'}}>{t.quantity ?? '—'}</td>
-                        <td>{t.ownership || '—'}</td>
-                        <td><span className="badge" style={{fontSize:10,
-                          background:{Tool:'#d1ecf1',Consumable:'#fef3cd','Safety Tool':'#d4edda',Stationery:'#e2d9f3'}[t.type]||'#eee',
-                          color:{Tool:'#0c5460',Consumable:'#856404','Safety Tool':'#155724',Stationery:'#4a1d96'}[t.type]||'#333',
-                        }}>{t.type}</span></td>
-                        <td style={{fontSize:12, color:'var(--text3)'}}>{t.remarks || ''}</td>
-                        {canManageOccs && (
-                          <td style={{display:'flex', gap:4}}>
-                            <button className="btn btn-ghost btn-sm" onClick={()=>setToolModal(t)}>✏</button>
-                            <button className="btn btn-danger btn-sm" onClick={()=>deleteTool(t.id)}>🗑</button>
-                          </td>
-                        )}
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </>
-          )}
           {toolModal !== null && (
             <ToolForm tool={toolModal.id ? toolModal : null} onSave={saveTool} onClose={()=>setToolModal(null)} />
           )}

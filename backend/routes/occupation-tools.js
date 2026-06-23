@@ -3,6 +3,15 @@ const { pool } = require('../db/pool');
 const { authenticate, requireWriter } = require('../middleware/auth');
 router.use(authenticate);
 
+router.get('/counts', async (req, res, next) => {
+  try {
+    const { rows } = await pool.query(
+      `SELECT occupation_id, level, COUNT(*)::int as count FROM occupation_tools GROUP BY occupation_id, level ORDER BY occupation_id, level`
+    );
+    res.json(rows);
+  } catch (e) { next(e); }
+});
+
 router.get('/:occupationId/:level', async (req, res, next) => {
   try {
     const { occupationId, level } = req.params;
