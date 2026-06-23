@@ -236,8 +236,9 @@ function Table4({ fullInst, activeExps, occupations }) {
               <td style={TDN}>{occ.empRate > 0 ? `${occ.empRate}%` : '—'}</td>
             </tr>
           ))}
-          <tr style={TOTAL_STYLE}>
-            <td style={TD} colSpan={2}>Grand Total</td>
+          <tr style={{background:'#e8f0fe', fontWeight:600}}>
+            <td style={TD}></td>
+            <td style={{...TD, fontWeight:600}}>General (All Occupations)</td>
             <td style={TDN}>{grand.trained || '—'}</td>
             <td style={TDN}>{grand.stAppeared || '—'}</td>
             <td style={TDN}>{grand.stPass || '—'}</td>
@@ -305,8 +306,8 @@ function buildPrintHTML(fullInst, activeExps, clients, reportId, fyRangeLabel, o
     occs.forEach((o, i) => {
       rowsHTML += `<tr><td style="text-align:center">${i+1}</td><td>${esc(o.name)}</td><td class="num">${o.trained||'—'}</td><td class="num">${o.stAppeared||'—'}</td><td class="num">${o.stPass||'—'}</td><td class="num">${o.employed||'—'}</td><td class="num">${o.empRate>0?o.empRate+'%':'—'}</td></tr>`;
     });
-    const footHTML = `<tr class="total"><td colspan="2">Grand Total</td><td class="num">${grand.trained||'—'}</td><td class="num">${grand.stAppeared||'—'}</td><td class="num">${grand.stPass||'—'}</td><td class="num">${grand.employed||'—'}</td><td class="num">${grand.empRate>0?grand.empRate+'%':'—'}</td></tr>`;
-    bodyHTML = `<h3>${esc(title)}</h3><p><strong>${esc(firmName)}</strong></p><table><thead><tr>${headers.map(h=>`<th>${esc(h)}</th>`).join('')}</tr></thead><tbody>${rowsHTML}${footHTML}</tbody></table>`;
+    const generalHTML = `<tr style="background:#e8f0fe;font-weight:600"><td></td><td>General (All Occupations)</td><td class="num">${grand.trained||'—'}</td><td class="num">${grand.stAppeared||'—'}</td><td class="num">${grand.stPass||'—'}</td><td class="num">${grand.employed||'—'}</td><td class="num">${grand.empRate>0?grand.empRate+'%':'—'}</td></tr>`;
+    bodyHTML = `<h3>${esc(title)}</h3><p><strong>${esc(firmName)}</strong></p><table><thead><tr>${headers.map(h=>`<th>${esc(h)}</th>`).join('')}</tr></thead><tbody>${rowsHTML}${generalHTML}</tbody></table>`;
   }
 
   return `<!DOCTYPE html><html><head><meta charset="utf-8">

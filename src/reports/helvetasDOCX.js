@@ -246,15 +246,16 @@ function makeTable4(fullInst, activeExps, occupations = []) {
     ],
   }));
 
+  const GENERAL_FILL = 'D6E4F0';
   const totalRow = new TableRow({
     children: [
-      dataCell('', { shading: TOTAL_FILL }),
-      dataCell('Grand Total', { bold: true, shading: TOTAL_FILL }),
-      dataCell(grand.trained || '—', { right: true, bold: true, shading: TOTAL_FILL }),
-      dataCell(grand.stAppeared || '—', { right: true, bold: true, shading: TOTAL_FILL }),
-      dataCell(grand.stPass || '—', { right: true, bold: true, shading: TOTAL_FILL }),
-      dataCell(grand.employed || '—', { right: true, bold: true, shading: TOTAL_FILL }),
-      dataCell(grand.empRate > 0 ? `${grand.empRate}%` : '—', { right: true, bold: true, shading: TOTAL_FILL }),
+      dataCell('', { shading: GENERAL_FILL }),
+      dataCell('General (All Occupations)', { bold: true, shading: GENERAL_FILL }),
+      dataCell(grand.trained || '—', { right: true, bold: true, shading: GENERAL_FILL }),
+      dataCell(grand.stAppeared || '—', { right: true, bold: true, shading: GENERAL_FILL }),
+      dataCell(grand.stPass || '—', { right: true, bold: true, shading: GENERAL_FILL }),
+      dataCell(grand.employed || '—', { right: true, bold: true, shading: GENERAL_FILL }),
+      dataCell(grand.empRate > 0 ? `${grand.empRate}%` : '—', { right: true, bold: true, shading: GENERAL_FILL }),
     ],
   });
 

@@ -19,6 +19,7 @@ function ReportsView({ institutes, clients }) {
   const [sortBy, setSortBy]             = useState('default'); // for Table 2 occupation sort
   const [filterTrainingTypes, setFilterTrainingTypes] = useState([]); // Helvetas training type filter
   const [filterDuration, setFilterDuration] = useState(''); // Helvetas duration filter
+  const [filterDonorTypes, setFilterDonorTypes] = useState([]); // Donor/client type filter
 
   // Tools report state
   const [toolsOccIds, setToolsOccIds]       = useState([]);
@@ -84,6 +85,13 @@ function ReportsView({ institutes, clients }) {
     if (filterTrainingTypes.length > 0) {
       filtered = filtered.filter(e => filterTrainingTypes.includes(e.trainingType || ''));
     }
+    if (filterDonorTypes.length > 0) {
+      filtered = filtered.filter(e => {
+        const client = (clients || []).find(c => c.id === e.clientId);
+        const ctype = client?.type || 'Other';
+        return filterDonorTypes.includes(ctype);
+      });
+    }
     if (filterDuration) {
       filtered = filtered.filter(e => {
         const occs = e.occupations || [];
@@ -97,7 +105,7 @@ function ReportsView({ institutes, clients }) {
       });
     }
     return filtered;
-  }, [rangeFiltered, selectedIds, filterTrainingTypes, filterDuration]);
+  }, [rangeFiltered, selectedIds, filterTrainingTypes, filterDuration, filterDonorTypes, clients]);
 
   // All training types present in range-filtered assignments
   const allTrainingTypes = useMemo(() => {
@@ -108,6 +116,18 @@ function ReportsView({ institutes, clients }) {
 
   const toggleTrainingType = (t) =>
     setFilterTrainingTypes(prev => prev.includes(t) ? prev.filter(x => x !== t) : [...prev, t]);
+
+  const allDonorTypes = useMemo(() => {
+    const types = new Set();
+    for (const e of rangeFiltered) {
+      const client = (clients || []).find(c => c.id === e.clientId);
+      types.add(client?.type || 'Other');
+    }
+    return [...types].sort();
+  }, [rangeFiltered, clients]);
+
+  const toggleDonorType = (t) =>
+    setFilterDonorTypes(prev => prev.includes(t) ? prev.filter(x => x !== t) : [...prev, t]);
 
   // All unique occupation names across active assignments (for occupation filter)
   const allOccNames = useMemo(() => {
@@ -372,6 +392,31 @@ function ReportsView({ institutes, clients }) {
                   <option value="390plus">390 hours or more</option>
                   <option value="390more">More than 390 hours</option>
                 </select>
+              </div>
+            )}
+
+            {/* Donor/client type filter — Helvetas */}
+            {!noInstitute && fullInst && allDonorTypes.length > 0 && (
+              <div className="filter-section">
+                <div className="filter-label" style={{display:'flex', justifyContent:'space-between', alignItems:'center'}}>
+                  <span>Donor type ({filterDonorTypes.length || 'all'})</span>
+                  {filterDonorTypes.length > 0 && (
+                    <button className="btn btn-ghost btn-sm" style={{fontSize:10, padding:'1px 5px'}} onClick={() => setFilterDonorTypes([])}>Clear</button>
+                  )}
+                </div>
+                <div className="multi-select-list">
+                  {allDonorTypes.map(t => (
+                    <label key={t} className="multi-select-item">
+                      <input type="checkbox"
+                        checked={filterDonorTypes.includes(t)}
+                        onChange={() => toggleDonorType(t)}/>
+                      <span style={{fontSize:11.5}}>{t}</span>
+                    </label>
+                  ))}
+                </div>
+                <div style={{fontSize:11, color:'var(--text3)', marginTop:4}}>
+                  Leave all unchecked to include all donor types.
+                </div>
               </div>
             )}
 
