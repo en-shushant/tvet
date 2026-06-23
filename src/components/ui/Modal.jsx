@@ -1,9 +1,32 @@
+import { useEffect, useRef } from 'react';
 import ReactDOM from 'react-dom';
 
 export default function Modal({title, onClose, children, footer, size=''}) {
+  const modalRef = useRef(null);
+
+  useEffect(() => {
+    const el = modalRef.current;
+    if (!el) return;
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') { onClose(); return; }
+      if (e.key !== 'Tab') return;
+      const focusable = el.querySelectorAll('input:not([disabled]):not([tabindex="-1"]), select:not([disabled]):not([tabindex="-1"]), textarea:not([disabled]):not([tabindex="-1"]), button:not([disabled]):not([tabindex="-1"]), [tabindex]:not([tabindex="-1"]):not([disabled])');
+      if (!focusable.length) return;
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (e.shiftKey) {
+        if (document.activeElement === first || !el.contains(document.activeElement)) { e.preventDefault(); last.focus(); }
+      } else {
+        if (document.activeElement === last || !el.contains(document.activeElement)) { e.preventDefault(); first.focus(); }
+      }
+    };
+    el.addEventListener('keydown', handleKeyDown);
+    return () => el.removeEventListener('keydown', handleKeyDown);
+  }, [onClose]);
+
   return ReactDOM.createPortal(
     <div className="modal-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
-      <div className={`modal ${size}`}>
+      <div ref={modalRef} className={`modal ${size}`}>
         <div className="modal-header">
           <span className="modal-title">{title}</span>
           <button className="modal-close" onClick={onClose} title="Close">

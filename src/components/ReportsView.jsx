@@ -20,6 +20,8 @@ function ReportsView({ institutes, clients }) {
   const [filterTrainingTypes, setFilterTrainingTypes] = useState([]); // Helvetas training type filter
   const [filterDuration, setFilterDuration] = useState(''); // Helvetas duration filter
   const [filterDonorTypes, setFilterDonorTypes] = useState([]); // Donor/client type filter
+  const [fwEmpOnly, setFwEmpOnly] = useState(false);
+  const [fwStOnly, setFwStOnly] = useState(false);
 
   // Tools report state
   const [toolsOccIds, setToolsOccIds]       = useState([]);
@@ -164,7 +166,8 @@ function ReportsView({ institutes, clients }) {
   const fyRangeLabel = fromFY || toFY ? `FY ${fromFY || '…'} – ${toFY || '…'}` : null;
   const noInstitute = !!family.noInstitute;
   const opts = { fromFY, toFY, selectedOccs, occupations, sortBy,
-    toolsOccIds, toolsLevel, toolsTypeFilter, toolsColumns, toolsLayout, toolsData };
+    toolsOccIds, toolsLevel, toolsTypeFilter, toolsColumns, toolsLayout, toolsData,
+    fwEmpOnly, fwStOnly };
 
   const handlePrint = () => {
     const w = window.open('', '_blank');
@@ -416,6 +419,24 @@ function ReportsView({ institutes, clients }) {
                 </div>
                 <div style={{fontSize:11, color:'var(--text3)', marginTop:4}}>
                   Leave all unchecked to include all donor types.
+                </div>
+              </div>
+            )}
+
+            {/* Provisioned filters — Firm-wise */}
+            {family.id === 'firmwise' && fullInst && (
+              <div className="filter-section">
+                <div className="filter-label">Show only provisioned</div>
+                <label className="multi-select-item" style={{marginBottom:4}}>
+                  <input type="checkbox" checked={fwEmpOnly} onChange={e => setFwEmpOnly(e.target.checked)}/>
+                  <span style={{fontSize:11.5}}>Employment provisioned only</span>
+                </label>
+                <label className="multi-select-item">
+                  <input type="checkbox" checked={fwStOnly} onChange={e => setFwStOnly(e.target.checked)}/>
+                  <span style={{fontSize:11.5}}>Skill test provisioned only</span>
+                </label>
+                <div style={{fontSize:11, color:'var(--text3)', marginTop:4}}>
+                  Filter occupation rows within assignments before aggregating.
                 </div>
               </div>
             )}

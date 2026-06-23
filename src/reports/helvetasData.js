@@ -115,7 +115,8 @@ export function buildSpecificOccData(fullInst, activeExps, selectedOccs, occupat
   return { rows, totals };
 }
 
-export function buildFirmWiseData(fullInst, activeExps, occupations = []) {
+export function buildFirmWiseData(fullInst, activeExps, occupations = [], opts = {}) {
+  const { fwEmpOnly, fwStOnly, selectedOccs = [] } = opts;
   const allFYs = [...new Set(activeExps.map(e => e.fy).filter(Boolean))].sort();
 
   // Per-occupation aggregation
@@ -123,12 +124,18 @@ export function buildFirmWiseData(fullInst, activeExps, occupations = []) {
   for (const exp of activeExps) {
     for (const occ of (exp.occupations || [])) {
       const name = occName(occ, occupations);
-      if (!byOcc[name]) byOcc[name] = { trained: 0, stAppeared: 0, stPass: 0, employed: 0 };
+      if (fwEmpOnly && !occ.employmentProvisioned) continue;
+      if (fwStOnly && !occ.skillTestProvisioned) continue;
+      if (selectedOccs.length && !selectedOccs.includes(name)) continue;
+      if (!byOcc[name]) byOcc[name] = { trained: 0, stAppeared: 0, stPass: 0, employed: 0, empApplicable: 0 };
       const t = parseInt(occ.trainees) || 0;
       byOcc[name].trained += t;
       byOcc[name].stAppeared += parseInt(occ.skillTestAppeared) || 0;
       byOcc[name].stPass += parseInt(occ.skillTestPass) || 0;
-      byOcc[name].employed += Math.round(t * (parseFloat(occ.employmentActual) || 0) / 100);
+      if (occ.employmentProvisioned) {
+        byOcc[name].empApplicable += t;
+        byOcc[name].employed += Math.round(t * (parseFloat(occ.employmentActual) || 0) / 100);
+      }
     }
   }
 
@@ -144,8 +151,8 @@ export function buildFirmWiseData(fullInst, activeExps, occupations = []) {
     const nstbKey = name.toLowerCase().trim();
     const nstbPass = nstbByOcc[nstbKey] || 0;
     const totalPass = d.stPass + nstbPass;
-    const empRate = d.trained > 0 ? Math.round((d.employed / d.trained) * 100) : 0;
-    return { name, trained: d.trained, stAppeared: d.stAppeared, stPass: totalPass, employed: d.employed, empRate };
+    const empRate = d.empApplicable > 0 ? Math.round((d.employed / d.empApplicable) * 100) : 0;
+    return { name, trained: d.trained, stAppeared: d.stAppeared, stPass: totalPass, employed: d.employed, empApplicable: d.empApplicable, empRate };
   }).sort((a, b) => a.name.localeCompare(b.name));
 
   const grand = {
@@ -153,8 +160,9 @@ export function buildFirmWiseData(fullInst, activeExps, occupations = []) {
     stAppeared: occs.reduce((s, o) => s + o.stAppeared, 0),
     stPass: occs.reduce((s, o) => s + o.stPass, 0),
     employed: occs.reduce((s, o) => s + o.employed, 0),
+    empApplicable: occs.reduce((s, o) => s + o.empApplicable, 0),
   };
-  grand.empRate = grand.trained > 0 ? Math.round((grand.employed / grand.trained) * 100) : 0;
+  grand.empRate = grand.empApplicable > 0 ? Math.round((grand.employed / grand.empApplicable) * 100) : 0;
 
   return { occs, grand, allFYs };
 }

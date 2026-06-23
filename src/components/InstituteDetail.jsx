@@ -640,7 +640,7 @@ function InstituteDetail({institute, clients, onUpdateClients, onBack, onUpdate,
         const totalSTA = exp.occupations.reduce((s,o)=>s+(parseInt(o.skillTestAppeared)||0),0);
         const totalSTP = exp.occupations.reduce((s,o)=>s+(parseInt(o.skillTestPass)||0),0);
         const passRate = totalSTA > 0 ? Math.round(totalSTP/totalSTA*100) : null;
-        return (
+        return ReactDOM.createPortal(
           <div className="modal-overlay" onClick={()=>setModal(null)}>
             <div className="modal modal-lg" onClick={e=>e.stopPropagation()} style={{maxHeight:'90vh'}}>
               {/* Header */}
@@ -788,7 +788,8 @@ function InstituteDetail({institute, clients, onUpdateClients, onBack, onUpdate,
                 </div>
               </div>
             </div>
-          </div>
+          </div>,
+          document.body
         );
       })()}
       {modal?.type === 'editNSTB' && <NSTBForm record={modal.data} onSave={saveNSTB} onClose={()=>setModal(null)}/>}
