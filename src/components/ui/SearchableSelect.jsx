@@ -76,9 +76,13 @@ export default function SearchableSelect({ value, onChange, options, placeholder
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState('');
   const ref = useRef(null);
+  const btnRef = useRef(null);
 
   useEffect(() => {
-    if (!open) setSearch('');
+    if (!open) {
+      setSearch('');
+      if (btnRef.current) btnRef.current.focus();
+    }
   }, [open]);
 
   useEffect(() => {
@@ -94,7 +98,7 @@ export default function SearchableSelect({ value, onChange, options, placeholder
 
   return (
     <div ref={ref} style={{position:'relative'}}>
-      <button type="button" disabled={disabled} onClick={() => !disabled && setOpen(o => !o)}
+      <button ref={btnRef} type="button" disabled={disabled} onClick={() => !disabled && setOpen(o => !o)}
         style={{width:'100%', textAlign:'left', padding:'6px 10px', background:'var(--bg2)',
           border:'1px solid var(--border)', borderRadius:6, color: selected ? 'var(--text1)' : 'var(--text3)',
           cursor: disabled ? 'not-allowed' : 'pointer', fontSize:13, display:'flex',

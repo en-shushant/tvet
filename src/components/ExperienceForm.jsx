@@ -512,7 +512,7 @@ function ExperienceForm({exp, clients, institute, onSave, onClose, onDuplicate, 
         <div className="sub-section-title">Occupation rows</div>
         {form.occupations.map((occ, i) => (
           <div className="repeatable-row" key={occ.id||i}>
-            <button className="remove-btn" onClick={()=>removeOcc(i)}>✕</button>
+            <button className="remove-btn" tabIndex={-1} onClick={()=>removeOcc(i)}>✕</button>
             <div className="form-row form-row-2" style={{marginBottom:8}}>
               <div className="form-group" style={{marginBottom:0}}>
                 <label>Occupation name in letter</label>
