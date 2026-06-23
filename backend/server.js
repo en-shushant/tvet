@@ -78,6 +78,19 @@ async function runMigrations() {
     `ALTER TABLE institutes ADD COLUMN IF NOT EXISTS services_template_id TEXT`,
     `ALTER TABLE assignments ADD COLUMN IF NOT EXISTS num_groups INTEGER`,
     `ALTER TABLE assignments ADD COLUMN IF NOT EXISTS duration_days INTEGER`,
+    `CREATE TABLE IF NOT EXISTS occupation_tools (
+      id SERIAL PRIMARY KEY,
+      occupation_id INTEGER NOT NULL REFERENCES occupations(id) ON DELETE CASCADE,
+      level TEXT NOT NULL,
+      description TEXT NOT NULL,
+      unit TEXT,
+      quantity NUMERIC,
+      ownership TEXT,
+      type TEXT DEFAULT 'Tool',
+      remarks TEXT,
+      sort_order INTEGER DEFAULT 0,
+      created_at TIMESTAMPTZ DEFAULT NOW()
+    )`,
   ];
   for (const sql of migrations) {
     try { await pool.query(sql); }
@@ -149,6 +162,7 @@ app.use('/api/templates',    require('./routes/templates'));
 app.use('/api/summary',      require('./routes/summary'));
 app.use('/api/documents',    require('./routes/documents'));
 app.use('/api/locations',    require('./routes/locations'));
+app.use('/api/occupation-tools', require('./routes/occupation-tools'));
 
 // ─── SPA FALLBACK ─────────────────────────────────────────────────────────────
 app.get('*', (req, res) => {

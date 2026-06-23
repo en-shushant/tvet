@@ -18,6 +18,14 @@ function ReportsView({ institutes, clients }) {
   const [occupations, setOccupations]   = useState([]);
   const [sortBy, setSortBy]             = useState('default'); // for Table 2 occupation sort
 
+  // Tools report state
+  const [toolsOccIds, setToolsOccIds]       = useState([]);
+  const [toolsLevel, setToolsLevel]         = useState('');
+  const [toolsTypeFilter, setToolsTypeFilter] = useState('all');
+  const [toolsColumns, setToolsColumns]     = useState(['sn','description','unit','quantity','ownership','type','remarks']);
+  const [toolsLayout, setToolsLayout]       = useState('combined');
+  const [toolsData, setToolsData]           = useState({});
+
   const family = REPORT_FAMILIES.find(f => f.id === familyId) || REPORT_FAMILIES[0];
   const report = family.reports.find(r => r.id === reportId) || family.reports[0];
   const isAggregate = !!report.aggregate;
@@ -106,7 +114,9 @@ function ReportsView({ institutes, clients }) {
     (report.requiredFields || []).filter(([key]) => !exp[key]).map(([, label]) => label);
 
   const fyRangeLabel = fromFY || toFY ? `FY ${fromFY || '…'} – ${toFY || '…'}` : null;
-  const opts = { fromFY, toFY, selectedOccs, occupations, sortBy };
+  const noInstitute = !!family.noInstitute;
+  const opts = { fromFY, toFY, selectedOccs, occupations, sortBy,
+    toolsOccIds, toolsLevel, toolsTypeFilter, toolsColumns, toolsLayout, toolsData };
 
   const handlePrint = () => {
     const w = window.open('', '_blank');
@@ -124,7 +134,43 @@ function ReportsView({ institutes, clients }) {
 
   const handleWord = () => family.downloadDOCX(fullInst, activeExps, report.id, opts);
 
-  const canPrint = isAggregate ? !!fullInst : activeExps.length > 0;
+  const canPrint = noInstitute
+    ? (toolsOccIds.length > 0 && !!toolsLevel)
+    : isAggregate ? !!fullInst : activeExps.length > 0;
+
+  const toggleToolsOcc = (id) =>
+    setToolsOccIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
+
+  const toggleToolsCol = (key) =>
+    setToolsColumns(prev => prev.includes(key) ? prev.filter(x => x !== key) : [...prev, key]);
+
+  const TOOLS_ALL_COLS = [
+    { key: 'sn', label: 'S.N.' }, { key: 'description', label: 'Description' },
+    { key: 'unit', label: 'Unit' }, { key: 'quantity', label: 'Quantity' },
+    { key: 'ownership', label: 'Ownership' }, { key: 'type', label: 'Type' },
+    { key: 'remarks', label: 'Remarks' },
+  ];
+
+  // Fetch tools data for print HTML (the JSX component fetches its own)
+  const fetchToolsDataForPrint = async () => {
+    const token = getSession()?.token;
+    const result = {};
+    for (const occId of toolsOccIds) {
+      try {
+        result[occId] = await api('GET', `/occupation-tools/${occId}/${encodeURIComponent(toolsLevel)}`, null, token);
+      } catch { result[occId] = []; }
+    }
+    return result;
+  };
+
+  const handlePrintTools = async () => {
+    const data = await fetchToolsDataForPrint();
+    const printOpts = { ...opts, toolsData: data };
+    const w = window.open('', '_blank');
+    w.document.write(family.buildPrintHTML(null, [], clients, report.id, null, printOpts));
+    w.document.close();
+    setTimeout(() => w.print(), 300);
+  };
 
   return (
     <div className="fade-in" style={{display:'flex', flexDirection:'column', gap:14}}>
@@ -157,17 +203,85 @@ function ReportsView({ institutes, clients }) {
           </div>
           <div className="filter-panel-body">
 
+            {/* Tools-specific filters */}
+            {noInstitute && (
+              <>
+                <div className="filter-section">
+                  <div className="filter-label">Level</div>
+                  <select className="form-input" value={toolsLevel} onChange={e => setToolsLevel(e.target.value)}>
+                    <option value="">— Select level —</option>
+                    <option>Level 1</option>
+                    <option>Level 2</option>
+                    <option>Level 3</option>
+                    <option>Professional</option>
+                  </select>
+                </div>
+
+                <div className="filter-section">
+                  <div className="filter-label" style={{display:'flex', justifyContent:'space-between', alignItems:'center'}}>
+                    <span>Occupations ({toolsOccIds.length || 'none'})</span>
+                    {toolsOccIds.length > 0 && (
+                      <button className="btn btn-ghost btn-sm" style={{fontSize:10, padding:'1px 5px'}} onClick={() => setToolsOccIds([])}>Clear</button>
+                    )}
+                  </div>
+                  <div className="multi-select-list" style={{maxHeight:200, overflowY:'auto'}}>
+                    {occupations.map(o => (
+                      <label key={o.id} className="multi-select-item">
+                        <input type="checkbox"
+                          checked={toolsOccIds.includes(o.id)}
+                          onChange={() => toggleToolsOcc(o.id)}/>
+                        <span style={{fontSize:11.5, lineHeight:1.3}}>{o.name}{o.level ? ` (${o.level})` : ''}</span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="filter-section">
+                  <div className="filter-label">Show</div>
+                  <select className="form-input" value={toolsTypeFilter} onChange={e => setToolsTypeFilter(e.target.value)}>
+                    <option value="all">All (Tools + Consumables)</option>
+                    <option value="tools">Tools only</option>
+                    <option value="consumables">Consumables only</option>
+                  </select>
+                </div>
+
+                <div className="filter-section">
+                  <div className="filter-label">Layout</div>
+                  <select className="form-input" value={toolsLayout} onChange={e => setToolsLayout(e.target.value)}>
+                    <option value="combined">Combined table</option>
+                    <option value="separate_sections">Separate sections (one table)</option>
+                    <option value="separate_tables">Separate tables</option>
+                  </select>
+                </div>
+
+                <div className="filter-section">
+                  <div className="filter-label">Columns</div>
+                  <div className="multi-select-list">
+                    {TOOLS_ALL_COLS.map(c => (
+                      <label key={c.key} className="multi-select-item">
+                        <input type="checkbox"
+                          checked={toolsColumns.includes(c.key)}
+                          onChange={() => toggleToolsCol(c.key)}
+                          disabled={c.key === 'sn' || c.key === 'description'}/>
+                        <span style={{fontSize:11.5}}>{c.label}</span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              </>
+            )}
+
             {/* Institute */}
-            <div className="filter-section">
+            {!noInstitute && <div className="filter-section">
               <div className="filter-label">Institute / Firm</div>
               <select className="form-input" value={selectedInst} onChange={e => setSelectedInst(e.target.value)}>
                 <option value="">— Select institute —</option>
                 {institutes.map(i => <option key={i.id} value={i.id}>{i.name}{i.acronym ? ` (${i.acronym})` : ''}</option>)}
               </select>
-            </div>
+            </div>}
 
             {/* FY range */}
-            {fullInst && allFYs.length > 0 && (
+            {!noInstitute && fullInst && allFYs.length > 0 && (
               <div className="filter-section">
                 <div className="filter-label">Fiscal year range</div>
                 <div style={{display:'flex', gap:6, alignItems:'center'}}>
@@ -191,7 +305,7 @@ function ReportsView({ institutes, clients }) {
             )}
 
             {/* Sort order — only for Table 2 */}
-            {fullInst && report.id === 'h2' && (
+            {!noInstitute && fullInst && report.id === 'h2' && (
               <div className="filter-section">
                 <div className="filter-label">Sort occupations by</div>
                 <select className="form-input" value={sortBy} onChange={e => setSortBy(e.target.value)}>
@@ -203,7 +317,7 @@ function ReportsView({ institutes, clients }) {
             )}
 
             {/* Occupation filter — only for reports that need it (Table 3) */}
-            {fullInst && report.hasOccupationFilter && allOccNames.length > 0 && (
+            {!noInstitute && fullInst && report.hasOccupationFilter && allOccNames.length > 0 && (
               <div className="filter-section">
                 <div className="filter-label" style={{display:'flex', justifyContent:'space-between', alignItems:'center'}}>
                   <span>Occupations ({selectedOccs.length || 'all'})</span>
@@ -228,7 +342,7 @@ function ReportsView({ institutes, clients }) {
             )}
 
             {/* Assignment checklist — only for non-aggregate or aggregate that uses assignments */}
-            {fullInst && !isAggregate && (
+            {!noInstitute && fullInst && !isAggregate && (
               <div className="filter-section">
                 <div className="filter-label" style={{display:'flex', justifyContent:'space-between', alignItems:'center'}}>
                   <span>Assignments ({activeExps.length}/{rangeFiltered.length})</span>
@@ -258,7 +372,7 @@ function ReportsView({ institutes, clients }) {
             )}
 
             {/* For aggregate reports, show a simplified assignment count */}
-            {fullInst && isAggregate && (
+            {!noInstitute && fullInst && isAggregate && (
               <div className="filter-section">
                 <div className="filter-label" style={{display:'flex', justifyContent:'space-between', alignItems:'center'}}>
                   <span>Assignments ({rangeFiltered.length})</span>
@@ -291,13 +405,13 @@ function ReportsView({ institutes, clients }) {
 
         {/* ── Results ── */}
         <div style={{flex:1, minWidth:0}}>
-          {!selectedInst ? (
+          {!noInstitute && !selectedInst ? (
             <div className="empty-state" style={{background:'var(--surface)', border:'1px solid var(--border)', borderRadius:'var(--radius-lg)'}}>
               <div className="empty-state-icon">📊</div>
               <div className="empty-state-title">Select an institute</div>
               <div className="empty-state-sub">Choose a firm and report type to generate a report</div>
             </div>
-          ) : loadingInst ? (
+          ) : !noInstitute && loadingInst ? (
             <div className="empty-state" style={{background:'var(--surface)', border:'1px solid var(--border)', borderRadius:'var(--radius-lg)'}}>
               <div className="empty-state-icon">⏳</div>
               <div className="empty-state-title">Loading…</div>
@@ -320,14 +434,14 @@ function ReportsView({ institutes, clients }) {
                   {isAggregate && family.downloadDOCX && (
                     <button className="btn btn-secondary btn-sm" onClick={handleWord} disabled={!canPrint}>⬇ Word (.docx)</button>
                   )}
-                  <button className="btn btn-primary btn-sm" onClick={handlePrint} disabled={!canPrint}>🖨 Print / PDF</button>
+                  <button className="btn btn-primary btn-sm" onClick={noInstitute ? handlePrintTools : handlePrint} disabled={!canPrint}>🖨 Print / PDF</button>
                 </div>
               </div>
 
               {/* Table body */}
               {isAggregate ? (
                 <div style={{padding:20}}>
-                  {family.renderAggregateTable(fullInst, activeExps, clients, report.id, opts)}
+                  {family.renderAggregateTable(fullInst || null, activeExps, clients, report.id, opts)}
                 </div>
               ) : activeExps.length === 0 ? (
                 <div className="empty-state">

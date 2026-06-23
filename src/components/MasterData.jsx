@@ -25,6 +25,44 @@ function MasterData({clients, onUpdateClients, token, isAdmin, isEditor, isSuper
 
   const canManageOccs = !!(isAdmin || isEditor);
 
+  // Tools/Consumables tab state
+  const [toolsOccId, setToolsOccId] = useState('');
+  const [toolsLevel, setToolsLevel] = useState('');
+  const [toolsList, setToolsList] = useState([]);
+  const [toolsLoading, setToolsLoading] = useState(false);
+  const [toolModal, setToolModal] = useState(null);
+
+  const loadTools = async (occId, level) => {
+    if (!occId || !level) { setToolsList([]); return; }
+    setToolsLoading(true);
+    try {
+      const data = await api('GET', `/occupation-tools/${occId}/${encodeURIComponent(level)}`, null, token);
+      setToolsList(data);
+    } catch { setToolsList([]); }
+    setToolsLoading(false);
+  };
+
+  const saveTool = async (form) => {
+    try {
+      if (form.id) {
+        const updated = await api('PUT', `/occupation-tools/${form.id}`, form, token);
+        setToolsList(prev => prev.map(t => t.id === updated.id ? updated : t));
+      } else {
+        const created = await api('POST', '/occupation-tools', { ...form, occupation_id: parseInt(toolsOccId), level: toolsLevel }, token);
+        setToolsList(prev => [...prev, created]);
+      }
+      setToolModal(null);
+    } catch (err) { setMasterErr('Failed to save tool: ' + err.message); }
+  };
+
+  const deleteTool = async (id) => {
+    if (!confirm('Delete this item?')) return;
+    try {
+      await api('DELETE', `/occupation-tools/${id}`, null, token);
+      setToolsList(prev => prev.filter(t => t.id !== id));
+    } catch (err) { setMasterErr('Failed to delete: ' + err.message); }
+  };
+
   useEffect(() => {
     window.__masterOpenOccForm = () => { setTab('occupations'); setOccModal({}); };
     return () => { delete window.__masterOpenOccForm; };
@@ -119,6 +157,34 @@ function MasterData({clients, onUpdateClients, token, isAdmin, isEditor, isSuper
     );
   };
 
+  const ToolForm = ({tool, onSave, onClose}) => {
+    const [form, setForm] = useState(tool || {description:'', unit:'', quantity:'', ownership:'', type:'Tool', remarks:''});
+    const set = (k,v) => setForm(f=>({...f,[k]:v}));
+    return (
+      <Modal title={tool ? 'Edit item' : 'Add tool / consumable'} onClose={onClose}
+        footer={<>
+          <button className="btn btn-secondary" onClick={onClose}>Cancel</button>
+          <button className="btn btn-primary" onClick={()=>onSave(form)}>Save</button>
+        </>}>
+        <div className="form-group"><label>Description *</label><input value={form.description} onChange={e=>set('description',e.target.value)} placeholder="e.g. Wire stripper, PVC pipe 1/2 inch"/></div>
+        <div className="form-row form-row-2">
+          <div className="form-group"><label>Unit</label><input value={form.unit||''} onChange={e=>set('unit',e.target.value)} placeholder="e.g. Piece, Meter, Set"/></div>
+          <div className="form-group"><label>Quantity</label><input type="number" value={form.quantity||''} onChange={e=>set('quantity',e.target.value)} placeholder="e.g. 10"/></div>
+        </div>
+        <div className="form-row form-row-2">
+          <div className="form-group"><label>Ownership</label><input value={form.ownership||''} onChange={e=>set('ownership',e.target.value)} placeholder="e.g. Institute, Trainee"/></div>
+          <div className="form-group"><label>Type</label>
+            <select value={form.type||'Tool'} onChange={e=>set('type',e.target.value)}>
+              <option>Tool</option>
+              <option>Consumable</option>
+            </select>
+          </div>
+        </div>
+        <div className="form-group"><label>Remarks</label><input value={form.remarks||''} onChange={e=>set('remarks',e.target.value)}/></div>
+      </Modal>
+    );
+  };
+
   const saveOccupation = async (form) => {
     try {
       const body = { name: form.name, sector: form.sector, duration: form.duration || null, level: form.level || null };
@@ -169,6 +235,7 @@ function MasterData({clients, onUpdateClients, token, isAdmin, isEditor, isSuper
       <div className="tabs">
         <button className={`tab ${tab==='clients'?'active':''}`} onClick={()=>setTab('clients')}>Clients ({clients.length})</button>
         <button className={`tab ${tab==='occupations'?'active':''}`} onClick={()=>setTab('occupations')}>Occupations ({OCCUPATIONS.length})</button>
+        <button className={`tab ${tab==='tools'?'active':''}`} onClick={()=>setTab('tools')}>Tools / Consumables</button>
         <button className={`tab ${tab==='training_types'?'active':''}`} onClick={()=>setTab('training_types')}>Training Types ({trainingTypes.length})</button>
         {isSuperAdmin && <button className={`tab ${tab==='fiscal_years'?'active':''}`} onClick={()=>setTab('fiscal_years')}>Fiscal Years ({fiscalYears.length})</button>}
         {isSuperAdmin && <button className={`tab ${tab==='locations'?'active':''}`} onClick={()=>setTab('locations')}>Locations</button>}
@@ -245,6 +312,87 @@ function MasterData({clients, onUpdateClients, token, isAdmin, isEditor, isSuper
           <Pagination {...occPagination} label="occupations"/>
           {occModal?.type === 'add' && <OccupationForm onSave={saveOccupation} onClose={()=>setOccModal(null)}/>}
           {occModal?.type === 'edit' && <OccupationForm occ={occModal.data} onSave={saveOccupation} onClose={()=>setOccModal(null)}/>}
+        </>
+      )}
+
+      {tab==='tools' && (
+        <>
+          <div style={{display:'flex', gap:12, marginBottom:16, flexWrap:'wrap', alignItems:'end'}}>
+            <div className="form-group" style={{margin:0, flex:'1 1 220px'}}>
+              <label style={{fontSize:12}}>Occupation</label>
+              <select value={toolsOccId} onChange={e=>{ setToolsOccId(e.target.value); loadTools(e.target.value, toolsLevel); }}>
+                <option value="">— Select occupation —</option>
+                {OCCUPATIONS.map(o=><option key={o.id} value={o.id}>{o.name}{o.level ? ` (${o.level})` : ''}</option>)}
+              </select>
+            </div>
+            <div className="form-group" style={{margin:0, width:160}}>
+              <label style={{fontSize:12}}>Level</label>
+              <select value={toolsLevel} onChange={e=>{ setToolsLevel(e.target.value); loadTools(toolsOccId, e.target.value); }}>
+                <option value="">— Level —</option>
+                <option>Level 1</option>
+                <option>Level 2</option>
+                <option>Level 3</option>
+                <option>Professional</option>
+              </select>
+            </div>
+            {toolsOccId && toolsLevel && canManageOccs && (
+              <button className="btn btn-primary btn-sm" onClick={()=>setToolModal({})}>+ Add item</button>
+            )}
+          </div>
+          {!toolsOccId || !toolsLevel ? (
+            <div style={{padding:24, color:'var(--text3)', fontSize:13, textAlign:'center'}}>
+              Select an occupation and level to view or manage tools and consumables.
+            </div>
+          ) : toolsLoading ? (
+            <div style={{padding:24, textAlign:'center', color:'var(--text3)'}}>Loading...</div>
+          ) : (
+            <>
+              <div style={{fontSize:12, color:'var(--text3)', marginBottom:8}}>
+                {toolsList.length} item{toolsList.length!==1?'s':''} for {OCCUPATIONS.find(o=>String(o.id)===String(toolsOccId))?.name || ''} — {toolsLevel}
+              </div>
+              <div className="card" style={{padding:0, overflow:'auto'}}>
+                <table>
+                  <thead>
+                    <tr>
+                      <th style={{width:40}}>S.N.</th>
+                      <th>Description</th>
+                      <th>Unit</th>
+                      <th>Qty</th>
+                      <th>Ownership</th>
+                      <th>Type</th>
+                      <th>Remarks</th>
+                      {canManageOccs && <th></th>}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {toolsList.length === 0 && (
+                      <tr><td colSpan={canManageOccs ? 8 : 7} style={{textAlign:'center', color:'var(--text3)', padding:20}}>No items yet. Click "+ Add item" to add tools or consumables.</td></tr>
+                    )}
+                    {toolsList.map((t, i) => (
+                      <tr key={t.id}>
+                        <td className="mono" style={{textAlign:'center'}}>{i+1}</td>
+                        <td style={{fontSize:13}}>{t.description}</td>
+                        <td>{t.unit || '—'}</td>
+                        <td className="mono" style={{textAlign:'right'}}>{t.quantity ?? '—'}</td>
+                        <td>{t.ownership || '—'}</td>
+                        <td><span className={`badge ${t.type==='Consumable'?'badge-warning':'badge-info'}`} style={{fontSize:10}}>{t.type}</span></td>
+                        <td style={{fontSize:12, color:'var(--text3)'}}>{t.remarks || ''}</td>
+                        {canManageOccs && (
+                          <td style={{display:'flex', gap:4}}>
+                            <button className="btn btn-ghost btn-sm" onClick={()=>setToolModal(t)}>✏</button>
+                            <button className="btn btn-danger btn-sm" onClick={()=>deleteTool(t.id)}>🗑</button>
+                          </td>
+                        )}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </>
+          )}
+          {toolModal !== null && (
+            <ToolForm tool={toolModal.id ? toolModal : null} onSave={saveTool} onClose={()=>setToolModal(null)} />
+          )}
         </>
       )}
 
