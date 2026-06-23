@@ -27,6 +27,8 @@ function MasterData({clients, onUpdateClients, token, isAdmin, isEditor, isSuper
 
   // Tools/Consumables tab state
   const [toolsOccId, setToolsOccId] = useState('');
+  const [toolsOccSearch, setToolsOccSearch] = useState(null);
+  const [toolsOccDropdown, setToolsOccDropdown] = useState(false);
   const [toolsLevel, setToolsLevel] = useState('');
   const [toolsList, setToolsList] = useState([]);
   const [toolsLoading, setToolsLoading] = useState(false);
@@ -318,12 +320,28 @@ function MasterData({clients, onUpdateClients, token, isAdmin, isEditor, isSuper
       {tab==='tools' && (
         <>
           <div style={{display:'flex', gap:12, marginBottom:16, flexWrap:'wrap', alignItems:'end'}}>
-            <div className="form-group" style={{margin:0, flex:'1 1 220px'}}>
+            <div className="form-group" style={{margin:0, flex:'1 1 220px', position:'relative'}}>
               <label style={{fontSize:12}}>Occupation</label>
-              <select value={toolsOccId} onChange={e=>{ setToolsOccId(e.target.value); loadTools(e.target.value, toolsLevel); }}>
-                <option value="">— Select occupation —</option>
-                {OCCUPATIONS.map(o=><option key={o.id} value={o.id}>{o.name}{o.level ? ` (${o.level})` : ''}</option>)}
-              </select>
+              <input
+                value={toolsOccSearch !== null ? toolsOccSearch : (OCCUPATIONS.find(o=>String(o.id)===String(toolsOccId))?.name || '')}
+                onChange={e=>{ setToolsOccSearch(e.target.value); setToolsOccDropdown(true); }}
+                onFocus={()=>setToolsOccDropdown(true)}
+                placeholder="Search occupation..."
+              />
+              {toolsOccDropdown && (
+                <>
+                  <div style={{position:'fixed', inset:0, zIndex:99}} onClick={()=>{ setToolsOccDropdown(false); setToolsOccSearch(null); }}/>
+                  <div style={{position:'absolute', top:'100%', left:0, right:0, zIndex:100, background:'var(--surface)', border:'1px solid var(--border)', borderRadius:6, maxHeight:240, overflowY:'auto', boxShadow:'0 4px 16px rgba(0,0,0,.2)'}}>
+                    {OCCUPATIONS.filter(o => !toolsOccSearch || o.name.toLowerCase().includes(toolsOccSearch.toLowerCase())).map(o=>(
+                      <div key={o.id} style={{padding:'7px 12px', fontSize:13, cursor:'pointer', background: String(o.id)===String(toolsOccId)?'var(--primary-light,#eff6ff)':'transparent'}}
+                        onMouseDown={e=>e.preventDefault()}
+                        onClick={()=>{ setToolsOccId(String(o.id)); loadTools(String(o.id), toolsLevel); setToolsOccDropdown(false); setToolsOccSearch(null); }}>
+                        {o.name}{o.level ? ` (${o.level})` : ''}
+                      </div>
+                    ))}
+                  </div>
+                </>
+              )}
             </div>
             <div className="form-group" style={{margin:0, width:160}}>
               <label style={{fontSize:12}}>Level</label>
