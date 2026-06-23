@@ -712,9 +712,13 @@ function InstituteDetail({institute, clients, onUpdateClients, onBack, onUpdate,
                           </div>
                           <div style={{flex:1, minWidth:0}}>
                             <div style={{fontWeight:700, fontSize:13.5, color:'var(--text)'}}>{occName}</div>
-                            {occ.level && <span style={{fontSize:10, fontWeight:700, padding:'1px 6px', borderRadius:8, background:'var(--purple-light)', color:'var(--purple)', marginTop:2, display:'inline-block'}}>{occ.level}</span>}
+                            <div style={{display:'flex', gap:4, marginTop:2, flexWrap:'wrap'}}>
+                              {occ.level && <span style={{fontSize:10, fontWeight:700, padding:'1px 6px', borderRadius:8, background:'var(--purple-light)', color:'var(--purple)', display:'inline-block'}}>{occ.level}</span>}
+                              {occ.skillTestProvisioned && <span style={{fontSize:10, fontWeight:700, padding:'1px 6px', borderRadius:8, background:'color-mix(in srgb, var(--blue,#3b82f6) 15%, transparent)', color:'var(--blue,#3b82f6)', display:'inline-block'}}>Skill Test</span>}
+                              {occ.employmentProvisioned && <span style={{fontSize:10, fontWeight:700, padding:'1px 6px', borderRadius:8, background:'color-mix(in srgb, var(--green,#22c55e) 15%, transparent)', color:'var(--green,#22c55e)', display:'inline-block'}}>Employment</span>}
+                            </div>
                           </div>
-                          <div style={{display:'flex', gap:16, flexShrink:0}}>
+                          <div style={{display:'flex', gap:16, flexShrink:0, flexWrap:'wrap', justifyContent:'flex-end'}}>
                             <div style={{textAlign:'center'}}>
                               <div style={{fontWeight:800, fontSize:18, color:'var(--primary)'}}>{parseInt(occ.trainees)||0}</div>
                               <div style={{fontSize:10, color:'var(--text3)', fontWeight:600, textTransform:'uppercase', letterSpacing:'0.4px'}}>Trainees</div>
@@ -723,9 +727,17 @@ function InstituteDetail({institute, clients, onUpdateClients, onBack, onUpdate,
                               <div style={{fontWeight:700, fontSize:15, color:'var(--text2)'}}>{occ.duration}h</div>
                               <div style={{fontSize:10, color:'var(--text3)', fontWeight:600, textTransform:'uppercase', letterSpacing:'0.4px'}}>Duration</div>
                             </div>}
+                            {occ.skillTestProvisioned && <div style={{textAlign:'center'}}>
+                              <div style={{fontWeight:700, fontSize:15, color:'var(--blue,#3b82f6)'}}>{sta}/{stp}</div>
+                              <div style={{fontSize:10, color:'var(--text3)', fontWeight:600, textTransform:'uppercase', letterSpacing:'0.4px'}}>ST App/Pass</div>
+                            </div>}
                             {sta > 0 && <div style={{textAlign:'center'}}>
                               <div style={{fontWeight:700, fontSize:15, color:pr>=70?'var(--success)':'var(--warning)'}}>{pr}%</div>
                               <div style={{fontSize:10, color:'var(--text3)', fontWeight:600, textTransform:'uppercase', letterSpacing:'0.4px'}}>Pass rate</div>
+                            </div>}
+                            {occ.employmentProvisioned && <div style={{textAlign:'center'}}>
+                              <div style={{fontWeight:700, fontSize:15, color:'var(--green,#22c55e)'}}>{parseFloat(occ.employmentActual)||0}%</div>
+                              <div style={{fontSize:10, color:'var(--text3)', fontWeight:600, textTransform:'uppercase', letterSpacing:'0.4px'}}>Employed</div>
                             </div>}
                           </div>
                         </div>

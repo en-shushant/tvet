@@ -23,8 +23,8 @@ const TDN = { ...TD, textAlign:'right' };
 const TBL = { width:'100%', borderCollapse:'collapse', marginTop:6 };
 const TITLE_STYLE = { fontWeight:600, fontSize:13, marginBottom:6 };
 
-function FirmWiseTable({ fullInst, activeExps, occupations, fwEmpOnly, fwStOnly, selectedOccs }) {
-  const { occs, grand, allFYs } = buildFirmWiseData(fullInst, activeExps, occupations, { fwEmpOnly, fwStOnly, selectedOccs });
+function FirmWiseTable({ fullInst, activeExps, occupations, selectedOccs }) {
+  const { occs, grand, allFYs } = buildFirmWiseData(fullInst, activeExps, occupations, { selectedOccs });
   if (!occs.length) return (
     <div style={{padding:16, color:'var(--text3)', fontSize:13}}>
       No occupation data found in selected assignments.
@@ -80,17 +80,17 @@ function FirmWiseTable({ fullInst, activeExps, occupations, fwEmpOnly, fwStOnly,
 }
 
 export function renderAggregateTable(fullInst, activeExps, clients, reportId, opts = {}) {
-  const { occupations = [], fwEmpOnly, fwStOnly, selectedOccs = [] } = opts;
-  if (reportId === 'fw1') return <FirmWiseTable fullInst={fullInst} activeExps={activeExps} occupations={occupations} fwEmpOnly={fwEmpOnly} fwStOnly={fwStOnly} selectedOccs={selectedOccs} />;
+  const { occupations = [], selectedOccs = [] } = opts;
+  if (reportId === 'fw1') return <FirmWiseTable fullInst={fullInst} activeExps={activeExps} occupations={occupations} selectedOccs={selectedOccs} />;
   return null;
 }
 
 // ── Print HTML ────────────────────────────────────────────────────────────────
 
 function buildPrintHTML(fullInst, activeExps, clients, reportId, fyRangeLabel, opts = {}) {
-  const { occupations = [], fwEmpOnly, fwStOnly, selectedOccs = [] } = opts;
+  const { occupations = [], selectedOccs = [] } = opts;
   const firmName = fullInst?.name || '';
-  const { occs, grand, allFYs: fys } = buildFirmWiseData(fullInst, activeExps, occupations, { fwEmpOnly, fwStOnly, selectedOccs });
+  const { occs, grand, allFYs: fys } = buildFirmWiseData(fullInst, activeExps, occupations, { selectedOccs });
   const fyPart = fys.length > 1 ? ` (FY ${fys[0]} to ${fys[fys.length-1]})` : fys.length === 1 ? ` (FY ${fys[0]})` : '';
   const title = `Firm-wise Summary — Occupation Details${fyPart}`;
   const headers = ['S.N.', 'Occupation', 'Total Trained', 'Skill Test Appeared', 'Skill Test Pass', 'Employed', 'Employment Rate'];
@@ -155,8 +155,8 @@ function dataCell(text, opts = {}) {
 }
 
 async function downloadDOCX(fullInst, activeExps, reportId, opts = {}) {
-  const { occupations = [], fwEmpOnly, fwStOnly, selectedOccs = [] } = opts;
-  const { occs, grand, allFYs } = buildFirmWiseData(fullInst, activeExps, occupations, { fwEmpOnly, fwStOnly, selectedOccs });
+  const { occupations = [], selectedOccs = [] } = opts;
+  const { occs, grand, allFYs } = buildFirmWiseData(fullInst, activeExps, occupations, { selectedOccs });
   if (!occs.length) { alert('No data to export.'); return; }
 
   const fyPart = allFYs.length > 1

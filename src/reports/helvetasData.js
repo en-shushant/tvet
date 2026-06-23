@@ -116,7 +116,7 @@ export function buildSpecificOccData(fullInst, activeExps, selectedOccs, occupat
 }
 
 export function buildFirmWiseData(fullInst, activeExps, occupations = [], opts = {}) {
-  const { fwEmpOnly, fwStOnly, selectedOccs = [] } = opts;
+  const { selectedOccs = [] } = opts;
   const allFYs = [...new Set(activeExps.map(e => e.fy).filter(Boolean))].sort();
 
   // Per-occupation aggregation
@@ -124,8 +124,6 @@ export function buildFirmWiseData(fullInst, activeExps, occupations = [], opts =
   for (const exp of activeExps) {
     for (const occ of (exp.occupations || [])) {
       const name = occName(occ, occupations);
-      if (fwEmpOnly && !occ.employmentProvisioned) continue;
-      if (fwStOnly && !occ.skillTestProvisioned) continue;
       if (selectedOccs.length && !selectedOccs.includes(name)) continue;
       if (!byOcc[name]) byOcc[name] = { trained: 0, stAppeared: 0, stPass: 0, employed: 0, empApplicable: 0 };
       const t = parseInt(occ.trainees) || 0;

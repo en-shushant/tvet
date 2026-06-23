@@ -20,8 +20,7 @@ function ReportsView({ institutes, clients }) {
   const [filterTrainingTypes, setFilterTrainingTypes] = useState([]); // Helvetas training type filter
   const [filterDuration, setFilterDuration] = useState(''); // Helvetas duration filter
   const [filterDonorTypes, setFilterDonorTypes] = useState([]); // Donor/client type filter
-  const [fwEmpOnly, setFwEmpOnly] = useState(false);
-  const [fwStOnly, setFwStOnly] = useState(false);
+  const [occSearch, setOccSearch] = useState('');
 
   // Tools report state
   const [toolsOccIds, setToolsOccIds]       = useState([]);
@@ -166,8 +165,7 @@ function ReportsView({ institutes, clients }) {
   const fyRangeLabel = fromFY || toFY ? `FY ${fromFY || '…'} – ${toFY || '…'}` : null;
   const noInstitute = !!family.noInstitute;
   const opts = { fromFY, toFY, selectedOccs, occupations, sortBy,
-    toolsOccIds, toolsLevel, toolsTypeFilter, toolsColumns, toolsLayout, toolsData,
-    fwEmpOnly, fwStOnly };
+    toolsOccIds, toolsLevel, toolsTypeFilter, toolsColumns, toolsLayout, toolsData };
 
   const handlePrint = () => {
     const w = window.open('', '_blank');
@@ -228,7 +226,7 @@ function ReportsView({ institutes, clients }) {
     <div className="fade-in" style={{display:'flex', flexDirection:'column', gap:14}}>
 
       {/* ── Top selector bar ── */}
-      <div className="card" style={{padding:'14px 18px', display:'flex', alignItems:'center', gap:20, flexWrap:'wrap'}}>
+      <div className="card" style={{padding:'14px 18px', display:'flex', alignItems:'center', gap:16, flexWrap:'wrap'}}>
         <div style={{display:'flex', alignItems:'center', gap:8}}>
           <span style={{fontSize:12, fontWeight:600, color:'var(--text3)', whiteSpace:'nowrap'}}>REPORT FAMILY</span>
           <select className="form-input" style={{width:'auto', minWidth:160}} value={familyId} onChange={e => setFamilyId(e.target.value)}>
@@ -242,7 +240,54 @@ function ReportsView({ institutes, clients }) {
             {family.reports.map(r => <option key={r.id} value={r.id}>{r.label}</option>)}
           </select>
         </div>
+        {!noInstitute && <>
+          <div style={{width:1, height:28, background:'var(--border)'}}/>
+          <div style={{display:'flex', alignItems:'center', gap:8}}>
+            <span style={{fontSize:12, fontWeight:600, color:'var(--text3)', whiteSpace:'nowrap'}}>FIRM</span>
+            <select className="form-input" style={{width:'auto', minWidth:180}} value={selectedInst} onChange={e => setSelectedInst(e.target.value)}>
+              <option value="">— Select —</option>
+              {institutes.map(i => <option key={i.id} value={i.id}>{i.name}{i.acronym ? ` (${i.acronym})` : ''}</option>)}
+            </select>
+          </div>
+        </>}
       </div>
+
+      {/* ── Second row: FY range + duration ── */}
+      {!noInstitute && fullInst && (
+        <div className="card" style={{padding:'10px 18px', display:'flex', alignItems:'center', gap:16, flexWrap:'wrap'}}>
+          {allFYs.length > 0 && (
+            <div style={{display:'flex', alignItems:'center', gap:8}}>
+              <span style={{fontSize:11, fontWeight:600, color:'var(--text3)', whiteSpace:'nowrap'}}>FY RANGE</span>
+              <select className="form-input" style={{width:'auto', minWidth:90, padding:'4px 8px', fontSize:12}} value={fromFY} onChange={e => { setFromFY(e.target.value); setSelectedIds(null); }}>
+                <option value="">From</option>
+                {allFYs.map(fy => <option key={fy} value={fy}>{fy}</option>)}
+              </select>
+              <span style={{color:'var(--text3)', fontSize:12}}>→</span>
+              <select className="form-input" style={{width:'auto', minWidth:90, padding:'4px 8px', fontSize:12}} value={toFY} onChange={e => { setToFY(e.target.value); setSelectedIds(null); }}>
+                <option value="">To</option>
+                {allFYs.map(fy => <option key={fy} value={fy}>{fy}</option>)}
+              </select>
+              {(fromFY || toFY) && (
+                <button className="btn btn-ghost btn-sm" style={{fontSize:10, padding:'2px 6px'}}
+                  onClick={() => { setFromFY(''); setToFY(''); setSelectedIds(null); }}>✕</button>
+              )}
+            </div>
+          )}
+          <div style={{width:1, height:24, background:'var(--border)'}}/>
+          <div style={{display:'flex', alignItems:'center', gap:8}}>
+            <span style={{fontSize:11, fontWeight:600, color:'var(--text3)', whiteSpace:'nowrap'}}>DURATION</span>
+            <select className="form-input" style={{width:'auto', minWidth:140, padding:'4px 8px', fontSize:12}} value={filterDuration} onChange={e => setFilterDuration(e.target.value)}>
+              <option value="">All trainings</option>
+              <option value="160plus">160 hours or more</option>
+              <option value="390plus">390 hours or more</option>
+              <option value="390more">More than 390 hours</option>
+            </select>
+          </div>
+          <div style={{marginLeft:'auto', fontSize:12, color:'var(--text3)'}}>
+            {activeExps.length} assignment{activeExps.length !== 1 ? 's' : ''}
+          </div>
+        </div>
+      )}
 
       {/* ── Two-column layout ── */}
       <div style={{display:'flex', gap:20, alignItems:'flex-start'}}>
@@ -327,39 +372,6 @@ function ReportsView({ institutes, clients }) {
               </>
             )}
 
-            {/* Institute */}
-            {!noInstitute && <div className="filter-section">
-              <div className="filter-label">Institute / Firm</div>
-              <select className="form-input" value={selectedInst} onChange={e => setSelectedInst(e.target.value)}>
-                <option value="">— Select institute —</option>
-                {institutes.map(i => <option key={i.id} value={i.id}>{i.name}{i.acronym ? ` (${i.acronym})` : ''}</option>)}
-              </select>
-            </div>}
-
-            {/* FY range */}
-            {!noInstitute && fullInst && allFYs.length > 0 && (
-              <div className="filter-section">
-                <div className="filter-label">Fiscal year range</div>
-                <div style={{display:'flex', gap:6, alignItems:'center'}}>
-                  <select className="form-input" style={{flex:1}} value={fromFY} onChange={e => { setFromFY(e.target.value); setSelectedIds(null); }}>
-                    <option value="">From</option>
-                    {allFYs.map(fy => <option key={fy} value={fy}>{fy}</option>)}
-                  </select>
-                  <span style={{color:'var(--text3)', fontSize:12}}>→</span>
-                  <select className="form-input" style={{flex:1}} value={toFY} onChange={e => { setToFY(e.target.value); setSelectedIds(null); }}>
-                    <option value="">To</option>
-                    {allFYs.map(fy => <option key={fy} value={fy}>{fy}</option>)}
-                  </select>
-                </div>
-                {(fromFY || toFY) && (
-                  <button className="btn btn-ghost btn-sm" style={{marginTop:4, fontSize:11}}
-                    onClick={() => { setFromFY(''); setToFY(''); setSelectedIds(null); }}>
-                    ✕ Clear range
-                  </button>
-                )}
-              </div>
-            )}
-
             {/* Training type filter — Helvetas */}
             {!noInstitute && fullInst && allTrainingTypes.length > 0 && (
               <div className="filter-section">
@@ -385,20 +397,7 @@ function ReportsView({ institutes, clients }) {
               </div>
             )}
 
-            {/* Training duration filter — Helvetas */}
-            {!noInstitute && fullInst && (
-              <div className="filter-section">
-                <div className="filter-label">Training duration</div>
-                <select className="form-input" value={filterDuration} onChange={e => setFilterDuration(e.target.value)}>
-                  <option value="">All trainings</option>
-                  <option value="160plus">160 hours or more</option>
-                  <option value="390plus">390 hours or more</option>
-                  <option value="390more">More than 390 hours</option>
-                </select>
-              </div>
-            )}
-
-            {/* Donor/client type filter — Helvetas */}
+            {/* Donor/client type filter */}
             {!noInstitute && fullInst && allDonorTypes.length > 0 && (
               <div className="filter-section">
                 <div className="filter-label" style={{display:'flex', justifyContent:'space-between', alignItems:'center'}}>
@@ -419,24 +418,6 @@ function ReportsView({ institutes, clients }) {
                 </div>
                 <div style={{fontSize:11, color:'var(--text3)', marginTop:4}}>
                   Leave all unchecked to include all donor types.
-                </div>
-              </div>
-            )}
-
-            {/* Provisioned filters — Firm-wise */}
-            {family.id === 'firmwise' && fullInst && (
-              <div className="filter-section">
-                <div className="filter-label">Show only provisioned</div>
-                <label className="multi-select-item" style={{marginBottom:4}}>
-                  <input type="checkbox" checked={fwEmpOnly} onChange={e => setFwEmpOnly(e.target.checked)}/>
-                  <span style={{fontSize:11.5}}>Employment provisioned only</span>
-                </label>
-                <label className="multi-select-item">
-                  <input type="checkbox" checked={fwStOnly} onChange={e => setFwStOnly(e.target.checked)}/>
-                  <span style={{fontSize:11.5}}>Skill test provisioned only</span>
-                </label>
-                <div style={{fontSize:11, color:'var(--text3)', marginTop:4}}>
-                  Filter occupation rows within assignments before aggregating.
                 </div>
               </div>
             )}
@@ -462,8 +443,10 @@ function ReportsView({ institutes, clients }) {
                     <button className="btn btn-ghost btn-sm" style={{fontSize:10, padding:'1px 5px'}} onClick={() => setSelectedOccs([])}>Clear</button>
                   )}
                 </div>
+                <input className="form-input" value={occSearch} onChange={e => setOccSearch(e.target.value)}
+                  placeholder="Search occupations…" style={{fontSize:11.5, marginBottom:6, padding:'4px 8px'}}/>
                 <div className="multi-select-list" style={{maxHeight:200, overflowY:'auto'}}>
-                  {allOccNames.map(name => (
+                  {allOccNames.filter(n => !occSearch || n.toLowerCase().includes(occSearch.toLowerCase())).map(name => (
                     <label key={name} className="multi-select-item">
                       <input type="checkbox"
                         checked={selectedOccs.includes(name)}

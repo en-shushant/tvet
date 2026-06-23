@@ -59,7 +59,11 @@ function ExpCard({exp, clients, showFY, setModal, deleteExperience, canEdit, isA
       </div>
       <div style={{display:'flex', gap:8, flexWrap:'wrap'}}>
         {exp.occupations.map((occ,i)=>(
-          <span key={i} className="badge badge-gray">{getOccupation(occ.ctevtOccupationId).name || occ.nameInLetter}: {occ.trainees} trainees</span>
+          <span key={i} className="badge badge-gray" style={{display:'inline-flex', alignItems:'center', gap:4}}>
+            {getOccupation(occ.ctevtOccupationId).name || occ.nameInLetter}: {occ.trainees} trainees
+            {occ.skillTestProvisioned && <span title="Skill test provisioned" style={{fontSize:9, color:'var(--blue,#3b82f6)'}}>ST</span>}
+            {occ.employmentProvisioned && <span title="Employment provisioned" style={{fontSize:9, color:'var(--green,#22c55e)'}}>EP</span>}
+          </span>
         ))}
       </div>
       {(districts.length > 0 || localLevels.length > 0) && (
