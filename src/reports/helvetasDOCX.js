@@ -12,11 +12,14 @@ const TOTAL_FILL  = 'EEF2F7';
 const BORDER = { style: 'single', size: 6, color: '888888' };
 const ALL_BORDERS = { top: BORDER, bottom: BORDER, left: BORDER, right: BORDER };
 
+const CELL_MARGIN = { top: 40, bottom: 40, left: 80, right: 80 };
+
 function hdrCell(text, opts = {}) {
   return new TableCell({
     shading: { fill: HEADER_FILL },
     borders: ALL_BORDERS,
     verticalAlign: VerticalAlign.CENTER,
+    margins: CELL_MARGIN,
     width: opts.width ? { size: opts.width, type: WidthType.DXA } : undefined,
     children: [new Paragraph({
       alignment: AlignmentType.CENTER,
@@ -30,6 +33,7 @@ function dataCell(text, opts = {}) {
     shading: opts.shading ? { fill: opts.shading } : undefined,
     borders: ALL_BORDERS,
     verticalAlign: VerticalAlign.CENTER,
+    margins: CELL_MARGIN,
     children: [new Paragraph({
       alignment: opts.right ? AlignmentType.RIGHT : opts.center ? AlignmentType.CENTER : AlignmentType.LEFT,
       children: [new TextRun({ text: String(text ?? ''), bold: !!opts.bold, size: 20 })],

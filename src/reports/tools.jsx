@@ -216,16 +216,17 @@ function ToolsReport({ opts }) {
 const BORDER = { style: 'single', size: 6, color: '888888' };
 const ALL_BORDERS = { top: BORDER, bottom: BORDER, left: BORDER, right: BORDER };
 const HEADER_FILL = 'DCE6F1';
+const CELL_MARGIN = { top: 40, bottom: 40, left: 80, right: 80 };
 
 function hdrCell(text) {
   return new TableCell({
-    shading: { fill: HEADER_FILL }, borders: ALL_BORDERS, verticalAlign: VerticalAlign.CENTER,
+    shading: { fill: HEADER_FILL }, borders: ALL_BORDERS, verticalAlign: VerticalAlign.CENTER, margins: CELL_MARGIN,
     children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: String(text ?? ''), bold: true, size: 20 })] })],
   });
 }
 function dataCell(text, opts = {}) {
   return new TableCell({
-    shading: opts.shading ? { fill: opts.shading } : undefined, borders: ALL_BORDERS, verticalAlign: VerticalAlign.CENTER,
+    shading: opts.shading ? { fill: opts.shading } : undefined, borders: ALL_BORDERS, verticalAlign: VerticalAlign.CENTER, margins: CELL_MARGIN,
     children: [new Paragraph({
       alignment: opts.right ? AlignmentType.RIGHT : opts.center ? AlignmentType.CENTER : AlignmentType.LEFT,
       children: [new TextRun({ text: String(text ?? ''), bold: !!opts.bold, size: 20 })],
