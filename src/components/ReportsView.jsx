@@ -25,6 +25,7 @@ function ReportsView({ institutes, clients }) {
   const [toolsColumns, setToolsColumns]     = useState(['sn','name','description','unit','quantity','ownership','type','remarks']);
   const [toolsLayout, setToolsLayout]       = useState('combined');
   const [toolsData, setToolsData]           = useState({});
+  const [toolsOccSearch, setToolsOccSearch] = useState('');
 
   const family = REPORT_FAMILIES.find(f => f.id === familyId) || REPORT_FAMILIES[0];
   const report = family.reports.find(r => r.id === reportId) || family.reports[0];
@@ -225,8 +226,10 @@ function ReportsView({ institutes, clients }) {
                       <button className="btn btn-ghost btn-sm" style={{fontSize:10, padding:'1px 5px'}} onClick={() => setToolsOccIds([])}>Clear</button>
                     )}
                   </div>
+                  <input className="form-input" value={toolsOccSearch} onChange={e => setToolsOccSearch(e.target.value)}
+                    placeholder="Search occupations..." style={{fontSize:11, padding:'4px 8px', marginBottom:6}}/>
                   <div className="multi-select-list" style={{maxHeight:200, overflowY:'auto'}}>
-                    {occupations.map(o => (
+                    {occupations.filter(o => !toolsOccSearch || o.name.toLowerCase().includes(toolsOccSearch.toLowerCase())).map(o => (
                       <label key={o.id} className="multi-select-item">
                         <input type="checkbox"
                           checked={toolsOccIds.includes(o.id)}
