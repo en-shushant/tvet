@@ -113,9 +113,6 @@ async function runMigrations() {
     } else {
       // Ensure role is superadmin in case it was created with wrong role
       await pool.query(`UPDATE users SET role='superadmin' WHERE email='admin@tvettrack.local' AND role != 'superadmin'`);
-      // Reset password
-      const resetHash = await bcrypt.hash('Susu121!@', 10);
-      await pool.query(`UPDATE users SET password=$1 WHERE email='admin@tvettrack.local'`, [resetHash]);
     }
   } catch(e) { console.warn('Superadmin seed:', e.message); }
 }
