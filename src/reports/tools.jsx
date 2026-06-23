@@ -10,6 +10,7 @@ import { getSession } from '../utils/auth.js';
 
 const ALL_COLUMNS = [
   { key: 'sn',          label: 'S.N.' },
+  { key: 'name',        label: 'Name' },
   { key: 'description', label: 'Description' },
   { key: 'unit',        label: 'Unit' },
   { key: 'quantity',    label: 'Quantity' },
@@ -18,7 +19,7 @@ const ALL_COLUMNS = [
   { key: 'remarks',     label: 'Remarks' },
 ];
 
-const DEFAULT_COLS = ['sn', 'description', 'unit', 'quantity', 'ownership', 'type', 'remarks'];
+const DEFAULT_COLS = ['sn', 'name', 'description', 'unit', 'quantity', 'ownership', 'type', 'remarks'];
 
 // ── Aggregate table component ───────────────────────────────────────────────
 
@@ -65,7 +66,8 @@ function ToolsReport({ opts }) {
 
   const filterByType = (items) => {
     if (toolsTypeFilter === 'all') return items;
-    return items.filter(t => t.type === (toolsTypeFilter === 'tools' ? 'Tool' : 'Consumable'));
+    const typeMap = {tools:'Tool', consumables:'Consumable', safety:'Safety Tool', stationery:'Stationery'};
+    return items.filter(t => t.type === typeMap[toolsTypeFilter]);
   };
 
   const renderTable = (items, startSN = 1) => (
@@ -81,11 +83,11 @@ function ToolsReport({ opts }) {
             {cols.map(c => {
               if (c.key === 'sn') return <td key={c.key} style={{...TD, textAlign:'center'}}>{startSN + i}</td>;
               if (c.key === 'quantity') return <td key={c.key} style={TDN}>{t.quantity ?? '—'}</td>;
-              if (c.key === 'type') return <td key={c.key} style={TD}><span style={{
-                padding:'1px 6px', borderRadius:3, fontSize:10, fontWeight:600,
-                background: t.type === 'Consumable' ? '#fef3cd' : '#d1ecf1',
-                color: t.type === 'Consumable' ? '#856404' : '#0c5460',
-              }}>{t.type}</span></td>;
+              if (c.key === 'type') {
+                const bg = {Tool:'#d1ecf1',Consumable:'#fef3cd','Safety Tool':'#d4edda',Stationery:'#e2d9f3'}[t.type]||'#eee';
+                const fg = {Tool:'#0c5460',Consumable:'#856404','Safety Tool':'#155724',Stationery:'#4a1d96'}[t.type]||'#333';
+                return <td key={c.key} style={TD}><span style={{padding:'1px 6px',borderRadius:3,fontSize:10,fontWeight:600,background:bg,color:fg}}>{t.type}</span></td>;
+              }
               return <td key={c.key} style={TD}>{t[c.key] || '—'}</td>;
             })}
           </tr>
@@ -278,7 +280,8 @@ async function downloadToolsDOCX(fullInst, activeExps, reportId, opts = {}) {
 
   const filterByType = (items) => {
     if (toolsTypeFilter === 'all') return items;
-    return items.filter(t => t.type === (toolsTypeFilter === 'tools' ? 'Tool' : 'Consumable'));
+    const typeMap = {tools:'Tool', consumables:'Consumable', safety:'Safety Tool', stationery:'Stationery'};
+    return items.filter(t => t.type === typeMap[toolsTypeFilter]);
   };
 
   const children = [
@@ -362,7 +365,8 @@ function buildToolsPrintHTML(fullInst, activeExps, clients, reportId, fyRangeLab
 
   const filterByType = (items) => {
     if (toolsTypeFilter === 'all') return items;
-    return items.filter(t => t.type === (toolsTypeFilter === 'tools' ? 'Tool' : 'Consumable'));
+    const typeMap = {tools:'Tool', consumables:'Consumable', safety:'Safety Tool', stationery:'Stationery'};
+    return items.filter(t => t.type === typeMap[toolsTypeFilter]);
   };
 
   const headerHTML = cols.map(c => `<th>${esc(c.label)}</th>`).join('');

@@ -33,6 +33,14 @@ function MasterData({clients, onUpdateClients, token, isAdmin, isEditor, isSuper
   const [toolsList, setToolsList] = useState([]);
   const [toolsLoading, setToolsLoading] = useState(false);
   const [toolModal, setToolModal] = useState(null);
+  const [toolsBulkMode, setToolsBulkMode] = useState(false);
+  const [bulkRows, setBulkRows] = useState([]);
+  const [bulkSaving, setBulkSaving] = useState(false);
+  const [toolsSelected, setToolsSelected] = useState([]);
+
+  const emptyRow = () => ({_key: uid(), name:'', description:'', unit:'', quantity:'', ownership:'Own', type:'Tool', remarks:''});
+  const addBulkRows = (n) => setBulkRows(prev => [...prev, ...Array.from({length:n}, emptyRow)]);
+  const enterBulkMode = () => { setBulkRows(Array.from({length:5}, emptyRow)); setToolsBulkMode(true); };
 
   const loadTools = async (occId, level) => {
     if (!occId || !level) { setToolsList([]); return; }
@@ -57,13 +65,45 @@ function MasterData({clients, onUpdateClients, token, isAdmin, isEditor, isSuper
     } catch (err) { setMasterErr('Failed to save tool: ' + err.message); }
   };
 
+  const saveBulkRows = async () => {
+    const valid = bulkRows.filter(r => r.description.trim());
+    if (!valid.length) { setMasterErr('Add at least one row with a description.'); return; }
+    setBulkSaving(true);
+    let created = 0;
+    for (const row of valid) {
+      try {
+        const item = await api('POST', '/occupation-tools', { ...row, occupation_id: parseInt(toolsOccId), level: toolsLevel }, token);
+        setToolsList(prev => [...prev, item]);
+        created++;
+      } catch (err) { setMasterErr(`Failed to save row "${row.description}": ${err.message}`); }
+    }
+    setBulkSaving(false);
+    if (created > 0) { setToolsBulkMode(false); setBulkRows([]); }
+  };
+
   const deleteTool = async (id) => {
     if (!confirm('Delete this item?')) return;
     try {
       await api('DELETE', `/occupation-tools/${id}`, null, token);
       setToolsList(prev => prev.filter(t => t.id !== id));
+      setToolsSelected(prev => prev.filter(x => x !== id));
     } catch (err) { setMasterErr('Failed to delete: ' + err.message); }
   };
+
+  const deleteSelectedTools = async () => {
+    if (!toolsSelected.length) return;
+    if (!confirm(`Delete ${toolsSelected.length} selected item${toolsSelected.length!==1?'s':''}?`)) return;
+    for (const id of toolsSelected) {
+      try {
+        await api('DELETE', `/occupation-tools/${id}`, null, token);
+        setToolsList(prev => prev.filter(t => t.id !== id));
+      } catch (err) { setMasterErr('Failed to delete: ' + err.message); }
+    }
+    setToolsSelected([]);
+  };
+
+  const toggleToolSelect = (id) => setToolsSelected(prev => prev.includes(id) ? prev.filter(x=>x!==id) : [...prev, id]);
+  const toggleAllTools = () => setToolsSelected(prev => prev.length === toolsList.length ? [] : toolsList.map(t=>t.id));
 
   useEffect(() => {
     window.__masterOpenOccForm = () => { setTab('occupations'); setOccModal({}); };
@@ -160,7 +200,7 @@ function MasterData({clients, onUpdateClients, token, isAdmin, isEditor, isSuper
   };
 
   const ToolForm = ({tool, onSave, onClose}) => {
-    const [form, setForm] = useState(tool || {description:'', unit:'', quantity:'', ownership:'', type:'Tool', remarks:''});
+    const [form, setForm] = useState(tool || {name:'', description:'', unit:'', quantity:'', ownership:'Own', type:'Tool', remarks:''});
     const set = (k,v) => setForm(f=>({...f,[k]:v}));
     return (
       <Modal title={tool ? 'Edit item' : 'Add tool / consumable'} onClose={onClose}
@@ -168,17 +208,27 @@ function MasterData({clients, onUpdateClients, token, isAdmin, isEditor, isSuper
           <button className="btn btn-secondary" onClick={onClose}>Cancel</button>
           <button className="btn btn-primary" onClick={()=>onSave(form)}>Save</button>
         </>}>
-        <div className="form-group"><label>Description *</label><input value={form.description} onChange={e=>set('description',e.target.value)} placeholder="e.g. Wire stripper, PVC pipe 1/2 inch"/></div>
+        <div className="form-row form-row-2">
+          <div className="form-group"><label>Name</label><input value={form.name||''} onChange={e=>set('name',e.target.value)} placeholder="e.g. Wire Stripper"/></div>
+          <div className="form-group"><label>Description *</label><input value={form.description} onChange={e=>set('description',e.target.value)} placeholder="e.g. 6 inch insulated handle"/></div>
+        </div>
         <div className="form-row form-row-2">
           <div className="form-group"><label>Unit</label><input value={form.unit||''} onChange={e=>set('unit',e.target.value)} placeholder="e.g. Piece, Meter, Set"/></div>
           <div className="form-group"><label>Quantity</label><input type="number" value={form.quantity||''} onChange={e=>set('quantity',e.target.value)} placeholder="e.g. 10"/></div>
         </div>
         <div className="form-row form-row-2">
-          <div className="form-group"><label>Ownership</label><input value={form.ownership||''} onChange={e=>set('ownership',e.target.value)} placeholder="e.g. Institute, Trainee"/></div>
+          <div className="form-group"><label>Ownership</label>
+            <select value={form.ownership||'Own'} onChange={e=>set('ownership',e.target.value)}>
+              <option>Own</option>
+              <option>Rented</option>
+            </select>
+          </div>
           <div className="form-group"><label>Type</label>
             <select value={form.type||'Tool'} onChange={e=>set('type',e.target.value)}>
               <option>Tool</option>
               <option>Consumable</option>
+              <option>Safety Tool</option>
+              <option>Stationery</option>
             </select>
           </div>
         </div>
@@ -353,10 +403,78 @@ function MasterData({clients, onUpdateClients, token, isAdmin, isEditor, isSuper
                 <option>Professional</option>
               </select>
             </div>
-            {toolsOccId && toolsLevel && canManageOccs && (
-              <button className="btn btn-primary btn-sm" onClick={()=>setToolModal({})}>+ Add item</button>
+            {toolsOccId && toolsLevel && canManageOccs && !toolsBulkMode && (
+              <button className="btn btn-primary btn-sm" onClick={enterBulkMode}>+ Add items</button>
             )}
           </div>
+
+          {/* ── Bulk entry form ── */}
+          {toolsBulkMode && toolsOccId && toolsLevel && (
+            <div className="card" style={{padding:16, marginBottom:16}}>
+              <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:12}}>
+                <div style={{fontWeight:600, fontSize:14}}>Add Tools / Consumables</div>
+                <div style={{display:'flex', gap:6, alignItems:'center'}}>
+                  <span style={{fontSize:12, color:'var(--text3)'}}>Add rows:</span>
+                  {[1,2,3,5,10,20].map(n=>(
+                    <button key={n} className="btn btn-ghost btn-sm" style={{padding:'2px 8px', fontSize:11}} onClick={()=>addBulkRows(n)}>+{n}</button>
+                  ))}
+                </div>
+              </div>
+              <div style={{overflowX:'auto'}}>
+                <table style={{width:'100%', borderCollapse:'collapse'}}>
+                  <thead>
+                    <tr>
+                      <th style={{width:30, padding:'6px 4px', fontSize:11}}></th>
+                      <th style={{padding:'6px 8px', fontSize:11}}>#</th>
+                      <th style={{padding:'6px 8px', fontSize:11, width:130}}>Name</th>
+                      <th style={{padding:'6px 8px', fontSize:11}}>Description *</th>
+                      <th style={{padding:'6px 8px', fontSize:11, width:80}}>Unit</th>
+                      <th style={{padding:'6px 8px', fontSize:11, width:60}}>Qty</th>
+                      <th style={{padding:'6px 8px', fontSize:11, width:100}}>Ownership</th>
+                      <th style={{padding:'6px 8px', fontSize:11, width:110}}>Type</th>
+                      <th style={{padding:'6px 8px', fontSize:11}}>Remarks</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {bulkRows.map((row, i) => (
+                      <tr key={row._key}>
+                        <td style={{padding:'3px 4px', textAlign:'center'}}>
+                          <button className="btn btn-ghost btn-sm" style={{padding:'1px 4px', fontSize:11, color:'var(--danger,#ef4444)'}}
+                            onClick={()=>setBulkRows(prev=>prev.filter((_,idx)=>idx!==i))}>✕</button>
+                        </td>
+                        <td style={{padding:'3px 4px', fontSize:11, textAlign:'center', color:'var(--text3)'}}>{i+1}</td>
+                        <td style={{padding:'3px 4px'}}><input value={row.name} onChange={e=>setBulkRows(prev=>{const n=[...prev];n[i]={...n[i],name:e.target.value};return n;})} placeholder="Name" style={{fontSize:12, padding:'4px 6px'}}/></td>
+                        <td style={{padding:'3px 4px'}}><input value={row.description} onChange={e=>setBulkRows(prev=>{const n=[...prev];n[i]={...n[i],description:e.target.value};return n;})} placeholder="Description" style={{fontSize:12, padding:'4px 6px'}}/></td>
+                        <td style={{padding:'3px 4px'}}><input value={row.unit} onChange={e=>setBulkRows(prev=>{const n=[...prev];n[i]={...n[i],unit:e.target.value};return n;})} placeholder="Unit" style={{fontSize:12, padding:'4px 6px'}}/></td>
+                        <td style={{padding:'3px 4px'}}><input type="number" value={row.quantity} onChange={e=>setBulkRows(prev=>{const n=[...prev];n[i]={...n[i],quantity:e.target.value};return n;})} style={{fontSize:12, padding:'4px 6px'}}/></td>
+                        <td style={{padding:'3px 4px'}}>
+                          <select value={row.ownership} onChange={e=>setBulkRows(prev=>{const n=[...prev];n[i]={...n[i],ownership:e.target.value};return n;})} style={{fontSize:12, padding:'4px 6px'}}>
+                            <option>Own</option><option>Rented</option>
+                          </select>
+                        </td>
+                        <td style={{padding:'3px 4px'}}>
+                          <select value={row.type} onChange={e=>setBulkRows(prev=>{const n=[...prev];n[i]={...n[i],type:e.target.value};return n;})} style={{fontSize:12, padding:'4px 6px'}}>
+                            <option>Tool</option><option>Consumable</option><option>Safety Tool</option><option>Stationery</option>
+                          </select>
+                        </td>
+                        <td style={{padding:'3px 4px'}}><input value={row.remarks} onChange={e=>setBulkRows(prev=>{const n=[...prev];n[i]={...n[i],remarks:e.target.value};return n;})} placeholder="Remarks" style={{fontSize:12, padding:'4px 6px'}}/></td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginTop:12}}>
+                <span style={{fontSize:12, color:'var(--text3)'}}>{bulkRows.length} row{bulkRows.length!==1?'s':''} · {bulkRows.filter(r=>r.description.trim()).length} with data</span>
+                <div style={{display:'flex', gap:8}}>
+                  <button className="btn btn-secondary btn-sm" onClick={()=>{setToolsBulkMode(false);setBulkRows([]);}}>Cancel</button>
+                  <button className="btn btn-primary btn-sm" onClick={saveBulkRows} disabled={bulkSaving || !bulkRows.some(r=>r.description.trim())}>
+                    {bulkSaving ? 'Saving...' : `Save ${bulkRows.filter(r=>r.description.trim()).length} item${bulkRows.filter(r=>r.description.trim()).length!==1?'s':''}`}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
           {!toolsOccId || !toolsLevel ? (
             <div style={{padding:24, color:'var(--text3)', fontSize:13, textAlign:'center'}}>
               Select an occupation and level to view or manage tools and consumables.
@@ -365,14 +483,23 @@ function MasterData({clients, onUpdateClients, token, isAdmin, isEditor, isSuper
             <div style={{padding:24, textAlign:'center', color:'var(--text3)'}}>Loading...</div>
           ) : (
             <>
-              <div style={{fontSize:12, color:'var(--text3)', marginBottom:8}}>
-                {toolsList.length} item{toolsList.length!==1?'s':''} for {OCCUPATIONS.find(o=>String(o.id)===String(toolsOccId))?.name || ''} — {toolsLevel}
+              <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:8}}>
+                <div style={{fontSize:12, color:'var(--text3)'}}>
+                  {toolsList.length} item{toolsList.length!==1?'s':''} for {OCCUPATIONS.find(o=>String(o.id)===String(toolsOccId))?.name || ''} — {toolsLevel}
+                </div>
+                {canManageOccs && toolsSelected.length > 0 && (
+                  <button className="btn btn-danger btn-sm" onClick={deleteSelectedTools}>
+                    Delete {toolsSelected.length} selected
+                  </button>
+                )}
               </div>
               <div className="card" style={{padding:0, overflow:'auto'}}>
                 <table>
                   <thead>
                     <tr>
+                      {canManageOccs && <th style={{width:30}}><input type="checkbox" checked={toolsList.length>0 && toolsSelected.length===toolsList.length} onChange={toggleAllTools}/></th>}
                       <th style={{width:40}}>S.N.</th>
+                      <th>Name</th>
                       <th>Description</th>
                       <th>Unit</th>
                       <th>Qty</th>
@@ -384,16 +511,21 @@ function MasterData({clients, onUpdateClients, token, isAdmin, isEditor, isSuper
                   </thead>
                   <tbody>
                     {toolsList.length === 0 && (
-                      <tr><td colSpan={canManageOccs ? 8 : 7} style={{textAlign:'center', color:'var(--text3)', padding:20}}>No items yet. Click "+ Add item" to add tools or consumables.</td></tr>
+                      <tr><td colSpan={canManageOccs ? 10 : 8} style={{textAlign:'center', color:'var(--text3)', padding:20}}>No items yet. Click "+ Add items" to add tools or consumables.</td></tr>
                     )}
                     {toolsList.map((t, i) => (
-                      <tr key={t.id}>
+                      <tr key={t.id} style={{background: toolsSelected.includes(t.id) ? 'var(--primary-light,#eff6ff)' : undefined}}>
+                        {canManageOccs && <td style={{textAlign:'center'}}><input type="checkbox" checked={toolsSelected.includes(t.id)} onChange={()=>toggleToolSelect(t.id)}/></td>}
                         <td className="mono" style={{textAlign:'center'}}>{i+1}</td>
+                        <td style={{fontSize:13, fontWeight:500}}>{t.name || '—'}</td>
                         <td style={{fontSize:13}}>{t.description}</td>
                         <td>{t.unit || '—'}</td>
                         <td className="mono" style={{textAlign:'right'}}>{t.quantity ?? '—'}</td>
                         <td>{t.ownership || '—'}</td>
-                        <td><span className={`badge ${t.type==='Consumable'?'badge-warning':'badge-info'}`} style={{fontSize:10}}>{t.type}</span></td>
+                        <td><span className="badge" style={{fontSize:10,
+                          background:{Tool:'#d1ecf1',Consumable:'#fef3cd','Safety Tool':'#d4edda',Stationery:'#e2d9f3'}[t.type]||'#eee',
+                          color:{Tool:'#0c5460',Consumable:'#856404','Safety Tool':'#155724',Stationery:'#4a1d96'}[t.type]||'#333',
+                        }}>{t.type}</span></td>
                         <td style={{fontSize:12, color:'var(--text3)'}}>{t.remarks || ''}</td>
                         {canManageOccs && (
                           <td style={{display:'flex', gap:4}}>

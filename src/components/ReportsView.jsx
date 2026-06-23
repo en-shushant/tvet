@@ -22,7 +22,7 @@ function ReportsView({ institutes, clients }) {
   const [toolsOccIds, setToolsOccIds]       = useState([]);
   const [toolsLevel, setToolsLevel]         = useState('');
   const [toolsTypeFilter, setToolsTypeFilter] = useState('all');
-  const [toolsColumns, setToolsColumns]     = useState(['sn','description','unit','quantity','ownership','type','remarks']);
+  const [toolsColumns, setToolsColumns]     = useState(['sn','name','description','unit','quantity','ownership','type','remarks']);
   const [toolsLayout, setToolsLayout]       = useState('combined');
   const [toolsData, setToolsData]           = useState({});
 
@@ -145,7 +145,8 @@ function ReportsView({ institutes, clients }) {
     setToolsColumns(prev => prev.includes(key) ? prev.filter(x => x !== key) : [...prev, key]);
 
   const TOOLS_ALL_COLS = [
-    { key: 'sn', label: 'S.N.' }, { key: 'description', label: 'Description' },
+    { key: 'sn', label: 'S.N.' }, { key: 'name', label: 'Name' },
+    { key: 'description', label: 'Description' },
     { key: 'unit', label: 'Unit' }, { key: 'quantity', label: 'Quantity' },
     { key: 'ownership', label: 'Ownership' }, { key: 'type', label: 'Type' },
     { key: 'remarks', label: 'Remarks' },
@@ -239,9 +240,11 @@ function ReportsView({ institutes, clients }) {
                 <div className="filter-section">
                   <div className="filter-label">Show</div>
                   <select className="form-input" value={toolsTypeFilter} onChange={e => setToolsTypeFilter(e.target.value)}>
-                    <option value="all">All (Tools + Consumables)</option>
+                    <option value="all">All types</option>
                     <option value="tools">Tools only</option>
                     <option value="consumables">Consumables only</option>
+                    <option value="safety">Safety Tools only</option>
+                    <option value="stationery">Stationery only</option>
                   </select>
                 </div>
 

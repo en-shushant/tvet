@@ -82,15 +82,17 @@ async function runMigrations() {
       id SERIAL PRIMARY KEY,
       occupation_id INTEGER NOT NULL REFERENCES occupations(id) ON DELETE CASCADE,
       level TEXT NOT NULL,
+      name TEXT,
       description TEXT NOT NULL,
       unit TEXT,
       quantity NUMERIC,
-      ownership TEXT,
+      ownership TEXT DEFAULT 'Own',
       type TEXT DEFAULT 'Tool',
       remarks TEXT,
       sort_order INTEGER DEFAULT 0,
       created_at TIMESTAMPTZ DEFAULT NOW()
     )`,
+    `ALTER TABLE occupation_tools ADD COLUMN IF NOT EXISTS name TEXT`,
   ];
   for (const sql of migrations) {
     try { await pool.query(sql); }
