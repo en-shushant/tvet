@@ -119,17 +119,34 @@ export function buildFirmWiseData(fullInst, activeExps, occupations = [], opts =
   const { selectedOccs = [] } = opts;
   const allFYs = [...new Set(activeExps.map(e => e.fy).filter(Boolean))].sort();
 
-  // Per-occupation aggregation
+  // NSTB skill test data by occupation (appeared + pass), keyed by original name
+  const nstbByOcc = {};
+  for (const n of (fullInst?.nstb || [])) {
+    if (!allFYs.includes(n.fy)) continue;
+    const key = (n.occupation || '').trim();
+    if (!nstbByOcc[key]) nstbByOcc[key] = { appeared: 0, pass: 0 };
+    nstbByOcc[key].appeared += parseInt(n.appeared) || 0;
+    nstbByOcc[key].pass += parseInt(n.pass) || 0;
+  }
+
+  // Build a case-insensitive lookup for NSTB matching
+  const nstbLower = {};
+  for (const [key, val] of Object.entries(nstbByOcc)) {
+    const lk = key.toLowerCase();
+    if (!nstbLower[lk]) nstbLower[lk] = { appeared: 0, pass: 0 };
+    nstbLower[lk].appeared += val.appeared;
+    nstbLower[lk].pass += val.pass;
+  }
+
+  // Per-occupation aggregation (training + employment from assignments, ST from NSTB)
   const byOcc = {};
   for (const exp of activeExps) {
     for (const occ of (exp.occupations || [])) {
       const name = occName(occ, occupations);
       if (selectedOccs.length && !selectedOccs.includes(name)) continue;
-      if (!byOcc[name]) byOcc[name] = { trained: 0, stAppeared: 0, stPass: 0, employed: 0, empApplicable: 0 };
+      if (!byOcc[name]) byOcc[name] = { trained: 0, employed: 0, empApplicable: 0 };
       const t = parseInt(occ.trainees) || 0;
       byOcc[name].trained += t;
-      byOcc[name].stAppeared += parseInt(occ.skillTestAppeared) || 0;
-      byOcc[name].stPass += parseInt(occ.skillTestPass) || 0;
       if (occ.employmentProvisioned) {
         byOcc[name].empApplicable += t;
         byOcc[name].employed += Math.round(t * (parseFloat(occ.employmentActual) || 0) / 100);
@@ -137,28 +154,43 @@ export function buildFirmWiseData(fullInst, activeExps, occupations = [], opts =
     }
   }
 
-  // Add NSTB skill test pass data
-  const nstbByOcc = {};
-  for (const n of (fullInst?.nstb || [])) {
-    if (!allFYs.includes(n.fy)) continue;
-    const key = (n.occupation || '').toLowerCase().trim();
-    nstbByOcc[key] = (nstbByOcc[key] || 0) + (parseInt(n.pass) || 0);
+  // Also add NSTB-only occupations that have no assignment data
+  for (const nstbName of Object.keys(nstbByOcc)) {
+    if (selectedOccs.length && !selectedOccs.includes(nstbName)) continue;
+    if (!byOcc[nstbName]) byOcc[nstbName] = { trained: 0, employed: 0, empApplicable: 0 };
   }
 
+  const usedNstbKeys = new Set();
   const occs = Object.entries(byOcc).map(([name, d]) => {
-    const nstbKey = name.toLowerCase().trim();
-    const nstbPass = nstbByOcc[nstbKey] || 0;
-    const totalPass = d.stPass + nstbPass;
+    const lk = name.toLowerCase().trim();
+    const nstb = nstbLower[lk] || { appeared: 0, pass: 0 };
+    if (nstb.appeared || nstb.pass) usedNstbKeys.add(lk);
     const empRate = d.empApplicable > 0 ? Math.round((d.employed / d.empApplicable) * 100) : 0;
-    return { name, trained: d.trained, stAppeared: d.stAppeared, stPass: totalPass, employed: d.employed, empApplicable: d.empApplicable, empRate };
+    return { name, trained: d.trained, stAppeared: nstb.appeared, stPass: nstb.pass, employed: d.employed, empApplicable: d.empApplicable, empRate };
   }).sort((a, b) => a.name.localeCompare(b.name));
 
+  // Grand totals from ALL occupations (ignore occupation filter)
+  const byAll = {};
+  for (const exp of activeExps) {
+    for (const occ of (exp.occupations || [])) {
+      const name = occName(occ, occupations);
+      if (!byAll[name]) byAll[name] = { trained: 0, employed: 0, empApplicable: 0 };
+      const t = parseInt(occ.trainees) || 0;
+      byAll[name].trained += t;
+      if (occ.employmentProvisioned) {
+        byAll[name].empApplicable += t;
+        byAll[name].employed += Math.round(t * (parseFloat(occ.employmentActual) || 0) / 100);
+      }
+    }
+  }
+  const totalNstbAppeared = Object.values(nstbByOcc).reduce((s, n) => s + n.appeared, 0);
+  const totalNstbPass = Object.values(nstbByOcc).reduce((s, n) => s + n.pass, 0);
   const grand = {
-    trained: occs.reduce((s, o) => s + o.trained, 0),
-    stAppeared: occs.reduce((s, o) => s + o.stAppeared, 0),
-    stPass: occs.reduce((s, o) => s + o.stPass, 0),
-    employed: occs.reduce((s, o) => s + o.employed, 0),
-    empApplicable: occs.reduce((s, o) => s + o.empApplicable, 0),
+    trained: Object.values(byAll).reduce((s, o) => s + o.trained, 0),
+    stAppeared: totalNstbAppeared,
+    stPass: totalNstbPass,
+    employed: Object.values(byAll).reduce((s, o) => s + o.employed, 0),
+    empApplicable: Object.values(byAll).reduce((s, o) => s + o.empApplicable, 0),
   };
   grand.empRate = grand.empApplicable > 0 ? Math.round((grand.employed / grand.empApplicable) * 100) : 0;
 

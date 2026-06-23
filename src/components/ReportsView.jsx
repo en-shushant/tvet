@@ -295,7 +295,6 @@ function ReportsView({ institutes, clients }) {
         {/* ── Filter panel ── */}
         <div className="filter-panel">
           <div className="filter-panel-header">
-            <span style={{fontSize:14}}>🔍</span>
             <span className="filter-panel-header-title">Filters</span>
           </div>
           <div className="filter-panel-body">
@@ -307,36 +306,26 @@ function ReportsView({ institutes, clients }) {
                   <div className="filter-label">Level</div>
                   <select className="form-input" value={toolsLevel} onChange={e => setToolsLevel(e.target.value)}>
                     <option value="">— Select level —</option>
-                    <option>Level 1</option>
-                    <option>Level 2</option>
-                    <option>Level 3</option>
-                    <option>Professional</option>
+                    <option>Level 1</option><option>Level 2</option><option>Level 3</option><option>Professional</option>
                   </select>
                 </div>
 
                 <div className="filter-section">
-                  <div className="filter-label" style={{display:'flex', justifyContent:'space-between', alignItems:'center'}}>
-                    <span>Occupations ({toolsOccIds.length || 'none'})</span>
-                    {toolsOccIds.length > 0 && (
-                      <button className="btn btn-ghost btn-sm" style={{fontSize:10, padding:'1px 5px'}} onClick={() => setToolsOccIds([])}>Clear</button>
-                    )}
-                  </div>
+                  <div className="filter-label">Occupations</div>
                   <input className="form-input" value={toolsOccSearch} onChange={e => setToolsOccSearch(e.target.value)}
-                    placeholder="Search occupations..." style={{fontSize:11, padding:'4px 8px', marginBottom:6}}/>
+                    placeholder="Search…" style={{fontSize:12, marginBottom:6}}/>
                   <div className="multi-select-list" style={{maxHeight:200, overflowY:'auto'}}>
                     {occupations.filter(o => !toolsOccSearch || o.name.toLowerCase().includes(toolsOccSearch.toLowerCase())).map(o => (
                       <label key={o.id} className="multi-select-item">
-                        <input type="checkbox"
-                          checked={toolsOccIds.includes(o.id)}
-                          onChange={() => toggleToolsOcc(o.id)}/>
-                        <span style={{fontSize:11.5, lineHeight:1.3}}>{o.name}{o.level ? ` (${o.level})` : ''}</span>
+                        <input type="checkbox" checked={toolsOccIds.includes(o.id)} onChange={() => toggleToolsOcc(o.id)}/>
+                        <span>{o.name}{o.level ? ` (${o.level})` : ''}</span>
                       </label>
                     ))}
                   </div>
                 </div>
 
                 <div className="filter-section">
-                  <div className="filter-label">Show</div>
+                  <div className="filter-label">Type</div>
                   <select className="form-input" value={toolsTypeFilter} onChange={e => setToolsTypeFilter(e.target.value)}>
                     <option value="all">All types</option>
                     <option value="tools">Tools only</option>
@@ -350,7 +339,7 @@ function ReportsView({ institutes, clients }) {
                   <div className="filter-label">Layout</div>
                   <select className="form-input" value={toolsLayout} onChange={e => setToolsLayout(e.target.value)}>
                     <option value="combined">Combined table</option>
-                    <option value="separate_sections">Separate sections (one table)</option>
+                    <option value="separate_sections">Separate sections</option>
                     <option value="separate_tables">Separate tables</option>
                   </select>
                 </div>
@@ -360,11 +349,9 @@ function ReportsView({ institutes, clients }) {
                   <div className="multi-select-list">
                     {TOOLS_ALL_COLS.map(c => (
                       <label key={c.key} className="multi-select-item">
-                        <input type="checkbox"
-                          checked={toolsColumns.includes(c.key)}
-                          onChange={() => toggleToolsCol(c.key)}
+                        <input type="checkbox" checked={toolsColumns.includes(c.key)} onChange={() => toggleToolsCol(c.key)}
                           disabled={c.key === 'sn' || c.key === 'description'}/>
-                        <span style={{fontSize:11.5}}>{c.label}</span>
+                        <span>{c.label}</span>
                       </label>
                     ))}
                   </div>
@@ -372,137 +359,77 @@ function ReportsView({ institutes, clients }) {
               </>
             )}
 
-            {/* Training type filter — Helvetas */}
+            {/* Training type */}
             {!noInstitute && fullInst && allTrainingTypes.length > 0 && (
               <div className="filter-section">
-                <div className="filter-label" style={{display:'flex', justifyContent:'space-between', alignItems:'center'}}>
-                  <span>Training type ({filterTrainingTypes.length || 'all'})</span>
-                  {filterTrainingTypes.length > 0 && (
-                    <button className="btn btn-ghost btn-sm" style={{fontSize:10, padding:'1px 5px'}} onClick={() => setFilterTrainingTypes([])}>Clear</button>
-                  )}
-                </div>
+                <div className="filter-label">Training type</div>
                 <div className="multi-select-list">
                   {allTrainingTypes.map(t => (
                     <label key={t} className="multi-select-item">
-                      <input type="checkbox"
-                        checked={filterTrainingTypes.includes(t)}
-                        onChange={() => toggleTrainingType(t)}/>
-                      <span style={{fontSize:11.5}}>{t}</span>
+                      <input type="checkbox" checked={filterTrainingTypes.includes(t)} onChange={() => toggleTrainingType(t)}/>
+                      <span>{t}</span>
                     </label>
                   ))}
-                </div>
-                <div style={{fontSize:11, color:'var(--text3)', marginTop:4}}>
-                  Leave all unchecked to include all types.
                 </div>
               </div>
             )}
 
-            {/* Donor/client type filter */}
+            {/* Donor type */}
             {!noInstitute && fullInst && allDonorTypes.length > 0 && (
               <div className="filter-section">
-                <div className="filter-label" style={{display:'flex', justifyContent:'space-between', alignItems:'center'}}>
-                  <span>Donor type ({filterDonorTypes.length || 'all'})</span>
-                  {filterDonorTypes.length > 0 && (
-                    <button className="btn btn-ghost btn-sm" style={{fontSize:10, padding:'1px 5px'}} onClick={() => setFilterDonorTypes([])}>Clear</button>
-                  )}
-                </div>
+                <div className="filter-label">Donor type</div>
                 <div className="multi-select-list">
                   {allDonorTypes.map(t => (
                     <label key={t} className="multi-select-item">
-                      <input type="checkbox"
-                        checked={filterDonorTypes.includes(t)}
-                        onChange={() => toggleDonorType(t)}/>
-                      <span style={{fontSize:11.5}}>{t}</span>
+                      <input type="checkbox" checked={filterDonorTypes.includes(t)} onChange={() => toggleDonorType(t)}/>
+                      <span>{t}</span>
                     </label>
                   ))}
-                </div>
-                <div style={{fontSize:11, color:'var(--text3)', marginTop:4}}>
-                  Leave all unchecked to include all donor types.
                 </div>
               </div>
             )}
 
-            {/* Sort order — only for Table 2 */}
+            {/* Sort — Table 2 only */}
             {!noInstitute && fullInst && report.id === 'h2' && (
               <div className="filter-section">
-                <div className="filter-label">Sort occupations by</div>
+                <div className="filter-label">Sort by</div>
                 <select className="form-input" value={sortBy} onChange={e => setSortBy(e.target.value)}>
-                  <option value="default">Default (data order)</option>
-                  <option value="alpha">Alphabetical (A → Z)</option>
-                  <option value="fy">Fiscal year (earliest first)</option>
+                  <option value="default">Data order</option>
+                  <option value="alpha">Alphabetical</option>
+                  <option value="fy">Fiscal year</option>
                 </select>
               </div>
             )}
 
-            {/* Occupation filter — only for reports that need it (Table 3) */}
+            {/* Occupation */}
             {!noInstitute && fullInst && report.hasOccupationFilter && allOccNames.length > 0 && (
               <div className="filter-section">
-                <div className="filter-label" style={{display:'flex', justifyContent:'space-between', alignItems:'center'}}>
-                  <span>Occupations ({selectedOccs.length || 'all'})</span>
-                  {selectedOccs.length > 0 && (
-                    <button className="btn btn-ghost btn-sm" style={{fontSize:10, padding:'1px 5px'}} onClick={() => setSelectedOccs([])}>Clear</button>
-                  )}
-                </div>
+                <div className="filter-label">Occupation</div>
                 <input className="form-input" value={occSearch} onChange={e => setOccSearch(e.target.value)}
-                  placeholder="Search occupations…" style={{fontSize:11.5, marginBottom:6, padding:'4px 8px'}}/>
+                  placeholder="Search…" style={{fontSize:12, marginBottom:6}}/>
                 <div className="multi-select-list" style={{maxHeight:200, overflowY:'auto'}}>
                   {allOccNames.filter(n => !occSearch || n.toLowerCase().includes(occSearch.toLowerCase())).map(name => (
                     <label key={name} className="multi-select-item">
-                      <input type="checkbox"
-                        checked={selectedOccs.includes(name)}
-                        onChange={() => toggleOcc(name)}/>
-                      <span style={{fontSize:11.5, lineHeight:1.3}}>{name}</span>
+                      <input type="checkbox" checked={selectedOccs.includes(name)} onChange={() => toggleOcc(name)}/>
+                      <span>{name}</span>
                     </label>
                   ))}
                 </div>
-                <div style={{fontSize:11, color:'var(--text3)', marginTop:4}}>
-                  Leave all unchecked to include all occupations.
-                </div>
               </div>
             )}
 
-            {/* Assignment checklist — only for non-aggregate or aggregate that uses assignments */}
-            {!noInstitute && fullInst && !isAggregate && (
+            {/* Assignments */}
+            {!noInstitute && fullInst && (
               <div className="filter-section">
-                <div className="filter-label" style={{display:'flex', justifyContent:'space-between', alignItems:'center'}}>
-                  <span>Assignments ({activeExps.length}/{rangeFiltered.length})</span>
-                  <span style={{display:'flex', gap:6}}>
+                <div className="filter-label" style={{justifyContent:'space-between'}}>
+                  <span>Assignments</span>
+                  <span style={{display:'flex', gap:4, fontSize:10, fontWeight:400, letterSpacing:0}}>
                     <button className="btn btn-ghost btn-sm" style={{fontSize:10, padding:'1px 5px'}} onClick={selectAll}>All</button>
                     <button className="btn btn-ghost btn-sm" style={{fontSize:10, padding:'1px 5px'}} onClick={clearAll}>None</button>
                   </span>
                 </div>
                 {rangeFiltered.length === 0 ? (
-                  <div style={{fontSize:12, color:'var(--text3)', padding:'6px 0'}}>No assignments in this FY range.</div>
-                ) : (
-                  <div className="multi-select-list" style={{maxHeight:220, overflowY:'auto'}}>
-                    {rangeFiltered.map(exp => (
-                      <label key={exp.id} className="multi-select-item">
-                        <input type="checkbox"
-                          checked={selectedIds === null || selectedIds.includes(exp.id)}
-                          onChange={() => toggleSelected(exp.id)}/>
-                        <span style={{fontSize:11.5, lineHeight:1.3}}>
-                          {exp.assignmentName || '(unnamed)'}
-                          <span style={{color:'var(--text3)'}}> · FY {exp.fy}</span>
-                        </span>
-                      </label>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* For aggregate reports, show a simplified assignment count */}
-            {!noInstitute && fullInst && isAggregate && (
-              <div className="filter-section">
-                <div className="filter-label" style={{display:'flex', justifyContent:'space-between', alignItems:'center'}}>
-                  <span>Assignments ({rangeFiltered.length})</span>
-                  <span style={{display:'flex', gap:6}}>
-                    <button className="btn btn-ghost btn-sm" style={{fontSize:10, padding:'1px 5px'}} onClick={selectAll}>All</button>
-                    <button className="btn btn-ghost btn-sm" style={{fontSize:10, padding:'1px 5px'}} onClick={clearAll}>None</button>
-                  </span>
-                </div>
-                {rangeFiltered.length === 0 ? (
-                  <div style={{fontSize:12, color:'var(--text3)', padding:'6px 0'}}>No assignments in this FY range.</div>
+                  <div style={{fontSize:12, color:'var(--text3)', padding:'6px 0'}}>No assignments in range.</div>
                 ) : (
                   <div className="multi-select-list" style={{maxHeight:200, overflowY:'auto'}}>
                     {rangeFiltered.map(exp => (
@@ -510,10 +437,7 @@ function ReportsView({ institutes, clients }) {
                         <input type="checkbox"
                           checked={selectedIds === null || selectedIds.includes(exp.id)}
                           onChange={() => toggleSelected(exp.id)}/>
-                        <span style={{fontSize:11.5, lineHeight:1.3}}>
-                          {exp.assignmentName || '(unnamed)'}
-                          <span style={{color:'var(--text3)'}}> · FY {exp.fy}</span>
-                        </span>
+                        <span>{exp.assignmentName || '(unnamed)'} <span style={{color:'var(--text3)', fontSize:10}}>· {exp.fy}</span></span>
                       </label>
                     ))}
                   </div>
@@ -521,6 +445,17 @@ function ReportsView({ institutes, clients }) {
               </div>
             )}
           </div>
+
+          {/* Reset */}
+          {!noInstitute && fullInst && (
+            <button className="filter-reset-btn" onClick={() => {
+              setFromFY(''); setToFY(''); setFilterDuration('');
+              setFilterTrainingTypes([]); setFilterDonorTypes([]);
+              setSelectedOccs([]); setSelectedIds(null); setOccSearch('');
+            }}>
+              ↻ Reset
+            </button>
+          )}
         </div>
 
         {/* ── Results ── */}
