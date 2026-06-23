@@ -17,6 +17,8 @@ function ReportsView({ institutes, clients }) {
   const [selectedOccs, setSelectedOccs] = useState([]); // for Table 3 occupation filter
   const [occupations, setOccupations]   = useState([]);
   const [sortBy, setSortBy]             = useState('default'); // for Table 2 occupation sort
+  const [filterTrainingTypes, setFilterTrainingTypes] = useState([]); // Helvetas training type filter
+  const [filterDuration, setFilterDuration] = useState(''); // Helvetas duration filter
 
   // Tools report state
   const [toolsOccIds, setToolsOccIds]       = useState([]);
@@ -76,11 +78,36 @@ function ReportsView({ institutes, clients }) {
     [experience, fromFY, toFY]
   );
 
-  // Final set for the report (FY range + manual checkbox selection)
+  // Final set for the report (FY range + manual checkbox selection + training type/duration filters)
   const activeExps = useMemo(() => {
-    if (selectedIds === null) return rangeFiltered;
-    return rangeFiltered.filter(e => selectedIds.includes(e.id));
-  }, [rangeFiltered, selectedIds]);
+    let filtered = selectedIds === null ? rangeFiltered : rangeFiltered.filter(e => selectedIds.includes(e.id));
+    if (filterTrainingTypes.length > 0) {
+      filtered = filtered.filter(e => filterTrainingTypes.includes(e.trainingType || ''));
+    }
+    if (filterDuration) {
+      filtered = filtered.filter(e => {
+        const occs = e.occupations || [];
+        return occs.some(occ => {
+          const d = parseFloat(occ.duration) || 0;
+          if (filterDuration === 'short') return d > 0 && d <= 160;
+          if (filterDuration === 'medium') return d > 160 && d <= 390;
+          if (filterDuration === 'long') return d > 390;
+          return true;
+        });
+      });
+    }
+    return filtered;
+  }, [rangeFiltered, selectedIds, filterTrainingTypes, filterDuration]);
+
+  // All training types present in range-filtered assignments
+  const allTrainingTypes = useMemo(() => {
+    const types = new Set();
+    for (const e of rangeFiltered) { if (e.trainingType) types.add(e.trainingType); }
+    return [...types].sort();
+  }, [rangeFiltered]);
+
+  const toggleTrainingType = (t) =>
+    setFilterTrainingTypes(prev => prev.includes(t) ? prev.filter(x => x !== t) : [...prev, t]);
 
   // All unique occupation names across active assignments (for occupation filter)
   const allOccNames = useMemo(() => {
@@ -307,6 +334,44 @@ function ReportsView({ institutes, clients }) {
                     ✕ Clear range
                   </button>
                 )}
+              </div>
+            )}
+
+            {/* Training type filter — Helvetas */}
+            {!noInstitute && fullInst && allTrainingTypes.length > 0 && (
+              <div className="filter-section">
+                <div className="filter-label" style={{display:'flex', justifyContent:'space-between', alignItems:'center'}}>
+                  <span>Training type ({filterTrainingTypes.length || 'all'})</span>
+                  {filterTrainingTypes.length > 0 && (
+                    <button className="btn btn-ghost btn-sm" style={{fontSize:10, padding:'1px 5px'}} onClick={() => setFilterTrainingTypes([])}>Clear</button>
+                  )}
+                </div>
+                <div className="multi-select-list">
+                  {allTrainingTypes.map(t => (
+                    <label key={t} className="multi-select-item">
+                      <input type="checkbox"
+                        checked={filterTrainingTypes.includes(t)}
+                        onChange={() => toggleTrainingType(t)}/>
+                      <span style={{fontSize:11.5}}>{t}</span>
+                    </label>
+                  ))}
+                </div>
+                <div style={{fontSize:11, color:'var(--text3)', marginTop:4}}>
+                  Leave all unchecked to include all types.
+                </div>
+              </div>
+            )}
+
+            {/* Training duration filter — Helvetas */}
+            {!noInstitute && fullInst && (
+              <div className="filter-section">
+                <div className="filter-label">Training duration</div>
+                <select className="form-input" value={filterDuration} onChange={e => setFilterDuration(e.target.value)}>
+                  <option value="">All durations</option>
+                  <option value="short">Short (up to 160 hrs)</option>
+                  <option value="medium">Medium (160–390 hrs)</option>
+                  <option value="long">Long (390+ hrs)</option>
+                </select>
               </div>
             )}
 
