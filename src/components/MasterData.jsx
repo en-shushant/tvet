@@ -417,7 +417,10 @@ function MasterData({clients, onUpdateClients, token, isAdmin, isEditor, isSuper
                 </tr>
               </thead>
               <tbody>
-                {OCCUPATIONS.filter(o => !toolsSearch || o.name.toLowerCase().includes(toolsSearch.toLowerCase())).map((o, idx) => {
+                {OCCUPATIONS.filter(o => {
+                  if (toolsSearch) return o.name.toLowerCase().includes(toolsSearch.toLowerCase());
+                  return getOccTotalCount(o.id) > 0;
+                }).map((o, idx) => {
                   const total = getOccTotalCount(o.id);
                   const isActive = String(o.id) === String(toolsOccId);
                   return (
