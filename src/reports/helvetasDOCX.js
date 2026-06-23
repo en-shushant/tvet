@@ -3,7 +3,7 @@ import {
   WidthType, AlignmentType, VerticalAlign, HeadingLevel,
 } from 'docx';
 import { saveAs } from 'file-saver';
-import { buildTurnoverData, buildGeneralExpData, buildSpecificOccData, fmt } from './helvetasData.js';
+import { buildTurnoverData, buildGeneralExpData, buildSpecificOccData, buildFirmWiseData, fmt } from './helvetasData.js';
 
 // ── Shared cell builders ──────────────────────────────────────────────────────
 
@@ -215,6 +215,59 @@ function makeTable3(fullInst, activeExps, selectedOccs, occupations = []) {
   ];
 }
 
+// ── Table 4 ───────────────────────────────────────────────────────────────────
+
+function makeTable4(fullInst, activeExps, occupations = []) {
+  const { occs, grand, allFYs } = buildFirmWiseData(fullInst, activeExps, occupations);
+  if (!occs.length) return null;
+
+  const fyPart = allFYs.length > 1
+    ? ` (FY ${allFYs[0]} to ${allFYs[allFYs.length - 1]})`
+    : allFYs.length === 1 ? ` (FY ${allFYs[0]})` : '';
+
+  const headerRow = new TableRow({
+    tableHeader: true,
+    children: [
+      hdrCell('S.N.'), hdrCell('Occupation'), hdrCell('Total Trained'),
+      hdrCell('Skill Test Appeared'), hdrCell('Skill Test Pass'),
+      hdrCell('Employed'), hdrCell('Employment Rate'),
+    ],
+  });
+
+  const dataRows = occs.map((occ, i) => new TableRow({
+    children: [
+      dataCell(i + 1, { center: true }),
+      dataCell(occ.name),
+      dataCell(occ.trained || '—', { right: true }),
+      dataCell(occ.stAppeared || '—', { right: true }),
+      dataCell(occ.stPass || '—', { right: true }),
+      dataCell(occ.employed || '—', { right: true }),
+      dataCell(occ.empRate > 0 ? `${occ.empRate}%` : '—', { right: true }),
+    ],
+  }));
+
+  const totalRow = new TableRow({
+    children: [
+      dataCell('', { shading: TOTAL_FILL }),
+      dataCell('Grand Total', { bold: true, shading: TOTAL_FILL }),
+      dataCell(grand.trained || '—', { right: true, bold: true, shading: TOTAL_FILL }),
+      dataCell(grand.stAppeared || '—', { right: true, bold: true, shading: TOTAL_FILL }),
+      dataCell(grand.stPass || '—', { right: true, bold: true, shading: TOTAL_FILL }),
+      dataCell(grand.employed || '—', { right: true, bold: true, shading: TOTAL_FILL }),
+      dataCell(grand.empRate > 0 ? `${grand.empRate}%` : '—', { right: true, bold: true, shading: TOTAL_FILL }),
+    ],
+  });
+
+  return [
+    heading(`Firm-wise Summary — Occupation Details${fyPart}`),
+    subPara(fullInst?.name || ''),
+    new Table({
+      width: { size: 100, type: WidthType.PERCENTAGE },
+      rows: [headerRow, ...dataRows, totalRow],
+    }),
+  ];
+}
+
 // ── Entry point ───────────────────────────────────────────────────────────────
 
 export async function downloadHelvetasDOCX(fullInst, activeExps, reportId, opts = {}) {
@@ -225,6 +278,7 @@ export async function downloadHelvetasDOCX(fullInst, activeExps, reportId, opts 
   if (reportId === 'h1') sections = makeTable1(fullInst, fromFY, toFY) || [];
   else if (reportId === 'h2') sections = makeTable2(fullInst, activeExps, occupations, sortBy) || [];
   else if (reportId === 'h3') sections = makeTable3(fullInst, activeExps, selectedOccs, occupations) || [];
+  else if (reportId === 'h4') sections = makeTable4(fullInst, activeExps, occupations) || [];
 
   if (!sections.length) {
     alert('No data to export for the selected filters.');
@@ -232,7 +286,7 @@ export async function downloadHelvetasDOCX(fullInst, activeExps, reportId, opts 
   }
 
   const firmName = fullInst?.name || 'Report';
-  const reportLabels = { h1: 'Table1_Turnover', h2: 'Table2_GeneralExp', h3: 'Table3_SpecificOcc' };
+  const reportLabels = { h1: 'Table1_Turnover', h2: 'Table2_GeneralExp', h3: 'Table3_SpecificOcc', h4: 'Table4_FirmWise' };
 
   const doc = new Document({
     styles: {

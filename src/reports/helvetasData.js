@@ -114,3 +114,47 @@ export function buildSpecificOccData(fullInst, activeExps, selectedOccs, occupat
 
   return { rows, totals };
 }
+
+export function buildFirmWiseData(fullInst, activeExps, occupations = []) {
+  const allFYs = [...new Set(activeExps.map(e => e.fy).filter(Boolean))].sort();
+
+  // Per-occupation aggregation
+  const byOcc = {};
+  for (const exp of activeExps) {
+    for (const occ of (exp.occupations || [])) {
+      const name = occName(occ, occupations);
+      if (!byOcc[name]) byOcc[name] = { trained: 0, stAppeared: 0, stPass: 0, employed: 0 };
+      const t = parseInt(occ.trainees) || 0;
+      byOcc[name].trained += t;
+      byOcc[name].stAppeared += parseInt(occ.skillTestAppeared) || 0;
+      byOcc[name].stPass += parseInt(occ.skillTestPass) || 0;
+      byOcc[name].employed += Math.round(t * (parseFloat(occ.employmentActual) || 0) / 100);
+    }
+  }
+
+  // Add NSTB skill test pass data
+  const nstbByOcc = {};
+  for (const n of (fullInst?.nstb || [])) {
+    if (!allFYs.includes(n.fy)) continue;
+    const key = (n.occupation || '').toLowerCase().trim();
+    nstbByOcc[key] = (nstbByOcc[key] || 0) + (parseInt(n.pass) || 0);
+  }
+
+  const occs = Object.entries(byOcc).map(([name, d]) => {
+    const nstbKey = name.toLowerCase().trim();
+    const nstbPass = nstbByOcc[nstbKey] || 0;
+    const totalPass = d.stPass + nstbPass;
+    const empRate = d.trained > 0 ? Math.round((d.employed / d.trained) * 100) : 0;
+    return { name, trained: d.trained, stAppeared: d.stAppeared, stPass: totalPass, employed: d.employed, empRate };
+  }).sort((a, b) => a.name.localeCompare(b.name));
+
+  const grand = {
+    trained: occs.reduce((s, o) => s + o.trained, 0),
+    stAppeared: occs.reduce((s, o) => s + o.stAppeared, 0),
+    stPass: occs.reduce((s, o) => s + o.stPass, 0),
+    employed: occs.reduce((s, o) => s + o.employed, 0),
+  };
+  grand.empRate = grand.trained > 0 ? Math.round((grand.employed / grand.trained) * 100) : 0;
+
+  return { occs, grand, allFYs };
+}

@@ -89,9 +89,9 @@ function ReportsView({ institutes, clients }) {
         const occs = e.occupations || [];
         return occs.some(occ => {
           const d = parseFloat(occ.duration) || 0;
-          if (filterDuration === 'short') return d > 0 && d <= 160;
-          if (filterDuration === 'medium') return d > 160 && d <= 390;
-          if (filterDuration === 'long') return d > 390;
+          if (filterDuration === '160plus') return d >= 160;
+          if (filterDuration === '390plus') return d >= 390;
+          if (filterDuration === '390more') return d > 390;
           return true;
         });
       });
@@ -367,10 +367,10 @@ function ReportsView({ institutes, clients }) {
               <div className="filter-section">
                 <div className="filter-label">Training duration</div>
                 <select className="form-input" value={filterDuration} onChange={e => setFilterDuration(e.target.value)}>
-                  <option value="">All durations</option>
-                  <option value="short">Short (up to 160 hrs)</option>
-                  <option value="medium">Medium (160–390 hrs)</option>
-                  <option value="long">Long (390+ hrs)</option>
+                  <option value="">All trainings</option>
+                  <option value="160plus">160 hours or more</option>
+                  <option value="390plus">390 hours or more</option>
+                  <option value="390more">More than 390 hours</option>
                 </select>
               </div>
             )}

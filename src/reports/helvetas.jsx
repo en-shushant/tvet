@@ -4,7 +4,7 @@
 // Table 3: Specific occupation experience (year-wise rows, occupation multi-select)
 
 import { esc, fmt } from './helpers.js';
-import { buildTurnoverData, buildGeneralExpData, buildSpecificOccData } from './helvetasData.js';
+import { buildTurnoverData, buildGeneralExpData, buildSpecificOccData, buildFirmWiseData } from './helvetasData.js';
 import { downloadHelvetasDOCX } from './helvetasDOCX.js';
 
 export const REPORTS = [
@@ -29,6 +29,14 @@ export const REPORTS = [
     label: 'Table 3 — Specific Occupation Experience (Year-wise)',
     aggregate: true,
     hasOccupationFilter: true,
+    requiredFields: [],
+    columns: [],
+  },
+  {
+    id: 'h4',
+    label: 'Table 4 — Firm-wise Summary (Occupation Details)',
+    aggregate: true,
+    hasOccupationFilter: false,
     requiredFields: [],
     columns: [],
   },
@@ -187,11 +195,67 @@ function Table3({ fullInst, activeExps, selectedOccs, occupations }) {
   );
 }
 
+function Table4({ fullInst, activeExps, occupations }) {
+  const { occs, grand, allFYs } = buildFirmWiseData(fullInst, activeExps, occupations);
+  if (!occs.length) return (
+    <div style={{padding:16, color:'var(--text3)', fontSize:13}}>
+      No occupation data found in selected assignments.
+    </div>
+  );
+  const fyLabel = allFYs.length > 1 ? `FY ${allFYs[0]} to ${allFYs[allFYs.length-1]}` : allFYs.length === 1 ? `FY ${allFYs[0]}` : '';
+  return (
+    <div>
+      <div style={TITLE_STYLE}>
+        Firm-wise Summary — Occupation Details
+        {fyLabel && <span style={{fontWeight:400, fontSize:12, marginLeft:8}}>({fyLabel})</span>}
+      </div>
+      <div style={{fontWeight:600, marginBottom:6, fontSize:12}}>
+        {fullInst?.name || ''}
+      </div>
+      <table style={TBL}>
+        <thead>
+          <tr>
+            <th style={{...TH, width:40}}>S.N.</th>
+            <th style={TH}>Occupation</th>
+            <th style={TH}>Total Trained</th>
+            <th style={TH}>Skill Test Appeared</th>
+            <th style={TH}>Skill Test Pass</th>
+            <th style={TH}>Employed</th>
+            <th style={TH}>Employment Rate</th>
+          </tr>
+        </thead>
+        <tbody>
+          {occs.map((occ, i) => (
+            <tr key={occ.name}>
+              <td style={{...TD, textAlign:'center'}}>{i+1}</td>
+              <td style={TD}>{occ.name}</td>
+              <td style={TDN}>{occ.trained || '—'}</td>
+              <td style={TDN}>{occ.stAppeared || '—'}</td>
+              <td style={TDN}>{occ.stPass || '—'}</td>
+              <td style={TDN}>{occ.employed || '—'}</td>
+              <td style={TDN}>{occ.empRate > 0 ? `${occ.empRate}%` : '—'}</td>
+            </tr>
+          ))}
+          <tr style={TOTAL_STYLE}>
+            <td style={TD} colSpan={2}>Grand Total</td>
+            <td style={TDN}>{grand.trained || '—'}</td>
+            <td style={TDN}>{grand.stAppeared || '—'}</td>
+            <td style={TDN}>{grand.stPass || '—'}</td>
+            <td style={TDN}>{grand.employed || '—'}</td>
+            <td style={TDN}>{grand.empRate > 0 ? `${grand.empRate}%` : '—'}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
 export function renderAggregateTable(fullInst, activeExps, clients, reportId, opts = {}) {
   const { fromFY, toFY, selectedOccs = [], occupations = [], sortBy = 'default' } = opts;
   if (reportId === 'h1') return <Table1 fullInst={fullInst} fromFY={fromFY} toFY={toFY} />;
   if (reportId === 'h2') return <Table2 fullInst={fullInst} activeExps={activeExps} occupations={occupations} sortBy={sortBy} />;
   if (reportId === 'h3') return <Table3 fullInst={fullInst} activeExps={activeExps} selectedOccs={selectedOccs} occupations={occupations} />;
+  if (reportId === 'h4') return <Table4 fullInst={fullInst} activeExps={activeExps} occupations={occupations} />;
   return null;
 }
 
@@ -232,6 +296,17 @@ function buildPrintHTML(fullInst, activeExps, clients, reportId, fyRangeLabel, o
     const rowsHTML = dataRows.map(cells => `<tr>${cells.map(c => `<td>${esc(String(c ?? ''))}</td>`).join('')}</tr>`).join('');
     const footHTML = `<tr class="total">${foot.map(c => `<td>${esc(String(c ?? ''))}</td>`).join('')}</tr>`;
     bodyHTML = `<h3>${esc(title)}</h3><p><strong>Proposed Occupation and the Training Package:</strong> ${esc(occLabel)}</p><table><thead><tr>${headers.map(h => `<th>${esc(h)}</th>`).join('')}</tr></thead><tbody>${rowsHTML}${footHTML}</tbody></table>`;
+  } else if (reportId === 'h4') {
+    const { occs, grand, allFYs: fys } = buildFirmWiseData(fullInst, activeExps, occupations);
+    const fyPart = fys.length > 1 ? ` (FY ${fys[0]} to ${fys[fys.length-1]})` : fys.length === 1 ? ` (FY ${fys[0]})` : '';
+    const title = `Firm-wise Summary — Occupation Details${fyPart}`;
+    const headers = ['S.N.', 'Occupation', 'Total Trained', 'Skill Test Appeared', 'Skill Test Pass', 'Employed', 'Employment Rate'];
+    let rowsHTML = '';
+    occs.forEach((o, i) => {
+      rowsHTML += `<tr><td style="text-align:center">${i+1}</td><td>${esc(o.name)}</td><td class="num">${o.trained||'—'}</td><td class="num">${o.stAppeared||'—'}</td><td class="num">${o.stPass||'—'}</td><td class="num">${o.employed||'—'}</td><td class="num">${o.empRate>0?o.empRate+'%':'—'}</td></tr>`;
+    });
+    const footHTML = `<tr class="total"><td colspan="2">Grand Total</td><td class="num">${grand.trained||'—'}</td><td class="num">${grand.stAppeared||'—'}</td><td class="num">${grand.stPass||'—'}</td><td class="num">${grand.employed||'—'}</td><td class="num">${grand.empRate>0?grand.empRate+'%':'—'}</td></tr>`;
+    bodyHTML = `<h3>${esc(title)}</h3><p><strong>${esc(firmName)}</strong></p><table><thead><tr>${headers.map(h=>`<th>${esc(h)}</th>`).join('')}</tr></thead><tbody>${rowsHTML}${footHTML}</tbody></table>`;
   }
 
   return `<!DOCTYPE html><html><head><meta charset="utf-8">
