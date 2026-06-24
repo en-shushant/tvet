@@ -189,6 +189,7 @@ function InstituteDetail({institute, clients, onUpdateClients, onBack, onUpdate,
   const [expandedFY, setExpandedFY] = useState({});
   const toggleFY = (fy) => setExpandedFY(e => ({...e, [fy]: !e[fy]}));
   const [expClientFilter, setExpClientFilter] = useState('');
+  const [expOccFilter, setExpOccFilter] = useState('');
   const [expViewMode, setExpViewMode] = useState('fy'); // 'fy' | 'client'
 
   // Auto-expand all FY/client groups when institute loads or experience changes,
@@ -339,6 +340,12 @@ function InstituteDetail({institute, clients, onUpdateClients, onBack, onUpdate,
                   <option key={c.id} value={c.id}>{c.shortName||c.fullName}</option>
                 ))}
               </select>
+              <select value={expOccFilter} onChange={e=>setExpOccFilter(e.target.value)} style={{fontSize:12, padding:'4px 8px', borderRadius:6, border:'1px solid var(--border)', background:'var(--bg2)', color:'var(--text1)', minWidth:160}}>
+                <option value="">All occupations</option>
+                {[...new Set(institute.experience.flatMap(e=>(e.occupations||[]).map(o=>(getOccupation(o.ctevtOccupationId).name||o.nameInLetter))).filter(Boolean))].sort().map(name=>(
+                  <option key={name} value={name}>{name}</option>
+                ))}
+              </select>
             </div>
             {canEdit && <div style={{display:'flex', gap:6}}>
               <button className="btn btn-secondary btn-sm" onClick={onBulkAdd}>⊞ Bulk add</button>
@@ -372,7 +379,7 @@ function InstituteDetail({institute, clients, onUpdateClients, onBack, onUpdate,
           {institute.experience.length === 0
             ? <div className="empty-state"><div className="empty-state-icon">📋</div><div className="empty-state-title">No assignments yet</div><div className="empty-state-sub">Add the first experience / assignment record</div></div>
             : expViewMode === 'fy'
-              ? groupByFY(institute.experience.filter(e=>!expClientFilter || String(e.clientId)===String(expClientFilter))).map(([fy, items]) => (
+              ? groupByFY(institute.experience.filter(e=>(!expClientFilter || String(e.clientId)===String(expClientFilter)) && (!expOccFilter || (e.occupations||[]).some(o=>(getOccupation(o.ctevtOccupationId).name||o.nameInLetter)===expOccFilter)))).map(([fy, items]) => (
                 <div key={fy} className="fy-group">
                   <button className="fy-header" onClick={()=>toggleFY('exp-'+fy)}>
                     <span>{expandedFY['exp-'+fy] ? '▼' : '▶'}</span>
@@ -389,7 +396,7 @@ function InstituteDetail({institute, clients, onUpdateClients, onBack, onUpdate,
               : (() => {
                   // Group by client
                   const clientMap = new Map();
-                  institute.experience.forEach(exp => {
+                  institute.experience.filter(exp => (!expClientFilter || String(exp.clientId)===String(expClientFilter)) && (!expOccFilter || (exp.occupations||[]).some(o=>(getOccupation(o.ctevtOccupationId).name||o.nameInLetter)===expOccFilter))).forEach(exp => {
                     const key = exp.clientId || ('manual:' + (exp.clientName||'Unknown'));
                     if (!clientMap.has(key)) clientMap.set(key, []);
                     clientMap.get(key).push(exp);
