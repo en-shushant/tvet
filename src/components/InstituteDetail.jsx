@@ -342,6 +342,7 @@ function InstituteDetail({institute, clients, onUpdateClients, onBack, onUpdate,
               </select>
               <select value={expOccFilter} onChange={e=>setExpOccFilter(e.target.value)} style={{fontSize:12, padding:'4px 8px', borderRadius:6, border:'1px solid var(--border)', background:'var(--bg2)', color:'var(--text1)', minWidth:160}}>
                 <option value="">All occupations</option>
+                <option value="__missing__">Missing occupation</option>
                 {[...new Set(institute.experience.flatMap(e=>(e.occupations||[]).map(o=>(getOccupation(o.ctevtOccupationId).name||o.nameInLetter))).filter(Boolean))].sort().map(name=>(
                   <option key={name} value={name}>{name}</option>
                 ))}
@@ -379,7 +380,7 @@ function InstituteDetail({institute, clients, onUpdateClients, onBack, onUpdate,
           {institute.experience.length === 0
             ? <div className="empty-state"><div className="empty-state-icon">📋</div><div className="empty-state-title">No assignments yet</div><div className="empty-state-sub">Add the first experience / assignment record</div></div>
             : expViewMode === 'fy'
-              ? groupByFY(institute.experience.filter(e=>(!expClientFilter || String(e.clientId)===String(expClientFilter)) && (!expOccFilter || (e.occupations||[]).some(o=>(getOccupation(o.ctevtOccupationId).name||o.nameInLetter)===expOccFilter)))).map(([fy, items]) => (
+              ? groupByFY(institute.experience.filter(e=>(!expClientFilter || String(e.clientId)===String(expClientFilter)) && (!expOccFilter || (expOccFilter==='__missing__' ? (e.occupations||[]).some(o=>!o.ctevtOccupationId) : (e.occupations||[]).some(o=>(getOccupation(o.ctevtOccupationId).name||o.nameInLetter)===expOccFilter))))).map(([fy, items]) => (
                 <div key={fy} className="fy-group">
                   <button className="fy-header" onClick={()=>toggleFY('exp-'+fy)}>
                     <span>{expandedFY['exp-'+fy] ? '▼' : '▶'}</span>

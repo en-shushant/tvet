@@ -285,7 +285,7 @@ function ExperienceForm({exp, clients, institute, onSave, onClose, onDuplicate, 
     <Modal title={exp ? 'Edit Assignment' : 'Add Assignment'} onClose={onClose} size="modal-lg"
       footer={<>
         <button className="btn btn-secondary" onClick={onClose}>Cancel</button>
-        <button className="btn btn-primary" onClick={async()=>{setFormErr('');try{await onSave(form);}catch(e){setFormErr(e.message||'Failed to save');}}} >Save assignment</button>
+        <button className="btn btn-primary" onClick={async()=>{setFormErr('');if(form.occupations.some(o=>!o.ctevtOccupationId)){setFormErr('Please select an occupation for all occupation rows.');return;}try{await onSave(form);}catch(e){setFormErr(e.message||'Failed to save');}}} >Save assignment</button>
       </>}>
       <ErrorBanner msg={formErr} onDismiss={()=>setFormErr('')}/>
 
@@ -519,7 +519,7 @@ function ExperienceForm({exp, clients, institute, onSave, onClose, onDuplicate, 
                 <input value={occ.nameInLetter} onChange={e=>setOcc(i,'nameInLetter',e.target.value)} placeholder="As written by client"/>
               </div>
               <div className="form-group" style={{marginBottom:0}}>
-                <label>Occupation</label>
+                <label>Occupation *</label>
                 <SearchableSelect
                   value={toOccValue(occ.ctevtOccupationId)}
                   onChange={v => setOcc(i,'ctevtOccupationId', fromOccValue(v))}
