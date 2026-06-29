@@ -8,17 +8,27 @@ const cors = require('cors');
 const helmet = require('helmet');
 const { pool } = require('./db/pool');
 
+const compression = require('compression');
 const path = require('path');
 const app = express();
 const PORT = process.env.PORT || 4000;
 
 // ─── MIDDLEWARE ───────────────────────────────────────────────────────────────
+app.use(compression());
 app.use(helmet({ contentSecurityPolicy: false }));
 app.use(cors({ origin: '*' }));
-app.use(express.json({ limit: '20mb' })); // large limit for base64 file uploads
+app.use(express.json({ limit: '20mb' }));
 
 // ─── STATIC FRONTEND ─────────────────────────────────────────────────────────
-app.use(express.static(path.join(__dirname, 'public')));
+app.use(express.static(path.join(__dirname, 'public'), {
+  maxAge: '7d',
+  immutable: true,
+  setHeaders(res, filePath) {
+    if (filePath.endsWith('.html')) {
+      res.setHeader('Cache-Control', 'no-cache');
+    }
+  },
+}));
 
 // ─── STARTUP MIGRATIONS ───────────────────────────────────────────────────────
 async function runMigrations() {
