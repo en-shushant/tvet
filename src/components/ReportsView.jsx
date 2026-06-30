@@ -444,7 +444,7 @@ function ReportsView({ institutes, clients }) {
                     {TOOLS_ALL_COLS.map(c => (
                       <label key={c.key} className="multi-select-item">
                         <input type="checkbox" checked={toolsColumns.includes(c.key)} onChange={() => toggleToolsCol(c.key)}
-                          disabled={c.key === 'sn' || c.key === 'description'}/>
+                          disabled={c.key === 'sn' || c.key === 'name'}/>
                         <span>{c.label}</span>
                       </label>
                     ))}
