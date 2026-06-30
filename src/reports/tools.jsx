@@ -23,9 +23,17 @@ const DEFAULT_COLS = ['sn', 'name', 'description', 'unit', 'quantity', 'ownershi
 
 // ── Aggregate table component ───────────────────────────────────────────────
 
+const TYPE_SECTIONS = [
+  { key: 'tools',       type: 'Tool',         label: 'Tools',         bg: '#d1ecf1', fg: '#0c5460', sectionBg: '#e8f0fe' },
+  { key: 'consumables', type: 'Consumable',    label: 'Consumables',   bg: '#fef3cd', fg: '#856404', sectionBg: '#fff8e1' },
+  { key: 'safety',      type: 'Safety Tool',   label: 'Safety Tools',  bg: '#d4edda', fg: '#155724', sectionBg: '#eaf6ec' },
+  { key: 'stationery',  type: 'Stationery',    label: 'Stationery',    bg: '#e2d9f3', fg: '#4a1d96', sectionBg: '#f3eeff' },
+];
+
 function ToolsReport({ opts }) {
   const { toolsOccIds = [], toolsLevel = '', occupations = [], toolsTypeFilter = 'all',
-          toolsColumns = DEFAULT_COLS, toolsLayout = 'combined' } = opts;
+          toolsColumns = DEFAULT_COLS, toolsLayout = 'combined', numGroups = 1 } = opts;
+  const groups = Math.max(1, parseInt(numGroups) || 1);
 
   const [data, setData] = useState({});
   const [loading, setLoading] = useState(false);
@@ -70,10 +78,12 @@ function ToolsReport({ opts }) {
     return items.filter(t => t.type === typeMap[toolsTypeFilter]);
   };
 
+  const scaledQty = (t) => t.quantity != null ? t.quantity * groups : null;
+
   const renderTable = (items, startSN = 1) => (
     <table style={TBL}>
       <thead>
-        <tr>{cols.map(c => <th key={c.key} style={TH}>{c.label}</th>)}</tr>
+        <tr>{cols.map(c => <th key={c.key} style={TH}>{c.key === 'quantity' && groups > 1 ? `Quantity (×${groups})` : c.label}</th>)}</tr>
       </thead>
       <tbody>
         {items.length === 0 ? (
@@ -82,11 +92,10 @@ function ToolsReport({ opts }) {
           <tr key={t.id}>
             {cols.map(c => {
               if (c.key === 'sn') return <td key={c.key} style={{...TD, textAlign:'center'}}>{startSN + i}</td>;
-              if (c.key === 'quantity') return <td key={c.key} style={TDN}>{t.quantity ?? '—'}</td>;
+              if (c.key === 'quantity') return <td key={c.key} style={TDN}>{scaledQty(t) ?? '—'}</td>;
               if (c.key === 'type') {
-                const bg = {Tool:'#d1ecf1',Consumable:'#fef3cd','Safety Tool':'#d4edda',Stationery:'#e2d9f3'}[t.type]||'#eee';
-                const fg = {Tool:'#0c5460',Consumable:'#856404','Safety Tool':'#155724',Stationery:'#4a1d96'}[t.type]||'#333';
-                return <td key={c.key} style={TD}><span style={{padding:'1px 6px',borderRadius:3,fontSize:10,fontWeight:600,background:bg,color:fg}}>{t.type}</span></td>;
+                const sec = TYPE_SECTIONS.find(s => s.type === t.type) || {};
+                return <td key={c.key} style={TD}><span style={{padding:'1px 6px',borderRadius:3,fontSize:10,fontWeight:600,background:sec.bg||'#eee',color:sec.fg||'#333'}}>{t.type}</span></td>;
               }
               return <td key={c.key} style={TD}>{t[c.key] || '—'}</td>;
             })}
@@ -106,26 +115,23 @@ function ToolsReport({ opts }) {
       <div>
         {toolsOccIds.map(occId => {
           const items = filterByType(data[occId] || []);
-          const tools = items.filter(t => t.type === 'Tool');
-          const consumables = items.filter(t => t.type === 'Consumable');
+          const activeSections = TYPE_SECTIONS.filter(s =>
+            (toolsTypeFilter === 'all' || toolsTypeFilter === s.key) && items.filter(t => t.type === s.type).length > 0
+          );
           return (
             <div key={occId} style={{marginBottom:24}}>
               <div style={{...SECTION_STYLE, fontSize:14}}>{occName(occId)} — {toolsLevel}</div>
-              {(toolsTypeFilter === 'all' || toolsTypeFilter === 'tools') && tools.length > 0 && (
-                <>
-                  <div style={{...SECTION_STYLE, fontSize:12, color:'var(--text2)'}}>Tools</div>
-                  {renderTable(tools)}
-                </>
-              )}
-              {(toolsTypeFilter === 'all' || toolsTypeFilter === 'consumables') && consumables.length > 0 && (
-                <>
-                  <div style={{...SECTION_STYLE, fontSize:12, color:'var(--text2)'}}>Consumables</div>
-                  {renderTable(consumables)}
-                </>
-              )}
-              {tools.length === 0 && consumables.length === 0 && (
-                <div style={{padding:12, color:'var(--text3)', fontSize:12}}>No items.</div>
-              )}
+              {activeSections.length === 0 && <div style={{padding:12, color:'var(--text3)', fontSize:12}}>No items.</div>}
+              {activeSections.map((sec, si) => {
+                const sectionItems = items.filter(t => t.type === sec.type);
+                const startSN = activeSections.slice(0, si).reduce((s, ps) => s + items.filter(t => t.type === ps.type).length, 1);
+                return (
+                  <div key={sec.key}>
+                    <div style={{...SECTION_STYLE, fontSize:12, color:'var(--text2)'}}>{sec.label}</div>
+                    {renderTable(sectionItems, startSN)}
+                  </div>
+                );
+              })}
             </div>
           );
         })}
@@ -138,48 +144,36 @@ function ToolsReport({ opts }) {
       <div>
         {toolsOccIds.map(occId => {
           const allItems = filterByType(data[occId] || []);
-          const tools = allItems.filter(t => t.type === 'Tool');
-          const consumables = allItems.filter(t => t.type === 'Consumable');
           let sn = 1;
           return (
             <div key={occId} style={{marginBottom:24}}>
               <div style={{...SECTION_STYLE, fontSize:14}}>{occName(occId)} — {toolsLevel}</div>
               <table style={TBL}>
                 <thead>
-                  <tr>{cols.map(c => <th key={c.key} style={TH}>{c.label}</th>)}</tr>
+                  <tr>{cols.map(c => <th key={c.key} style={TH}>{c.key === 'quantity' && groups > 1 ? `Quantity (×${groups})` : c.label}</th>)}</tr>
                 </thead>
                 <tbody>
-                  {(toolsTypeFilter === 'all' || toolsTypeFilter === 'tools') && tools.length > 0 && (
-                    <>
-                      <tr><td colSpan={cols.length} style={{...TD, background:'#e8f0fe', fontWeight:600, fontSize:11}}>Tools</td></tr>
-                      {tools.map((t, i) => (
-                        <tr key={t.id}>
-                          {cols.map(c => {
-                            if (c.key === 'sn') return <td key={c.key} style={{...TD, textAlign:'center'}}>{sn + i}</td>;
-                            if (c.key === 'quantity') return <td key={c.key} style={TDN}>{t.quantity ?? '—'}</td>;
-                            if (c.key === 'type') return <td key={c.key} style={TD}><span style={{padding:'1px 6px',borderRadius:3,fontSize:10,fontWeight:600,background:'#d1ecf1',color:'#0c5460'}}>Tool</span></td>;
-                            return <td key={c.key} style={TD}>{t[c.key] || '—'}</td>;
-                          })}
-                        </tr>
-                      ))}
-                      {(() => { sn += tools.length; return null; })()}
-                    </>
-                  )}
-                  {(toolsTypeFilter === 'all' || toolsTypeFilter === 'consumables') && consumables.length > 0 && (
-                    <>
-                      <tr><td colSpan={cols.length} style={{...TD, background:'#fff8e1', fontWeight:600, fontSize:11}}>Consumables</td></tr>
-                      {consumables.map((t, i) => (
-                        <tr key={t.id}>
-                          {cols.map(c => {
-                            if (c.key === 'sn') return <td key={c.key} style={{...TD, textAlign:'center'}}>{sn + i}</td>;
-                            if (c.key === 'quantity') return <td key={c.key} style={TDN}>{t.quantity ?? '—'}</td>;
-                            if (c.key === 'type') return <td key={c.key} style={TD}><span style={{padding:'1px 6px',borderRadius:3,fontSize:10,fontWeight:600,background:'#fef3cd',color:'#856404'}}>Consumable</span></td>;
-                            return <td key={c.key} style={TD}>{t[c.key] || '—'}</td>;
-                          })}
-                        </tr>
-                      ))}
-                    </>
-                  )}
+                  {TYPE_SECTIONS.filter(s => toolsTypeFilter === 'all' || toolsTypeFilter === s.key).map(sec => {
+                    const secItems = allItems.filter(t => t.type === sec.type);
+                    if (!secItems.length) return null;
+                    const snStart = sn;
+                    sn += secItems.length;
+                    return (
+                      <>
+                        <tr key={`hdr-${sec.key}`}><td colSpan={cols.length} style={{...TD, background:sec.sectionBg, fontWeight:600, fontSize:11}}>{sec.label}</td></tr>
+                        {secItems.map((t, i) => (
+                          <tr key={t.id}>
+                            {cols.map(c => {
+                              if (c.key === 'sn') return <td key={c.key} style={{...TD, textAlign:'center'}}>{snStart + i}</td>;
+                              if (c.key === 'quantity') return <td key={c.key} style={TDN}>{scaledQty(t) ?? '—'}</td>;
+                              if (c.key === 'type') return <td key={c.key} style={TD}><span style={{padding:'1px 6px',borderRadius:3,fontSize:10,fontWeight:600,background:sec.bg,color:sec.fg}}>{t.type}</span></td>;
+                              return <td key={c.key} style={TD}>{t[c.key] || '—'}</td>;
+                            })}
+                          </tr>
+                        ))}
+                      </>
+                    );
+                  })}
                   {allItems.length === 0 && (
                     <tr><td colSpan={cols.length} style={{...TD, textAlign:'center', color:'var(--text3)'}}>No items.</td></tr>
                   )}
@@ -234,7 +228,7 @@ function dataCell(text, opts = {}) {
   });
 }
 
-function buildDocxTable(items, cols, startSN = 1, sectionLabel = null) {
+function buildDocxTable(items, cols, startSN = 1, sectionLabel = null, scaleQtyFn = null) {
   const rows = [];
   if (sectionLabel) {
     rows.push(new TableRow({
@@ -250,7 +244,7 @@ function buildDocxTable(items, cols, startSN = 1, sectionLabel = null) {
     rows.push(new TableRow({
       children: cols.map(c => {
         if (c.key === 'sn') return dataCell(startSN + i, { center: true });
-        if (c.key === 'quantity') return dataCell(t.quantity ?? '—', { right: true });
+        if (c.key === 'quantity') return dataCell(scaleQtyFn ? scaleQtyFn(t) ?? '—' : t.quantity ?? '—', { right: true });
         return dataCell(t[c.key] || '—');
       }),
     }));
@@ -260,7 +254,9 @@ function buildDocxTable(items, cols, startSN = 1, sectionLabel = null) {
 
 async function downloadToolsDOCX(fullInst, activeExps, reportId, opts = {}) {
   const { toolsOccIds = [], toolsLevel = '', occupations = [], toolsTypeFilter = 'all',
-          toolsColumns = DEFAULT_COLS, toolsLayout = 'combined' } = opts;
+          toolsColumns = DEFAULT_COLS, toolsLayout = 'combined', numGroups = 1 } = opts;
+  const groups = Math.max(1, parseInt(numGroups) || 1);
+  const scaledQty = (t) => t.quantity != null ? t.quantity * groups : null;
 
   if (!toolsOccIds.length || !toolsLevel) { alert('Select occupation and level first.'); return; }
 
@@ -305,38 +301,30 @@ async function downloadToolsDOCX(fullInst, activeExps, reportId, opts = {}) {
     let tableRows = [];
 
     if (toolsLayout === 'separate_tables') {
-      const tools = items.filter(t => t.type === 'Tool');
-      const consumables = items.filter(t => t.type === 'Consumable');
-      if ((toolsTypeFilter === 'all' || toolsTypeFilter === 'tools') && tools.length) {
-        children.push(new Paragraph({ spacing: { before: 100 }, children: [new TextRun({ text: 'Tools', bold: true, size: 20 })] }));
-        tableRows = buildDocxTable(tools, cols, globalSN);
+      for (const sec of TYPE_SECTIONS) {
+        if (toolsTypeFilter !== 'all' && toolsTypeFilter !== sec.key) continue;
+        const secItems = items.filter(t => t.type === sec.type);
+        if (!secItems.length) continue;
+        children.push(new Paragraph({ spacing: { before: 160 }, children: [new TextRun({ text: sec.label, bold: true, size: 20 })] }));
+        tableRows = buildDocxTable(secItems, cols, globalSN, null, scaledQty);
         children.push(new Table({ width: { size: 100, type: WidthType.PERCENTAGE }, rows: tableRows }));
-        globalSN += tools.length;
-      }
-      if ((toolsTypeFilter === 'all' || toolsTypeFilter === 'consumables') && consumables.length) {
-        children.push(new Paragraph({ spacing: { before: 160 }, children: [new TextRun({ text: 'Consumables', bold: true, size: 20 })] }));
-        tableRows = buildDocxTable(consumables, cols, globalSN);
-        children.push(new Table({ width: { size: 100, type: WidthType.PERCENTAGE }, rows: tableRows }));
-        globalSN += consumables.length;
+        globalSN += secItems.length;
       }
       continue;
     }
 
     if (toolsLayout === 'separate_sections') {
-      const tools = items.filter(t => t.type === 'Tool');
-      const consumables = items.filter(t => t.type === 'Consumable');
       tableRows = [];
-      if ((toolsTypeFilter === 'all' || toolsTypeFilter === 'tools') && tools.length) {
-        tableRows.push(...buildDocxTable(tools, cols, globalSN, 'Tools'));
-        globalSN += tools.length;
-      }
-      if ((toolsTypeFilter === 'all' || toolsTypeFilter === 'consumables') && consumables.length) {
-        tableRows.push(...buildDocxTable(consumables, cols, globalSN, 'Consumables'));
-        globalSN += consumables.length;
+      for (const sec of TYPE_SECTIONS) {
+        if (toolsTypeFilter !== 'all' && toolsTypeFilter !== sec.key) continue;
+        const secItems = items.filter(t => t.type === sec.type);
+        if (!secItems.length) continue;
+        tableRows.push(...buildDocxTable(secItems, cols, globalSN, sec.label, scaledQty));
+        globalSN += secItems.length;
       }
       if (tableRows.length) children.push(new Table({ width: { size: 100, type: WidthType.PERCENTAGE }, rows: tableRows }));
     } else {
-      tableRows = buildDocxTable(items, cols, globalSN);
+      tableRows = buildDocxTable(items, cols, globalSN, null, scaledQty);
       if (tableRows.length) children.push(new Table({ width: { size: 100, type: WidthType.PERCENTAGE }, rows: tableRows }));
       globalSN += items.length;
     }
@@ -356,7 +344,9 @@ async function downloadToolsDOCX(fullInst, activeExps, reportId, opts = {}) {
 
 function buildToolsPrintHTML(fullInst, activeExps, clients, reportId, fyRangeLabel, opts = {}) {
   const { toolsOccIds = [], toolsLevel = '', occupations = [], toolsTypeFilter = 'all',
-          toolsColumns = DEFAULT_COLS, toolsLayout = 'combined' } = opts;
+          toolsColumns = DEFAULT_COLS, toolsLayout = 'combined', numGroups = 1 } = opts;
+  const groups = Math.max(1, parseInt(numGroups) || 1);
+  const scaledQty = (t) => t.quantity != null ? t.quantity * groups : null;
 
   const cols = ALL_COLUMNS.filter(c => toolsColumns.includes(c.key));
   const occNameFn = (id) => {
@@ -370,15 +360,16 @@ function buildToolsPrintHTML(fullInst, activeExps, clients, reportId, fyRangeLab
     return items.filter(t => t.type === typeMap[toolsTypeFilter]);
   };
 
-  const headerHTML = cols.map(c => `<th>${esc(c.label)}</th>`).join('');
+  const headerHTML = cols.map(c => `<th>${esc(qtyHeader(c))}</th>`).join('');
 
   const renderRows = (items, startSN) => items.map((t, i) =>
     `<tr>${cols.map(c => {
       if (c.key === 'sn') return `<td style="text-align:center">${startSN + i}</td>`;
-      if (c.key === 'quantity') return `<td class="num">${t.quantity ?? '—'}</td>`;
+      if (c.key === 'quantity') return `<td class="num">${scaledQty(t) ?? '—'}</td>`;
       return `<td>${esc(t[c.key] || '—')}</td>`;
     }).join('')}</tr>`
   ).join('');
+  const qtyHeader = (c) => c.key === 'quantity' && groups > 1 ? `Quantity (×${groups})` : c.label;
 
   let bodyHTML = '';
   let globalSN = 1;
@@ -393,27 +384,21 @@ function buildToolsPrintHTML(fullInst, activeExps, clients, reportId, fyRangeLab
     bodyHTML += `<h3>${name} — ${esc(toolsLevel)}</h3>`;
 
     if (toolsLayout === 'separate_tables') {
-      const tools = items.filter(t => t.type === 'Tool');
-      const consumables = items.filter(t => t.type === 'Consumable');
-      if ((toolsTypeFilter === 'all' || toolsTypeFilter === 'tools') && tools.length) {
-        bodyHTML += `<p><strong>Tools</strong></p><table><thead><tr>${headerHTML}</tr></thead><tbody>${renderRows(tools, globalSN)}</tbody></table>`;
-        globalSN += tools.length;
-      }
-      if ((toolsTypeFilter === 'all' || toolsTypeFilter === 'consumables') && consumables.length) {
-        bodyHTML += `<p><strong>Consumables</strong></p><table><thead><tr>${headerHTML}</tr></thead><tbody>${renderRows(consumables, globalSN)}</tbody></table>`;
-        globalSN += consumables.length;
+      for (const sec of TYPE_SECTIONS) {
+        if (toolsTypeFilter !== 'all' && toolsTypeFilter !== sec.key) continue;
+        const secItems = items.filter(t => t.type === sec.type);
+        if (!secItems.length) continue;
+        bodyHTML += `<p><strong>${esc(sec.label)}</strong></p><table><thead><tr>${headerHTML}</tr></thead><tbody>${renderRows(secItems, globalSN)}</tbody></table>`;
+        globalSN += secItems.length;
       }
     } else if (toolsLayout === 'separate_sections') {
-      const tools = items.filter(t => t.type === 'Tool');
-      const consumables = items.filter(t => t.type === 'Consumable');
       bodyHTML += `<table><thead><tr>${headerHTML}</tr></thead><tbody>`;
-      if ((toolsTypeFilter === 'all' || toolsTypeFilter === 'tools') && tools.length) {
-        bodyHTML += `<tr><td colspan="${cols.length}" style="background:#e8f0fe;font-weight:600;font-size:11px">Tools</td></tr>${renderRows(tools, globalSN)}`;
-        globalSN += tools.length;
-      }
-      if ((toolsTypeFilter === 'all' || toolsTypeFilter === 'consumables') && consumables.length) {
-        bodyHTML += `<tr><td colspan="${cols.length}" style="background:#fff8e1;font-weight:600;font-size:11px">Consumables</td></tr>${renderRows(consumables, globalSN)}`;
-        globalSN += consumables.length;
+      for (const sec of TYPE_SECTIONS) {
+        if (toolsTypeFilter !== 'all' && toolsTypeFilter !== sec.key) continue;
+        const secItems = items.filter(t => t.type === sec.type);
+        if (!secItems.length) continue;
+        bodyHTML += `<tr><td colspan="${cols.length}" style="background:${sec.sectionBg};font-weight:600;font-size:11px">${esc(sec.label)}</td></tr>${renderRows(secItems, globalSN)}`;
+        globalSN += secItems.length;
       }
       bodyHTML += `</tbody></table>`;
     } else {

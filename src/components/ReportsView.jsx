@@ -37,6 +37,7 @@ function ReportsView({ institutes, clients }) {
   const [toolsColumns, setToolsColumns]     = useState(['sn','name','description','unit','quantity','ownership','type','remarks']);
   const [toolsLayout, setToolsLayout]       = useState('combined');
   const [toolsData, setToolsData]           = useState({});
+  const [numGroups, setNumGroups]           = useState(1);
   const [toolsOccSearch, setToolsOccSearch] = useState('');
 
   const family = REPORT_FAMILIES.find(f => f.id === familyId) || REPORT_FAMILIES[0];
@@ -228,7 +229,7 @@ function ReportsView({ institutes, clients }) {
   const fyRangeLabel = fromFY || toFY ? `FY ${fromFY || '…'} – ${toFY || '…'}` : null;
   const noInstitute = !!family.noInstitute;
   const opts = { fromFY, toFY, selectedOccs, occupations, sortBy,
-    toolsOccIds, toolsLevel, toolsTypeFilter, toolsColumns, toolsLayout, toolsData };
+    toolsOccIds, toolsLevel, toolsTypeFilter, toolsColumns, toolsLayout, toolsData, numGroups };
 
   const handlePrint = () => {
     const w = window.open('', '_blank');
@@ -422,6 +423,19 @@ function ReportsView({ institutes, clients }) {
                     <option value="separate_sections">Separate sections</option>
                     <option value="separate_tables">Separate tables</option>
                   </select>
+                </div>
+
+                <div className="filter-section">
+                  <div className="filter-label">Number of Groups</div>
+                  <input
+                    type="number" min="1" className="form-input"
+                    value={numGroups}
+                    onChange={e => setNumGroups(Math.max(1, parseInt(e.target.value) || 1))}
+                    style={{width:'100%'}}
+                  />
+                  <div style={{fontSize:11, color:'var(--text3)', marginTop:3}}>
+                    Quantities entered are for 1 group (20 trainees). Total = qty × groups.
+                  </div>
                 </div>
 
                 <div className="filter-section">
