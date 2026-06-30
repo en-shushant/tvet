@@ -229,7 +229,8 @@ function ReportsView({ institutes, clients }) {
   const fyRangeLabel = fromFY || toFY ? `FY ${fromFY || '…'} – ${toFY || '…'}` : null;
   const noInstitute = !!family.noInstitute;
   const opts = { fromFY, toFY, selectedOccs, occupations, sortBy,
-    toolsOccIds, toolsLevel, toolsTypeFilter, toolsColumns, toolsLayout, toolsData, numGroups };
+    toolsOccIds, toolsLevel, toolsTypeFilter, toolsColumns, toolsLayout, toolsData, numGroups,
+    clients, fromFY, toFY };
 
   const handlePrint = () => {
     const w = window.open('', '_blank');
