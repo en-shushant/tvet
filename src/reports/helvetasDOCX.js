@@ -113,47 +113,37 @@ function makeTable2(fullInst, activeExps, occupations = [], sortBy = 'default') 
     children: [
       hdrCell('S.N.'),
       hdrCell('Occupation'),
-      hdrCell('Year'),
       hdrCell('No. of trainees completed the training'),
       hdrCell('No. of skill test passed trainees'),
       hdrCell('No. of employed graduates'),
+      hdrCell('Training completed Year'),
     ],
   });
 
   const dataRows = [];
   occs.forEach((occ, i) => {
-    occ.fyRows.forEach(row => {
+    occ.fyRows.forEach((row, j) => {
       dataRows.push(new TableRow({
         children: [
-          dataCell(i + 1, { center: true }),
-          dataCell(occ.name),
-          dataCell(row.fy),
+          dataCell(j === 0 ? i + 1 : '', { center: true }),
+          dataCell(j === 0 ? occ.name : ''),
           dataCell(row.trainees || '—', { right: true }),
           dataCell(row.skillTestPass || '—', { right: true }),
           dataCell(row.employed || '—', { right: true }),
+          dataCell(row.fy),
         ],
       }));
     });
-    dataRows.push(new TableRow({
-      children: [
-        dataCell(i + 1, { center: true, shading: SUBTOTAL_FILL }),
-        dataCell(occ.name, { bold: true, shading: SUBTOTAL_FILL }),
-        dataCell('Sub-total', { bold: true, shading: SUBTOTAL_FILL }),
-        dataCell(occ.subtotal.trainees || '—', { right: true, bold: true, shading: SUBTOTAL_FILL }),
-        dataCell(occ.subtotal.skillTestPass || '—', { right: true, bold: true, shading: SUBTOTAL_FILL }),
-        dataCell(occ.subtotal.employed || '—', { right: true, bold: true, shading: SUBTOTAL_FILL }),
-      ],
-    }));
   });
 
   const totalRow = new TableRow({
     children: [
       dataCell('', { shading: TOTAL_FILL }),
       dataCell(`Total of ${allFYs.length} year${allFYs.length !== 1 ? 's' : ''}`, { bold: true, shading: TOTAL_FILL }),
-      dataCell('', { shading: TOTAL_FILL }),
       dataCell(grandTotal.trainees || '—', { right: true, bold: true, shading: TOTAL_FILL }),
       dataCell(grandTotal.skillTestPass || '—', { right: true, bold: true, shading: TOTAL_FILL }),
       dataCell(grandTotal.employed || '—', { right: true, bold: true, shading: TOTAL_FILL }),
+      dataCell('', { shading: TOTAL_FILL }),
     ],
   });
 

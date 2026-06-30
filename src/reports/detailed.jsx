@@ -1,4 +1,4 @@
-import { esc } from './helpers.js';
+import { esc, fyYear } from './helpers.js';
 import {
   Document, Packer, Table, TableRow, TableCell, Paragraph, TextRun,
   WidthType, AlignmentType, VerticalAlign, HeadingLevel, BorderStyle,
@@ -31,6 +31,26 @@ function locationStr(occ) {
   return (occ.locations || []).map(l => [l.district, l.province].filter(Boolean).join(', ')).filter(Boolean).join('; ') || '—';
 }
 
+// Build NSTB lookup: { occNameLower: { fyYear: { applied, appeared, pass } } }
+function buildNSTBLookup(fullInst) {
+  const lookup = {};
+  for (const n of (fullInst?.nstb || [])) {
+    const key = (n.occupation || '').toLowerCase().trim();
+    const yr = fyYear(n.fy);
+    if (!lookup[key]) lookup[key] = {};
+    if (!lookup[key][yr]) lookup[key][yr] = { applied: 0, appeared: 0, pass: 0 };
+    lookup[key][yr].applied  += parseInt(n.applied)  || 0;
+    lookup[key][yr].appeared += parseInt(n.appeared) || 0;
+    lookup[key][yr].pass     += parseInt(n.pass)     || 0;
+  }
+  return lookup;
+}
+
+function nstbForOcc(lookup, occName, fy) {
+  const key = (occName || '').toLowerCase().trim();
+  return (lookup[key] || {})[fyYear(fy)] || null;
+}
+
 // ── Screen component ─────────────────────────────────────────────────────────
 
 const TH = { background:'#dce6f1', padding:'6px 10px', border:'1px solid #aab8c8', fontWeight:600, fontSize:11, textAlign:'center', verticalAlign:'middle' };
@@ -47,11 +67,15 @@ function DetailedReport({ fullInst, activeExps, clients, occupations }) {
     </div>
   );
 
+  const nstbLookup = buildNSTBLookup(fullInst);
+
   return (
     <div>
       {activeExps.map((exp, idx) => {
         const clientName = getClientName(exp, clients);
         const clientType = getClientType(exp, clients);
+        const startLabel = exp.startDate ? fmtDate(exp.startDate) : (exp.startFY ? `FY ${exp.startFY}` : '—');
+        const endLabel   = exp.endDate   ? fmtDate(exp.endDate)   : (exp.endFY   ? `FY ${exp.endFY}`   : '—');
         return (
           <div key={exp.id} style={CARD}>
             {/* Assignment header */}
@@ -69,8 +93,8 @@ function DetailedReport({ fullInst, activeExps, clients, occupations }) {
               {[
                 ['Client', clientName],
                 ['Funding Agency / Type', clientType],
-                ['Start Date', fmtDate(exp.startDate)],
-                ['End Date', fmtDate(exp.endDate)],
+                ['Start Date', startLabel],
+                ['End Date', endLabel],
                 ['Contract Value (NPR)', exp.contractValue ? fmt(exp.contractValue) : '—'],
                 ['Duration (Days)', exp.durationDays || '—'],
                 ['Country', exp.country || 'Nepal'],
@@ -94,19 +118,28 @@ function DetailedReport({ fullInst, activeExps, clients, occupations }) {
                       <th style={TH}>Level</th>
                       <th style={TH}>Trainees</th>
                       <th style={TH}>Duration (hrs)</th>
-                      <th style={TH}>Skill Test Provisioned</th>
+                      <th style={TH}>Skill Test Prov.</th>
                       <th style={TH}>Appeared</th>
                       <th style={TH}>Pass</th>
-                      <th style={TH}>Employment Provisioned</th>
-                      <th style={TH}>Employment %</th>
+                      <th style={TH}>Emp. Prov.</th>
+                      <th style={TH}>Emp. %</th>
+                      <th style={TH}>Employed</th>
                       <th style={{...TH, textAlign:'left'}}>Location</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {exp.occupations.map((occ, j) => (
+                    {exp.occupations.map((occ, j) => {
+                      const occName = getOccName(occ, occupations);
+                      const nstb = nstbForOcc(nstbLookup, occName, exp.fy);
+                      const appeared = occ.skillTestAppeared || nstb?.appeared || null;
+                      const pass     = occ.skillTestPass     || nstb?.pass     || null;
+                      const trainees = parseInt(occ.trainees) || 0;
+                      const empPct   = parseFloat(occ.employmentActual) || 0;
+                      const employed = trainees && empPct ? Math.round(trainees * empPct / 100) : null;
+                      return (
                       <tr key={occ.id || j} style={{ background: j % 2 === 0 ? '#fff' : '#f8fafc' }}>
                         <td style={{...TD, textAlign:'center', color:'var(--text3)'}}>{j + 1}</td>
-                        <td style={TD}>{getOccName(occ, occupations)}</td>
+                        <td style={TD}>{occName}</td>
                         <td style={{...TD, textAlign:'center'}}>{occ.level || '—'}</td>
                         <td style={TDN}>{occ.trainees || '—'}</td>
                         <td style={TDN}>{occ.duration || '—'}</td>
@@ -117,8 +150,8 @@ function DetailedReport({ fullInst, activeExps, clients, occupations }) {
                             {occ.skillTestProvisioned ? 'Yes' : 'No'}
                           </span>
                         </td>
-                        <td style={TDN}>{occ.skillTestAppeared || '—'}</td>
-                        <td style={TDN}>{occ.skillTestPass || '—'}</td>
+                        <td style={TDN}>{appeared ?? '—'}</td>
+                        <td style={TDN}>{pass ?? '—'}</td>
                         <td style={{...TD, textAlign:'center'}}>
                           <span style={{ fontSize:10, fontWeight:600, padding:'1px 6px', borderRadius:3,
                             background: occ.employmentProvisioned ? '#d4edda' : '#f8d7da',
@@ -127,9 +160,11 @@ function DetailedReport({ fullInst, activeExps, clients, occupations }) {
                           </span>
                         </td>
                         <td style={TDN}>{occ.employmentActual ? `${occ.employmentActual}%` : '—'}</td>
+                        <td style={TDN}>{employed ?? '—'}</td>
                         <td style={TD}>{locationStr(occ)}</td>
                       </tr>
-                    ))}
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>
@@ -155,17 +190,21 @@ function buildDetailedPrintHTML(fullInst, activeExps, clients, reportId, fyRange
   const firmName = fullInst?.name || '';
   let body = '';
 
+  const nstbLookup = buildNSTBLookup(fullInst);
+
   activeExps.forEach((exp, idx) => {
     const clientName = getClientName(exp, clients);
     const clientType = getClientType(exp, clients);
     const tags = [exp.trainingType, exp.isGesi ? 'GESI' : '', exp.isResidential ? 'Residential' : '', exp.isJV ? `JV (${exp.jvRole})` : ''].filter(Boolean).join(' | ');
+    const startLabel = exp.startDate ? fmtDate(exp.startDate) : (exp.startFY ? `FY ${exp.startFY}` : '—');
+    const endLabel   = exp.endDate   ? fmtDate(exp.endDate)   : (exp.endFY   ? `FY ${exp.endFY}`   : '—');
 
     body += `<div class="assignment">
 <h3>#${idx+1} ${esc(exp.assignmentName || '(Unnamed Assignment)')} — FY ${esc(exp.fy)}</h3>
 ${tags ? `<p class="tags">${esc(tags)}</p>` : ''}
 <table class="meta">
   <tr><td><b>Client:</b> ${esc(clientName)}</td><td><b>Funding Agency/Type:</b> ${esc(clientType)}</td><td><b>Contract Value (NPR):</b> ${exp.contractValue ? fmt(exp.contractValue) : '—'}</td></tr>
-  <tr><td><b>Start Date:</b> ${fmtDate(exp.startDate)}</td><td><b>End Date:</b> ${fmtDate(exp.endDate)}</td><td><b>Duration (Days):</b> ${exp.durationDays || '—'}</td></tr>
+  <tr><td><b>Start Date:</b> ${esc(startLabel)}</td><td><b>End Date:</b> ${esc(endLabel)}</td><td><b>Duration (Days):</b> ${exp.durationDays || '—'}</td></tr>
   ${exp.isJV ? `<tr><td colspan="3"><b>JV Partners:</b> ${esc(exp.jvPartnerNames || exp.jvPartners || '—')}</td></tr>` : ''}
 </table>`;
 
@@ -174,20 +213,28 @@ ${tags ? `<p class="tags">${esc(tags)}</p>` : ''}
 <thead><tr>
   <th>#</th><th>Occupation</th><th>Level</th><th>Trainees</th><th>Duration (hrs)</th>
   <th>Skill Test Prov.</th><th>Appeared</th><th>Pass</th>
-  <th>Employment Prov.</th><th>Emp. %</th><th>Location</th>
+  <th>Emp. Prov.</th><th>Emp. %</th><th>Employed</th><th>Location</th>
 </tr></thead><tbody>`;
       exp.occupations.forEach((occ, j) => {
+        const oName = getOccName(occ, occupations);
+        const nstb = nstbForOcc(nstbLookup, oName, exp.fy);
+        const appeared = occ.skillTestAppeared || nstb?.appeared || '—';
+        const pass     = occ.skillTestPass     || nstb?.pass     || '—';
+        const trainees = parseInt(occ.trainees) || 0;
+        const empPct   = parseFloat(occ.employmentActual) || 0;
+        const employed = trainees && empPct ? Math.round(trainees * empPct / 100) : '—';
         body += `<tr>
 <td class="c">${j+1}</td>
-<td>${esc(getOccName(occ, occupations))}</td>
+<td>${esc(oName)}</td>
 <td class="c">${esc(occ.level||'—')}</td>
 <td class="r">${occ.trainees||'—'}</td>
 <td class="r">${occ.duration||'—'}</td>
 <td class="c">${occ.skillTestProvisioned?'Yes':'No'}</td>
-<td class="r">${occ.skillTestAppeared||'—'}</td>
-<td class="r">${occ.skillTestPass||'—'}</td>
+<td class="r">${appeared}</td>
+<td class="r">${pass}</td>
 <td class="c">${occ.employmentProvisioned?'Yes':'No'}</td>
 <td class="r">${occ.employmentActual?occ.employmentActual+'%':'—'}</td>
+<td class="r">${employed}</td>
 <td>${esc(locationStr(occ))}</td>
 </tr>`;
       });
@@ -263,6 +310,7 @@ async function downloadDetailedDOCX(fullInst, activeExps, reportId, opts = {}) {
   const clients = opts.clients || [];
   const firmName = fullInst?.name || 'Firm';
   const fyLabel = fromFY || toFY ? `FY ${fromFY || '…'} – ${toFY || '…'}` : '';
+  const nstbLookup = buildNSTBLookup(fullInst);
 
   const children = [
     new Paragraph({
@@ -278,6 +326,8 @@ async function downloadDetailedDOCX(fullInst, activeExps, reportId, opts = {}) {
   activeExps.forEach((exp, idx) => {
     const clientName = getClientName(exp, clients);
     const clientType = getClientType(exp, clients);
+    const startLabel = exp.startDate ? fmtDate(exp.startDate) : (exp.startFY ? `FY ${exp.startFY}` : '—');
+    const endLabel   = exp.endDate   ? fmtDate(exp.endDate)   : (exp.endFY   ? `FY ${exp.endFY}`   : '—');
 
     children.push(new Paragraph({
       heading: HeadingLevel.HEADING_2,
@@ -288,7 +338,7 @@ async function downloadDetailedDOCX(fullInst, activeExps, reportId, opts = {}) {
     // Meta table
     const metaRows = [
       ['Client', clientName, 'Funding Agency/Type', clientType],
-      ['Start Date', fmtDate(exp.startDate), 'End Date', fmtDate(exp.endDate)],
+      ['Start Date', startLabel, 'End Date', endLabel],
       ['Contract Value (NPR)', exp.contractValue ? fmt(exp.contractValue) : '—', 'Duration (Days)', exp.durationDays || '—'],
       ['Training Type', exp.trainingType || '—', 'Flags', [exp.isGesi?'GESI':'', exp.isResidential?'Residential':'', exp.isJV?`JV (${exp.jvRole})`:''].filter(Boolean).join(', ') || 'None'],
     ];
@@ -317,24 +367,34 @@ async function downloadDetailedDOCX(fullInst, activeExps, reportId, opts = {}) {
             children: [
               hc('#', { center: true }), hc('Occupation', { center: false }), hc('Level'), hc('Trainees'),
               hc('Duration (hrs)'), hc('Skill Test Prov.'), hc('Appeared'), hc('Pass'),
-              hc('Emp. Prov.'), hc('Emp. %'), hc('Location', { center: false }),
+              hc('Emp. Prov.'), hc('Emp. %'), hc('Employed'), hc('Location', { center: false }),
             ],
           }),
-          ...exp.occupations.map((occ, j) => new TableRow({
-            children: [
-              dc(j+1, { center: true }),
-              dc(getOccName(occ, occupations)),
-              dc(occ.level || '—', { center: true }),
-              dc(occ.trainees || '—', { right: true }),
-              dc(occ.duration || '—', { right: true }),
-              dc(occ.skillTestProvisioned ? 'Yes' : 'No', { center: true }),
-              dc(occ.skillTestAppeared || '—', { right: true }),
-              dc(occ.skillTestPass || '—', { right: true }),
-              dc(occ.employmentProvisioned ? 'Yes' : 'No', { center: true }),
-              dc(occ.employmentActual ? `${occ.employmentActual}%` : '—', { right: true }),
-              dc(locationStr(occ)),
-            ],
-          })),
+          ...exp.occupations.map((occ, j) => {
+            const oName = getOccName(occ, occupations);
+            const nstb = nstbForOcc(nstbLookup, oName, exp.fy);
+            const appeared = occ.skillTestAppeared || nstb?.appeared || '—';
+            const pass     = occ.skillTestPass     || nstb?.pass     || '—';
+            const trainees = parseInt(occ.trainees) || 0;
+            const empPct   = parseFloat(occ.employmentActual) || 0;
+            const employed = trainees && empPct ? Math.round(trainees * empPct / 100) : '—';
+            return new TableRow({
+              children: [
+                dc(j+1, { center: true }),
+                dc(oName),
+                dc(occ.level || '—', { center: true }),
+                dc(occ.trainees || '—', { right: true }),
+                dc(occ.duration || '—', { right: true }),
+                dc(occ.skillTestProvisioned ? 'Yes' : 'No', { center: true }),
+                dc(appeared, { right: true }),
+                dc(pass, { right: true }),
+                dc(occ.employmentProvisioned ? 'Yes' : 'No', { center: true }),
+                dc(occ.employmentActual ? `${occ.employmentActual}%` : '—', { right: true }),
+                dc(employed, { right: true }),
+                dc(locationStr(occ)),
+              ],
+            });
+          }),
         ],
       }));
     }
