@@ -199,11 +199,11 @@ function ReportsView({ institutes, clients }) {
     };
     if (isMultiInst) {
       for (const inst of Object.values(fwFullInsts)) {
-        addFromExps(inst.experience || []);
+        if (reportId !== 'fw2') addFromExps(inst.experience || []);
         if (reportId === 'fw2') addFromNSTB(inst);
       }
     } else {
-      addFromExps(activeExps);
+      if (reportId !== 'fw2') addFromExps(activeExps);
       if (reportId === 'fw2' && fullInst) addFromNSTB(fullInst);
     }
     return [...names].sort();
