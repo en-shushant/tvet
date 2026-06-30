@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { getSession } from '../utils/auth.js';
 import { api, normInst } from '../utils/api.js';
 import { exportToCSV } from '../utils/export.js';
-import { fyInRange } from '../reports/helpers.js';
+import { fyInRange, fyYear } from '../reports/helpers.js';
 import REPORT_FAMILIES from '../reports/index.js';
 
 function ReportsView({ institutes, clients }) {
@@ -27,6 +27,7 @@ function ReportsView({ institutes, clients }) {
   const [fwFullInsts, setFwFullInsts] = useState({});
   const [fwLoading, setFwLoading] = useState(false);
   const [fwInstSearch, setFwInstSearch] = useState('');
+  const [nstbComparative, setNstbComparative] = useState(false);
 
   // Tools report state
   const [toolsOccIds, setToolsOccIds]       = useState([]);
@@ -559,7 +560,13 @@ function ReportsView({ institutes, clients }) {
                     <span style={{fontSize:12, color:'var(--text3)', marginLeft:8}}>{fwInstIds.length} firm{fwInstIds.length !== 1 ? 's' : ''}</span>
                     {fyRangeLabel && <span style={{fontSize:11, color:'var(--primary)', background:'var(--primary-light,#eff6ff)', borderRadius:4, padding:'1px 7px', marginLeft:8}}>{fyRangeLabel}</span>}
                   </div>
-                  <div style={{marginLeft:'auto', display:'flex', gap:8}}>
+                  <div style={{marginLeft:'auto', display:'flex', alignItems:'center', gap:12}}>
+                    {report.id === 'fw2' && (
+                      <label style={{display:'flex', alignItems:'center', gap:5, fontSize:12, cursor:'pointer', whiteSpace:'nowrap'}}>
+                        <input type="checkbox" checked={nstbComparative} onChange={e => setNstbComparative(e.target.checked)} />
+                        Comparative
+                      </label>
+                    )}
                     <button className="btn btn-primary btn-sm" onClick={() => {
                       const sections = fwInstIds.map(id => {
                         const inst = fwFullInsts[id];
@@ -597,6 +604,78 @@ function ReportsView({ institutes, clients }) {
                     }} disabled={fwInstIds.length === 0}>🖨 Print / PDF</button>
                   </div>
                 </div>
+
+                {/* Cross-firm comparative table for NSTB */}
+                {report.id === 'fw2' && nstbComparative && (() => {
+                  // Collect all occupations and per-firm appeared totals
+                  const firmData = fwInstIds.map(id => {
+                    const inst = fwFullInsts[id];
+                    if (!inst) return null;
+                    const exps = (inst.experience || []).filter(e => fyInRange(e.fy, fromFY, toFY));
+                    const activeFYYears = new Set(exps.map(e => fyYear(e.fy)).filter(Boolean));
+                    const records = (inst.nstb || []).filter(n => activeFYYears.size === 0 || activeFYYears.has(fyYear(n.fy)));
+                    const byOcc = {};
+                    for (const n of records) {
+                      const name = (n.occupation || '').trim();
+                      if (!name) continue;
+                      if (selectedOccs.length && !selectedOccs.some(o => o.toLowerCase() === name.toLowerCase())) continue;
+                      if (!byOcc[name]) byOcc[name] = 0;
+                      byOcc[name] += parseInt(n.appeared) || 0;
+                    }
+                    return { id, name: inst.acronym || inst.name || id, byOcc };
+                  }).filter(Boolean);
+
+                  const allOccs = [...new Set(firmData.flatMap(f => Object.keys(f.byOcc)))].sort();
+                  if (!allOccs.length) return null;
+
+                  const TH2 = { background:'#dce6f1', padding:'6px 8px', border:'1px solid #aab8c8', fontWeight:600, fontSize:11, textAlign:'center' };
+                  const TD2 = { padding:'5px 8px', border:'1px solid #c8d4e0', fontSize:11 };
+                  const TDN2 = { ...TD2, textAlign:'right' };
+
+                  return (
+                    <div className="card" style={{padding:20, overflowX:'auto'}}>
+                      <div style={{fontWeight:600, fontSize:13, marginBottom:10}}>
+                        Comparative — Appeared Trainees by Occupation &amp; Firm
+                        {fyRangeLabel && <span style={{fontWeight:400, fontSize:11, marginLeft:8, color:'var(--text3)'}}>({fyRangeLabel})</span>}
+                      </div>
+                      <table style={{borderCollapse:'collapse', width:'100%', minWidth: firmData.length * 120 + 200}}>
+                        <thead>
+                          <tr>
+                            <th style={{...TH2, textAlign:'left'}}>Occupation</th>
+                            {firmData.map(f => (
+                              <th key={f.id} style={TH2}>
+                                <div>{f.name}</div>
+                                <div style={{fontWeight:400, fontSize:10, color:'#555'}}>Appeared</div>
+                              </th>
+                            ))}
+                            <th style={{...TH2, background:'#c6d4e8'}}>Total</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {allOccs.map((occ, i) => {
+                            const vals = firmData.map(f => f.byOcc[occ] || 0);
+                            const rowTotal = vals.reduce((s, v) => s + v, 0);
+                            return (
+                              <tr key={occ} style={{background: i % 2 === 0 ? '#fff' : '#f7f9fc'}}>
+                                <td style={TD2}>{occ}</td>
+                                {vals.map((v, j) => <td key={j} style={TDN2}>{v || '—'}</td>)}
+                                <td style={{...TDN2, fontWeight:600}}>{rowTotal || '—'}</td>
+                              </tr>
+                            );
+                          })}
+                          <tr style={{background:'#e8f0fe', fontWeight:600}}>
+                            <td style={TD2}>Total</td>
+                            {firmData.map((f, j) => {
+                              const t = allOccs.reduce((s, occ) => s + (f.byOcc[occ] || 0), 0);
+                              return <td key={j} style={TDN2}>{t || '—'}</td>;
+                            })}
+                            <td style={TDN2}>{allOccs.reduce((s, occ) => s + firmData.reduce((s2, f) => s2 + (f.byOcc[occ] || 0), 0), 0) || '—'}</td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
+                  );
+                })()}
 
                 {/* Per-firm tables */}
                 {fwInstIds.map(id => {
