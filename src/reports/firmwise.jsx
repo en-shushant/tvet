@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { esc, fyYear } from './helpers.js';
+import { esc, fyYear, fyInRange } from './helpers.js';
 import { buildFirmWiseData, fmt } from './helvetasData.js';
 import {
   Document, Packer, Table, TableRow, TableCell, Paragraph, TextRun,
@@ -92,9 +92,9 @@ function FirmWiseTable({ fullInst, activeExps, occupations, selectedOccs }) {
 
 // ── NSTB Skill Test Report ────────────────────────────────────────────────────
 
-function buildNSTBData(fullInst, activeExps, selectedOccs = []) {
-  const activeFYYears = new Set(activeExps.map(e => fyYear(e.fy)).filter(Boolean));
-  const records = (fullInst?.nstb || []).filter(n => activeFYYears.size === 0 || activeFYYears.has(fyYear(n.fy)));
+function buildNSTBData(fullInst, activeExps, selectedOccs = [], opts = {}) {
+  const { fromFY, toFY } = opts;
+  const records = (fullInst?.nstb || []).filter(n => fyInRange(n.fy, fromFY || null, toFY || null));
 
   // Group by occupation
   const byOcc = {};
@@ -175,9 +175,9 @@ function NSTBComparativeTable({ occs, allFYs, grand }) {
   );
 }
 
-function NSTBTable({ fullInst, activeExps, selectedOccs }) {
+function NSTBTable({ fullInst, activeExps, selectedOccs, opts = {} }) {
   const [comparative, setComparative] = useState(false);
-  const { occs, grand, allFYs } = buildNSTBData(fullInst, activeExps, selectedOccs);
+  const { occs, grand, allFYs } = buildNSTBData(fullInst, activeExps, selectedOccs, opts);
   if (!occs.length) return (
     <div style={{ padding: 16, color: 'var(--text3)', fontSize: 13 }}>
       No NSTB skill test data found for selected occupations/FY range.
@@ -240,7 +240,7 @@ function NSTBTable({ fullInst, activeExps, selectedOccs }) {
 export function renderAggregateTable(fullInst, activeExps, clients, reportId, opts = {}) {
   const { occupations = [], selectedOccs = [] } = opts;
   if (reportId === 'fw1') return <FirmWiseTable fullInst={fullInst} activeExps={activeExps} occupations={occupations} selectedOccs={selectedOccs} />;
-  if (reportId === 'fw2') return <NSTBTable fullInst={fullInst} activeExps={activeExps} selectedOccs={selectedOccs} />;
+  if (reportId === 'fw2') return <NSTBTable fullInst={fullInst} activeExps={activeExps} selectedOccs={selectedOccs} opts={opts} />;
   return null;
 }
 
@@ -249,7 +249,7 @@ export function renderAggregateTable(fullInst, activeExps, clients, reportId, op
 function buildNSTBPrintHTML(fullInst, activeExps, fyRangeLabel, opts = {}) {
   const { selectedOccs = [] } = opts;
   const firmName = fullInst?.name || '';
-  const { occs, grand, allFYs: fys } = buildNSTBData(fullInst, activeExps, selectedOccs);
+  const { occs, grand, allFYs: fys } = buildNSTBData(fullInst, activeExps, selectedOccs, opts);
   const fyPart = fys.length > 1 ? ` (FY ${fys[0]} to ${fys[fys.length - 1]})` : fys.length === 1 ? ` (FY ${fys[0]})` : '';
   const title = `NSTB Skill Test Report — by Occupation${fyPart}`;
   const headers = ['S.N.', 'Occupation', 'Applied', 'Appeared', 'Pass', 'Pass %'];
@@ -335,7 +335,7 @@ function dataCell(text, opts = {}) {
 
 async function downloadNSTBDOCX(fullInst, activeExps, opts = {}) {
   const { selectedOccs = [] } = opts;
-  const { occs, grand, allFYs } = buildNSTBData(fullInst, activeExps, selectedOccs);
+  const { occs, grand, allFYs } = buildNSTBData(fullInst, activeExps, selectedOccs, opts);
   if (!occs.length) { alert('No NSTB data to export.'); return; }
   const fyPart = allFYs.length > 1 ? ` (FY ${allFYs[0]} to ${allFYs[allFYs.length - 1]})` : allFYs.length === 1 ? ` (FY ${allFYs[0]})` : '';
   const firmName = fullInst?.name || 'Report';

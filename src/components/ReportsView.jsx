@@ -625,9 +625,7 @@ function ReportsView({ institutes, clients }) {
                   const firmData = fwInstIds.map(id => {
                     const inst = fwFullInsts[id];
                     if (!inst) return null;
-                    const exps = (inst.experience || []).filter(e => fyInRange(e.fy, fromFY, toFY));
-                    const activeFYYears = new Set(exps.map(e => fyYear(e.fy)).filter(Boolean));
-                    const records = (inst.nstb || []).filter(n => activeFYYears.size === 0 || activeFYYears.has(fyYear(n.fy)));
+                    const records = (inst.nstb || []).filter(n => fyInRange(n.fy, fromFY || null, toFY || null));
                     const byOcc = {};
                     let allAppearedTotal = 0;
                     for (const n of records) {
