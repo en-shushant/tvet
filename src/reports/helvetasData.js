@@ -47,7 +47,8 @@ export function buildGeneralExpData(fullInst, activeExps, occupations = [], sort
     if (allFYYears.size > 0 && !allFYYears.has(fyYear(n.fy))) continue;
     const key = (n.occupation || '').toLowerCase().trim();
     if (!nstbByOccFY[key]) nstbByOccFY[key] = {};
-    nstbByOccFY[key][n.fy] = (nstbByOccFY[key][n.fy] || 0) + (parseInt(n.pass) || 0);
+    const yr = fyYear(n.fy);
+    nstbByOccFY[key][yr] = (nstbByOccFY[key][yr] || 0) + (parseInt(n.pass) || 0);
   }
 
   // Build rows: one occupation with FY sub-rows + subtotal
@@ -57,7 +58,7 @@ export function buildGeneralExpData(fullInst, activeExps, occupations = [], sort
     const fyRows = fys.map(fy => ({
       fy,
       trainees:     fyData[fy].trainees || 0,
-      skillTestPass: (nstbByOccFY[nstbKey] || {})[fy] || 0,
+      skillTestPass: (nstbByOccFY[nstbKey] || {})[fyYear(fy)] || 0,
       employed:     fyData[fy].employed || 0,
     }));
     const subtotal = {
@@ -98,12 +99,13 @@ export function buildSpecificOccData(fullInst, activeExps, selectedOccs, occupat
   }
 
   for (const n of (fullInst?.nstb || [])) {
-    if (!byFY[n.fy]) continue;
+    const matchFY = fys.find(f => fyYear(f) === fyYear(n.fy));
+    if (!matchFY) continue;
     if (selectedOccs.length > 0) {
       const match = selectedOccs.some(o => o.toLowerCase().trim() === (n.occupation || '').toLowerCase().trim());
       if (!match) continue;
     }
-    byFY[n.fy].skillTestPass += parseInt(n.pass) || 0;
+    byFY[matchFY].skillTestPass += parseInt(n.pass) || 0;
   }
 
   const rows = fys.map(fy => ({ fy, ...byFY[fy] }));
