@@ -15,6 +15,14 @@ export const REPORTS = [
     requiredFields: [],
     columns: [],
   },
+  {
+    id: 'fw2',
+    label: 'NSTB Skill Test Report (by Occupation)',
+    aggregate: true,
+    hasOccupationFilter: true,
+    requiredFields: [],
+    columns: [],
+  },
 ];
 
 export const MULTI_INSTITUTE = true;
@@ -81,15 +89,155 @@ function FirmWiseTable({ fullInst, activeExps, occupations, selectedOccs }) {
   );
 }
 
+// ── NSTB Skill Test Report ────────────────────────────────────────────────────
+
+function buildNSTBData(fullInst, activeExps, selectedOccs = []) {
+  const activeFYs = new Set(activeExps.map(e => e.fy).filter(Boolean));
+  const records = (fullInst?.nstb || []).filter(n => activeFYs.size === 0 || activeFYs.has(n.fy));
+
+  // Group by occupation
+  const byOcc = {};
+  for (const n of records) {
+    const name = (n.occupation || '').trim();
+    if (!name) continue;
+    if (selectedOccs.length && !selectedOccs.some(o => o.toLowerCase() === name.toLowerCase())) continue;
+    if (!byOcc[name]) byOcc[name] = [];
+    byOcc[name].push(n);
+  }
+
+  const occs = Object.entries(byOcc).sort((a, b) => a[0].localeCompare(b[0])).map(([name, rows]) => {
+    const sorted = [...rows].sort((a, b) => (a.fy || '').localeCompare(b.fy || ''));
+    const subtotal = sorted.reduce((s, r) => ({
+      applied: s.applied + (parseInt(r.applied) || 0),
+      appeared: s.appeared + (parseInt(r.appeared) || 0),
+      pass: s.pass + (parseInt(r.pass) || 0),
+    }), { applied: 0, appeared: 0, pass: 0 });
+    return { name, rows: sorted, subtotal };
+  });
+
+  const grand = occs.reduce((s, o) => ({
+    applied: s.applied + o.subtotal.applied,
+    appeared: s.appeared + o.subtotal.appeared,
+    pass: s.pass + o.subtotal.pass,
+  }), { applied: 0, appeared: 0, pass: 0 });
+
+  const allFYs = [...activeFYs].sort();
+  return { occs, grand, allFYs };
+}
+
+const pct = (n, d) => d > 0 ? `${Math.round((n / d) * 100)}%` : '—';
+
+function NSTBTable({ fullInst, activeExps, selectedOccs }) {
+  const { occs, grand, allFYs } = buildNSTBData(fullInst, activeExps, selectedOccs);
+  if (!occs.length) return (
+    <div style={{ padding: 16, color: 'var(--text3)', fontSize: 13 }}>
+      No NSTB skill test data found for selected occupations/FY range.
+    </div>
+  );
+  const fyLabel = allFYs.length > 1 ? `FY ${allFYs[0]} to ${allFYs[allFYs.length - 1]}` : allFYs.length === 1 ? `FY ${allFYs[0]}` : '';
+  let sn = 0;
+  return (
+    <div>
+      <div style={TITLE_STYLE}>
+        NSTB Skill Test Report — by Occupation
+        {fyLabel && <span style={{ fontWeight: 400, fontSize: 12, marginLeft: 8 }}>({fyLabel})</span>}
+      </div>
+      <div style={{ fontWeight: 600, marginBottom: 6, fontSize: 12 }}>{fullInst?.name || ''}</div>
+      <table style={TBL}>
+        <thead>
+          <tr>
+            <th style={{ ...TH, width: 40 }}>S.N.</th>
+            <th style={TH}>Occupation</th>
+            <th style={TH}>FY</th>
+            <th style={TH}>Level</th>
+            <th style={TH}>Applied</th>
+            <th style={TH}>Appeared</th>
+            <th style={TH}>Pass</th>
+            <th style={TH}>Pass %</th>
+          </tr>
+        </thead>
+        <tbody>
+          {occs.map(occ => (
+            <>
+              {occ.rows.map((r, ri) => {
+                if (ri === 0) sn++;
+                return (
+                  <tr key={`${occ.name}-${r.fy}-${ri}`}>
+                    {ri === 0 && <td style={{ ...TD, textAlign: 'center' }} rowSpan={occ.rows.length}>{sn}</td>}
+                    {ri === 0 && <td style={TD} rowSpan={occ.rows.length}>{occ.name}</td>}
+                    <td style={TDN}>{r.fy || '—'}</td>
+                    <td style={TD}>{r.level || '—'}</td>
+                    <td style={TDN}>{parseInt(r.applied) || '—'}</td>
+                    <td style={TDN}>{parseInt(r.appeared) || '—'}</td>
+                    <td style={TDN}>{parseInt(r.pass) || '—'}</td>
+                    <td style={TDN}>{pct(parseInt(r.pass) || 0, parseInt(r.appeared) || 0)}</td>
+                  </tr>
+                );
+              })}
+              <tr style={{ background: '#f0f4fa' }}>
+                <td style={TD} colSpan={3}></td>
+                <td style={{ ...TD, fontWeight: 600 }}>Subtotal</td>
+                <td style={{ ...TDN, fontWeight: 600 }}>{occ.subtotal.applied || '—'}</td>
+                <td style={{ ...TDN, fontWeight: 600 }}>{occ.subtotal.appeared || '—'}</td>
+                <td style={{ ...TDN, fontWeight: 600 }}>{occ.subtotal.pass || '—'}</td>
+                <td style={{ ...TDN, fontWeight: 600 }}>{pct(occ.subtotal.pass, occ.subtotal.appeared)}</td>
+              </tr>
+            </>
+          ))}
+          <tr style={{ background: '#e8f0fe', fontWeight: 600 }}>
+            <td style={TD} colSpan={4}>Grand Total (All Occupations)</td>
+            <td style={TDN}>{grand.applied || '—'}</td>
+            <td style={TDN}>{grand.appeared || '—'}</td>
+            <td style={TDN}>{grand.pass || '—'}</td>
+            <td style={TDN}>{pct(grand.pass, grand.appeared)}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
 export function renderAggregateTable(fullInst, activeExps, clients, reportId, opts = {}) {
   const { occupations = [], selectedOccs = [] } = opts;
   if (reportId === 'fw1') return <FirmWiseTable fullInst={fullInst} activeExps={activeExps} occupations={occupations} selectedOccs={selectedOccs} />;
+  if (reportId === 'fw2') return <NSTBTable fullInst={fullInst} activeExps={activeExps} selectedOccs={selectedOccs} />;
   return null;
 }
 
 // ── Print HTML ────────────────────────────────────────────────────────────────
 
+function buildNSTBPrintHTML(fullInst, activeExps, fyRangeLabel, opts = {}) {
+  const { selectedOccs = [] } = opts;
+  const firmName = fullInst?.name || '';
+  const { occs, grand, allFYs: fys } = buildNSTBData(fullInst, activeExps, selectedOccs);
+  const fyPart = fys.length > 1 ? ` (FY ${fys[0]} to ${fys[fys.length - 1]})` : fys.length === 1 ? ` (FY ${fys[0]})` : '';
+  const title = `NSTB Skill Test Report — by Occupation${fyPart}`;
+  const headers = ['S.N.', 'Occupation', 'FY', 'Level', 'Applied', 'Appeared', 'Pass', 'Pass %'];
+  const p = (n, d) => d > 0 ? `${Math.round((n / d) * 100)}%` : '—';
+  let rowsHTML = '';
+  let sn = 0;
+  occs.forEach(occ => {
+    sn++;
+    occ.rows.forEach((r, ri) => {
+      const ap = parseInt(r.appeared) || 0;
+      const ps = parseInt(r.pass) || 0;
+      if (ri === 0) {
+        rowsHTML += `<tr><td style="text-align:center" rowspan="${occ.rows.length}">${sn}</td><td rowspan="${occ.rows.length}">${esc(occ.name)}</td><td class="num">${esc(r.fy||'—')}</td><td>${esc(r.level||'—')}</td><td class="num">${parseInt(r.applied)||'—'}</td><td class="num">${ap||'—'}</td><td class="num">${ps||'—'}</td><td class="num">${p(ps,ap)}</td></tr>`;
+      } else {
+        rowsHTML += `<tr><td class="num">${esc(r.fy||'—')}</td><td>${esc(r.level||'—')}</td><td class="num">${parseInt(r.applied)||'—'}</td><td class="num">${ap||'—'}</td><td class="num">${ps||'—'}</td><td class="num">${p(ps,ap)}</td></tr>`;
+      }
+    });
+    rowsHTML += `<tr style="background:#f0f4fa;font-weight:600"><td colspan="3"></td><td>Subtotal</td><td class="num">${occ.subtotal.applied||'—'}</td><td class="num">${occ.subtotal.appeared||'—'}</td><td class="num">${occ.subtotal.pass||'—'}</td><td class="num">${p(occ.subtotal.pass,occ.subtotal.appeared)}</td></tr>`;
+  });
+  const grandHTML = `<tr style="background:#e8f0fe;font-weight:600"><td colspan="4">Grand Total (All Occupations)</td><td class="num">${grand.applied||'—'}</td><td class="num">${grand.appeared||'—'}</td><td class="num">${grand.pass||'—'}</td><td class="num">${p(grand.pass,grand.appeared)}</td></tr>`;
+  const bodyHTML = `<h3>${esc(title)}</h3><p><strong>${esc(firmName)}</strong></p><table><thead><tr>${headers.map(h=>`<th>${esc(h)}</th>`).join('')}</tr></thead><tbody>${rowsHTML}${grandHTML}</tbody></table>`;
+  return `<!DOCTYPE html><html><head><meta charset="utf-8"><title>NSTB Skill Test — ${esc(firmName)}</title>
+<style>body{font-family:Arial,sans-serif;font-size:12px;margin:30px;color:#111}h2{font-size:15px;margin-bottom:2px}h3{font-size:13px;margin:20px 0 6px;font-weight:600}p{margin:4px 0 8px;font-size:12px}table{border-collapse:collapse;width:100%;margin-bottom:24px}th,td{border:1px solid #888;padding:5px 8px;font-size:11.5px}th{background:#d5dde8;font-weight:600;text-align:center;vertical-align:middle}td{text-align:left}td.num{text-align:right}@media print{body{margin:10mm}}</style>
+</head><body><h2>${esc(firmName)}</h2>${fyRangeLabel?`<p style="color:#555">FY Range: ${esc(fyRangeLabel)}</p>`:''}${bodyHTML}</body></html>`;
+}
+
 function buildPrintHTML(fullInst, activeExps, clients, reportId, fyRangeLabel, opts = {}) {
+  if (reportId === 'fw2') return buildNSTBPrintHTML(fullInst, activeExps, fyRangeLabel, opts);
   const { occupations = [], selectedOccs = [] } = opts;
   const firmName = fullInst?.name || '';
   const { occs, grand, allFYs: fys } = buildFirmWiseData(fullInst, activeExps, occupations, { selectedOccs });
@@ -156,7 +304,66 @@ function dataCell(text, opts = {}) {
   });
 }
 
+async function downloadNSTBDOCX(fullInst, activeExps, opts = {}) {
+  const { selectedOccs = [] } = opts;
+  const { occs, grand, allFYs } = buildNSTBData(fullInst, activeExps, selectedOccs);
+  if (!occs.length) { alert('No NSTB data to export.'); return; }
+  const fyPart = allFYs.length > 1 ? ` (FY ${allFYs[0]} to ${allFYs[allFYs.length - 1]})` : allFYs.length === 1 ? ` (FY ${allFYs[0]})` : '';
+  const firmName = fullInst?.name || 'Report';
+  const p = (n, d) => d > 0 ? `${Math.round((n / d) * 100)}%` : '—';
+  const headerRow = new TableRow({ tableHeader: true, children: [
+    hdrCell('S.N.'), hdrCell('Occupation'), hdrCell('FY'), hdrCell('Level'),
+    hdrCell('Applied'), hdrCell('Appeared'), hdrCell('Pass'), hdrCell('Pass %'),
+  ]});
+  const dataRows = [];
+  let sn = 0;
+  for (const occ of occs) {
+    sn++;
+    occ.rows.forEach((r, ri) => {
+      const ap = parseInt(r.appeared) || 0, ps = parseInt(r.pass) || 0;
+      dataRows.push(new TableRow({ children: [
+        ri === 0 ? dataCell(sn, { center: true }) : dataCell(''),
+        ri === 0 ? dataCell(occ.name) : dataCell(''),
+        dataCell(r.fy || '—', { center: true }),
+        dataCell(r.level || '—'),
+        dataCell(parseInt(r.applied) || '—', { right: true }),
+        dataCell(ap || '—', { right: true }),
+        dataCell(ps || '—', { right: true }),
+        dataCell(p(ps, ap), { right: true }),
+      ]}));
+    });
+    dataRows.push(new TableRow({ children: [
+      dataCell('', { shading: 'EEF2FA' }), dataCell('', { shading: 'EEF2FA' }), dataCell('', { shading: 'EEF2FA' }),
+      dataCell('Subtotal', { bold: true, shading: 'EEF2FA' }),
+      dataCell(occ.subtotal.applied || '—', { right: true, bold: true, shading: 'EEF2FA' }),
+      dataCell(occ.subtotal.appeared || '—', { right: true, bold: true, shading: 'EEF2FA' }),
+      dataCell(occ.subtotal.pass || '—', { right: true, bold: true, shading: 'EEF2FA' }),
+      dataCell(p(occ.subtotal.pass, occ.subtotal.appeared), { right: true, bold: true, shading: 'EEF2FA' }),
+    ]}));
+  }
+  const GENERAL_FILL = 'D6E4F0';
+  dataRows.push(new TableRow({ children: [
+    dataCell('Grand Total (All Occupations)', { bold: true, shading: GENERAL_FILL }),
+    dataCell('', { shading: GENERAL_FILL }), dataCell('', { shading: GENERAL_FILL }), dataCell('', { shading: GENERAL_FILL }),
+    dataCell(grand.applied || '—', { right: true, bold: true, shading: GENERAL_FILL }),
+    dataCell(grand.appeared || '—', { right: true, bold: true, shading: GENERAL_FILL }),
+    dataCell(grand.pass || '—', { right: true, bold: true, shading: GENERAL_FILL }),
+    dataCell(p(grand.pass, grand.appeared), { right: true, bold: true, shading: GENERAL_FILL }),
+  ]}));
+  const doc = new Document({
+    styles: { default: { document: { run: { font: 'Arial', size: 22 } } } },
+    sections: [{ children: [
+      new Paragraph({ heading: HeadingLevel.HEADING_2, spacing: { after: 100 }, children: [new TextRun({ text: firmName, bold: true, size: 28 })] }),
+      new Paragraph({ heading: HeadingLevel.HEADING_3, spacing: { before: 240, after: 100 }, children: [new TextRun({ text: `NSTB Skill Test Report — by Occupation${fyPart}`, bold: true, size: 24 })] }),
+      new Table({ width: { size: 100, type: WidthType.PERCENTAGE }, rows: [headerRow, ...dataRows] }),
+    ]}],
+  });
+  const blob = await Packer.toBlob(doc);
+  saveAs(blob, `${firmName.replace(/[^\w\s]/g, '').trim().replace(/\s+/g, '_')}_NSTB_SkillTest.docx`);
+}
+
 async function downloadDOCX(fullInst, activeExps, reportId, opts = {}) {
+  if (reportId === 'fw2') return downloadNSTBDOCX(fullInst, activeExps, opts);
   const { occupations = [], selectedOccs = [] } = opts;
   const { occs, grand, allFYs } = buildFirmWiseData(fullInst, activeExps, occupations, { selectedOccs });
   if (!occs.length) { alert('No data to export.'); return; }

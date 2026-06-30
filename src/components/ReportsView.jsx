@@ -190,13 +190,22 @@ function ReportsView({ institutes, clients }) {
         }
       }
     };
+    const addFromNSTB = (inst) => {
+      for (const n of (inst?.nstb || [])) {
+        if (n.occupation) names.add(n.occupation.trim());
+      }
+    };
     if (isMultiInst) {
-      for (const inst of Object.values(fwFullInsts)) addFromExps(inst.experience || []);
+      for (const inst of Object.values(fwFullInsts)) {
+        addFromExps(inst.experience || []);
+        if (reportId === 'fw2') addFromNSTB(inst);
+      }
     } else {
       addFromExps(activeExps);
+      if (reportId === 'fw2' && fullInst) addFromNSTB(fullInst);
     }
     return [...names].sort();
-  }, [activeExps, occupations, isMultiInst, fwFullInsts]);
+  }, [activeExps, occupations, isMultiInst, fwFullInsts, reportId, fullInst]);
 
   const toggleOcc = (name) =>
     setSelectedOccs(prev => prev.includes(name) ? prev.filter(x => x !== name) : [...prev, name]);
