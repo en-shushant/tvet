@@ -130,11 +130,10 @@ const pct = (n, d) => d > 0 ? `${Math.round((n / d) * 100)}%` : '—';
 
 // Comparative view: rows = occupations, columns = FYs, cell = appeared trainees
 function NSTBComparativeTable({ occs, allFYs, grand }) {
-  // Per-occ per-FY appeared lookup
-  const appeared = (occ, fy) => {
-    const row = occ.rows.find(r => r.fy === fy);
-    return row ? (parseInt(row.appeared) || 0) : 0;
-  };
+  // Sum appeared across all levels for this occupation × FY
+  const appeared = (occ, fy) =>
+    occ.rows.filter(r => fyYear(r.fy) === fyYear(fy))
+      .reduce((s, r) => s + (parseInt(r.appeared) || 0), 0);
   // Grand total per FY
   const fyTotals = allFYs.map(fy =>
     occs.reduce((s, occ) => s + appeared(occ, fy), 0)
