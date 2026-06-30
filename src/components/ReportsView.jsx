@@ -648,18 +648,15 @@ function ReportsView({ institutes, clients }) {
                                 <div style={{fontWeight:400, fontSize:10, color:'#555'}}>Appeared</div>
                               </th>
                             ))}
-                            <th style={{...TH2, background:'#c6d4e8'}}>Total</th>
                           </tr>
                         </thead>
                         <tbody>
                           {allOccs.map((occ, i) => {
                             const vals = firmData.map(f => f.byOcc[occ] || 0);
-                            const rowTotal = vals.reduce((s, v) => s + v, 0);
                             return (
                               <tr key={occ} style={{background: i % 2 === 0 ? '#fff' : '#f7f9fc'}}>
                                 <td style={TD2}>{occ}</td>
                                 {vals.map((v, j) => <td key={j} style={TDN2}>{v || '—'}</td>)}
-                                <td style={{...TDN2, fontWeight:600}}>{rowTotal || '—'}</td>
                               </tr>
                             );
                           })}
@@ -669,7 +666,6 @@ function ReportsView({ institutes, clients }) {
                               const t = allOccs.reduce((s, occ) => s + (f.byOcc[occ] || 0), 0);
                               return <td key={j} style={TDN2}>{t || '—'}</td>;
                             })}
-                            <td style={TDN2}>{allOccs.reduce((s, occ) => s + firmData.reduce((s2, f) => s2 + (f.byOcc[occ] || 0), 0), 0) || '—'}</td>
                           </tr>
                         </tbody>
                       </table>
