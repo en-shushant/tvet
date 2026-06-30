@@ -60,75 +60,193 @@ const TBL = { width:'100%', borderCollapse:'collapse', marginBottom:0 };
 const CARD = { border:'1px solid #c8d4e0', borderRadius:6, marginBottom:16, overflow:'hidden' };
 const CARD_HDR = { background:'#eef3fb', padding:'10px 14px', borderBottom:'1px solid #c8d4e0', display:'flex', gap:16, alignItems:'baseline', flexWrap:'wrap' };
 
-function buildSummary(activeExps, clients) {
-  const uniqueClients = new Set();
-  const uniqueAgencies = new Set();
-  const uniqueTypes = new Set();
+function buildSummary(activeExps, clients, occupations) {
+  const uniqueClients = new Map(); // name → type
+  const uniqueAgencyTypes = new Set();
+  const uniqueTrainingTypes = new Set();
+  const uniqueOccs = new Map(); // name → total trainees
   const districts = new Set();
   const provinces = new Set();
+  const fys = new Set();
+  let totalTrainees = 0, totalEmployed = 0, totalContractValue = 0;
   let stProvisioned = 0, stAppeared = 0, stPass = 0;
+  let gesiCount = 0, residentialCount = 0, jvCount = 0;
+  let hasContractValue = false;
 
   for (const exp of activeExps) {
-    uniqueClients.add(getClientName(exp, clients));
-    uniqueAgencies.add(getClientType(exp, clients));
-    if (exp.trainingType) uniqueTypes.add(exp.trainingType);
+    const cName = getClientName(exp, clients);
+    const cType = getClientType(exp, clients);
+    if (cName && cName !== '—') uniqueClients.set(cName, cType);
+    if (cType && cType !== '—') uniqueAgencyTypes.add(cType);
+    if (exp.trainingType) uniqueTrainingTypes.add(exp.trainingType);
+    if (exp.fy) fys.add(exp.fy);
+    if (exp.isGesi) gesiCount++;
+    if (exp.isResidential) residentialCount++;
+    if (exp.isJV) jvCount++;
+    if (exp.contractValue) { totalContractValue += parseFloat(exp.contractValue) || 0; hasContractValue = true; }
+
     for (const occ of (exp.occupations || [])) {
-      if (occ.skillTestProvisioned) stProvisioned += parseInt(occ.trainees) || 0;
+      const oName = getOccName(occ, occupations);
+      const t = parseInt(occ.trainees) || 0;
+      totalTrainees += t;
+      const empPct = parseFloat(occ.employmentActual) || 0;
+      if (t && empPct) totalEmployed += Math.round(t * empPct / 100);
+      if (occ.skillTestProvisioned) stProvisioned += t;
       stAppeared += parseInt(occ.skillTestAppeared) || 0;
       stPass     += parseInt(occ.skillTestPass)     || 0;
+      uniqueOccs.set(oName, (uniqueOccs.get(oName) || 0) + t);
       for (const loc of (occ.locations || [])) {
         if (loc.district) districts.add(loc.district);
         if (loc.province) provinces.add(loc.province);
       }
     }
   }
-  uniqueClients.delete('—'); uniqueAgencies.delete('—');
-  return { uniqueClients, uniqueAgencies, uniqueTypes, districts, provinces, stProvisioned, stAppeared, stPass };
+
+  const sortedFYs = [...fys].sort();
+  const fyRange = sortedFYs.length > 1
+    ? `${sortedFYs[0]} – ${sortedFYs[sortedFYs.length-1]}`
+    : sortedFYs[0] || '—';
+
+  return {
+    uniqueClients, uniqueAgencyTypes, uniqueTrainingTypes, uniqueOccs,
+    districts, provinces, fys: sortedFYs, fyRange,
+    totalTrainees, totalEmployed, totalContractValue, hasContractValue,
+    stProvisioned, stAppeared, stPass,
+    gesiCount, residentialCount, jvCount,
+  };
 }
 
-function SummaryBar({ summary }) {
-  const S = { border:'1px solid #c8d4e0', borderRadius:6, padding:'12px 16px', marginBottom:14, background:'#f5f8fd' };
-  const SH = { fontSize:10, fontWeight:700, color:'var(--text3)', textTransform:'uppercase', letterSpacing:'0.05em', marginBottom:4 };
-  const SV = { fontSize:12, color:'var(--text1)', lineHeight:1.5 };
-  const NUM = { fontSize:22, fontWeight:700, color:'#1a4a7a', lineHeight:1 };
-  const stats = [
+function SummarySection({ summary, expCount }) {
+  const S   = { border:'1px solid #b8cde0', borderRadius:8, marginBottom:16, background:'#f0f5fc', overflow:'hidden' };
+  const HDR = { background:'#1a4a7a', color:'#fff', padding:'8px 16px', fontSize:12, fontWeight:700, letterSpacing:'0.04em' };
+  const PAD = { padding:'12px 16px' };
+  const LBL = { fontSize:9.5, fontWeight:700, color:'#5a7a9a', textTransform:'uppercase', letterSpacing:'0.06em', marginBottom:2 };
+  const VAL = { fontSize:20, fontWeight:700, color:'#1a4a7a', lineHeight:1.1 };
+  const SUB = { fontSize:10, color:'#5a7a9a', marginTop:1 };
+  const DIVIDER = { borderTop:'1px solid #d0dcea', margin:'10px 0' };
+  const TAG = { display:'inline-block', fontSize:10, padding:'1px 7px', borderRadius:3, margin:'1px 3px 1px 0' };
+
+  const kpis = [
+    { label:'Total Assignments', value: expCount, sub: `FY: ${summary.fyRange}` },
+    { label:'Total Trainees', value: summary.totalTrainees || '—', sub:'across all occupations' },
+    { label:'Total Employed', value: summary.totalEmployed || '—', sub:'estimated from emp. %' },
+    ...(summary.hasContractValue ? [{ label:'Total Contract Value', value:`NPR ${fmt(summary.totalContractValue)}`, sub:'', wide:true }] : []),
     { label:'Unique Clients', value: summary.uniqueClients.size },
-    { label:'Funding Agency Types', value: summary.uniqueAgencies.size },
-    { label:'Training Types', value: summary.uniqueTypes.size },
-    { label:'ST Provisioned (trainees)', value: summary.stProvisioned || '—' },
-    { label:'ST Appeared', value: summary.stAppeared || '—' },
-    { label:'ST Passed', value: summary.stPass || '—' },
+    { label:'Unique Occupations', value: summary.uniqueOccs.size },
     { label:'Districts Covered', value: summary.districts.size || '—' },
     { label:'Provinces Covered', value: summary.provinces.size || '—' },
+    { label:'ST Provisioned', value: summary.stProvisioned || '—', sub:'trainees eligible' },
+    { label:'ST Appeared', value: summary.stAppeared || '—' },
+    { label:'ST Passed', value: summary.stPass || '—' },
+    ...(summary.stAppeared > 0 ? [{ label:'ST Pass Rate', value: `${Math.round(summary.stPass/summary.stAppeared*100)}%` }] : []),
   ];
+
   return (
     <div style={S}>
-      <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(130px, 1fr))', gap:'12px 20px', marginBottom:12 }}>
-        {stats.map(({ label, value }) => (
-          <div key={label}>
-            <div style={SH}>{label}</div>
-            <div style={NUM}>{value}</div>
-          </div>
-        ))}
+      <div style={HDR}>Portfolio Summary</div>
+      <div style={PAD}>
+        {/* KPI grid */}
+        <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(140px, 1fr))', gap:'10px 16px', marginBottom:10 }}>
+          {kpis.map(({ label, value, sub, wide }) => (
+            <div key={label} style={wide ? { gridColumn:'span 2' } : {}}>
+              <div style={LBL}>{label}</div>
+              <div style={{ ...VAL, fontSize: wide ? 15 : 20 }}>{value}</div>
+              {sub && <div style={SUB}>{sub}</div>}
+            </div>
+          ))}
+        </div>
+
+        {/* Flags row */}
+        {(summary.gesiCount > 0 || summary.residentialCount > 0 || summary.jvCount > 0) && (
+          <>
+            <div style={DIVIDER}/>
+            <div>
+              <span style={LBL}>Assignment Flags  </span>
+              {summary.gesiCount > 0    && <span style={{...TAG, background:'#fce4ec', color:'#880e4f'}}>{summary.gesiCount} GESI</span>}
+              {summary.residentialCount > 0 && <span style={{...TAG, background:'#fff3e0', color:'#e65100'}}>{summary.residentialCount} Residential</span>}
+              {summary.jvCount > 0      && <span style={{...TAG, background:'#f3e5f5', color:'#6a1b9a'}}>{summary.jvCount} JV</span>}
+            </div>
+          </>
+        )}
+
+        {/* Training types */}
+        {summary.uniqueTrainingTypes.size > 0 && (
+          <>
+            <div style={DIVIDER}/>
+            <div>
+              <span style={LBL}>Training Types  </span>
+              {[...summary.uniqueTrainingTypes].map(t => (
+                <span key={t} style={{...TAG, background:'#e8f5e9', color:'#2e7d32'}}>{t}</span>
+              ))}
+            </div>
+          </>
+        )}
+
+        {/* Clients */}
+        {summary.uniqueClients.size > 0 && (
+          <>
+            <div style={DIVIDER}/>
+            <div style={LBL}>Clients</div>
+            <div style={{ display:'flex', flexWrap:'wrap', gap:'3px 0', marginTop:3 }}>
+              {[...summary.uniqueClients.entries()].map(([name, type]) => (
+                <span key={name} style={{...TAG, background:'#e3edf7', color:'#1a4a7a'}}>
+                  {name}{type && type !== '—' ? <span style={{ opacity:0.65, fontSize:9 }}> · {type}</span> : ''}
+                </span>
+              ))}
+            </div>
+          </>
+        )}
+
+        {/* Funding agency types */}
+        {summary.uniqueAgencyTypes.size > 0 && (
+          <>
+            <div style={DIVIDER}/>
+            <div>
+              <span style={LBL}>Funding Agency Types  </span>
+              {[...summary.uniqueAgencyTypes].map(t => (
+                <span key={t} style={{...TAG, background:'#ede9fe', color:'#5b21b6'}}>{t}</span>
+              ))}
+            </div>
+          </>
+        )}
+
+        {/* Occupations breakdown */}
+        {summary.uniqueOccs.size > 0 && (
+          <>
+            <div style={DIVIDER}/>
+            <div style={LBL}>Occupations ({summary.uniqueOccs.size})</div>
+            <div style={{ display:'flex', flexWrap:'wrap', gap:'3px 0', marginTop:3 }}>
+              {[...summary.uniqueOccs.entries()].sort((a,b) => b[1]-a[1]).map(([name, t]) => (
+                <span key={name} style={{...TAG, background:'#f0fdf4', color:'#166534', border:'1px solid #bbf7d0'}}>
+                  {name} <span style={{ opacity:0.7 }}>({t})</span>
+                </span>
+              ))}
+            </div>
+          </>
+        )}
+
+        {/* Geographical coverage */}
+        {summary.provinces.size > 0 && (
+          <>
+            <div style={DIVIDER}/>
+            <div style={LBL}>Provinces Covered</div>
+            <div style={{ marginTop:3 }}>
+              {[...summary.provinces].sort().map(p => (
+                <span key={p} style={{...TAG, background:'#fff7ed', color:'#9a3412', border:'1px solid #fed7aa'}}>{p}</span>
+              ))}
+            </div>
+          </>
+        )}
+        {summary.districts.size > 0 && (
+          <>
+            <div style={DIVIDER}/>
+            <div style={LBL}>Districts Covered ({summary.districts.size})</div>
+            <div style={{ fontSize:11, color:'var(--text1)', marginTop:3, lineHeight:1.8 }}>
+              {[...summary.districts].sort().join(' · ')}
+            </div>
+          </>
+        )}
       </div>
-      {summary.uniqueClients.size > 0 && (
-        <div style={{ marginBottom:6 }}>
-          <span style={SH}>Clients: </span>
-          <span style={SV}>{[...summary.uniqueClients].join(' · ')}</span>
-        </div>
-      )}
-      {summary.uniqueAgencies.size > 0 && (
-        <div style={{ marginBottom:6 }}>
-          <span style={SH}>Funding Types: </span>
-          <span style={SV}>{[...summary.uniqueAgencies].join(' · ')}</span>
-        </div>
-      )}
-      {summary.districts.size > 0 && (
-        <div>
-          <span style={SH}>Districts: </span>
-          <span style={SV}>{[...summary.districts].sort().join(', ')}</span>
-        </div>
-      )}
     </div>
   );
 }
@@ -141,16 +259,45 @@ function DetailedReport({ fullInst, activeExps, clients, occupations }) {
   );
 
   const nstbLookup = buildNSTBLookup(fullInst);
-  const summary = buildSummary(activeExps, clients);
+  const summary = buildSummary(activeExps, clients, occupations);
 
   return (
     <div>
-      <SummaryBar summary={summary} />
+      <SummarySection summary={summary} expCount={activeExps.length} />
       {activeExps.map((exp, idx) => {
         const clientName = getClientName(exp, clients);
         const clientType = getClientType(exp, clients);
         const startLabel = exp.startDate ? fmtDate(exp.startDate) : (exp.startFY ? `FY ${exp.startFY}` : '—');
         const endLabel   = exp.endDate   ? fmtDate(exp.endDate)   : (exp.endFY   ? `FY ${exp.endFY}`   : '—');
+
+        // per-assignment occupation totals
+        let expTrainees = 0, expEmployed = 0, expSTAppeared = 0, expSTPass = 0;
+        for (const occ of (exp.occupations || [])) {
+          const t = parseInt(occ.trainees) || 0;
+          expTrainees += t;
+          const ep = parseFloat(occ.employmentActual) || 0;
+          if (t && ep) expEmployed += Math.round(t * ep / 100);
+          expSTAppeared += parseInt(occ.skillTestAppeared) || 0;
+          expSTPass     += parseInt(occ.skillTestPass)     || 0;
+        }
+
+        const metaFields = [
+          ['Client', clientName],
+          ['Funding Agency / Type', clientType],
+          ['Start Date', startLabel],
+          ['End Date', endLabel],
+          ['Contract Value (NPR)', exp.contractValue ? fmt(exp.contractValue) : '—'],
+          ['Duration (Days)', exp.durationDays || '—'],
+          ['Duration (Months)', exp.durationMonths || '—'],
+          ['Total Person-Months', exp.totalPersonMonths || '—'],
+          ['Country', exp.country || 'Nepal'],
+          ...(exp.isJV ? [['JV Role', exp.jvRole || '—'], ['JV Partners', exp.jvPartnerNames || exp.jvPartners || '—']] : []),
+          ['Total Trainees', expTrainees || '—'],
+          ['Total Employed', expEmployed || '—'],
+          ['ST Appeared', expSTAppeared || '—'],
+          ['ST Passed', expSTPass || '—'],
+        ].filter(([, v]) => v && v !== '—');
+
         return (
           <div key={exp.id} style={CARD}>
             {/* Assignment header */}
@@ -163,24 +310,24 @@ function DetailedReport({ fullInst, activeExps, clients, occupations }) {
               {exp.isJV && <span style={{ fontSize:10, background:'#f3e5f5', color:'#6a1b9a', borderRadius:3, padding:'1px 6px' }}>JV ({exp.jvRole})</span>}
             </div>
 
-            {/* Meta info row */}
-            <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(200px, 1fr))', gap:0, borderBottom:'1px solid #c8d4e0' }}>
-              {[
-                ['Client', clientName],
-                ['Funding Agency / Type', clientType],
-                ['Start Date', startLabel],
-                ['End Date', endLabel],
-                ['Contract Value (NPR)', exp.contractValue ? fmt(exp.contractValue) : '—'],
-                ['Duration (Days)', exp.durationDays || '—'],
-                ['Country', exp.country || 'Nepal'],
-                ['JV Partners', exp.isJV ? (exp.jvPartnerNames || exp.jvPartners || '—') : '—'],
-              ].map(([label, value]) => (
+            {/* Meta info grid */}
+            <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(190px, 1fr))', gap:0, borderBottom:'1px solid #c8d4e0' }}>
+              {metaFields.map(([label, value]) => (
                 <div key={label} style={{ padding:'7px 12px', borderRight:'1px solid #e0e8f0', borderBottom:'1px solid #e8eef5' }}>
                   <div style={{ fontSize:10, color:'var(--text3)', fontWeight:600, textTransform:'uppercase', letterSpacing:'0.04em' }}>{label}</div>
                   <div style={{ fontSize:12, marginTop:2 }}>{value}</div>
                 </div>
               ))}
             </div>
+
+            {/* Description of work */}
+            {(exp.descriptionOfWork || exp.narrativeDescription || exp.actualServicesDescription) && (
+              <div style={{ padding:'8px 14px', borderBottom:'1px solid #e8eef5', fontSize:11, background:'#fafcff' }}>
+                {exp.descriptionOfWork && <div><strong>Description of Work:</strong> {exp.descriptionOfWork}</div>}
+                {exp.narrativeDescription && <div style={{ marginTop:4 }}><strong>Narrative:</strong> {exp.narrativeDescription}</div>}
+                {exp.actualServicesDescription && <div style={{ marginTop:4 }}><strong>Actual Services:</strong> {exp.actualServicesDescription}</div>}
+              </div>
+            )}
 
             {/* Occupations table */}
             {exp.occupations?.length > 0 && (
@@ -239,6 +386,21 @@ function DetailedReport({ fullInst, activeExps, clients, occupations }) {
                       </tr>
                       );
                     })}
+                    {/* Per-assignment totals row */}
+                    {exp.occupations.length > 1 && (
+                      <tr style={{ background:'#eef3fb', fontWeight:600 }}>
+                        <td style={{...TD, textAlign:'center', color:'var(--text3)'}} colSpan={3}>Total</td>
+                        <td style={TDN}>{expTrainees || '—'}</td>
+                        <td style={TDN}/>
+                        <td style={TDN}/>
+                        <td style={TDN}>{expSTAppeared || '—'}</td>
+                        <td style={TDN}>{expSTPass || '—'}</td>
+                        <td style={TDN}/>
+                        <td style={TDN}/>
+                        <td style={TDN}>{expEmployed || '—'}</td>
+                        <td style={TDN}/>
+                      </tr>
+                    )}
                   </tbody>
                 </table>
               </div>
