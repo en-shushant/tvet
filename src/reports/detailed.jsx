@@ -250,6 +250,80 @@ function SummarySection({ summary, expCount }) {
   );
 }
 
+function buildAffiliatedOccs(fullInst) {
+  const byLevel = {};
+  for (const aff of (fullInst?.affiliation || [])) {
+    for (const p of (aff.programs || [])) {
+      const lvl = (p.level || 'Other').trim();
+      if (!byLevel[lvl]) byLevel[lvl] = [];
+      if (!byLevel[lvl].find(x => x.name === p.name))
+        byLevel[lvl].push({ name: p.name, duration: p.duration, seats: p.seats });
+    }
+  }
+  return byLevel;
+}
+
+const LEVEL_ORDER = ['Level 1', 'Level 2', 'Level 3', 'Professional', 'Technician', 'Other'];
+function sortedLevels(byLevel) {
+  return Object.keys(byLevel).sort((a, b) => {
+    const ai = LEVEL_ORDER.findIndex(l => a.toLowerCase().includes(l.toLowerCase()));
+    const bi = LEVEL_ORDER.findIndex(l => b.toLowerCase().includes(l.toLowerCase()));
+    return (ai === -1 ? 99 : ai) - (bi === -1 ? 99 : bi);
+  });
+}
+
+function AffiliatedOccsSection({ byLevel }) {
+  if (!Object.keys(byLevel).length) return null;
+  const DIVIDER = { borderTop:'1px solid #d0dcea', margin:'10px 0' };
+  const LBL = { fontSize:9.5, fontWeight:700, color:'#5a7a9a', textTransform:'uppercase', letterSpacing:'0.06em', marginBottom:4 };
+  const lvlColors = {
+    'level 1': { bg:'#dbeafe', fg:'#1e40af' },
+    'level 2': { bg:'#d1fae5', fg:'#065f46' },
+    'level 3': { bg:'#fef3c7', fg:'#92400e' },
+    'professional': { bg:'#ede9fe', fg:'#5b21b6' },
+    'technician': { bg:'#fce7f3', fg:'#9d174d' },
+  };
+  function lvlColor(lvl) {
+    const key = Object.keys(lvlColors).find(k => lvl.toLowerCase().includes(k));
+    return lvlColors[key] || { bg:'#f1f5f9', fg:'#334155' };
+  }
+  return (
+    <div style={{ border:'1px solid #b8cde0', borderRadius:8, marginBottom:16, background:'#f0f5fc', overflow:'hidden' }}>
+      <div style={{ background:'#1a4a7a', color:'#fff', padding:'8px 16px', fontSize:12, fontWeight:700 }}>Affiliated Occupations</div>
+      <div style={{ padding:'12px 16px' }}>
+        {sortedLevels(byLevel).map((lvl, li) => {
+          const { bg, fg } = lvlColor(lvl);
+          return (
+            <div key={lvl}>
+              {li > 0 && <div style={DIVIDER}/>}
+              <div style={{ ...LBL, color: fg }}>{lvl} <span style={{ fontWeight:400, fontSize:9 }}>({byLevel[lvl].length} occupation{byLevel[lvl].length !== 1 ? 's' : ''})</span></div>
+              <table style={{ width:'100%', borderCollapse:'collapse', fontSize:11 }}>
+                <thead>
+                  <tr>
+                    {['#','Occupation','Duration (hrs)','Seats/Batch'].map(h => (
+                      <th key={h} style={{ background: bg, color: fg, padding:'4px 8px', border:'1px solid #c8d4e0', textAlign: h==='#'?'center':'left', fontSize:10, fontWeight:700 }}>{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {byLevel[lvl].map((p, j) => (
+                    <tr key={p.name} style={{ background: j%2===0?'#fff':'#f8fafc' }}>
+                      <td style={{ padding:'4px 8px', border:'1px solid #e0e8f0', textAlign:'center', color:'#888', fontSize:10 }}>{j+1}</td>
+                      <td style={{ padding:'4px 8px', border:'1px solid #e0e8f0' }}>{p.name}</td>
+                      <td style={{ padding:'4px 8px', border:'1px solid #e0e8f0', textAlign:'right' }}>{p.duration || '—'}</td>
+                      <td style={{ padding:'4px 8px', border:'1px solid #e0e8f0', textAlign:'right' }}>{p.seats || '—'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 function DetailedReport({ fullInst, activeExps, clients, occupations }) {
   if (!activeExps.length) return (
     <div style={{ padding:24, color:'var(--text3)', fontSize:13, textAlign:'center' }}>
@@ -259,10 +333,12 @@ function DetailedReport({ fullInst, activeExps, clients, occupations }) {
 
   const nstbLookup = buildNSTBLookup(fullInst);
   const summary = buildSummary(activeExps, clients, occupations);
+  const affiliatedByLevel = buildAffiliatedOccs(fullInst);
 
   return (
     <div>
       <SummarySection summary={summary} expCount={activeExps.length} />
+      <AffiliatedOccsSection byLevel={affiliatedByLevel} />
       {activeExps.map((exp, idx) => {
         const clientName = getClientName(exp, clients);
         const clientType = getClientType(exp, clients);
@@ -457,6 +533,24 @@ ${kpis.map(([l,v]) => `<div class="kpi"><div class="kl">${esc(l)}</div><div clas
   if (s.districts.size) summaryHtml += `<div class="sum-row"><b>Districts (${s.districts.size}):</b> ${esc([...s.districts].sort().join(', '))}</div>`;
   summaryHtml += `</div>`;
 
+  // ── Affiliated occupations block ───────────────────────────────────────────
+  const affByLevel = buildAffiliatedOccs(fullInst);
+  let affHtml = '';
+  const affLevels = sortedLevels(affByLevel);
+  if (affLevels.length) {
+    affHtml = `<div class="summary"><div class="sum-title">Affiliated Occupations</div><div style="padding:8px 12px">`;
+    affLevels.forEach((lvl, li) => {
+      if (li > 0) affHtml += `<div style="border-top:1px solid #dde;margin:8px 0"></div>`;
+      affHtml += `<div class="kl" style="margin-bottom:4px">${esc(lvl)} (${affByLevel[lvl].length})</div>`;
+      affHtml += `<table><thead><tr><th>#</th><th style="text-align:left">Occupation</th><th>Duration (hrs)</th><th>Seats/Batch</th></tr></thead><tbody>`;
+      affByLevel[lvl].forEach((p, j) => {
+        affHtml += `<tr><td class="c">${j+1}</td><td>${esc(p.name)}</td><td class="r">${p.duration||'—'}</td><td class="r">${p.seats||'—'}</td></tr>`;
+      });
+      affHtml += `</tbody></table>`;
+    });
+    affHtml += `</div></div>`;
+  }
+
   // ── Assignments ────────────────────────────────────────────────────────────
   let body = '';
   activeExps.forEach((exp, idx) => {
@@ -549,6 +643,7 @@ ${tags ? `<p class="tags">${esc(tags)}</p>` : ''}
 <h2>${esc(firmName)} — Detailed Experience Report</h2>
 ${fyRangeLabel ? `<p style="color:#555;font-size:10px">FY Range: ${esc(fyRangeLabel)}</p>` : ''}
 ${summaryHtml}
+${affHtml}
 ${body}
 </body></html>`;
 }
@@ -659,6 +754,28 @@ async function downloadDetailedDOCX(fullInst, activeExps, reportId, opts = {}) {
         children:[new Paragraph({ children:[new TextRun({ text: v, size:18 })] })] }),
     ]})),
   }));
+
+  // ── Affiliated occupations ─────────────────────────────────────────────────
+  const affByLevel = buildAffiliatedOccs(fullInst);
+  const affLevels = sortedLevels(affByLevel);
+  if (affLevels.length) {
+    children.push(new Paragraph({ heading: HeadingLevel.HEADING_2, spacing: { before: 200, after: 80 }, children: [new TextRun({ text: 'Affiliated Occupations', bold: true, size: 24 })] }));
+    affLevels.forEach(lvl => {
+      children.push(new Paragraph({ spacing: { before: 120, after: 40 }, children: [new TextRun({ text: `${lvl} (${affByLevel[lvl].length} occupation${affByLevel[lvl].length !== 1 ? 's' : ''})`, bold: true, size: 20 })] }));
+      children.push(new Table({
+        width: { size: 100, type: WidthType.PERCENTAGE },
+        rows: [
+          new TableRow({ tableHeader: true, children: [hc('#'), hc('Occupation', { center: false }), hc('Duration (hrs)'), hc('Seats/Batch')] }),
+          ...affByLevel[lvl].map((p, j) => new TableRow({ children: [
+            dc(j + 1, { center: true }),
+            dc(p.name),
+            dc(p.duration || '—', { right: true }),
+            dc(p.seats || '—', { right: true }),
+          ]})),
+        ],
+      }));
+    });
+  }
 
   children.push(new Paragraph({ spacing: { before: 200 }, children: [] }));
 
