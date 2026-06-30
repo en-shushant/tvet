@@ -28,6 +28,7 @@ function ReportsView({ institutes, clients }) {
   const [fwLoading, setFwLoading] = useState(false);
   const [fwInstSearch, setFwInstSearch] = useState('');
   const [nstbComparative, setNstbComparative] = useState(false);
+  const [nstbThreshold, setNstbThreshold] = useState('');
 
   // Tools report state
   const [toolsOccIds, setToolsOccIds]       = useState([]);
@@ -562,10 +563,23 @@ function ReportsView({ institutes, clients }) {
                   </div>
                   <div style={{marginLeft:'auto', display:'flex', alignItems:'center', gap:12}}>
                     {report.id === 'fw2' && (
-                      <label style={{display:'flex', alignItems:'center', gap:5, fontSize:12, cursor:'pointer', whiteSpace:'nowrap'}}>
-                        <input type="checkbox" checked={nstbComparative} onChange={e => setNstbComparative(e.target.checked)} />
-                        Comparative
-                      </label>
+                      <div style={{display:'flex', alignItems:'center', gap:10}}>
+                        <label style={{display:'flex', alignItems:'center', gap:5, fontSize:12, cursor:'pointer', whiteSpace:'nowrap'}}>
+                          <input type="checkbox" checked={nstbComparative} onChange={e => setNstbComparative(e.target.checked)} />
+                          Comparative
+                        </label>
+                        {nstbComparative && (
+                          <div style={{display:'flex', alignItems:'center', gap:5}}>
+                            <label style={{fontSize:12, whiteSpace:'nowrap', color:'var(--text3)'}}>Threshold ≥</label>
+                            <input
+                              type="number" min="0" placeholder="e.g. 50"
+                              value={nstbThreshold}
+                              onChange={e => setNstbThreshold(e.target.value)}
+                              style={{width:70, fontSize:12, padding:'2px 6px', border:'1px solid var(--border)', borderRadius:4}}
+                            />
+                          </div>
+                        )}
+                      </div>
                     )}
                     <button className="btn btn-primary btn-sm" onClick={() => {
                       const sections = fwInstIds.map(id => {
@@ -632,6 +646,7 @@ function ReportsView({ institutes, clients }) {
                   const TD2 = { padding:'5px 8px', border:'1px solid #c8d4e0', fontSize:11 };
                   const TDN2 = { ...TD2, textAlign:'right' };
 
+                  const threshold = nstbThreshold !== '' ? parseInt(nstbThreshold) : null;
                   return (
                     <div className="card" style={{padding:20, overflowX:'auto'}}>
                       <div style={{fontWeight:600, fontSize:13, marginBottom:10}}>
@@ -656,7 +671,17 @@ function ReportsView({ institutes, clients }) {
                             return (
                               <tr key={occ} style={{background: i % 2 === 0 ? '#fff' : '#f7f9fc'}}>
                                 <td style={TD2}>{occ}</td>
-                                {vals.map((v, j) => <td key={j} style={TDN2}>{v || '—'}</td>)}
+                                {vals.map((v, j) => {
+                                  const highlight = threshold !== null && !isNaN(threshold) && v >= threshold && v > 0;
+                                  return (
+                                    <td key={j} style={{
+                                      ...TDN2,
+                                      background: highlight ? '#d4edda' : undefined,
+                                      color: highlight ? '#155724' : undefined,
+                                      fontWeight: highlight ? 600 : undefined,
+                                    }}>{v || '—'}</td>
+                                  );
+                                })}
                               </tr>
                             );
                           })}
