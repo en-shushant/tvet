@@ -83,7 +83,7 @@ function ToolsReport({ opts }) {
   const renderTable = (items, startSN = 1) => (
     <table style={TBL}>
       <thead>
-        <tr>{cols.map(c => <th key={c.key} style={TH}>{c.key === 'quantity' && groups > 1 ? `Quantity (×${groups})` : c.label}</th>)}</tr>
+        <tr>{cols.map(c => <th key={c.key} style={TH}>{c.label}</th>)}</tr>
       </thead>
       <tbody>
         {items.length === 0 ? (
@@ -150,7 +150,7 @@ function ToolsReport({ opts }) {
               <div style={{...SECTION_STYLE, fontSize:14}}>{occName(occId)} — {toolsLevel}</div>
               <table style={TBL}>
                 <thead>
-                  <tr>{cols.map(c => <th key={c.key} style={TH}>{c.key === 'quantity' && groups > 1 ? `Quantity (×${groups})` : c.label}</th>)}</tr>
+                  <tr>{cols.map(c => <th key={c.key} style={TH}>{c.label}</th>)}</tr>
                 </thead>
                 <tbody>
                   {TYPE_SECTIONS.filter(s => toolsTypeFilter === 'all' || toolsTypeFilter === s.key).map(sec => {
@@ -369,7 +369,7 @@ function buildToolsPrintHTML(fullInst, activeExps, clients, reportId, fyRangeLab
       return `<td>${esc(t[c.key] || '—')}</td>`;
     }).join('')}</tr>`
   ).join('');
-  const qtyHeader = (c) => c.key === 'quantity' && groups > 1 ? `Quantity (×${groups})` : c.label;
+  const qtyHeader = (c) => c.label;
 
   let bodyHTML = '';
   let globalSN = 1;
