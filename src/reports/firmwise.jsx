@@ -121,7 +121,7 @@ function buildNSTBData(fullInst, activeExps, selectedOccs = []) {
     pass: s.pass + o.subtotal.pass,
   }), { applied: 0, appeared: 0, pass: 0 });
 
-  const allFYs = [...activeFYs].sort();
+  const allFYs = [...new Set(records.map(n => n.fy).filter(Boolean))].sort();
   return { occs, grand, allFYs };
 }
 
