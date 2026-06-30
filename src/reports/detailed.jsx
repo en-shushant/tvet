@@ -60,6 +60,79 @@ const TBL = { width:'100%', borderCollapse:'collapse', marginBottom:0 };
 const CARD = { border:'1px solid #c8d4e0', borderRadius:6, marginBottom:16, overflow:'hidden' };
 const CARD_HDR = { background:'#eef3fb', padding:'10px 14px', borderBottom:'1px solid #c8d4e0', display:'flex', gap:16, alignItems:'baseline', flexWrap:'wrap' };
 
+function buildSummary(activeExps, clients) {
+  const uniqueClients = new Set();
+  const uniqueAgencies = new Set();
+  const uniqueTypes = new Set();
+  const districts = new Set();
+  const provinces = new Set();
+  let stProvisioned = 0, stAppeared = 0, stPass = 0;
+
+  for (const exp of activeExps) {
+    uniqueClients.add(getClientName(exp, clients));
+    uniqueAgencies.add(getClientType(exp, clients));
+    if (exp.trainingType) uniqueTypes.add(exp.trainingType);
+    for (const occ of (exp.occupations || [])) {
+      if (occ.skillTestProvisioned) stProvisioned += parseInt(occ.trainees) || 0;
+      stAppeared += parseInt(occ.skillTestAppeared) || 0;
+      stPass     += parseInt(occ.skillTestPass)     || 0;
+      for (const loc of (occ.locations || [])) {
+        if (loc.district) districts.add(loc.district);
+        if (loc.province) provinces.add(loc.province);
+      }
+    }
+  }
+  uniqueClients.delete('—'); uniqueAgencies.delete('—');
+  return { uniqueClients, uniqueAgencies, uniqueTypes, districts, provinces, stProvisioned, stAppeared, stPass };
+}
+
+function SummaryBar({ summary }) {
+  const S = { border:'1px solid #c8d4e0', borderRadius:6, padding:'12px 16px', marginBottom:14, background:'#f5f8fd' };
+  const SH = { fontSize:10, fontWeight:700, color:'var(--text3)', textTransform:'uppercase', letterSpacing:'0.05em', marginBottom:4 };
+  const SV = { fontSize:12, color:'var(--text1)', lineHeight:1.5 };
+  const NUM = { fontSize:22, fontWeight:700, color:'#1a4a7a', lineHeight:1 };
+  const stats = [
+    { label:'Unique Clients', value: summary.uniqueClients.size },
+    { label:'Funding Agency Types', value: summary.uniqueAgencies.size },
+    { label:'Training Types', value: summary.uniqueTypes.size },
+    { label:'ST Provisioned (trainees)', value: summary.stProvisioned || '—' },
+    { label:'ST Appeared', value: summary.stAppeared || '—' },
+    { label:'ST Passed', value: summary.stPass || '—' },
+    { label:'Districts Covered', value: summary.districts.size || '—' },
+    { label:'Provinces Covered', value: summary.provinces.size || '—' },
+  ];
+  return (
+    <div style={S}>
+      <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(130px, 1fr))', gap:'12px 20px', marginBottom:12 }}>
+        {stats.map(({ label, value }) => (
+          <div key={label}>
+            <div style={SH}>{label}</div>
+            <div style={NUM}>{value}</div>
+          </div>
+        ))}
+      </div>
+      {summary.uniqueClients.size > 0 && (
+        <div style={{ marginBottom:6 }}>
+          <span style={SH}>Clients: </span>
+          <span style={SV}>{[...summary.uniqueClients].join(' · ')}</span>
+        </div>
+      )}
+      {summary.uniqueAgencies.size > 0 && (
+        <div style={{ marginBottom:6 }}>
+          <span style={SH}>Funding Types: </span>
+          <span style={SV}>{[...summary.uniqueAgencies].join(' · ')}</span>
+        </div>
+      )}
+      {summary.districts.size > 0 && (
+        <div>
+          <span style={SH}>Districts: </span>
+          <span style={SV}>{[...summary.districts].sort().join(', ')}</span>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function DetailedReport({ fullInst, activeExps, clients, occupations }) {
   if (!activeExps.length) return (
     <div style={{ padding:24, color:'var(--text3)', fontSize:13, textAlign:'center' }}>
@@ -68,9 +141,11 @@ function DetailedReport({ fullInst, activeExps, clients, occupations }) {
   );
 
   const nstbLookup = buildNSTBLookup(fullInst);
+  const summary = buildSummary(activeExps, clients);
 
   return (
     <div>
+      <SummaryBar summary={summary} />
       {activeExps.map((exp, idx) => {
         const clientName = getClientName(exp, clients);
         const clientType = getClientType(exp, clients);
