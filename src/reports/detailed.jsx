@@ -130,9 +130,8 @@ function DetailedReport({ fullInst, activeExps, clients, occupations }) {
                   <tbody>
                     {exp.occupations.map((occ, j) => {
                       const occName = getOccName(occ, occupations);
-                      const nstb = nstbForOcc(nstbLookup, occName, exp.fy);
-                      const appeared = occ.skillTestAppeared || nstb?.appeared || null;
-                      const pass     = occ.skillTestPass     || nstb?.pass     || null;
+                      const appeared = occ.skillTestAppeared || null;
+                      const pass     = occ.skillTestPass     || null;
                       const trainees = parseInt(occ.trainees) || 0;
                       const empPct   = parseFloat(occ.employmentActual) || 0;
                       const employed = trainees && empPct ? Math.round(trainees * empPct / 100) : null;
@@ -217,9 +216,8 @@ ${tags ? `<p class="tags">${esc(tags)}</p>` : ''}
 </tr></thead><tbody>`;
       exp.occupations.forEach((occ, j) => {
         const oName = getOccName(occ, occupations);
-        const nstb = nstbForOcc(nstbLookup, oName, exp.fy);
-        const appeared = occ.skillTestAppeared || nstb?.appeared || '—';
-        const pass     = occ.skillTestPass     || nstb?.pass     || '—';
+        const appeared = occ.skillTestAppeared || '—';
+        const pass     = occ.skillTestPass     || '—';
         const trainees = parseInt(occ.trainees) || 0;
         const empPct   = parseFloat(occ.employmentActual) || 0;
         const employed = trainees && empPct ? Math.round(trainees * empPct / 100) : '—';
@@ -372,9 +370,8 @@ async function downloadDetailedDOCX(fullInst, activeExps, reportId, opts = {}) {
           }),
           ...exp.occupations.map((occ, j) => {
             const oName = getOccName(occ, occupations);
-            const nstb = nstbForOcc(nstbLookup, oName, exp.fy);
-            const appeared = occ.skillTestAppeared || nstb?.appeared || '—';
-            const pass     = occ.skillTestPass     || nstb?.pass     || '—';
+            const appeared = occ.skillTestAppeared || '—';
+            const pass     = occ.skillTestPass     || '—';
             const trainees = parseInt(occ.trainees) || 0;
             const empPct   = parseFloat(occ.employmentActual) || 0;
             const employed = trainees && empPct ? Math.round(trainees * empPct / 100) : '—';
