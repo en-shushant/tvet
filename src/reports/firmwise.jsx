@@ -1,3 +1,4 @@
+import React, { useState } from 'react';
 import { esc, fyYear } from './helpers.js';
 import { buildFirmWiseData, fmt } from './helvetasData.js';
 import {
@@ -127,7 +128,55 @@ function buildNSTBData(fullInst, activeExps, selectedOccs = []) {
 
 const pct = (n, d) => d > 0 ? `${Math.round((n / d) * 100)}%` : '—';
 
+// Comparative view: rows = occupations, columns = FYs, cell = appeared trainees
+function NSTBComparativeTable({ occs, allFYs, grand }) {
+  // Per-occ per-FY appeared lookup
+  const appeared = (occ, fy) => {
+    const row = occ.rows.find(r => r.fy === fy);
+    return row ? (parseInt(row.appeared) || 0) : 0;
+  };
+  // Grand total per FY
+  const fyTotals = allFYs.map(fy =>
+    occs.reduce((s, occ) => s + appeared(occ, fy), 0)
+  );
+  return (
+    <table style={{ ...TBL, fontSize: 11 }}>
+      <thead>
+        <tr>
+          <th style={{ ...TH, width: 36 }}>S.N.</th>
+          <th style={{ ...TH, textAlign: 'left' }}>Occupation</th>
+          {allFYs.map(fy => <th key={fy} style={TH}>{fy}</th>)}
+          <th style={{ ...TH, background: '#c6d4e8' }}>Total</th>
+        </tr>
+      </thead>
+      <tbody>
+        {occs.map((occ, i) => {
+          const rowTotal = allFYs.reduce((s, fy) => s + appeared(occ, fy), 0);
+          return (
+            <tr key={occ.name}>
+              <td style={{ ...TD, textAlign: 'center' }}>{i + 1}</td>
+              <td style={TD}>{occ.name}</td>
+              {allFYs.map(fy => {
+                const val = appeared(occ, fy);
+                return <td key={fy} style={TDN}>{val || '—'}</td>;
+              })}
+              <td style={{ ...TDN, fontWeight: 600 }}>{rowTotal || '—'}</td>
+            </tr>
+          );
+        })}
+        <tr style={{ background: '#e8f0fe', fontWeight: 600 }}>
+          <td style={TD}></td>
+          <td style={TD}>Total</td>
+          {fyTotals.map((t, i) => <td key={allFYs[i]} style={TDN}>{t || '—'}</td>)}
+          <td style={TDN}>{grand.appeared || '—'}</td>
+        </tr>
+      </tbody>
+    </table>
+  );
+}
+
 function NSTBTable({ fullInst, activeExps, selectedOccs }) {
+  const [comparative, setComparative] = useState(false);
   const { occs, grand, allFYs } = buildNSTBData(fullInst, activeExps, selectedOccs);
   if (!occs.length) return (
     <div style={{ padding: 16, color: 'var(--text3)', fontSize: 13 }}>
@@ -137,43 +186,53 @@ function NSTBTable({ fullInst, activeExps, selectedOccs }) {
   const fyLabel = allFYs.length > 1 ? `FY ${allFYs[0]} to ${allFYs[allFYs.length - 1]}` : allFYs.length === 1 ? `FY ${allFYs[0]}` : '';
   return (
     <div>
-      <div style={TITLE_STYLE}>
-        NSTB Skill Test Report — by Occupation
-        {fyLabel && <span style={{ fontWeight: 400, fontSize: 12, marginLeft: 8 }}>({fyLabel})</span>}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 6 }}>
+        <div style={TITLE_STYLE}>
+          NSTB Skill Test Report — by Occupation
+          {fyLabel && <span style={{ fontWeight: 400, fontSize: 12, marginLeft: 8 }}>({fyLabel})</span>}
+        </div>
+        <label style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, cursor: 'pointer', marginLeft: 'auto', whiteSpace: 'nowrap' }}>
+          <input type="checkbox" checked={comparative} onChange={e => setComparative(e.target.checked)} />
+          Comparative
+        </label>
       </div>
       <div style={{ fontWeight: 600, marginBottom: 6, fontSize: 12 }}>{fullInst?.name || ''}</div>
-      <table style={TBL}>
-        <thead>
-          <tr>
-            <th style={{ ...TH, width: 40 }}>S.N.</th>
-            <th style={TH}>Occupation</th>
-            <th style={TH}>Applied</th>
-            <th style={TH}>Appeared</th>
-            <th style={TH}>Pass</th>
-            <th style={TH}>Pass %</th>
-          </tr>
-        </thead>
-        <tbody>
-          {occs.map((occ, i) => (
-            <tr key={occ.name}>
-              <td style={{ ...TD, textAlign: 'center' }}>{i + 1}</td>
-              <td style={TD}>{occ.name}</td>
-              <td style={TDN}>{occ.subtotal.applied || '—'}</td>
-              <td style={TDN}>{occ.subtotal.appeared || '—'}</td>
-              <td style={TDN}>{occ.subtotal.pass || '—'}</td>
-              <td style={TDN}>{pct(occ.subtotal.pass, occ.subtotal.appeared)}</td>
+      {comparative ? (
+        <NSTBComparativeTable occs={occs} allFYs={allFYs} grand={grand} />
+      ) : (
+        <table style={TBL}>
+          <thead>
+            <tr>
+              <th style={{ ...TH, width: 40 }}>S.N.</th>
+              <th style={TH}>Occupation</th>
+              <th style={TH}>Applied</th>
+              <th style={TH}>Appeared</th>
+              <th style={TH}>Pass</th>
+              <th style={TH}>Pass %</th>
             </tr>
-          ))}
-          <tr style={{ background: '#e8f0fe', fontWeight: 600 }}>
-            <td style={TD}></td>
-            <td style={TD}>Grand Total (All Occupations)</td>
-            <td style={TDN}>{grand.applied || '—'}</td>
-            <td style={TDN}>{grand.appeared || '—'}</td>
-            <td style={TDN}>{grand.pass || '—'}</td>
-            <td style={TDN}>{pct(grand.pass, grand.appeared)}</td>
-          </tr>
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {occs.map((occ, i) => (
+              <tr key={occ.name}>
+                <td style={{ ...TD, textAlign: 'center' }}>{i + 1}</td>
+                <td style={TD}>{occ.name}</td>
+                <td style={TDN}>{occ.subtotal.applied || '—'}</td>
+                <td style={TDN}>{occ.subtotal.appeared || '—'}</td>
+                <td style={TDN}>{occ.subtotal.pass || '—'}</td>
+                <td style={TDN}>{pct(occ.subtotal.pass, occ.subtotal.appeared)}</td>
+              </tr>
+            ))}
+            <tr style={{ background: '#e8f0fe', fontWeight: 600 }}>
+              <td style={TD}></td>
+              <td style={TD}>Grand Total (All Occupations)</td>
+              <td style={TDN}>{grand.applied || '—'}</td>
+              <td style={TDN}>{grand.appeared || '—'}</td>
+              <td style={TDN}>{grand.pass || '—'}</td>
+              <td style={TDN}>{pct(grand.pass, grand.appeared)}</td>
+            </tr>
+          </tbody>
+        </table>
+      )}
     </div>
   );
 }
