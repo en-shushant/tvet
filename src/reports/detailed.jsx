@@ -422,10 +422,43 @@ function DetailedReport({ fullInst, activeExps, clients, occupations }) {
 function buildDetailedPrintHTML(fullInst, activeExps, clients, reportId, fyRangeLabel, opts = {}) {
   const { occupations = [] } = opts;
   const firmName = fullInst?.name || '';
-  let body = '';
-
   const nstbLookup = buildNSTBLookup(fullInst);
+  const s = buildSummary(activeExps, clients, occupations);
 
+  // ── Summary block ──────────────────────────────────────────────────────────
+  const kpis = [
+    ['Total Assignments', activeExps.length],
+    ['Total Trainees', s.totalTrainees || '—'],
+    ['Total Employed', s.totalEmployed || '—'],
+    ['Unique Clients', s.uniqueClients.size],
+    ['Unique Occupations', s.uniqueOccs.size],
+    ['ST Provisioned', s.stProvisioned || '—'],
+    ['ST Appeared', s.stAppeared || '—'],
+    ['ST Passed', s.stPass || '—'],
+    ...(s.stAppeared > 0 ? [['ST Pass Rate', `${Math.round(s.stPass/s.stAppeared*100)}%`]] : []),
+    ['Districts Covered', s.districts.size || '—'],
+    ['Provinces Covered', s.provinces.size || '—'],
+    ...(s.gesiCount ? [['GESI Assignments', s.gesiCount]] : []),
+    ...(s.residentialCount ? [['Residential', s.residentialCount]] : []),
+    ...(s.jvCount ? [['JV Assignments', s.jvCount]] : []),
+  ];
+
+  let summaryHtml = `<div class="summary">
+<div class="sum-title">Portfolio Summary</div>
+<div class="kpi-grid">
+${kpis.map(([l,v]) => `<div class="kpi"><div class="kl">${esc(l)}</div><div class="kv">${esc(String(v))}</div></div>`).join('')}
+</div>`;
+
+  if (s.uniqueClients.size) summaryHtml += `<div class="sum-row"><b>Clients:</b> ${esc([...s.uniqueClients.keys()].join(' · '))}</div>`;
+  if (s.uniqueAgencyTypes.size) summaryHtml += `<div class="sum-row"><b>Funding Types:</b> ${esc([...s.uniqueAgencyTypes].join(' · '))}</div>`;
+  if (s.uniqueTrainingTypes.size) summaryHtml += `<div class="sum-row"><b>Training Types:</b> ${esc([...s.uniqueTrainingTypes].join(' · '))}</div>`;
+  if (s.uniqueOccs.size) summaryHtml += `<div class="sum-row"><b>Occupations:</b> ${esc([...s.uniqueOccs.entries()].sort((a,b)=>b[1]-a[1]).map(([n,t])=>`${n} (${t})`).join(' · '))}</div>`;
+  if (s.provinces.size) summaryHtml += `<div class="sum-row"><b>Provinces:</b> ${esc([...s.provinces].sort().join(', '))}</div>`;
+  if (s.districts.size) summaryHtml += `<div class="sum-row"><b>Districts (${s.districts.size}):</b> ${esc([...s.districts].sort().join(', '))}</div>`;
+  summaryHtml += `</div>`;
+
+  // ── Assignments ────────────────────────────────────────────────────────────
+  let body = '';
   activeExps.forEach((exp, idx) => {
     const clientName = getClientName(exp, clients);
     const clientType = getClientType(exp, clients);
@@ -433,12 +466,22 @@ function buildDetailedPrintHTML(fullInst, activeExps, clients, reportId, fyRange
     const startLabel = exp.startDate ? fmtDate(exp.startDate) : (exp.startFY ? `FY ${exp.startFY}` : '—');
     const endLabel   = exp.endDate   ? fmtDate(exp.endDate)   : (exp.endFY   ? `FY ${exp.endFY}`   : '—');
 
+    let expTrainees = 0, expEmployed = 0, expSTAppeared = 0, expSTPass = 0;
+    for (const occ of (exp.occupations || [])) {
+      const t = parseInt(occ.trainees) || 0; expTrainees += t;
+      const ep = parseFloat(occ.employmentActual) || 0; if (t && ep) expEmployed += Math.round(t * ep / 100);
+      expSTAppeared += parseInt(occ.skillTestAppeared) || 0;
+      expSTPass     += parseInt(occ.skillTestPass)     || 0;
+    }
+
     body += `<div class="assignment">
 <h3>#${idx+1} ${esc(exp.assignmentName || '(Unnamed Assignment)')} — FY ${esc(exp.fy)}</h3>
 ${tags ? `<p class="tags">${esc(tags)}</p>` : ''}
 <table class="meta">
-  <tr><td><b>Client:</b> ${esc(clientName)}</td><td><b>Funding Agency/Type:</b> ${esc(clientType)}</td><td><b>Contract Value (NPR):</b> ${exp.contractValue ? fmt(exp.contractValue) : '—'}</td></tr>
-  <tr><td><b>Start Date:</b> ${esc(startLabel)}</td><td><b>End Date:</b> ${esc(endLabel)}</td><td><b>Duration (Days):</b> ${exp.durationDays || '—'}</td></tr>
+  <tr><td><b>Client:</b> ${esc(clientName)}</td><td><b>Funding Agency/Type:</b> ${esc(clientType)}</td><td><b>Training Type:</b> ${esc(exp.trainingType||'—')}</td></tr>
+  <tr><td><b>Start Date:</b> ${esc(startLabel)}</td><td><b>End Date:</b> ${esc(endLabel)}</td><td><b>Duration (Days):</b> ${esc(String(exp.durationDays||'—'))}</td></tr>
+  <tr><td><b>Total Trainees:</b> ${expTrainees||'—'}</td><td><b>ST Appeared:</b> ${expSTAppeared||'—'}</td><td><b>ST Passed:</b> ${expSTPass||'—'}</td></tr>
+  <tr><td><b>Total Employed:</b> ${expEmployed||'—'}</td><td><b>Country:</b> ${esc(exp.country||'Nepal')}</td><td>${exp.durationMonths?`<b>Duration (Mo):</b> ${exp.durationMonths}`:''}</td></tr>
   ${exp.isJV ? `<tr><td colspan="3"><b>JV Partners:</b> ${esc(exp.jvPartnerNames || exp.jvPartners || '—')}</td></tr>` : ''}
 </table>`;
 
@@ -493,10 +536,19 @@ ${tags ? `<p class="tags">${esc(tags)}</p>` : ''}
   .meta{border:none}
   .meta td{border:none;border-bottom:1px solid #eee;padding:3px 8px 3px 0;width:33%}
   td.c{text-align:center} td.r{text-align:right}
-  @media print{body{margin:8mm}.assignment{page-break-inside:avoid}}
+  tr.total td{background:#eef3fb;font-weight:700}
+  .summary{border:1px solid #aac;border-radius:4px;margin-bottom:16px;overflow:hidden;page-break-inside:avoid}
+  .sum-title{background:#1a4a7a;color:#fff;padding:6px 12px;font-size:12px;font-weight:700}
+  .kpi-grid{display:flex;flex-wrap:wrap;gap:0;padding:8px 12px 4px}
+  .kpi{min-width:110px;margin:0 16px 8px 0}
+  .kl{font-size:9px;font-weight:700;color:#5a7a9a;text-transform:uppercase;letter-spacing:.05em}
+  .kv{font-size:17px;font-weight:700;color:#1a4a7a}
+  .sum-row{padding:3px 12px 3px;font-size:10px;border-top:1px solid #dde}
+  @media print{body{margin:8mm}.assignment{page-break-inside:avoid}.summary{page-break-inside:avoid}}
 </style></head><body>
 <h2>${esc(firmName)} — Detailed Experience Report</h2>
 ${fyRangeLabel ? `<p style="color:#555;font-size:10px">FY Range: ${esc(fyRangeLabel)}</p>` : ''}
+${summaryHtml}
 ${body}
 </body></html>`;
 }
@@ -545,6 +597,8 @@ async function downloadDetailedDOCX(fullInst, activeExps, reportId, opts = {}) {
   const fyLabel = fromFY || toFY ? `FY ${fromFY || '…'} – ${toFY || '…'}` : '';
   const nstbLookup = buildNSTBLookup(fullInst);
 
+  const s = buildSummary(activeExps, clients, occupations);
+
   const children = [
     new Paragraph({
       heading: HeadingLevel.HEADING_1,
@@ -556,11 +610,72 @@ async function downloadDetailedDOCX(fullInst, activeExps, reportId, opts = {}) {
     children.push(new Paragraph({ children: [new TextRun({ text: `FY Range: ${fyLabel}`, size: 20, color: '555555' })] }));
   }
 
+  // ── Summary table ──────────────────────────────────────────────────────────
+  children.push(new Paragraph({ heading: HeadingLevel.HEADING_2, spacing: { before: 200, after: 80 }, children: [new TextRun({ text: 'Portfolio Summary', bold: true, size: 24 })] }));
+
+  const SUM_FILL = 'EEF3FB';
+  const SUM_HDR  = '1A4A7A';
+  function sumHdrCell(text) {
+    return new TableCell({ shading:{ fill: SUM_HDR }, borders: ALL_BORDERS, margins: CELL_MARGIN,
+      children:[new Paragraph({ children:[new TextRun({ text, bold:true, size:18, color:'FFFFFF' })] })] });
+  }
+  function sumValCell(text) {
+    return new TableCell({ shading:{ fill: SUM_FILL }, borders: ALL_BORDERS, margins: CELL_MARGIN,
+      children:[new Paragraph({ alignment: AlignmentType.RIGHT, children:[new TextRun({ text: String(text ?? '—'), bold:true, size:20 })] })] });
+  }
+  function sumLblCell(text) {
+    return new TableCell({ borders: ALL_BORDERS, margins: CELL_MARGIN,
+      children:[new Paragraph({ children:[new TextRun({ text, size:18 })] })] });
+  }
+
+  const kpiRows = [
+    ['Total Assignments', activeExps.length, 'Total Trainees', s.totalTrainees || '—'],
+    ['Total Employed (est.)', s.totalEmployed || '—', 'Unique Clients', s.uniqueClients.size],
+    ['Unique Occupations', s.uniqueOccs.size, 'ST Provisioned', s.stProvisioned || '—'],
+    ['ST Appeared', s.stAppeared || '—', 'ST Passed', s.stPass || '—'],
+    ...(s.stAppeared > 0 ? [['ST Pass Rate', `${Math.round(s.stPass/s.stAppeared*100)}%`, 'Districts Covered', s.districts.size || '—']] : [['Districts Covered', s.districts.size || '—', 'Provinces Covered', s.provinces.size || '—']]),
+    ['GESI Assignments', s.gesiCount || '—', 'Residential', s.residentialCount || '—'],
+  ];
+
+  children.push(new Table({
+    width: { size: 100, type: WidthType.PERCENTAGE },
+    rows: kpiRows.map(([l1,v1,l2,v2]) => new TableRow({ children: [sumLblCell(l1), sumValCell(v1), sumLblCell(l2), sumValCell(v2)] })),
+  }));
+
+  const listRows = [
+    ['Clients', [...s.uniqueClients.keys()].join(', ') || '—'],
+    ['Funding Types', [...s.uniqueAgencyTypes].join(', ') || '—'],
+    ['Training Types', [...s.uniqueTrainingTypes].join(', ') || '—'],
+    ['Occupations', [...s.uniqueOccs.entries()].sort((a,b)=>b[1]-a[1]).map(([n,t])=>`${n} (${t})`).join(', ') || '—'],
+    ['Provinces', [...s.provinces].sort().join(', ') || '—'],
+    ['Districts', [...s.districts].sort().join(', ') || '—'],
+  ];
+  children.push(new Table({
+    width: { size: 100, type: WidthType.PERCENTAGE },
+    rows: listRows.map(([l, v]) => new TableRow({ children: [
+      new TableCell({ shading:{ fill: SUM_FILL }, borders: ALL_BORDERS, margins: CELL_MARGIN, width:{ size:20, type:WidthType.PERCENTAGE },
+        children:[new Paragraph({ children:[new TextRun({ text: l, bold:true, size:18 })] })] }),
+      new TableCell({ borders: ALL_BORDERS, margins: CELL_MARGIN,
+        children:[new Paragraph({ children:[new TextRun({ text: v, size:18 })] })] }),
+    ]})),
+  }));
+
+  children.push(new Paragraph({ spacing: { before: 200 }, children: [] }));
+
+  // ── Per-assignment sections ────────────────────────────────────────────────
   activeExps.forEach((exp, idx) => {
     const clientName = getClientName(exp, clients);
     const clientType = getClientType(exp, clients);
     const startLabel = exp.startDate ? fmtDate(exp.startDate) : (exp.startFY ? `FY ${exp.startFY}` : '—');
     const endLabel   = exp.endDate   ? fmtDate(exp.endDate)   : (exp.endFY   ? `FY ${exp.endFY}`   : '—');
+
+    let expTrainees = 0, expEmployed = 0, expSTAppeared = 0, expSTPass = 0;
+    for (const occ of (exp.occupations || [])) {
+      const t = parseInt(occ.trainees) || 0; expTrainees += t;
+      const ep = parseFloat(occ.employmentActual) || 0; if (t && ep) expEmployed += Math.round(t * ep / 100);
+      expSTAppeared += parseInt(occ.skillTestAppeared) || 0;
+      expSTPass     += parseInt(occ.skillTestPass) || 0;
+    }
 
     children.push(new Paragraph({
       heading: HeadingLevel.HEADING_2,
@@ -572,8 +687,10 @@ async function downloadDetailedDOCX(fullInst, activeExps, reportId, opts = {}) {
     const metaRows = [
       ['Client', clientName, 'Funding Agency/Type', clientType],
       ['Start Date', startLabel, 'End Date', endLabel],
-      ['Contract Value (NPR)', exp.contractValue ? fmt(exp.contractValue) : '—', 'Duration (Days)', exp.durationDays || '—'],
       ['Training Type', exp.trainingType || '—', 'Flags', [exp.isGesi?'GESI':'', exp.isResidential?'Residential':'', exp.isJV?`JV (${exp.jvRole})`:''].filter(Boolean).join(', ') || 'None'],
+      ['Duration (Days)', exp.durationDays || '—', 'Duration (Months)', exp.durationMonths || '—'],
+      ['Total Trainees', String(expTrainees || '—'), 'Total Employed', String(expEmployed || '—')],
+      ['ST Appeared', String(expSTAppeared || '—'), 'ST Passed', String(expSTPass || '—')],
     ];
     if (exp.isJV) metaRows.push(['JV Partners', exp.jvPartnerNames || exp.jvPartners || '—', '', '']);
 
@@ -589,9 +706,49 @@ async function downloadDetailedDOCX(fullInst, activeExps, reportId, opts = {}) {
       })),
     }));
 
+    if (exp.descriptionOfWork) children.push(new Paragraph({ spacing: { before: 60, after: 20 }, children: [new TextRun({ text: 'Description of Work: ', bold: true, size: 18 }), new TextRun({ text: exp.descriptionOfWork, size: 18 })] }));
+    if (exp.narrativeDescription) children.push(new Paragraph({ spacing: { before: 40, after: 20 }, children: [new TextRun({ text: 'Narrative: ', bold: true, size: 18 }), new TextRun({ text: exp.narrativeDescription, size: 18 })] }));
+    if (exp.actualServicesDescription) children.push(new Paragraph({ spacing: { before: 40, after: 20 }, children: [new TextRun({ text: 'Actual Services: ', bold: true, size: 18 }), new TextRun({ text: exp.actualServicesDescription, size: 18 })] }));
+
     // Occupations table
     if (exp.occupations?.length) {
       children.push(new Paragraph({ spacing: { before: 120, after: 40 }, children: [new TextRun({ text: 'Occupations / Training Details', bold: true, size: 20 })] }));
+      const occDataRows = exp.occupations.map((occ, j) => {
+        const oName = getOccName(occ, occupations);
+        const appeared = occ.skillTestAppeared || '—';
+        const pass     = occ.skillTestPass     || '—';
+        const trainees = parseInt(occ.trainees) || 0;
+        const empPct   = parseFloat(occ.employmentActual) || 0;
+        const employed = trainees && empPct ? Math.round(trainees * empPct / 100) : '—';
+        return new TableRow({
+          children: [
+            dc(j+1, { center: true }),
+            dc(oName),
+            dc(occ.level || '—', { center: true }),
+            dc(occ.trainees || '—', { right: true }),
+            dc(occ.duration || '—', { right: true }),
+            dc(occ.skillTestProvisioned ? 'Yes' : 'No', { center: true }),
+            dc(appeared, { right: true }),
+            dc(pass, { right: true }),
+            dc(occ.employmentProvisioned ? 'Yes' : 'No', { center: true }),
+            dc(occ.employmentActual ? `${occ.employmentActual}%` : '—', { right: true }),
+            dc(employed, { right: true }),
+            dc(locationStr(occ)),
+          ],
+        });
+      });
+      const totalsRow = exp.occupations.length > 1 ? [new TableRow({
+        children: [
+          dc('Total', { bold: true, fill: SUM_FILL, span: 3, center: true }),
+          dc(expTrainees || '—', { bold: true, right: true, fill: SUM_FILL }),
+          dc('', { fill: SUM_FILL }), dc('', { fill: SUM_FILL }),
+          dc(expSTAppeared || '—', { bold: true, right: true, fill: SUM_FILL }),
+          dc(expSTPass || '—', { bold: true, right: true, fill: SUM_FILL }),
+          dc('', { fill: SUM_FILL }), dc('', { fill: SUM_FILL }),
+          dc(expEmployed || '—', { bold: true, right: true, fill: SUM_FILL }),
+          dc('', { fill: SUM_FILL }),
+        ],
+      })] : [];
       children.push(new Table({
         width: { size: 100, type: WidthType.PERCENTAGE },
         rows: [
@@ -603,30 +760,8 @@ async function downloadDetailedDOCX(fullInst, activeExps, reportId, opts = {}) {
               hc('Emp. Prov.'), hc('Emp. %'), hc('Employed'), hc('Location', { center: false }),
             ],
           }),
-          ...exp.occupations.map((occ, j) => {
-            const oName = getOccName(occ, occupations);
-            const appeared = occ.skillTestAppeared || '—';
-            const pass     = occ.skillTestPass     || '—';
-            const trainees = parseInt(occ.trainees) || 0;
-            const empPct   = parseFloat(occ.employmentActual) || 0;
-            const employed = trainees && empPct ? Math.round(trainees * empPct / 100) : '—';
-            return new TableRow({
-              children: [
-                dc(j+1, { center: true }),
-                dc(oName),
-                dc(occ.level || '—', { center: true }),
-                dc(occ.trainees || '—', { right: true }),
-                dc(occ.duration || '—', { right: true }),
-                dc(occ.skillTestProvisioned ? 'Yes' : 'No', { center: true }),
-                dc(appeared, { right: true }),
-                dc(pass, { right: true }),
-                dc(occ.employmentProvisioned ? 'Yes' : 'No', { center: true }),
-                dc(occ.employmentActual ? `${occ.employmentActual}%` : '—', { right: true }),
-                dc(employed, { right: true }),
-                dc(locationStr(occ)),
-              ],
-            });
-          }),
+          ...occDataRows,
+          ...totalsRow,
         ],
       }));
     }
