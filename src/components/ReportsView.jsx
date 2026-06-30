@@ -629,14 +629,16 @@ function ReportsView({ institutes, clients }) {
                     const activeFYYears = new Set(exps.map(e => fyYear(e.fy)).filter(Boolean));
                     const records = (inst.nstb || []).filter(n => activeFYYears.size === 0 || activeFYYears.has(fyYear(n.fy)));
                     const byOcc = {};
+                    let allAppearedTotal = 0;
                     for (const n of records) {
                       const name = (n.occupation || '').trim();
                       if (!name) continue;
+                      allAppearedTotal += parseInt(n.appeared) || 0;
                       if (selectedOccs.length && !selectedOccs.some(o => o.toLowerCase() === name.toLowerCase())) continue;
                       if (!byOcc[name]) byOcc[name] = 0;
                       byOcc[name] += parseInt(n.appeared) || 0;
                     }
-                    return { id, name: inst.acronym || inst.name || id, byOcc };
+                    return { id, name: inst.acronym || inst.name || id, byOcc, allAppearedTotal };
                   }).filter(Boolean);
 
                   const allOccs = [...new Set(firmData.flatMap(f => Object.keys(f.byOcc)))].sort();
@@ -686,11 +688,17 @@ function ReportsView({ institutes, clients }) {
                             );
                           })}
                           <tr style={{background:'#e8f0fe', fontWeight:600}}>
-                            <td style={TD2}>Total</td>
+                            <td style={TD2}>Selected Occupations Total</td>
                             {firmData.map((f, j) => {
                               const t = allOccs.reduce((s, occ) => s + (f.byOcc[occ] || 0), 0);
                               return <td key={j} style={TDN2}>{t || '—'}</td>;
                             })}
+                          </tr>
+                          <tr style={{background:'#d0e4f7', fontWeight:700, borderTop:'2px solid #aab8c8'}}>
+                            <td style={TD2}>Total Skill Test (All Occupations)</td>
+                            {firmData.map((f, j) => (
+                              <td key={j} style={TDN2}>{f.allAppearedTotal || '—'}</td>
+                            ))}
                           </tr>
                         </tbody>
                       </table>
