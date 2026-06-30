@@ -1,5 +1,5 @@
 // Shared data builders used by both the JSX renderer and DOCX exporter
-import { fyInRange, fmt } from './helpers.js';
+import { fyInRange, fyYear, fmt } from './helpers.js';
 
 export { fmt };
 
@@ -41,9 +41,10 @@ export function buildGeneralExpData(fullInst, activeExps, occupations = [], sort
   }
 
   // NSTB skill-test pass — per occupation per FY
+  const allFYYears = new Set(allFYs.map(fyYear).filter(Boolean));
   const nstbByOccFY = {};
   for (const n of (fullInst?.nstb || [])) {
-    if (!allFYs.includes(n.fy)) continue;
+    if (allFYYears.size > 0 && !allFYYears.has(fyYear(n.fy))) continue;
     const key = (n.occupation || '').toLowerCase().trim();
     if (!nstbByOccFY[key]) nstbByOccFY[key] = {};
     nstbByOccFY[key][n.fy] = (nstbByOccFY[key][n.fy] || 0) + (parseInt(n.pass) || 0);
@@ -120,9 +121,10 @@ export function buildFirmWiseData(fullInst, activeExps, occupations = [], opts =
   const allFYs = [...new Set(activeExps.map(e => e.fy).filter(Boolean))].sort();
 
   // NSTB skill test data by occupation (appeared + pass), keyed by original name
+  const allFYYears2 = new Set(allFYs.map(fyYear).filter(Boolean));
   const nstbByOcc = {};
   for (const n of (fullInst?.nstb || [])) {
-    if (!allFYs.includes(n.fy)) continue;
+    if (allFYYears2.size > 0 && !allFYYears2.has(fyYear(n.fy))) continue;
     const key = (n.occupation || '').trim();
     if (!nstbByOcc[key]) nstbByOcc[key] = { appeared: 0, pass: 0 };
     nstbByOcc[key].appeared += parseInt(n.appeared) || 0;

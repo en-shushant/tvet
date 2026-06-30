@@ -1,4 +1,4 @@
-import { esc } from './helpers.js';
+import { esc, fyYear } from './helpers.js';
 import { buildFirmWiseData, fmt } from './helvetasData.js';
 import {
   Document, Packer, Table, TableRow, TableCell, Paragraph, TextRun,
@@ -92,8 +92,8 @@ function FirmWiseTable({ fullInst, activeExps, occupations, selectedOccs }) {
 // ── NSTB Skill Test Report ────────────────────────────────────────────────────
 
 function buildNSTBData(fullInst, activeExps, selectedOccs = []) {
-  const activeFYs = new Set(activeExps.map(e => e.fy).filter(Boolean));
-  const records = (fullInst?.nstb || []).filter(n => activeFYs.size === 0 || activeFYs.has(n.fy));
+  const activeFYYears = new Set(activeExps.map(e => fyYear(e.fy)).filter(Boolean));
+  const records = (fullInst?.nstb || []).filter(n => activeFYYears.size === 0 || activeFYYears.has(fyYear(n.fy)));
 
   // Group by occupation
   const byOcc = {};

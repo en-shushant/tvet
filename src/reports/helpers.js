@@ -24,10 +24,17 @@ export const districtsOf = (exp) => {
 export const esc = (s) =>
   s ? String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])) : '';
 
-// Compare two FY strings like "2078/79" — works as plain string comparison since year part is 4-digit
+// Normalize FY to start year integer: "2077/78", "2077/078", "2077/079" → 2077
+export const fyYear = (fy) => {
+  if (!fy) return 0;
+  return parseInt(fy.split('/')[0]) || 0;
+};
+
+// Compare FY strings by start year, supporting mixed formats (2077/78 vs 2077/078)
 export const fyInRange = (fy, from, to) => {
   if (!fy) return false;
-  if (from && fy < from) return false;
-  if (to && fy > to) return false;
+  const y = fyYear(fy);
+  if (from && y < fyYear(from)) return false;
+  if (to && y > fyYear(to)) return false;
   return true;
 };
