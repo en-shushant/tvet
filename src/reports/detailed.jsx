@@ -12,12 +12,12 @@ const fmtDate = (d) => d ? new Date(d).toLocaleDateString('en-GB', { day:'2-digi
 
 function getClientName(exp, clients) {
   if (exp.manualClient) return exp.clientName || '—';
-  const c = (clients || []).find(c => c.id === exp.clientId);
-  return c?.name || exp.clientName || '—';
+  const c = (clients || []).find(c => String(c.id) === String(exp.clientId));
+  return c?.shortName || c?.fullName || exp.clientName || '—';
 }
 function getClientType(exp, clients) {
   if (exp.manualClient) return '—';
-  const c = (clients || []).find(c => c.id === exp.clientId);
+  const c = (clients || []).find(c => String(c.id) === String(exp.clientId));
   return c?.type || '—';
 }
 function getOccName(occ, occupations) {
