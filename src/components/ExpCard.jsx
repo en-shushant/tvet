@@ -24,6 +24,7 @@ function ExpCard({exp, clients, showFY, setModal, deleteExperience, canEdit, isA
   const allLocs = exp.occupations.flatMap(o=>(o.locations||[]));
   const districts = [...new Set(allLocs.map(l=>l.district).filter(Boolean))];
   const localLevels = [...new Set(allLocs.flatMap(l=>(l.localLevels||[]).map(x=>x.name)).filter(Boolean))];
+  const missingOccs = (exp.occupations||[]).filter(o => !o.level || !o.duration);
   return (
     <div style={{padding:'14px 16px', borderBottom:'1px solid var(--border)'}}>
       <div style={{display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:8}}>
@@ -38,6 +39,12 @@ function ExpCard({exp, clients, showFY, setModal, deleteExperience, canEdit, isA
             {exp.contractValue && <> &nbsp;·&nbsp; NPR {fmt(exp.contractValue)}</>}
             {(exp.startFY || exp.endFY) && <> &nbsp;·&nbsp; <span style={{color:'var(--blue)'}}>FY {exp.startFY||exp.fy}–{exp.endFY||exp.fy}</span></>}
           </div>
+          {missingOccs.length > 0 && (
+            <div style={{display:'inline-flex', alignItems:'center', gap:4, marginTop:4, fontSize:10, fontWeight:600, color:'#856404', background:'#fff3cd', border:'1px solid #ffc107', borderRadius:4, padding:'2px 7px'}}
+              title={missingOccs.map(o=>getOccupation(o.ctevtOccupationId).name||o.nameInLetter).join(', ') + ' — missing level or duration (hrs)'}>
+              ⚠ Missing level/duration ({missingOccs.length})
+            </div>
+          )}
           {(exp.isGesi || exp.isResidential) && (
             <div style={{display:'flex', gap:6, marginTop:5}}>
               {exp.isGesi && <span style={{fontSize:10, fontWeight:700, padding:'2px 7px', borderRadius:10, background:'color-mix(in srgb,#a855f7 15%,transparent)', color:'#a855f7', letterSpacing:'0.3px'}}>GESI</span>}

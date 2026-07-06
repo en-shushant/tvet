@@ -191,6 +191,7 @@ function InstituteDetail({institute, clients, onUpdateClients, onBack, onUpdate,
   const [expClientFilter, setExpClientFilter] = useState('');
   const [expOccFilter, setExpOccFilter] = useState('');
   const [expViewMode, setExpViewMode] = useState('fy'); // 'fy' | 'client'
+  const [expMissingFilter, setExpMissingFilter] = useState(false);
 
   // Auto-expand all FY/client groups when institute loads or experience changes,
   // so users don't see a "blank" Experience tab with collapsed groups.
@@ -347,6 +348,15 @@ function InstituteDetail({institute, clients, onUpdateClients, onBack, onUpdate,
                   <option key={name} value={name}>{name}</option>
                 ))}
               </select>
+              <button
+                onClick={()=>setExpMissingFilter(v=>!v)}
+                style={{fontSize:12, padding:'4px 10px', borderRadius:6, border:'1px solid var(--border)', cursor:'pointer', whiteSpace:'nowrap',
+                  background: expMissingFilter ? '#fff3cd' : 'var(--bg2)',
+                  color: expMissingFilter ? '#856404' : 'var(--text2)',
+                  fontWeight: expMissingFilter ? 700 : 400}}
+                title="Show only assignments where any occupation is missing level or duration (hrs)">
+                ⚠ Missing level/duration
+              </button>
             </div>
             {canEdit && <div style={{display:'flex', gap:6}}>
               <button className="btn btn-secondary btn-sm" onClick={onBulkAdd}>⊞ Bulk add</button>
@@ -380,7 +390,7 @@ function InstituteDetail({institute, clients, onUpdateClients, onBack, onUpdate,
           {institute.experience.length === 0
             ? <div className="empty-state"><div className="empty-state-icon">📋</div><div className="empty-state-title">No assignments yet</div><div className="empty-state-sub">Add the first experience / assignment record</div></div>
             : expViewMode === 'fy'
-              ? groupByFY(institute.experience.filter(e=>(!expClientFilter || String(e.clientId)===String(expClientFilter)) && (!expOccFilter || (expOccFilter==='__missing__' ? (e.occupations||[]).some(o=>!o.ctevtOccupationId) : (e.occupations||[]).some(o=>(getOccupation(o.ctevtOccupationId).name||o.nameInLetter)===expOccFilter))))).map(([fy, items]) => (
+              ? groupByFY(institute.experience.filter(e=>(!expClientFilter || String(e.clientId)===String(expClientFilter)) && (!expOccFilter || (expOccFilter==='__missing__' ? (e.occupations||[]).some(o=>!o.ctevtOccupationId) : (e.occupations||[]).some(o=>(getOccupation(o.ctevtOccupationId).name||o.nameInLetter)===expOccFilter))) && (!expMissingFilter || (e.occupations||[]).some(o=>!o.level || !o.duration)))).map(([fy, items]) => (
                 <div key={fy} className="fy-group">
                   <button className="fy-header" onClick={()=>toggleFY('exp-'+fy)}>
                     <span>{expandedFY['exp-'+fy] ? '▼' : '▶'}</span>
@@ -397,7 +407,7 @@ function InstituteDetail({institute, clients, onUpdateClients, onBack, onUpdate,
               : (() => {
                   // Group by client
                   const clientMap = new Map();
-                  institute.experience.filter(exp => (!expClientFilter || String(exp.clientId)===String(expClientFilter)) && (!expOccFilter || (exp.occupations||[]).some(o=>(getOccupation(o.ctevtOccupationId).name||o.nameInLetter)===expOccFilter))).forEach(exp => {
+                  institute.experience.filter(exp => (!expClientFilter || String(exp.clientId)===String(expClientFilter)) && (!expOccFilter || (exp.occupations||[]).some(o=>(getOccupation(o.ctevtOccupationId).name||o.nameInLetter)===expOccFilter)) && (!expMissingFilter || (exp.occupations||[]).some(o=>!o.level || !o.duration))).forEach(exp => {
                     const key = exp.clientId || ('manual:' + (exp.clientName||'Unknown'));
                     if (!clientMap.has(key)) clientMap.set(key, []);
                     clientMap.get(key).push(exp);
