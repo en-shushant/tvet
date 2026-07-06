@@ -34,16 +34,23 @@ function occLocationStr(occ) {
     .filter(Boolean).join('; ') || '—';
 }
 
+function buildProgram(occ) {
+  const parts = [];
+  if (occ.level) parts.push(occ.level);
+  if (occ.duration) parts.push(`${occ.duration} hrs`);
+  return parts.join(', ') || '—';
+}
+
 function buildC1Rows(activeExps, occupations) {
   const rows = [];
   for (const exp of activeExps) {
     for (const occ of (exp.occupations || [])) {
       rows.push({
         occupation: getOccName(occ, occupations),
-        program: getOccLevel(occ, occupations),
-        trained: occ.trainees || '—',
-        passed: occ.skillTestPass || '—',
-        empRate: occ.employmentActual ? `${occ.employmentActual}%` : 'NA',
+        program: buildProgram(occ),
+        trained: occ.trainees != null && occ.trainees !== '' ? occ.trainees : '—',
+        passed: occ.skillTestPass != null && occ.skillTestPass !== '' ? occ.skillTestPass : '—',
+        empRate: occ.employmentActual != null && occ.employmentActual !== '' ? `${occ.employmentActual}%` : '—',
         location: occLocationStr(occ),
         fy: exp.fy || '—',
       });
