@@ -103,7 +103,7 @@ function ENSSUREReport({ fullInst, activeExps, occupations, opts = {} }) {
   const safetyTools = toolsData.filter(t => (t.type || '').toLowerCase().includes('safety')).map(applyEvents);
   const equipTools  = toolsData.filter(t => !(t.type || '').toLowerCase().includes('safety') && !(t.type || '').toLowerCase().includes('stationery')).map(applyEvents);
 
-  const C1_COLS = ['SN','Occupation','Program (Level/Hrs)','Trainees Trained','Passed Skill Test','Employment Rate (%)','Training Location (Palika, District, Province)','Fiscal Year'];
+  const C1_COLS = ['S.N.','Occupations','Program\n(e.g., L-1, L2, L-3,\n1400-1696 Hours,\nPre/Diploma etc.)','Number of\nTrainees Trained','Number of Trainees\nPassed Skill test\nor exam','Employment\nrate (%)','Training Location\n(Please mention the\nname of Palika,\nDistrict and Province)','In which Fiscal Year\ntraining was\nconducted?'];
   const C2_COLS = C1_COLS;
   const D3_COLS = ['SN','Description','Quantity'];
 
@@ -144,7 +144,7 @@ function ENSSUREReport({ fullInst, activeExps, occupations, opts = {} }) {
       <div style={SEC}>
         <SectionTitle>C1. General Working Experience in Training Program (last 3 FYs)</SectionTitle>
         <table style={TBL}>
-          <thead><tr>{C1_COLS.map(h => <th key={h} style={{...TH, textAlign: h==='Occupation'||h.includes('Location')||h==='Program'?'left':'center'}}>{h}</th>)}</tr></thead>
+          <thead><tr>{C1_COLS.map(h => <th key={h} style={{...TH, textAlign:'center', whiteSpace:'pre-line'}}>{h}</th>)}</tr></thead>
           <tbody>
             {c1.length === 0 && <tr><td colSpan={8} style={{...TDC, color:'#888'}}>No data</td></tr>}
             {c1.map((r, i) => (
@@ -168,7 +168,7 @@ function ENSSUREReport({ fullInst, activeExps, occupations, opts = {} }) {
         <SectionTitle>C2. Specific Experience in Related Occupation {enssureOccs.length ? `— ${enssureOccs.join(', ')}` : '(select proposed occupation)'}</SectionTitle>
         {!enssureOccs.length && <div style={{color:'#e65100', fontSize:11, marginBottom:6}}>Select the proposed occupation from the filter panel to populate C2.</div>}
         <table style={TBL}>
-          <thead><tr>{C2_COLS.map(h => <th key={h} style={{...TH, textAlign: h==='Occupation'||h.includes('Location')||h==='Program'?'left':'center'}}>{h}</th>)}</tr></thead>
+          <thead><tr>{C2_COLS.map(h => <th key={h} style={{...TH, textAlign:'center', whiteSpace:'pre-line'}}>{h}</th>)}</tr></thead>
           <tbody>
             {c2.length === 0 && <tr><td colSpan={8} style={{...TDC, color:'#888'}}>{enssureOccs.length ? 'No experience found for this occupation.' : '—'}</td></tr>}
             {c2.map((r, i) => (
@@ -295,7 +295,7 @@ function buildENSSUREPrintHTML(fullInst, activeExps, clients, reportId, fyRangeL
     @media print{body{margin:8mm}h3{page-break-before:avoid}}
   `;
 
-  const expColsHeader = `<th>#</th><th>Occupation</th><th>Program (Level/Hrs)</th><th>Trainees Trained</th><th>Passed Skill Test</th><th>Employment Rate (%)</th><th>Training Location</th><th>Fiscal Year</th>`;
+  const expColsHeader = `<th>S.N.</th><th>Occupations</th><th>Program<br/>(e.g., L-1, L2, L-3,<br/>1400-1696 Hours,<br/>Pre/Diploma etc.)</th><th>Number of<br/>Trainees Trained</th><th>Number of Trainees<br/>Passed Skill test<br/>or exam</th><th>Employment<br/>rate (%)</th><th>Training Location<br/>(Please mention the<br/>name of Palika,<br/>District and Province)</th><th>In which Fiscal Year<br/>training was<br/>conducted?</th>`;
   const expRow = (r, i) => `<tr><td class="c">${i+1}</td><td>${esc(r.occupation)}</td><td>${esc(r.program)}</td><td class="r">${esc(r.trained)}</td><td class="r">${esc(r.passed)}</td><td class="c">${esc(r.empRate)}</td><td>${esc(r.location)}</td><td class="c">${esc(r.fy)}</td></tr>`;
 
   return `<!DOCTYPE html><html><head><meta charset="utf-8"><title>ENSSURE Report — ${esc(fullInst?.name||'')}</title><style>${css}</style></head><body>
@@ -356,14 +356,15 @@ function dCell(text, opts = {}) {
   });
 }
 function hCell(text, opts = {}) {
+  const lines = String(text ?? '').split('\n');
   return new TableCell({
     shading: { fill: HDR_FILL, type: ShadingType.CLEAR },
     borders: ALL_B, verticalAlign: VerticalAlign.CENTER,
     columnSpan: opts.span || 1, margins: CM,
-    children: [new Paragraph({
+    children: lines.map(line => new Paragraph({
       alignment: opts.left ? AlignmentType.LEFT : AlignmentType.CENTER,
-      children: [new TextRun({ text: String(text ?? ''), bold: true, size: 18 })],
-    })],
+      children: [new TextRun({ text: line, bold: true, size: 18 })],
+    })),
   });
 }
 function secHead(text) {
@@ -450,8 +451,8 @@ async function downloadENSSUREDOCX(fullInst, activeExps, reportId, opts = {}) {
   }
 
   // ── C1 ──
-  const expColW = [320, 1600, 1200, 900, 900, 900, 2100, 900];
-  const expHdrs = ['SN','Occupation','Program (Level/Hrs)','Trainees Trained','Passed Skill Test','Employment Rate (%)','Training Location','Fiscal Year'];
+  const expColW = [320, 1400, 1300, 900, 1000, 800, 1806, 1500];
+  const expHdrs = ['S.N.','Occupations','Program\n(e.g., L-1, L2, L-3,\n1400-1696 Hours,\nPre/Diploma etc.)','Number of\nTrainees Trained','Number of Trainees\nPassed Skill test\nor exam','Employment\nrate (%)','Training Location\n(Please mention the\nname of Palika,\nDistrict and Province)','In which Fiscal Year\ntraining was\nconducted?'];
 
   children.push(spacer(), secHead('C1. General Working Experience in Training Program (last 3 FYs)'));
   children.push(new Table({
