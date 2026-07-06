@@ -52,10 +52,11 @@ function buildC1Rows(activeExps, occupations) {
   return rows;
 }
 
-function buildC2Rows(activeExps, occupations, proposedOcc) {
-  if (!proposedOcc) return [];
+function buildC2Rows(activeExps, occupations, proposedOccs = []) {
+  if (!proposedOccs.length) return [];
+  const names = proposedOccs.map(n => n.toLowerCase().trim());
   return buildC1Rows(activeExps, occupations).filter(r =>
-    r.occupation.toLowerCase().trim() === proposedOcc.toLowerCase().trim()
+    names.some(n => r.occupation.toLowerCase().trim().includes(n) || n.includes(r.occupation.toLowerCase().trim()))
   );
 }
 
@@ -74,7 +75,7 @@ function SectionTitle({ children }) {
 }
 
 function ENSSUREReport({ fullInst, activeExps, occupations, opts = {} }) {
-  const { fromFY, toFY, enssureOcc, enssureOccId } = opts;
+  const { fromFY, toFY, enssureOccs = [], enssureOccIds = [] } = opts;
   const [toolsData, setToolsData] = useState([]);
 
   const taxRows = (fullInst?.taxClearance || [])
@@ -85,18 +86,18 @@ function ENSSUREReport({ fullInst, activeExps, occupations, opts = {} }) {
   const totalTaxable     = taxRows.reduce((s, t) => s + (parseFloat(t.taxableIncome) || 0), 0);
 
   const c1 = buildC1Rows(activeExps, occupations);
-  const c2 = buildC2Rows(activeExps, occupations, enssureOcc);
+  const c2 = buildC2Rows(activeExps, occupations, enssureOccs);
 
   useEffect(() => {
-    if (!enssureOccId) { setToolsData([]); return; }
+    const firstId = enssureOccIds[0];
+    if (!firstId) { setToolsData([]); return; }
     const token = getSession()?.token;
-    // find the level from affiliated programs or occupations list
-    const occ = (occupations || []).find(o => String(o.id) === String(enssureOccId));
+    const occ = (occupations || []).find(o => String(o.id) === String(firstId));
     const level = occ?.level || 'Level 1';
-    api('GET', `/occupation-tools/${enssureOccId}/${encodeURIComponent(level)}`, null, token)
+    api('GET', `/occupation-tools/${firstId}/${encodeURIComponent(level)}`, null, token)
       .then(d => setToolsData(Array.isArray(d) ? d : []))
       .catch(() => setToolsData([]));
-  }, [enssureOccId]);
+  }, [enssureOccIds[0]]);
 
   const safetyTools = toolsData.filter(t => (t.type || '').toLowerCase().includes('safety'));
   const equipTools  = toolsData.filter(t => !(t.type || '').toLowerCase().includes('safety') && !(t.type || '').toLowerCase().includes('stationery'));
@@ -163,12 +164,12 @@ function ENSSUREReport({ fullInst, activeExps, occupations, opts = {} }) {
 
       {/* C2 */}
       <div style={SEC}>
-        <SectionTitle>C2. Specific Experience in Related Occupation {enssureOcc ? `— ${enssureOcc}` : '(select proposed occupation)'}</SectionTitle>
-        {!enssureOcc && <div style={{color:'#e65100', fontSize:11, marginBottom:6}}>Select the proposed occupation from the filter panel to populate C2.</div>}
+        <SectionTitle>C2. Specific Experience in Related Occupation {enssureOccs.length ? `— ${enssureOccs.join(', ')}` : '(select proposed occupation)'}</SectionTitle>
+        {!enssureOccs.length && <div style={{color:'#e65100', fontSize:11, marginBottom:6}}>Select the proposed occupation from the filter panel to populate C2.</div>}
         <table style={TBL}>
           <thead><tr>{C2_COLS.map(h => <th key={h} style={{...TH, textAlign: h==='Occupation'||h.includes('Location')||h==='Program'?'left':'center'}}>{h}</th>)}</tr></thead>
           <tbody>
-            {c2.length === 0 && <tr><td colSpan={8} style={{...TDC, color:'#888'}}>{enssureOcc ? 'No experience found for this occupation.' : '—'}</td></tr>}
+            {c2.length === 0 && <tr><td colSpan={8} style={{...TDC, color:'#888'}}>{enssureOccs.length ? 'No experience found for this occupation.' : '—'}</td></tr>}
             {c2.map((r, i) => (
               <tr key={i} style={{ background: i%2===0?'#fff':'#f8fafc' }}>
                 <td style={TDC}>{i+1}</td>
@@ -210,7 +211,7 @@ function ENSSUREReport({ fullInst, activeExps, occupations, opts = {} }) {
             {['S.N.','Particular','Description','Unit (Number)','Size','Remark'].map(h => <th key={h} style={TH}>{h}</th>)}
           </tr></thead>
           <tbody>
-            {safetyTools.length === 0 && <tr><td colSpan={6} style={{...TDC, color:'#888'}}>{enssureOccId ? 'No safety tools found.' : 'Select proposed occupation to load safety equipment.'}</td></tr>}
+            {safetyTools.length === 0 && <tr><td colSpan={6} style={{...TDC, color:'#888'}}>{enssureOccIds.length ? 'No safety tools found.' : 'Select proposed occupation to load safety equipment.'}</td></tr>}
             {safetyTools.map((t, i) => (
               <tr key={t.id} style={{ background: i%2===0?'#fff':'#f8fafc' }}>
                 <td style={TDC}>{i+1}</td>
@@ -233,7 +234,7 @@ function ENSSUREReport({ fullInst, activeExps, occupations, opts = {} }) {
             {['SN','Description','Quantity (Pieces, Rolls, Bottles etc.)'].map(h => <th key={h} style={TH}>{h}</th>)}
           </tr></thead>
           <tbody>
-            {equipTools.length === 0 && <tr><td colSpan={3} style={{...TDC, color:'#888'}}>{enssureOccId ? 'No tools found.' : 'Select proposed occupation to load tools.'}</td></tr>}
+            {equipTools.length === 0 && <tr><td colSpan={3} style={{...TDC, color:'#888'}}>{enssureOccIds.length ? 'No tools found.' : 'Select proposed occupation to load tools.'}</td></tr>}
             {equipTools.map((t, i) => (
               <tr key={t.id} style={{ background: i%2===0?'#fff':'#f8fafc' }}>
                 <td style={TDC}>{i+1}</td>
@@ -254,7 +255,7 @@ function ENSSUREReport({ fullInst, activeExps, occupations, opts = {} }) {
 function esc(s) { return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 
 function buildENSSUREPrintHTML(fullInst, activeExps, clients, reportId, fyRangeLabel, opts = {}) {
-  const { fromFY, toFY, enssureOcc, enssureOccId, occupations = [], enssureToolsData = [] } = opts;
+  const { fromFY, toFY, enssureOccs = [], enssureOccIds = [], occupations = [], enssureToolsData = [] } = opts;
 
   const taxRows = (fullInst?.taxClearance || [])
     .filter(t => fyInRange(t.fy, fromFY || null, toFY || null))
@@ -263,7 +264,7 @@ function buildENSSUREPrintHTML(fullInst, activeExps, clients, reportId, fyRangeL
   const totalTaxable  = taxRows.reduce((s, t) => s + (parseFloat(t.taxableIncome) || 0), 0);
 
   const c1 = buildC1Rows(activeExps, occupations);
-  const c2 = buildC2Rows(activeExps, occupations, enssureOcc);
+  const c2 = buildC2Rows(activeExps, occupations, enssureOccs);
   const safetyTools = enssureToolsData.filter(t => (t.type||'').toLowerCase().includes('safety'));
   const equipTools  = enssureToolsData.filter(t => !(t.type||'').toLowerCase().includes('safety') && !(t.type||'').toLowerCase().includes('stationery'));
 
@@ -301,9 +302,9 @@ ${fyRangeLabel ? `<p class="note">FY Range: ${esc(fyRangeLabel)}</p>` : ''}
 ${c1.length ? c1.map(expRow).join('') : `<tr><td colspan="8" class="c" style="color:#888">No data</td></tr>`}
 </tbody></table>
 
-<h3>C2. Specific Experience in Related Occupation${enssureOcc ? ` — ${esc(enssureOcc)}` : ''}</h3>
+<h3>C2. Specific Experience in Related Occupation${enssureOccs.length ? ` — ${esc(enssureOccs.join(', '))}` : ''}</h3>
 <table><thead><tr>${expColsHeader}</tr></thead><tbody>
-${c2.length ? c2.map(expRow).join('') : `<tr><td colspan="8" class="c" style="color:#888">${enssureOcc ? 'No experience found.' : '—'}</td></tr>`}
+${c2.length ? c2.map(expRow).join('') : `<tr><td colspan="8" class="c" style="color:#888">${enssureOccs.length ? 'No experience found.' : '—'}</td></tr>`}
 </tbody></table>
 
 <h3>TECH D — Available Infrastructure and Equipment</h3>
@@ -371,7 +372,7 @@ function subHead(text) {
 function spacer() { return new Paragraph({ spacing: { before: 80 }, children: [] }); }
 
 async function downloadENSSUREDOCX(fullInst, activeExps, reportId, opts = {}) {
-  const { fromFY, toFY, enssureOcc, occupations = [], enssureToolsData = [] } = opts;
+  const { fromFY, toFY, enssureOccs = [], occupations = [], enssureToolsData = [] } = opts;
   const firmName = fullInst?.name || 'Firm';
   const fyLabel = fromFY || toFY ? `FY ${fromFY || '…'} – ${toFY || '…'}` : '';
 
@@ -382,7 +383,7 @@ async function downloadENSSUREDOCX(fullInst, activeExps, reportId, opts = {}) {
   const totalTaxable  = taxRows.reduce((s, t) => s + (parseFloat(t.taxableIncome) || 0), 0);
 
   const c1 = buildC1Rows(activeExps, occupations);
-  const c2 = buildC2Rows(activeExps, occupations, enssureOcc);
+  const c2 = buildC2Rows(activeExps, occupations, enssureOccs);
   const safetyTools = enssureToolsData.filter(t => (t.type||'').toLowerCase().includes('safety'));
   const equipTools  = enssureToolsData.filter(t => !(t.type||'').toLowerCase().includes('safety') && !(t.type||'').toLowerCase().includes('stationery'));
 
@@ -454,13 +455,13 @@ async function downloadENSSUREDOCX(fullInst, activeExps, reportId, opts = {}) {
   }));
 
   // ── C2 ──
-  children.push(spacer(), secHead(`C2. Specific Experience in Related Occupation${enssureOcc ? ` — ${enssureOcc}` : ''}`));
+  children.push(spacer(), secHead(`C2. Specific Experience in Related Occupation${enssureOccs.length ? ` — ${enssureOccs.join(', ')}` : ''}`));
   children.push(new Table({
     width: { size: PW, type: WidthType.DXA },
     columnWidths: expColW,
     rows: [
       new TableRow({ tableHeader: true, children: expHdrs.map((h, i) => hCell(h, { left: i === 1 || i === 6 })) }),
-      ...(c2.length === 0 ? [new TableRow({ children: [new TableCell({ borders: ALL_B, margins: CM, columnSpan: 8, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: enssureOcc ? 'No experience found.' : '—', size: 18, italics: true, color: '888888' })] })] })] })] :
+      ...(c2.length === 0 ? [new TableRow({ children: [new TableCell({ borders: ALL_B, margins: CM, columnSpan: 8, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: enssureOccs.length ? 'No experience found.' : '—', size: 18, italics: true, color: '888888' })] })] })] })] :
         c2.map((r, i) => new TableRow({ children: [
           dCell(i+1, { center: true }), dCell(r.occupation), dCell(r.program),
           dCell(r.trained, { right: true }), dCell(r.passed, { right: true }),
