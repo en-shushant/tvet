@@ -226,26 +226,29 @@ function ENSSUREReport({ fullInst, activeExps, occupations, opts = {} }) {
         </table>
       </div>
 
-      {/* D3 */}
+      {/* D3 — two-up layout */}
       <div style={SEC}>
         <div style={{ fontWeight:600, marginBottom:4, fontSize:11 }}>D3. List of Tools, Equipment and Training Materials Available</div>
         <table style={TBL}>
           <thead><tr>
-            {['SN','Name','Description','Unit','Quantity','Ownership','Remarks'].map(h => <th key={h} style={TH}>{h}</th>)}
+            <th style={TH}>SN</th><th style={{...TH,textAlign:'left'}}>Description</th><th style={TH}>Quantity (No., Pieces, etc.)</th>
+            <th style={{...TH,borderLeft:'2px solid #888'}}>SN</th><th style={{...TH,textAlign:'left'}}>Description</th><th style={TH}>Quantity (No., Pieces, etc.)</th>
           </tr></thead>
           <tbody>
-            {equipTools.length === 0 && <tr><td colSpan={7} style={{...TDC, color:'#888'}}>{enssureOccIds.length ? 'No tools found.' : 'Select proposed occupation to load tools.'}</td></tr>}
-            {equipTools.map((t, i) => (
-              <tr key={t.id} style={{ background: i%2===0?'#fff':'#f8fafc' }}>
-                <td style={TDC}>{i+1}</td>
-                <td style={TD}>{t.name || '—'}</td>
-                <td style={TD}>{t.description || '—'}</td>
-                <td style={TDC}>{t.unit || '—'}</td>
-                <td style={TDN}>{t.quantity ?? '—'}</td>
-                <td style={TDC}>{t.ownership || '—'}</td>
-                <td style={TD}>{t.remarks || ''}</td>
-              </tr>
-            ))}
+            {equipTools.length === 0 && <tr><td colSpan={6} style={{...TDC, color:'#888'}}>{enssureOccIds.length ? 'No tools found.' : 'Select proposed occupation to load tools.'}</td></tr>}
+            {Array.from({length: Math.ceil(equipTools.length/2)}, (_,r) => {
+              const a = equipTools[r*2], b = equipTools[r*2+1];
+              return (
+                <tr key={r} style={{ background: r%2===0?'#fff':'#f8fafc' }}>
+                  <td style={TDC}>{r*2+1}</td>
+                  <td style={TD}>{a.name ? `${a.name}${a.description ? ` — ${a.description}` : ''}` : (a.description||'—')}</td>
+                  <td style={TDN}>{a.quantity != null ? `${a.quantity}${a.unit ? ` ${a.unit}` : ''}`.trim() : '—'}</td>
+                  <td style={{...TDC, borderLeft:'2px solid #ccc'}}>{b ? r*2+2 : ''}</td>
+                  <td style={TD}>{b ? (b.name ? `${b.name}${b.description ? ` — ${b.description}` : ''}` : (b.description||'—')) : ''}</td>
+                  <td style={TDN}>{b && b.quantity != null ? `${b.quantity}${b.unit ? ` ${b.unit}` : ''}`.trim() : ''}</td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>
@@ -323,8 +326,8 @@ ${safetyTools.length ? safetyTools.map((t,i)=>`<tr><td class="c">${i+1}</td><td>
 </tbody></table>
 
 <h4>D3. List of Tools, Equipment and Training Materials Available</h4>
-<table><thead><tr><th>SN</th><th>Name</th><th>Description</th><th>Unit</th><th>Quantity</th><th>Ownership</th><th>Remarks</th></tr></thead><tbody>
-${equipTools.length ? equipTools.map((t,i)=>`<tr><td class="c">${i+1}</td><td>${esc(t.name||'—')}</td><td>${esc(t.description||'—')}</td><td class="c">${esc(t.unit||'—')}</td><td class="r">${t.quantity??'—'}</td><td class="c">${esc(t.ownership||'—')}</td><td>${esc(t.remarks||'')}</td></tr>`).join('') : `<tr><td colspan="7" class="c" style="color:#888">No tools found.</td></tr>`}
+<table><thead><tr><th>SN</th><th>Description</th><th>Quantity (No., Pieces, etc.)</th><th style="border-left:2px solid #888">SN</th><th>Description</th><th>Quantity (No., Pieces, etc.)</th></tr></thead><tbody>
+${equipTools.length ? Array.from({length:Math.ceil(equipTools.length/2)},(_,r)=>{const a=equipTools[r*2],b=equipTools[r*2+1];const desc=t=>(t.name?`${esc(t.name)}${t.description?` — ${esc(t.description)}`:''}`:esc(t.description||'—'));const qty=t=>t.quantity!=null?`${t.quantity}${t.unit?` ${t.unit}`:''}`.trim():'—';return`<tr><td class="c">${r*2+1}</td><td>${desc(a)}</td><td class="r">${qty(a)}</td><td class="c" style="border-left:2px solid #ccc">${b?r*2+2:''}</td><td>${b?desc(b):''}</td><td class="r">${b?qty(b):''}</td></tr>`;}).join('') : `<tr><td colspan="6" class="c" style="color:#888">No tools found.</td></tr>`}
 </tbody></table>
 
 </body></html>`;
@@ -503,23 +506,28 @@ async function downloadENSSUREDOCX(fullInst, activeExps, reportId, opts = {}) {
     ],
   }));
 
-  // D3
+  // D3 — two-up layout
   children.push(subHead('D3. List of Tools, Equipment and Training Materials Available'));
-  const d3ColW = [400, 1600, 2400, 700, 700, 1000, 2226];
+  const d3ColW = [400, 3013, 1100, 400, 3013, 1100];
+  const d3Hdrs = ['SN','Description','Quantity (No., Pieces, etc.)','SN','Description','Quantity (No., Pieces, etc.)'];
+  const d3Desc = t => t.name ? `${t.name}${t.description ? ` — ${t.description}` : ''}` : (t.description || '—');
+  const d3Qty  = t => t.quantity != null ? `${t.quantity}${t.unit ? ` ${t.unit}` : ''}`.trim() : '—';
   children.push(new Table({
     width: { size: PW, type: WidthType.DXA }, columnWidths: d3ColW,
     rows: [
-      new TableRow({ tableHeader: true, children: ['SN','Name','Description','Unit','Quantity','Ownership','Remarks'].map((h,i) => hCell(h, { left: i===1||i===2||i===6 })) }),
-      ...(equipTools.length === 0 ? [new TableRow({ children: [new TableCell({ borders: ALL_B, margins: CM, columnSpan: 7, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: 'No tools found.', size: 18, italics: true, color: '888888' })] })] })] })] :
-        equipTools.map((t, i) => new TableRow({ children: [
-          dCell(i+1,{center:true}),
-          dCell(t.name||'—'),
-          dCell(t.description||'—'),
-          dCell(t.unit||'—',{center:true}),
-          dCell(t.quantity??'—',{right:true}),
-          dCell(t.ownership||'—',{center:true}),
-          dCell(t.remarks||''),
-        ]}))),
+      new TableRow({ tableHeader: true, children: d3Hdrs.map((h,i) => hCell(h, { left: i===1||i===4 })) }),
+      ...(equipTools.length === 0 ? [new TableRow({ children: [new TableCell({ borders: ALL_B, margins: CM, columnSpan: 6, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: 'No tools found.', size: 18, italics: true, color: '888888' })] })] })] })] :
+        Array.from({length: Math.ceil(equipTools.length/2)}, (_,r) => {
+          const a = equipTools[r*2], b = equipTools[r*2+1];
+          return new TableRow({ children: [
+            dCell(r*2+1, {center:true}),
+            dCell(d3Desc(a)),
+            dCell(d3Qty(a), {right:true}),
+            dCell(b ? r*2+2 : '', {center:true}),
+            dCell(b ? d3Desc(b) : ''),
+            dCell(b ? d3Qty(b) : '', {right:true}),
+          ]});
+        })),
     ],
   }));
 
