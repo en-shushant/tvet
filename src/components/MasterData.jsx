@@ -90,8 +90,8 @@ function MasterData({clients, onUpdateClients, token, isAdmin, isEditor, isSuper
   };
 
   const saveBulkRows = async () => {
-    const valid = bulkRows.filter(r => r.description.trim());
-    if (!valid.length) { setMasterErr('Add at least one row with a description.'); return; }
+    const valid = bulkRows.filter(r => r.name.trim());
+    if (!valid.length) { setMasterErr('Add at least one row with a name.'); return; }
     setBulkSaving(true);
     let created = 0;
     for (const row of valid) {
@@ -99,7 +99,7 @@ function MasterData({clients, onUpdateClients, token, isAdmin, isEditor, isSuper
         const item = await api('POST', '/occupation-tools', { ...row, occupation_id: parseInt(toolsOccId), level: toolsLevel }, token);
         setToolsList(prev => [...prev, item]);
         created++;
-      } catch (err) { setMasterErr(`Failed to save row "${row.description}": ${err.message}`); }
+      } catch (err) { setMasterErr(`Failed to save row "${row.name}": ${err.message}`); }
     }
     setBulkSaving(false);
     if (created > 0) { setToolsBulkMode(false); setBulkRows([]); loadToolCounts(); }
@@ -235,8 +235,8 @@ function MasterData({clients, onUpdateClients, token, isAdmin, isEditor, isSuper
           <button className="btn btn-primary" onClick={()=>onSave(form)}>Save</button>
         </>}>
         <div className="form-row form-row-2">
-          <div className="form-group"><label>Name</label><input value={form.name||''} onChange={e=>set('name',e.target.value)} placeholder="e.g. Wire Stripper"/></div>
-          <div className="form-group"><label>Description *</label><input value={form.description} onChange={e=>set('description',e.target.value)} placeholder="e.g. 6 inch insulated handle"/></div>
+          <div className="form-group"><label>Name *</label><input value={form.name||''} onChange={e=>set('name',e.target.value)} placeholder="e.g. Wire Stripper"/></div>
+          <div className="form-group"><label>Description</label><input value={form.description||''} onChange={e=>set('description',e.target.value)} placeholder="e.g. 6 inch insulated handle"/></div>
         </div>
         <div className="form-row form-row-2">
           <div className="form-group"><label>Unit</label><input value={form.unit||''} onChange={e=>set('unit',e.target.value)} placeholder="e.g. Piece, Meter, Set"/></div>
@@ -540,11 +540,11 @@ function MasterData({clients, onUpdateClients, token, isAdmin, isEditor, isSuper
                     </table>
                   </div>
                   <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginTop:10}}>
-                    <span style={{fontSize:12, color:'var(--text3)'}}>{bulkRows.length} row{bulkRows.length!==1?'s':''} · {bulkRows.filter(r=>r.description.trim()).length} with data</span>
+                    <span style={{fontSize:12, color:'var(--text3)'}}>{bulkRows.length} row{bulkRows.length!==1?'s':''} · {bulkRows.filter(r=>r.name.trim()).length} with data</span>
                     <div style={{display:'flex', gap:8}}>
                       <button className="btn btn-secondary btn-sm" onClick={()=>{setToolsBulkMode(false);setBulkRows([]);}}>Cancel</button>
                       <button className="btn btn-primary btn-sm" onClick={saveBulkRows} disabled={bulkSaving || !bulkRows.some(r=>r.description.trim())}>
-                        {bulkSaving ? 'Saving...' : `Save ${bulkRows.filter(r=>r.description.trim()).length} item${bulkRows.filter(r=>r.description.trim()).length!==1?'s':''}`}
+                        {bulkSaving ? 'Saving...' : `Save ${bulkRows.filter(r=>r.name.trim()).length} item${bulkRows.filter(r=>r.name.trim()).length!==1?'s':''}`}
                       </button>
                     </div>
                   </div>

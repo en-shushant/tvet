@@ -26,11 +26,11 @@ router.get('/:occupationId/:level', async (req, res, next) => {
 router.post('/', requireWriter, async (req, res, next) => {
   try {
     const { occupation_id, level, name, description, unit, quantity, ownership, type, remarks, sort_order } = req.body;
-    if (!occupation_id || !level || !description) return res.status(400).json({ error: 'occupation_id, level and description required' });
+    if (!occupation_id || !level || !name) return res.status(400).json({ error: 'occupation_id, level and name required' });
     const { rows } = await pool.query(
       `INSERT INTO occupation_tools (occupation_id, level, name, description, unit, quantity, ownership, type, remarks, sort_order)
        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING *`,
-      [occupation_id, level, name || null, description, unit || null, quantity || null, ownership || 'Own', type || 'Tool', remarks || null, sort_order || 0]
+      [occupation_id, level, name, description || null, unit || null, quantity || null, ownership || 'Own', type || 'Tool', remarks || null, sort_order || 0]
     );
     res.status(201).json(rows[0]);
   } catch (e) { next(e); }
@@ -39,11 +39,11 @@ router.post('/', requireWriter, async (req, res, next) => {
 router.put('/:id', requireWriter, async (req, res, next) => {
   try {
     const { name, description, unit, quantity, ownership, type, remarks, sort_order } = req.body;
-    if (!description) return res.status(400).json({ error: 'description required' });
+    if (!name) return res.status(400).json({ error: 'name required' });
     const { rows } = await pool.query(
       `UPDATE occupation_tools SET name=$1, description=$2, unit=$3, quantity=$4, ownership=$5, type=$6, remarks=$7, sort_order=$8
        WHERE id=$9 RETURNING *`,
-      [name || null, description, unit || null, quantity || null, ownership || 'Own', type || 'Tool', remarks || null, sort_order || 0, req.params.id]
+      [name, description || null, unit || null, quantity || null, ownership || 'Own', type || 'Tool', remarks || null, sort_order || 0, req.params.id]
     );
     if (!rows.length) return res.status(404).json({ error: 'Not found' });
     res.json(rows[0]);
