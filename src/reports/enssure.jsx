@@ -231,15 +231,19 @@ function ENSSUREReport({ fullInst, activeExps, occupations, opts = {} }) {
         <div style={{ fontWeight:600, marginBottom:4, fontSize:11 }}>D3. List of Tools, Equipment and Training Materials Available</div>
         <table style={TBL}>
           <thead><tr>
-            {['SN','Description','Quantity (Pieces, Rolls, Bottles etc.)'].map(h => <th key={h} style={TH}>{h}</th>)}
+            {['SN','Name','Description','Unit','Quantity','Ownership','Remarks'].map(h => <th key={h} style={TH}>{h}</th>)}
           </tr></thead>
           <tbody>
-            {equipTools.length === 0 && <tr><td colSpan={3} style={{...TDC, color:'#888'}}>{enssureOccIds.length ? 'No tools found.' : 'Select proposed occupation to load tools.'}</td></tr>}
+            {equipTools.length === 0 && <tr><td colSpan={7} style={{...TDC, color:'#888'}}>{enssureOccIds.length ? 'No tools found.' : 'Select proposed occupation to load tools.'}</td></tr>}
             {equipTools.map((t, i) => (
               <tr key={t.id} style={{ background: i%2===0?'#fff':'#f8fafc' }}>
                 <td style={TDC}>{i+1}</td>
-                <td style={TD}>{t.name}{t.description ? ` — ${t.description}` : ''}</td>
-                <td style={TDN}>{t.quantity != null ? `${t.quantity} ${t.unit || ''}`.trim() : '—'}</td>
+                <td style={TD}>{t.name || '—'}</td>
+                <td style={TD}>{t.description || '—'}</td>
+                <td style={TDC}>{t.unit || '—'}</td>
+                <td style={TDN}>{t.quantity ?? '—'}</td>
+                <td style={TDC}>{t.ownership || '—'}</td>
+                <td style={TD}>{t.remarks || ''}</td>
               </tr>
             ))}
           </tbody>
@@ -319,8 +323,8 @@ ${safetyTools.length ? safetyTools.map((t,i)=>`<tr><td class="c">${i+1}</td><td>
 </tbody></table>
 
 <h4>D3. List of Tools, Equipment and Training Materials Available</h4>
-<table><thead><tr><th>SN</th><th>Description</th><th>Quantity (Pieces, Rolls, Bottles etc.)</th></tr></thead><tbody>
-${equipTools.length ? equipTools.map((t,i)=>`<tr><td class="c">${i+1}</td><td>${esc(t.name)}${t.description?` — ${esc(t.description)}`:''}</td><td class="r">${t.quantity!=null?`${t.quantity} ${t.unit||''}`.trim():'—'}</td></tr>`).join('') : `<tr><td colspan="3" class="c" style="color:#888">No tools found.</td></tr>`}
+<table><thead><tr><th>SN</th><th>Name</th><th>Description</th><th>Unit</th><th>Quantity</th><th>Ownership</th><th>Remarks</th></tr></thead><tbody>
+${equipTools.length ? equipTools.map((t,i)=>`<tr><td class="c">${i+1}</td><td>${esc(t.name||'—')}</td><td>${esc(t.description||'—')}</td><td class="c">${esc(t.unit||'—')}</td><td class="r">${t.quantity??'—'}</td><td class="c">${esc(t.ownership||'—')}</td><td>${esc(t.remarks||'')}</td></tr>`).join('') : `<tr><td colspan="7" class="c" style="color:#888">No tools found.</td></tr>`}
 </tbody></table>
 
 </body></html>`;
@@ -501,16 +505,20 @@ async function downloadENSSUREDOCX(fullInst, activeExps, reportId, opts = {}) {
 
   // D3
   children.push(subHead('D3. List of Tools, Equipment and Training Materials Available'));
-  const d3ColW = [400, 6426, 2200];
+  const d3ColW = [400, 1600, 2400, 700, 700, 1000, 2226];
   children.push(new Table({
     width: { size: PW, type: WidthType.DXA }, columnWidths: d3ColW,
     rows: [
-      new TableRow({ tableHeader: true, children: ['SN','Description','Quantity (Pieces, Rolls, Bottles etc.)'].map((h,i) => hCell(h, { left: i===1 })) }),
-      ...(equipTools.length === 0 ? [new TableRow({ children: [new TableCell({ borders: ALL_B, margins: CM, columnSpan: 3, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: 'No tools found.', size: 18, italics: true, color: '888888' })] })] })] })] :
+      new TableRow({ tableHeader: true, children: ['SN','Name','Description','Unit','Quantity','Ownership','Remarks'].map((h,i) => hCell(h, { left: i===1||i===2||i===6 })) }),
+      ...(equipTools.length === 0 ? [new TableRow({ children: [new TableCell({ borders: ALL_B, margins: CM, columnSpan: 7, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: 'No tools found.', size: 18, italics: true, color: '888888' })] })] })] })] :
         equipTools.map((t, i) => new TableRow({ children: [
           dCell(i+1,{center:true}),
-          dCell(`${t.name}${t.description ? ` — ${t.description}` : ''}`),
-          dCell(t.quantity != null ? `${t.quantity} ${t.unit||''}`.trim() : '—', { right: true }),
+          dCell(t.name||'—'),
+          dCell(t.description||'—'),
+          dCell(t.unit||'—',{center:true}),
+          dCell(t.quantity??'—',{right:true}),
+          dCell(t.ownership||'—',{center:true}),
+          dCell(t.remarks||''),
         ]}))),
     ],
   }));
