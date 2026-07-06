@@ -3,6 +3,7 @@ import helvetas from './helvetas.jsx';
 import firmwise from './firmwise.jsx';
 import tools from './tools.jsx';
 import detailed from './detailed.jsx';
+import enssure from './enssure.jsx';
 
 // Add new report families here — each must match the shape in ppmo.js
 const REPORT_FAMILIES = [
@@ -11,6 +12,7 @@ const REPORT_FAMILIES = [
   firmwise,
   tools,
   detailed,
+  enssure,
   // worldbank,
 ];
 
