@@ -40,19 +40,24 @@ function ReportsView({ institutes, clients }) {
   const [numGroups, setNumGroups]           = useState(1);
   const [toolsOccSearch, setToolsOccSearch] = useState('');
 
-  // ENSSURE report state
-  const [enssureOccId, setEnssureOccId]   = useState('');
+  // ENSSURE report state — multi-select proposed occupations
+  const [enssureOccIds, setEnssureOccIds] = useState([]);
   const [enssureToolsData, setEnssureToolsData] = useState([]);
   const [enssureOccSearch, setEnssureOccSearch] = useState('');
 
+  // Fetch tools for first selected occupation (D2/D3)
   useEffect(() => {
-    if (!enssureOccId) { setEnssureToolsData([]); return; }
-    const occ = occupations.find(o => String(o.id) === String(enssureOccId));
+    const firstId = enssureOccIds[0];
+    if (!firstId) { setEnssureToolsData([]); return; }
+    const occ = occupations.find(o => String(o.id) === String(firstId));
     const level = occ?.level || 'Level 1';
-    api('GET', `/occupation-tools/${enssureOccId}/${encodeURIComponent(level)}`, null, getSession()?.token)
+    api('GET', `/occupation-tools/${firstId}/${encodeURIComponent(level)}`, null, getSession()?.token)
       .then(d => setEnssureToolsData(Array.isArray(d) ? d : []))
       .catch(() => setEnssureToolsData([]));
-  }, [enssureOccId, occupations]);
+  }, [enssureOccIds, occupations]);
+
+  const toggleEnssureOcc = (id) =>
+    setEnssureOccIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
 
   const family = REPORT_FAMILIES.find(f => f.id === familyId) || REPORT_FAMILIES[0];
   const report = family.reports.find(r => r.id === reportId) || family.reports[0];
@@ -242,10 +247,10 @@ function ReportsView({ institutes, clients }) {
 
   const fyRangeLabel = fromFY || toFY ? `FY ${fromFY || '…'} – ${toFY || '…'}` : null;
   const noInstitute = !!family.noInstitute;
-  const enssureOcc = occupations.find(o => String(o.id) === String(enssureOccId))?.name || '';
+  const enssureOccs = enssureOccIds.map(id => occupations.find(o => String(o.id) === String(id))?.name).filter(Boolean);
   const opts = { fromFY, toFY, selectedOccs, occupations, sortBy,
     toolsOccIds, toolsLevel, toolsTypeFilter, toolsColumns, toolsLayout, toolsData, numGroups,
-    enssureOcc, enssureOccId, enssureToolsData,
+    enssureOccs, enssureOccIds, enssureToolsData,
     clients };
 
   const handlePrint = () => {
@@ -380,6 +385,30 @@ function ReportsView({ institutes, clients }) {
           </div>
           <div className="filter-panel-body">
 
+            {/* ENSSURE — Proposed Occupations selector at top */}
+            {familyId === 'enssure' && fullInst && (
+              <div className="filter-section" style={{borderBottom:'2px solid var(--accent)', marginBottom:8, paddingBottom:12}}>
+                <div className="filter-label" style={{justifyContent:'space-between', fontWeight:700, color:'var(--accent)'}}>
+                  <span>Proposed Occupations (C2)</span>
+                  {enssureOccIds.length > 0 && (
+                    <button className="btn btn-ghost btn-sm" style={{fontSize:10, padding:'1px 5px'}} onClick={() => setEnssureOccIds([])}>Clear</button>
+                  )}
+                </div>
+                <input className="form-input" value={enssureOccSearch} onChange={e => setEnssureOccSearch(e.target.value)}
+                  placeholder="Search…" style={{fontSize:12, marginBottom:6}}/>
+                <div className="multi-select-list" style={{maxHeight:220, overflowY:'auto'}}>
+                  {occupations.filter(o => !enssureOccSearch || o.name.toLowerCase().includes(enssureOccSearch.toLowerCase())).map(o => (
+                    <label key={o.id} className="multi-select-item">
+                      <input type="checkbox" checked={enssureOccIds.includes(o.id)}
+                        onChange={() => toggleEnssureOcc(o.id)}/>
+                      <span>{o.name}{o.level ? ` (${o.level})` : ''}</span>
+                    </label>
+                  ))}
+                </div>
+                {enssureOccIds.length > 0 && <div style={{fontSize:10, color:'var(--text3)', marginTop:3}}>D2/D3 tools loaded for first selected occupation.</div>}
+              </div>
+            )}
+
             {/* Multi-institute selector (firm-wise) */}
             {isMultiInst && (
               <div className="filter-section">
@@ -512,26 +541,6 @@ function ReportsView({ institutes, clients }) {
               </div>
             )}
 
-            {/* ENSSURE — Proposed Occupation selector */}
-            {familyId === 'enssure' && fullInst && (
-              <div className="filter-section">
-                <div className="filter-label">Proposed Occupation (C2 / Tools)</div>
-                <input className="form-input" value={enssureOccSearch} onChange={e => setEnssureOccSearch(e.target.value)}
-                  placeholder="Search…" style={{fontSize:12, marginBottom:6}}/>
-                <div className="multi-select-list" style={{maxHeight:220, overflowY:'auto'}}>
-                  {occupations.filter(o => !enssureOccSearch || o.name.toLowerCase().includes(enssureOccSearch.toLowerCase())).map(o => (
-                    <label key={o.id} className="multi-select-item">
-                      <input type="radio" name="enssureOcc" checked={String(enssureOccId) === String(o.id)}
-                        onChange={() => setEnssureOccId(o.id)}/>
-                      <span>{o.name}{o.level ? ` (${o.level})` : ''}</span>
-                    </label>
-                  ))}
-                </div>
-                {enssureOccId && (
-                  <button className="btn btn-ghost btn-sm" style={{fontSize:11, marginTop:4}} onClick={() => setEnssureOccId('')}>✕ Clear</button>
-                )}
-              </div>
-            )}
 
             {/* Occupation */}
             {!noInstitute && (fullInst || isMultiInst) && report.hasOccupationFilter && allOccNames.length > 0 && (
