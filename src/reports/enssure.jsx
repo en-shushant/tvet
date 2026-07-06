@@ -75,7 +75,8 @@ function SectionTitle({ children }) {
 }
 
 function ENSSUREReport({ fullInst, activeExps, occupations, opts = {} }) {
-  const { fromFY, toFY, enssureOccs = [], enssureOccIds = [] } = opts;
+  const { fromFY, toFY, enssureOccs = [], enssureOccIds = [],
+          enssureToolsOccId = '', enssureToolsLevel = 'Level 1', enssureEvents = 1 } = opts;
   const [toolsData, setToolsData] = useState([]);
 
   const taxRows = (fullInst?.taxClearance || [])
@@ -89,18 +90,18 @@ function ENSSUREReport({ fullInst, activeExps, occupations, opts = {} }) {
   const c2 = buildC2Rows(activeExps, occupations, enssureOccs);
 
   useEffect(() => {
-    const firstId = enssureOccIds[0];
-    if (!firstId) { setToolsData([]); return; }
+    if (!enssureToolsOccId || !enssureToolsLevel) { setToolsData([]); return; }
     const token = getSession()?.token;
-    const occ = (occupations || []).find(o => String(o.id) === String(firstId));
-    const level = occ?.level || 'Level 1';
-    api('GET', `/occupation-tools/${firstId}/${encodeURIComponent(level)}`, null, token)
+    api('GET', `/occupation-tools/${enssureToolsOccId}/${encodeURIComponent(enssureToolsLevel)}`, null, token)
       .then(d => setToolsData(Array.isArray(d) ? d : []))
       .catch(() => setToolsData([]));
-  }, [enssureOccIds[0]]);
+  }, [enssureToolsOccId, enssureToolsLevel]);
 
-  const safetyTools = toolsData.filter(t => (t.type || '').toLowerCase().includes('safety'));
-  const equipTools  = toolsData.filter(t => !(t.type || '').toLowerCase().includes('safety') && !(t.type || '').toLowerCase().includes('stationery'));
+  const events = Math.max(1, parseInt(enssureEvents) || 1);
+  const applyEvents = (t) => ({ ...t, quantity: t.quantity != null ? t.quantity * events : null });
+
+  const safetyTools = toolsData.filter(t => (t.type || '').toLowerCase().includes('safety')).map(applyEvents);
+  const equipTools  = toolsData.filter(t => !(t.type || '').toLowerCase().includes('safety') && !(t.type || '').toLowerCase().includes('stationery')).map(applyEvents);
 
   const C1_COLS = ['SN','Occupation','Program (Level/Hrs)','Trainees Trained','Passed Skill Test','Employment Rate (%)','Training Location (Palika, District, Province)','Fiscal Year'];
   const C2_COLS = C1_COLS;
@@ -211,7 +212,7 @@ function ENSSUREReport({ fullInst, activeExps, occupations, opts = {} }) {
             {['S.N.','Particular','Description','Unit (Number)','Size','Remark'].map(h => <th key={h} style={TH}>{h}</th>)}
           </tr></thead>
           <tbody>
-            {safetyTools.length === 0 && <tr><td colSpan={6} style={{...TDC, color:'#888'}}>{enssureOccIds.length ? 'No safety tools found.' : 'Select proposed occupation to load safety equipment.'}</td></tr>}
+            {safetyTools.length === 0 && <tr><td colSpan={6} style={{...TDC, color:'#888'}}>{enssureToolsOccId ? 'No safety tools found.' : 'Select D2/D3 occupation to load safety equipment.'}</td></tr>}
             {safetyTools.map((t, i) => (
               <tr key={t.id} style={{ background: i%2===0?'#fff':'#f8fafc' }}>
                 <td style={TDC}>{i+1}</td>
@@ -235,7 +236,7 @@ function ENSSUREReport({ fullInst, activeExps, occupations, opts = {} }) {
             <th style={{...TH,borderLeft:'2px solid #888'}}>SN</th><th style={{...TH,textAlign:'left'}}>Description</th><th style={TH}>Quantity (No., Pieces, etc.)</th>
           </tr></thead>
           <tbody>
-            {equipTools.length === 0 && <tr><td colSpan={6} style={{...TDC, color:'#888'}}>{enssureOccIds.length ? 'No tools found.' : 'Select proposed occupation to load tools.'}</td></tr>}
+            {equipTools.length === 0 && <tr><td colSpan={6} style={{...TDC, color:'#888'}}>{enssureToolsOccId ? 'No tools found.' : 'Select D2/D3 occupation to load tools.'}</td></tr>}
             {Array.from({length: Math.ceil(equipTools.length/2)}, (_,r) => {
               const a = equipTools[r*2], b = equipTools[r*2+1];
               return (
@@ -262,7 +263,7 @@ function ENSSUREReport({ fullInst, activeExps, occupations, opts = {} }) {
 function esc(s) { return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 
 function buildENSSUREPrintHTML(fullInst, activeExps, clients, reportId, fyRangeLabel, opts = {}) {
-  const { fromFY, toFY, enssureOccs = [], enssureOccIds = [], occupations = [], enssureToolsData = [] } = opts;
+  const { fromFY, toFY, enssureOccs = [], occupations = [], enssureToolsData = [], enssureEvents = 1 } = opts;
 
   const taxRows = (fullInst?.taxClearance || [])
     .filter(t => fyInRange(t.fy, fromFY || null, toFY || null))
@@ -270,10 +271,13 @@ function buildENSSUREPrintHTML(fullInst, activeExps, clients, reportId, fyRangeL
   const totalTurnover = taxRows.reduce((s, t) => s + (parseFloat(t.turnover) || 0), 0);
   const totalTaxable  = taxRows.reduce((s, t) => s + (parseFloat(t.taxableIncome) || 0), 0);
 
+  const events = Math.max(1, parseInt(enssureEvents) || 1);
+  const applyEv = t => ({ ...t, quantity: t.quantity != null ? t.quantity * events : null });
+
   const c1 = buildC1Rows(activeExps, occupations);
   const c2 = buildC2Rows(activeExps, occupations, enssureOccs);
-  const safetyTools = enssureToolsData.filter(t => (t.type||'').toLowerCase().includes('safety'));
-  const equipTools  = enssureToolsData.filter(t => !(t.type||'').toLowerCase().includes('safety') && !(t.type||'').toLowerCase().includes('stationery'));
+  const safetyTools = enssureToolsData.filter(t => (t.type||'').toLowerCase().includes('safety')).map(applyEv);
+  const equipTools  = enssureToolsData.filter(t => !(t.type||'').toLowerCase().includes('safety') && !(t.type||'').toLowerCase().includes('stationery')).map(applyEv);
 
   const fyHdrs = taxRows.map(t => `<th>FY ${esc(t.fy)}</th>`).join('');
   const expCols = (row) => taxRows.map(t => `<td class="r">${t.id === row.id ? '' : ''}</td>`).join('');
@@ -379,7 +383,7 @@ function subHead(text) {
 function spacer() { return new Paragraph({ spacing: { before: 80 }, children: [] }); }
 
 async function downloadENSSUREDOCX(fullInst, activeExps, reportId, opts = {}) {
-  const { fromFY, toFY, enssureOccs = [], occupations = [], enssureToolsData = [] } = opts;
+  const { fromFY, toFY, enssureOccs = [], occupations = [], enssureToolsData = [], enssureEvents = 1 } = opts;
   const firmName = fullInst?.name || 'Firm';
   const fyLabel = fromFY || toFY ? `FY ${fromFY || '…'} – ${toFY || '…'}` : '';
 
@@ -389,10 +393,13 @@ async function downloadENSSUREDOCX(fullInst, activeExps, reportId, opts = {}) {
   const totalTurnover = taxRows.reduce((s, t) => s + (parseFloat(t.turnover) || 0), 0);
   const totalTaxable  = taxRows.reduce((s, t) => s + (parseFloat(t.taxableIncome) || 0), 0);
 
+  const events = Math.max(1, parseInt(enssureEvents) || 1);
+  const applyEv = t => ({ ...t, quantity: t.quantity != null ? t.quantity * events : null });
+
   const c1 = buildC1Rows(activeExps, occupations);
   const c2 = buildC2Rows(activeExps, occupations, enssureOccs);
-  const safetyTools = enssureToolsData.filter(t => (t.type||'').toLowerCase().includes('safety'));
-  const equipTools  = enssureToolsData.filter(t => !(t.type||'').toLowerCase().includes('safety') && !(t.type||'').toLowerCase().includes('stationery'));
+  const safetyTools = enssureToolsData.filter(t => (t.type||'').toLowerCase().includes('safety')).map(applyEv);
+  const equipTools  = enssureToolsData.filter(t => !(t.type||'').toLowerCase().includes('safety') && !(t.type||'').toLowerCase().includes('stationery')).map(applyEv);
 
   // Page width A4 portrait with 1" margins: 11906 - 2880 = 9026 DXA
   const PW = 9026;

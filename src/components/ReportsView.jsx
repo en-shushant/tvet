@@ -42,19 +42,21 @@ function ReportsView({ institutes, clients }) {
 
   // ENSSURE report state — multi-select proposed occupations
   const [enssureOccIds, setEnssureOccIds] = useState([]);
-  const [enssureToolsData, setEnssureToolsData] = useState([]);
   const [enssureOccSearch, setEnssureOccSearch] = useState('');
+  // ENSSURE D2/D3 explicit tools occupation + level + events multiplier
+  const [enssureToolsOccId, setEnssureToolsOccId] = useState('');
+  const [enssureToolsOccSearch, setEnssureToolsOccSearch] = useState('');
+  const [enssureToolsLevel, setEnssureToolsLevel] = useState('Level 1');
+  const [enssureEvents, setEnssureEvents] = useState(1);
+  const [enssureToolsData, setEnssureToolsData] = useState([]);
 
-  // Fetch tools for first selected occupation (D2/D3)
+  // Fetch tools for explicitly selected D2/D3 occupation + level
   useEffect(() => {
-    const firstId = enssureOccIds[0];
-    if (!firstId) { setEnssureToolsData([]); return; }
-    const occ = occupations.find(o => String(o.id) === String(firstId));
-    const level = occ?.level || 'Level 1';
-    api('GET', `/occupation-tools/${firstId}/${encodeURIComponent(level)}`, null, getSession()?.token)
+    if (!enssureToolsOccId || !enssureToolsLevel) { setEnssureToolsData([]); return; }
+    api('GET', `/occupation-tools/${enssureToolsOccId}/${encodeURIComponent(enssureToolsLevel)}`, null, getSession()?.token)
       .then(d => setEnssureToolsData(Array.isArray(d) ? d : []))
       .catch(() => setEnssureToolsData([]));
-  }, [enssureOccIds, occupations]);
+  }, [enssureToolsOccId, enssureToolsLevel]);
 
   const toggleEnssureOcc = (id) =>
     setEnssureOccIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
@@ -250,7 +252,7 @@ function ReportsView({ institutes, clients }) {
   const enssureOccs = enssureOccIds.map(id => occupations.find(o => String(o.id) === String(id))?.name).filter(Boolean);
   const opts = { fromFY, toFY, selectedOccs, occupations, sortBy,
     toolsOccIds, toolsLevel, toolsTypeFilter, toolsColumns, toolsLayout, toolsData, numGroups,
-    enssureOccs, enssureOccIds, enssureToolsData,
+    enssureOccs, enssureOccIds, enssureToolsData, enssureToolsOccId, enssureToolsLevel, enssureEvents,
     clients };
 
   const handlePrint = () => {
@@ -385,9 +387,34 @@ function ReportsView({ institutes, clients }) {
           </div>
           <div className="filter-panel-body">
 
-            {/* ENSSURE — Proposed Occupations selector at top */}
+            {/* ENSSURE — D2/D3 tools occupation + level + events */}
             {familyId === 'enssure' && fullInst && (
               <div className="filter-section" style={{borderBottom:'2px solid var(--accent)', marginBottom:8, paddingBottom:12}}>
+                <div className="filter-label" style={{fontWeight:700, color:'var(--accent)', marginBottom:6}}>D2/D3 — Tools Occupation</div>
+                <input className="form-input" value={enssureToolsOccSearch} onChange={e => setEnssureToolsOccSearch(e.target.value)}
+                  placeholder="Search occupation…" style={{fontSize:12, marginBottom:4}}/>
+                <select className="form-input" style={{marginBottom:6}}
+                  value={enssureToolsOccId}
+                  onChange={e => setEnssureToolsOccId(e.target.value)}>
+                  <option value="">— Select occupation —</option>
+                  {occupations
+                    .filter(o => !enssureToolsOccSearch || o.name.toLowerCase().includes(enssureToolsOccSearch.toLowerCase()))
+                    .map(o => <option key={o.id} value={o.id}>{o.name}{o.level ? ` (${o.level})` : ''}</option>)}
+                </select>
+                <div className="filter-label" style={{marginBottom:4}}>Level</div>
+                <select className="form-input" style={{marginBottom:6}} value={enssureToolsLevel} onChange={e => setEnssureToolsLevel(e.target.value)}>
+                  <option>Level 1</option><option>Level 2</option><option>Level 3</option><option>Professional</option><option>Technician</option>
+                </select>
+                <div className="filter-label" style={{marginBottom:4}}>Number of Events (multiplier)</div>
+                <input type="number" min="1" className="form-input" value={enssureEvents}
+                  onChange={e => setEnssureEvents(Math.max(1, parseInt(e.target.value) || 1))}/>
+                {enssureToolsOccId && <div style={{fontSize:10, color:'var(--text3)', marginTop:4}}>Quantities × {enssureEvents} shown in D2/D3.</div>}
+              </div>
+            )}
+
+            {/* ENSSURE — Proposed Occupations selector (C2) */}
+            {familyId === 'enssure' && fullInst && (
+              <div className="filter-section" style={{borderBottom:'1px solid var(--border)', marginBottom:8, paddingBottom:12}}>
                 <div className="filter-label" style={{justifyContent:'space-between', fontWeight:700, color:'var(--accent)'}}>
                   <span>Proposed Occupations (C2)</span>
                   {enssureOccIds.length > 0 && (
@@ -396,7 +423,7 @@ function ReportsView({ institutes, clients }) {
                 </div>
                 <input className="form-input" value={enssureOccSearch} onChange={e => setEnssureOccSearch(e.target.value)}
                   placeholder="Search…" style={{fontSize:12, marginBottom:6}}/>
-                <div className="multi-select-list" style={{maxHeight:220, overflowY:'auto'}}>
+                <div className="multi-select-list" style={{maxHeight:180, overflowY:'auto'}}>
                   {occupations.filter(o => !enssureOccSearch || o.name.toLowerCase().includes(enssureOccSearch.toLowerCase())).map(o => (
                     <label key={o.id} className="multi-select-item">
                       <input type="checkbox" checked={enssureOccIds.includes(o.id)}
@@ -405,7 +432,6 @@ function ReportsView({ institutes, clients }) {
                     </label>
                   ))}
                 </div>
-                {enssureOccIds.length > 0 && <div style={{fontSize:10, color:'var(--text3)', marginTop:3}}>D2/D3 tools loaded for first selected occupation.</div>}
               </div>
             )}
 
