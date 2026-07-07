@@ -89,21 +89,41 @@ function App() {
     return () => window.removeEventListener('tvettrack:session-expired', handler);
   }, []);
 
-  // Load institutes and clients from API on mount
+  // Sync screen state with browser back/forward (hashchange)
+  useEffect(() => {
+    const onHashChange = () => {
+      const { screen: s, instId } = parseHash();
+      setScreen(s || 'dashboard');
+      if (s === 'detail' && instId) {
+        // If we already have this institute loaded, restore it without a fetch
+        setSelectedInstitute(prev => {
+          if (prev && String(prev.id) === String(instId)) return prev;
+          // Otherwise fetch (navigated via browser back to a different detail)
+          api('GET', `/institutes/${instId}`, null, getSession()?.token)
+            .then(full => setSelectedInstitute(normInst(full)))
+            .catch(() => { window.location.hash = 'institutes'; setScreen('institutes'); });
+          return prev; // keep showing old while loading
+        });
+      }
+    };
+    window.addEventListener('hashchange', onHashChange);
+    return () => window.removeEventListener('hashchange', onHashChange);
+  }, []);
+
+  // Load institutes and clients — stale-while-revalidate from sessionStorage cache
   useEffect(() => {
     if (!session || !token) return;
-    setLoading(true);
     setApiError('');
-    Promise.all([
-      api('GET', '/institutes', null, token),
-      api('GET', '/clients', null, token),
-      api('GET', '/occupations', null, token).catch(() => []),
-      api('GET', '/locations', null, token).catch(() => []),
-    ]).then(([insts, cls, occs, locs]) => {
+
+    const CACHE_KEY = 'tvettrack_cache_v1';
+    let cached = null;
+    try { cached = JSON.parse(sessionStorage.getItem(CACHE_KEY)); } catch {}
+
+    const applyData = (insts, cls, occs, locs, fromCache) => {
       setInstitutes(insts.map(normInst));
       setClients(cls.map(normClient));
       OCCUPATIONS.splice(0, OCCUPATIONS.length, ...occs);
-      if (locs && locs.length) {
+      if (locs?.length) {
         PROVINCES.length = 0;
         locs.forEach(p => PROVINCES.push({
           id: p.id, name: p.name,
@@ -113,7 +133,12 @@ function App() {
           }))
         }));
       }
-      // Restore hash-based route after data is loaded
+      if (!fromCache) {
+        try { sessionStorage.setItem(CACHE_KEY, JSON.stringify({ insts, cls, occs, locs, ts: Date.now() })); } catch {}
+      }
+    };
+
+    const restoreRoute = () => {
       const { screen: s, instId } = parseHash();
       if (s === 'detail' && instId) {
         api('GET', `/institutes/${instId}`, null, token)
@@ -122,11 +147,45 @@ function App() {
       } else if (s && s !== 'dashboard') {
         setScreen(s);
       }
+    };
+
+    // If cache is fresh (< 5 min), show it instantly and skip the loading spinner
+    const cacheAge = cached ? Date.now() - (cached.ts || 0) : Infinity;
+    if (cached && cacheAge < 5 * 60 * 1000) {
+      applyData(cached.insts, cached.cls, cached.occs || [], cached.locs || [], true);
       setLoading(false);
-    }).catch(err => {
-      setApiError(err.message);
-      setLoading(false);
-    });
+      restoreRoute();
+      // Refresh in background silently
+      Promise.all([
+        api('GET', '/institutes', null, token),
+        api('GET', '/clients', null, token),
+        api('GET', '/occupations', null, token).catch(() => []),
+        api('GET', '/locations', null, token).catch(() => []),
+      ]).then(([insts, cls, occs, locs]) => applyData(insts, cls, occs, locs, false))
+        .catch(() => {});
+    } else {
+      setLoading(true);
+      Promise.all([
+        api('GET', '/institutes', null, token),
+        api('GET', '/clients', null, token),
+        api('GET', '/occupations', null, token).catch(() => []),
+        api('GET', '/locations', null, token).catch(() => []),
+      ]).then(([insts, cls, occs, locs]) => {
+        applyData(insts, cls, occs, locs, false);
+        restoreRoute();
+        setLoading(false);
+      }).catch(err => {
+        // Fall back to stale cache if network fails
+        if (cached) {
+          applyData(cached.insts, cached.cls, cached.occs || [], cached.locs || [], true);
+          restoreRoute();
+          setLoading(false);
+        } else {
+          setApiError(err.message);
+          setLoading(false);
+        }
+      });
+    }
   }, [session]);
 
   if (!session) {
@@ -181,7 +240,7 @@ function App() {
     if ((id === 'summary' || id === 'comparison' || id === 'compliance') && isEditor) return;
     window.location.hash = id;
     setScreen(id);
-    if (id !== 'institutes') setSelectedInstitute(null);
+    if (id === 'institutes') setSelectedInstitute(null);
     setMobileSidebarOpen(false);
   };
 
@@ -197,6 +256,12 @@ function App() {
   ];
 
   const handleSelectInstitute = async (inst) => {
+    // Show immediately if we already have full data (has experience array)
+    if (inst.experience !== undefined) {
+      setSelectedInstitute(inst);
+      window.location.hash = `detail/${inst.id}`;
+      setScreen('detail');
+    }
     try {
       const full = await api('GET', `/institutes/${inst.id}`, null, token);
       const normalized = normInst(full);
@@ -205,7 +270,9 @@ function App() {
       window.location.hash = `detail/${inst.id}`;
       setScreen('detail');
     } catch (err) {
-      setApiError('Failed to load institute: ' + err.message);
+      if (inst.experience === undefined) {
+        setApiError('Failed to load institute: ' + err.message);
+      }
     }
   };
 
@@ -223,6 +290,7 @@ function App() {
   const handleUpdateInstitute = (updated) => {
     setInstitutes(insts => insts.map(i => i.id === updated.id ? updated : i));
     setSelectedInstitute(updated);
+    invalidateCache();
   };
 
   const handleAddInstitute = async (form) => {
@@ -239,11 +307,14 @@ function App() {
   const handleDeleteInstitute = (id) => {
     setInstitutes(insts => insts.filter(i => i.id !== id));
     setSelectedInstitute(null);
+    invalidateCache();
     window.location.hash = 'institutes';
     setScreen('institutes');
   };
 
-  const handleUpdateClients = (updated) => setClients(updated);
+  const invalidateCache = () => { try { sessionStorage.removeItem('tvettrack_cache_v1'); } catch {} };
+
+  const handleUpdateClients = (updated) => { setClients(updated); invalidateCache(); };
 
   const pageTitles = {
     dashboard: 'Dashboard',
