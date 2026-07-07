@@ -29,12 +29,17 @@ function getOccLevel(occ, occupations) {
 }
 
 function occLocationStr(occ) {
-  return (occ.locations || [])
-    .map(l => {
-      const localLevels = (l.localLevels || []).map(ll => ll.name).filter(Boolean);
-      return [...localLevels, l.district, l.province].filter(Boolean).join(', ');
-    })
-    .filter(Boolean).join('; ') || '—';
+  const byProvince = {};
+  for (const l of (occ.locations || [])) {
+    const prov = l.province || 'Unknown';
+    if (!byProvince[prov]) byProvince[prov] = [];
+    const localLevels = (l.localLevels || []).map(ll => ll.name).filter(Boolean);
+    const parts = localLevels.length ? `${localLevels.join(', ')} (${l.district})` : l.district;
+    if (parts) byProvince[prov].push(parts);
+  }
+  const entries = Object.entries(byProvince);
+  if (!entries.length) return '—';
+  return entries.map(([prov, places]) => `${prov}: ${places.join('; ')}`).join(' | ');
 }
 
 function buildProgram(occ) {
