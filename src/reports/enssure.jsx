@@ -34,7 +34,7 @@ function occLocationStr(occ) {
     const prov = l.province || 'Unknown';
     if (!byProvince[prov]) byProvince[prov] = [];
     const localLevels = (l.localLevels || []).map(ll => ll.name).filter(Boolean);
-    const parts = localLevels.length ? `${localLevels.join(', ')} (${l.district})` : l.district;
+    const parts = l.district ? (localLevels.length ? `${l.district} (${localLevels.join(', ')})` : l.district) : localLevels.join(', ');
     if (parts) byProvince[prov].push(parts);
   }
   const entries = Object.entries(byProvince);
