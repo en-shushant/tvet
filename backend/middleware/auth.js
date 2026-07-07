@@ -1,48 +1,35 @@
-// middleware/auth.js — JWT authentication middleware
 const jwt = require('jsonwebtoken');
-
 const JWT_SECRET = process.env.JWT_SECRET || 'tvettrack_dev_secret_change_in_production';
 
-// Verify JWT token on protected routes
-function authenticate(req, res, next) {
-  const header = req.headers.authorization;
+async function authenticate(request, reply) {
+  const header = request.headers.authorization;
   if (!header || !header.startsWith('Bearer ')) {
-    return res.status(401).json({ error: 'No token provided' });
+    return reply.code(401).send({ error: 'No token provided' });
   }
-  const token = header.slice(7);
   try {
-    req.user = jwt.verify(token, JWT_SECRET);
-    next();
+    request.user = jwt.verify(header.slice(7), JWT_SECRET);
   } catch {
-    return res.status(401).json({ error: 'Invalid or expired token' });
+    return reply.code(401).send({ error: 'Invalid or expired token' });
   }
 }
 
-// Require admin or superadmin role
-function requireAdmin(req, res, next) {
-  if (!req.user || (req.user.role !== 'admin' && req.user.role !== 'superadmin')) {
-    return res.status(403).json({ error: 'Admin access required' });
+async function requireAdmin(request, reply) {
+  if (!request.user || (request.user.role !== 'admin' && request.user.role !== 'superadmin')) {
+    return reply.code(403).send({ error: 'Admin access required' });
   }
-  next();
 }
 
-// Require superadmin only
-function requireSuperAdmin(req, res, next) {
-  if (!req.user || req.user.role !== 'superadmin') {
-    return res.status(403).json({ error: 'Superadmin access required' });
+async function requireSuperAdmin(request, reply) {
+  if (!request.user || request.user.role !== 'superadmin') {
+    return reply.code(403).send({ error: 'Superadmin access required' });
   }
-  next();
 }
 
-// Require writer role (admin or editor). Use on data-mutation routes — these
-// users can add/edit assignments, NSTB, tax, affiliations, but cannot create
-// or delete institutes, nor manage users / master data.
-function requireWriter(req, res, next) {
-  const r = req.user?.role;
+async function requireWriter(request, reply) {
+  const r = request.user?.role;
   if (!r || (r !== 'admin' && r !== 'editor' && r !== 'superadmin')) {
-    return res.status(403).json({ error: 'Write access required. Contact your administrator.' });
+    return reply.code(403).send({ error: 'Write access required. Contact your administrator.' });
   }
-  next();
 }
 
 function signToken(payload) {

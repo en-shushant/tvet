@@ -1,35 +1,31 @@
 // routes/templates.js
-const router = require('express').Router();
 const { pool } = require('../db/pool');
 const { authenticate, requireWriter } = require('../middleware/auth');
-router.use(authenticate);
 
-router.get('/', async (req, res, next) => {
-  try {
+async function plugin(fastify, opts) {
+  fastify.addHook('preHandler', authenticate);
+
+  fastify.get('/', async (request, reply) => {
     const { rows } = await pool.query(
-      'SELECT * FROM assignment_templates WHERE user_id=$1 ORDER BY created_at DESC', [req.user.id]
+      'SELECT * FROM assignment_templates WHERE user_id=$1 ORDER BY created_at DESC', [request.user.id]
     );
-    res.json(rows);
-  } catch(e) { next(e); }
-});
+    return rows;
+  });
 
-router.post('/', requireWriter, async (req, res, next) => {
-  try {
-    const { name, data } = req.body;
-    if (!name || !data) return res.status(400).json({ error: 'name and data required' });
+  fastify.post('/', { preHandler: requireWriter }, async (request, reply) => {
+    const { name, data } = request.body;
+    if (!name || !data) return reply.code(400).send({ error: 'name and data required' });
     const { rows } = await pool.query(
       'INSERT INTO assignment_templates (user_id,name,data) VALUES ($1,$2,$3) RETURNING *',
-      [req.user.id, name, JSON.stringify(data)]
+      [request.user.id, name, JSON.stringify(data)]
     );
-    res.status(201).json(rows[0]);
-  } catch(e) { next(e); }
-});
+    return reply.code(201).send(rows[0]);
+  });
 
-router.delete('/:id', async (req, res, next) => {
-  try {
-    await pool.query('DELETE FROM assignment_templates WHERE id=$1 AND user_id=$2', [req.params.id, req.user.id]);
-    res.json({ deleted: true });
-  } catch(e) { next(e); }
-});
+  fastify.delete('/:id', async (request, reply) => {
+    await pool.query('DELETE FROM assignment_templates WHERE id=$1 AND user_id=$2', [request.params.id, request.user.id]);
+    return { deleted: true };
+  });
+}
 
-module.exports = router;
+module.exports = plugin;

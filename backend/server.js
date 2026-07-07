@@ -1,40 +1,31 @@
-// TVETtrack Backend — server.js
-// Node.js + Express + PostgreSQL
-// Start: node server.js
-
 require('dotenv').config();
-const express = require('express');
-const cors = require('cors');
-const helmet = require('helmet');
+const fastify = require('fastify')({ logger: { level: 'warn' } });
+const path = require('path');
 const { pool } = require('./db/pool');
 
-const compression = require('compression');
-const path = require('path');
-const app = express();
-const PORT = process.env.PORT || 4000;
+// ─── PLUGINS ─────────────────────────────────────────────────────────────────
+fastify.register(require('@fastify/compress'));
+fastify.register(require('@fastify/helmet'), { contentSecurityPolicy: false });
+fastify.register(require('@fastify/cors'), { origin: '*' });
 
-// ─── MIDDLEWARE ───────────────────────────────────────────────────────────────
-app.use(compression());
-app.use(helmet({ contentSecurityPolicy: false }));
-app.use(cors({ origin: '*' }));
-app.use(express.json({ limit: '20mb' }));
-
-// ─── STATIC FRONTEND ─────────────────────────────────────────────────────────
-app.use(express.static(path.join(__dirname, 'public'), {
-  maxAge: '7d',
+// Static frontend (must be registered before routes so SPA fallback works)
+fastify.register(require('@fastify/static'), {
+  root: path.join(__dirname, 'public'),
+  prefix: '/',
+  maxAge: 7 * 24 * 60 * 60 * 1000,
   immutable: true,
   setHeaders(res, filePath) {
     if (filePath.endsWith('.html')) {
       res.setHeader('Cache-Control', 'no-cache');
     }
   },
-}));
+  wildcard: false,
+});
 
 // ─── STARTUP MIGRATIONS ───────────────────────────────────────────────────────
 async function runMigrations() {
-  // Run full schema first (idempotent — uses IF NOT EXISTS / IF EXISTS)
   const fs = require('fs');
-  const schemaPath = require('path').join(__dirname, 'db', 'schema.sql');
+  const schemaPath = path.join(__dirname, 'db', 'schema.sql');
   if (fs.existsSync(schemaPath)) {
     try {
       const schema = fs.readFileSync(schemaPath, 'utf8');
@@ -66,7 +57,6 @@ async function runMigrations() {
     `ALTER TABLE assignments ADD COLUMN IF NOT EXISTS is_jv BOOLEAN DEFAULT FALSE`,
     `ALTER TABLE assignments ADD COLUMN IF NOT EXISTS jv_role TEXT`,
     `ALTER TABLE assignments ADD COLUMN IF NOT EXISTS jv_partners INTEGER`,
-    // EOI report fields (3A General / 3B Specific / 3C Geographic experience)
     `ALTER TABLE assignments ADD COLUMN IF NOT EXISTS country TEXT DEFAULT 'Nepal'`,
     `ALTER TABLE assignments ADD COLUMN IF NOT EXISTS description_of_work TEXT`,
     `ALTER TABLE assignments ADD COLUMN IF NOT EXISTS duration_months NUMERIC`,
@@ -76,13 +66,11 @@ async function runMigrations() {
     `ALTER TABLE assignments ADD COLUMN IF NOT EXISTS jv_partner_person_months NUMERIC`,
     `ALTER TABLE assignments ADD COLUMN IF NOT EXISTS narrative_description TEXT`,
     `ALTER TABLE assignments ADD COLUMN IF NOT EXISTS actual_services_description TEXT`,
-    // Migration: relax users.role CHECK to allow 'editor' and 'superadmin'
     `ALTER TABLE users DROP CONSTRAINT IF EXISTS users_role_check`,
     `ALTER TABLE users ADD CONSTRAINT users_role_check CHECK (role IN ('admin','user','editor','viewer','superadmin'))`,
     `ALTER TABLE occupations ADD COLUMN IF NOT EXISTS level TEXT`,
     `DELETE FROM occupations WHERE is_custom = FALSE`,
     `ALTER TABLE assignment_occupations ADD COLUMN IF NOT EXISTS level TEXT`,
-    // Description template + generation helper fields
     `ALTER TABLE institutes ADD COLUMN IF NOT EXISTS desc_template_id TEXT`,
     `ALTER TABLE institutes ADD COLUMN IF NOT EXISTS narrative_template_id TEXT`,
     `ALTER TABLE institutes ADD COLUMN IF NOT EXISTS services_template_id TEXT`,
@@ -108,8 +96,6 @@ async function runMigrations() {
     try { await pool.query(sql); }
     catch(e) { console.warn('Migration skipped:', e.message); }
   }
-
-  // Seed superadmin user if not exists
   try {
     const bcrypt = require('bcrypt');
     const existing = await pool.query(`SELECT id FROM users WHERE email='admin@tvettrack.local'`);
@@ -119,83 +105,85 @@ async function runMigrations() {
         `INSERT INTO users (name, email, password, role, is_active) VALUES ($1,$2,$3,'superadmin',TRUE)`,
         ['Super Admin', 'admin@tvettrack.local', hash]
       );
-      console.log('Superadmin user created: admin@tvettrack.local');
+      console.log('Superadmin user created');
     } else {
-      // Ensure role is superadmin in case it was created with wrong role
       await pool.query(`UPDATE users SET role='superadmin' WHERE email='admin@tvettrack.local' AND role != 'superadmin'`);
     }
   } catch(e) { console.warn('Superadmin seed:', e.message); }
 }
 
 // ─── HEALTH CHECK ─────────────────────────────────────────────────────────────
-app.get('/health', async (req, res) => {
+fastify.get('/health', async (request, reply) => {
   try {
     await pool.query('SELECT 1');
-    res.json({ status: 'ok', db: 'connected', time: new Date().toISOString() });
+    return { status: 'ok', db: 'connected', time: new Date().toISOString() };
   } catch (e) {
-    res.status(500).json({ status: 'error', message: e.message });
+    return reply.code(500).send({ status: 'error', message: e.message });
   }
 });
 
-// ─── CAP CAPTCHA PROXY ───────────────────────────────────────────────────────
-// Proxies /cap-api/* to the Cap server so the browser never makes HTTP requests
-// from an HTTPS page (mixed content would be blocked).
+// ─── CAP CAPTCHA PROXY ────────────────────────────────────────────────────────
 const CAP_UPSTREAM = process.env.CAP_SERVER_URL || 'http://185.199.53.214:32769';
-app.all('/cap-api/*', async (req, res) => {
-  const upstreamPath = req.url.replace('/cap-api', '');
-  const upstreamUrl  = `${CAP_UPSTREAM}${upstreamPath}`;
+fastify.all('/cap-api/*', async (request, reply) => {
+  const upstreamPath = request.url.replace('/cap-api', '');
+  const upstreamUrl = `${CAP_UPSTREAM}${upstreamPath}`;
   try {
-    const headers = { 'Content-Type': req.headers['content-type'] || 'application/json' };
-    const body    = req.method === 'GET' || req.method === 'HEAD' ? undefined : JSON.stringify(req.body);
-    const upstream = await fetch(upstreamUrl, { method: req.method, headers, body, signal: AbortSignal.timeout(10000) });
+    const headers = { 'Content-Type': request.headers['content-type'] || 'application/json' };
+    const body = request.method === 'GET' || request.method === 'HEAD' ? undefined : JSON.stringify(request.body);
+    const upstream = await fetch(upstreamUrl, { method: request.method, headers, body, signal: AbortSignal.timeout(10000) });
     const contentType = upstream.headers.get('content-type') || 'application/octet-stream';
-    res.status(upstream.status).set('Content-Type', contentType);
+    reply.code(upstream.status).header('content-type', contentType);
     if (contentType.includes('json')) {
-      res.json(await upstream.json());
+      return reply.send(await upstream.json());
     } else {
-      res.send(Buffer.from(await upstream.arrayBuffer()));
+      return reply.send(Buffer.from(await upstream.arrayBuffer()));
     }
   } catch (e) {
-    res.status(502).json({ error: 'Cap server unreachable' });
+    return reply.code(502).send({ error: 'Cap server unreachable' });
   }
 });
 
 // ─── ROUTES ──────────────────────────────────────────────────────────────────
-app.use('/api/auth',         require('./routes/auth'));
-app.use('/api/users',        require('./routes/users'));
-app.use('/api/institutes',   require('./routes/institutes'));
-app.use('/api/assignments',  require('./routes/assignments'));
-app.use('/api/nstb',         require('./routes/nstb'));
-app.use('/api/tax',          require('./routes/tax'));
-app.use('/api/affiliations', require('./routes/affiliations'));
-app.use('/api/clients',      require('./routes/clients'));
-app.use('/api/occupations',  require('./routes/occupations'));
-app.use('/api/templates',    require('./routes/templates'));
-app.use('/api/summary',      require('./routes/summary'));
-app.use('/api/documents',    require('./routes/documents'));
-app.use('/api/locations',    require('./routes/locations'));
-app.use('/api/occupation-tools', require('./routes/occupation-tools'));
+const PORT = process.env.PORT || 4000;
+
+fastify.register(require('./routes/auth'),            { prefix: '/api/auth' });
+fastify.register(require('./routes/users'),           { prefix: '/api/users' });
+fastify.register(require('./routes/institutes'),      { prefix: '/api/institutes' });
+fastify.register(require('./routes/assignments'),     { prefix: '/api/assignments' });
+fastify.register(require('./routes/nstb'),            { prefix: '/api/nstb' });
+fastify.register(require('./routes/tax'),             { prefix: '/api/tax' });
+fastify.register(require('./routes/affiliations'),    { prefix: '/api/affiliations' });
+fastify.register(require('./routes/clients'),         { prefix: '/api/clients' });
+fastify.register(require('./routes/occupations'),     { prefix: '/api/occupations' });
+fastify.register(require('./routes/templates'),       { prefix: '/api/templates' });
+fastify.register(require('./routes/summary'),         { prefix: '/api/summary' });
+fastify.register(require('./routes/documents'),       { prefix: '/api/documents' });
+fastify.register(require('./routes/locations'),       { prefix: '/api/locations' });
+fastify.register(require('./routes/occupation-tools'), { prefix: '/api/occupation-tools' });
 
 // ─── SPA FALLBACK ─────────────────────────────────────────────────────────────
-app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+fastify.setNotFoundHandler((request, reply) => {
+  if (!request.url.startsWith('/api/')) {
+    return reply.sendFile('index.html');
+  }
+  reply.code(404).send({ error: 'Not found' });
 });
 
 // ─── ERROR HANDLER ────────────────────────────────────────────────────────────
-app.use((err, req, res, next) => {
-  console.error(err.stack);
-  res.status(err.status || 500).json({ error: err.message || 'Internal server error' });
+fastify.setErrorHandler((err, request, reply) => {
+  console.error(err);
+  reply.code(err.statusCode || 500).send({ error: err.message || 'Internal server error' });
 });
 
-// Run migrations before accepting connections
+// ─── START ────────────────────────────────────────────────────────────────────
 runMigrations()
   .then(() => console.log('Migrations OK'))
   .catch(e => console.error('Migration error:', e.message))
   .finally(() => {
-    const server = app.listen(PORT, () => {
+    fastify.listen({ port: PORT, host: '0.0.0.0' }, (err) => {
+      if (err) { console.error(err); process.exit(1); }
       console.log(`TVETtrack API running on port ${PORT}`);
     });
-    server.keepAliveTimeout = 120000;
-    server.headersTimeout = 125000;
   });
-module.exports = app;
+
+module.exports = fastify;

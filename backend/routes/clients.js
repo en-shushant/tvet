@@ -1,49 +1,43 @@
 // routes/clients.js
-const router = require('express').Router();
 const { pool } = require('../db/pool');
 const { authenticate, requireAdmin, requireWriter } = require('../middleware/auth');
-router.use(authenticate);
 
-router.get('/', async (req, res, next) => {
-  try {
-    res.json((await pool.query('SELECT * FROM clients WHERE is_active=TRUE ORDER BY short_name')).rows);
-  } catch(e) { next(e); }
-});
+async function plugin(fastify, opts) {
+  fastify.addHook('preHandler', authenticate);
 
-router.post('/', requireWriter, async (req, res, next) => {
-  try {
-    const { full_name, short_name, type, address, remarks } = req.body;
-    if (!full_name || !short_name) return res.status(400).json({ error: 'full_name and short_name required' });
+  fastify.get('/', async (request, reply) => {
+    return (await pool.query('SELECT * FROM clients WHERE is_active=TRUE ORDER BY short_name')).rows;
+  });
+
+  fastify.post('/', { preHandler: requireWriter }, async (request, reply) => {
+    const { full_name, short_name, type, address, remarks } = request.body;
+    if (!full_name || !short_name) return reply.code(400).send({ error: 'full_name and short_name required' });
     const { rows } = await pool.query(
       'INSERT INTO clients (full_name,short_name,type,address,remarks) VALUES ($1,$2,$3,$4,$5) RETURNING *',
       [full_name,short_name,type,address,remarks]
     );
-    res.status(201).json(rows[0]);
-  } catch(e) { next(e); }
-});
+    return reply.code(201).send(rows[0]);
+  });
 
-router.put('/:id', requireWriter, async (req, res, next) => {
-  try {
-    const { full_name, short_name, type, address, remarks } = req.body;
+  fastify.put('/:id', { preHandler: requireWriter }, async (request, reply) => {
+    const { full_name, short_name, type, address, remarks } = request.body;
     const { rows } = await pool.query(
       'UPDATE clients SET full_name=$1,short_name=$2,type=$3,address=$4,remarks=$5 WHERE id=$6 RETURNING *',
-      [full_name,short_name,type,address,remarks,req.params.id]
+      [full_name,short_name,type,address,remarks,request.params.id]
     );
-    if (!rows.length) return res.status(404).json({ error: 'Not found' });
-    res.json(rows[0]);
-  } catch(e) { next(e); }
-});
+    if (!rows.length) return reply.code(404).send({ error: 'Not found' });
+    return rows[0];
+  });
 
-router.delete('/:id', requireAdmin, async (req, res, next) => {
-  try {
-    const { rows } = await pool.query('SELECT COUNT(*) FROM assignments WHERE client_id=$1', [req.params.id]);
+  fastify.delete('/:id', { preHandler: requireAdmin }, async (request, reply) => {
+    const { rows } = await pool.query('SELECT COUNT(*) FROM assignments WHERE client_id=$1', [request.params.id]);
     if (parseInt(rows[0].count) > 0) {
-      await pool.query('UPDATE clients SET is_active=FALSE WHERE id=$1', [req.params.id]);
-      return res.json({ deactivated: true });
+      await pool.query('UPDATE clients SET is_active=FALSE WHERE id=$1', [request.params.id]);
+      return { deactivated: true };
     }
-    await pool.query('DELETE FROM clients WHERE id=$1', [req.params.id]);
-    res.json({ deleted: true });
-  } catch(e) { next(e); }
-});
+    await pool.query('DELETE FROM clients WHERE id=$1', [request.params.id]);
+    return { deleted: true };
+  });
+}
 
-module.exports = router;
+module.exports = plugin;

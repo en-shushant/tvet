@@ -1,13 +1,13 @@
 // routes/summary.js
-const router = require('express').Router();
 const { pool } = require('../db/pool');
 const { authenticate } = require('../middleware/auth');
-router.use(authenticate);
 
-router.get('/', async (req, res, next) => {
-  try {
-    const { institute_id, fys, client_types } = req.query;
-    if (!institute_id) return res.status(400).json({ error: 'institute_id required' });
+async function plugin(fastify, opts) {
+  fastify.addHook('preHandler', authenticate);
+
+  fastify.get('/', async (request, reply) => {
+    const { institute_id, fys, client_types } = request.query;
+    if (!institute_id) return reply.code(400).send({ error: 'institute_id required' });
 
     const fyList = fys ? fys.split(',').map(f => f.trim()) : [];
     const clientTypeList = client_types ? client_types.split(',').map(t => t.trim()) : [];
@@ -100,8 +100,8 @@ router.get('/', async (req, res, next) => {
       appearRatePct: r.nstbApplied > 0 ? ((r.nstbAppeared / r.nstbApplied) * 100).toFixed(1) : null,
     }));
 
-    res.json(result);
-  } catch(e) { next(e); }
-});
+    return result;
+  });
+}
 
-module.exports = router;
+module.exports = plugin;

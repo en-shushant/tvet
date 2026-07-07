@@ -1,60 +1,53 @@
-const router = require('express').Router();
+// routes/occupation-tools.js
 const { pool } = require('../db/pool');
 const { authenticate, requireWriter } = require('../middleware/auth');
-router.use(authenticate);
 
-router.get('/counts', async (req, res, next) => {
-  try {
+async function plugin(fastify, opts) {
+  fastify.addHook('preHandler', authenticate);
+
+  fastify.get('/counts', async (request, reply) => {
     const { rows } = await pool.query(
       `SELECT occupation_id, level, COUNT(*)::int as count FROM occupation_tools GROUP BY occupation_id, level ORDER BY occupation_id, level`
     );
-    res.json(rows);
-  } catch (e) { next(e); }
-});
+    return rows;
+  });
 
-router.get('/:occupationId/:level', async (req, res, next) => {
-  try {
-    const { occupationId, level } = req.params;
+  fastify.get('/:occupationId/:level', async (request, reply) => {
+    const { occupationId, level } = request.params;
     const { rows } = await pool.query(
       'SELECT * FROM occupation_tools WHERE occupation_id=$1 AND level=$2 ORDER BY sort_order, id',
       [occupationId, level]
     );
-    res.json(rows);
-  } catch (e) { next(e); }
-});
+    return rows;
+  });
 
-router.post('/', requireWriter, async (req, res, next) => {
-  try {
-    const { occupation_id, level, name, description, unit, quantity, ownership, type, remarks, sort_order } = req.body;
-    if (!occupation_id || !level || !name) return res.status(400).json({ error: 'occupation_id, level and name required' });
+  fastify.post('/', { preHandler: requireWriter }, async (request, reply) => {
+    const { occupation_id, level, name, description, unit, quantity, ownership, type, remarks, sort_order } = request.body;
+    if (!occupation_id || !level || !name) return reply.code(400).send({ error: 'occupation_id, level and name required' });
     const { rows } = await pool.query(
       `INSERT INTO occupation_tools (occupation_id, level, name, description, unit, quantity, ownership, type, remarks, sort_order)
        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING *`,
       [occupation_id, level, name, description || null, unit || null, quantity || null, ownership || 'Own', type || 'Tool', remarks || null, sort_order || 0]
     );
-    res.status(201).json(rows[0]);
-  } catch (e) { next(e); }
-});
+    return reply.code(201).send(rows[0]);
+  });
 
-router.put('/:id', requireWriter, async (req, res, next) => {
-  try {
-    const { name, description, unit, quantity, ownership, type, remarks, sort_order } = req.body;
-    if (!name) return res.status(400).json({ error: 'name required' });
+  fastify.put('/:id', { preHandler: requireWriter }, async (request, reply) => {
+    const { name, description, unit, quantity, ownership, type, remarks, sort_order } = request.body;
+    if (!name) return reply.code(400).send({ error: 'name required' });
     const { rows } = await pool.query(
       `UPDATE occupation_tools SET name=$1, description=$2, unit=$3, quantity=$4, ownership=$5, type=$6, remarks=$7, sort_order=$8
        WHERE id=$9 RETURNING *`,
-      [name, description || null, unit || null, quantity || null, ownership || 'Own', type || 'Tool', remarks || null, sort_order || 0, req.params.id]
+      [name, description || null, unit || null, quantity || null, ownership || 'Own', type || 'Tool', remarks || null, sort_order || 0, request.params.id]
     );
-    if (!rows.length) return res.status(404).json({ error: 'Not found' });
-    res.json(rows[0]);
-  } catch (e) { next(e); }
-});
+    if (!rows.length) return reply.code(404).send({ error: 'Not found' });
+    return rows[0];
+  });
 
-router.delete('/:id', requireWriter, async (req, res, next) => {
-  try {
-    await pool.query('DELETE FROM occupation_tools WHERE id=$1', [req.params.id]);
-    res.json({ deleted: true });
-  } catch (e) { next(e); }
-});
+  fastify.delete('/:id', { preHandler: requireWriter }, async (request, reply) => {
+    await pool.query('DELETE FROM occupation_tools WHERE id=$1', [request.params.id]);
+    return { deleted: true };
+  });
+}
 
-module.exports = router;
+module.exports = plugin;
