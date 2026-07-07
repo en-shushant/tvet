@@ -29,17 +29,24 @@ function getOccLevel(occ, occupations) {
 }
 
 function occLocationStr(occ) {
+  // byProvince -> byDistrict -> [palika names]
   const byProvince = {};
   for (const l of (occ.locations || [])) {
     const prov = l.province || 'Unknown';
-    if (!byProvince[prov]) byProvince[prov] = [];
-    const localLevels = (l.localLevels || []).map(ll => ll.name).filter(Boolean);
-    const parts = l.district ? (localLevels.length ? `${l.district} (${localLevels.join(', ')})` : l.district) : localLevels.join(', ');
-    if (parts) byProvince[prov].push(parts);
+    const dist = l.district || '';
+    if (!byProvince[prov]) byProvince[prov] = {};
+    if (!byProvince[prov][dist]) byProvince[prov][dist] = [];
+    const palika = (l.localLevels || []).map(ll => ll.name).filter(Boolean);
+    palika.forEach(p => { if (!byProvince[prov][dist].includes(p)) byProvince[prov][dist].push(p); });
   }
   const entries = Object.entries(byProvince);
   if (!entries.length) return '—';
-  return entries.map(([prov, places]) => `${prov}: ${places.join('; ')}`).join(' | ');
+  return entries.map(([prov, districts]) => {
+    const distStr = Object.entries(districts).map(([dist, palikas]) =>
+      dist ? (palikas.length ? `${dist} (${palikas.join(', ')})` : dist) : palikas.join(', ')
+    ).join('; ');
+    return `${prov}: ${distStr}`;
+  }).join(' | ');
 }
 
 function buildProgram(occ) {
