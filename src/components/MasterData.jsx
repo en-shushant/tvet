@@ -504,8 +504,8 @@ function MasterData({clients, onUpdateClients, token, isAdmin, isEditor, isSuper
                         <tr>
                           <th style={{width:30, padding:'6px 4px', fontSize:11}}></th>
                           <th style={{padding:'6px 8px', fontSize:11}}>#</th>
-                          <th style={{padding:'6px 8px', fontSize:11, width:130}}>Name</th>
-                          <th style={{padding:'6px 8px', fontSize:11}}>Description *</th>
+                          <th style={{padding:'6px 8px', fontSize:11, width:130}}>Name *</th>
+                          <th style={{padding:'6px 8px', fontSize:11}}>Description</th>
                           <th style={{padding:'6px 8px', fontSize:11, width:80}}>Unit</th>
                           <th style={{padding:'6px 8px', fontSize:11, width:60}}>Qty</th>
                           <th style={{padding:'6px 8px', fontSize:11, width:100}}>Ownership</th>
@@ -545,7 +545,7 @@ function MasterData({clients, onUpdateClients, token, isAdmin, isEditor, isSuper
                     <span style={{fontSize:12, color:'var(--text3)'}}>{bulkRows.length} row{bulkRows.length!==1?'s':''} · {bulkRows.filter(r=>r.name.trim()).length} with data</span>
                     <div style={{display:'flex', gap:8}}>
                       <button className="btn btn-secondary btn-sm" onClick={()=>{setToolsBulkMode(false);setBulkRows([]);}}>Cancel</button>
-                      <button className="btn btn-primary btn-sm" onClick={saveBulkRows} disabled={bulkSaving || !bulkRows.some(r=>r.description.trim())}>
+                      <button className="btn btn-primary btn-sm" onClick={saveBulkRows} disabled={bulkSaving || !bulkRows.some(r=>r.name.trim())}>
                         {bulkSaving ? 'Saving...' : `Save ${bulkRows.filter(r=>r.name.trim()).length} item${bulkRows.filter(r=>r.name.trim()).length!==1?'s':''}`}
                       </button>
                     </div>
