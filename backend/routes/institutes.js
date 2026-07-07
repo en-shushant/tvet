@@ -35,7 +35,7 @@ async function plugin(fastify, opts) {
 
   fastify.get('/:id', async (request, reply) => {
     const { id } = request.params;
-    const [inst, assignments, nstb, tax, affiliations] = await Promise.all([
+    const [inst, assignments, nstb, tax, affiliations, infrastructure] = await Promise.all([
       pool.query('SELECT * FROM institutes WHERE id = $1', [id]),
       pool.query(`
         SELECT a.*,
@@ -54,6 +54,7 @@ async function plugin(fastify, opts) {
         LEFT JOIN affiliation_programs ap ON ap.affiliation_id = af.id
         WHERE af.institute_id = $1
         GROUP BY af.id ORDER BY af.affiliation_date DESC`, [id]),
+      pool.query('SELECT * FROM institute_infrastructure WHERE institute_id = $1 ORDER BY sort_order, id', [id]),
     ]);
     if (!inst.rows.length) return reply.code(404).send({ error: 'Institute not found' });
     return {
@@ -62,6 +63,7 @@ async function plugin(fastify, opts) {
       nstb: nstb.rows,
       taxClearance: tax.rows,
       affiliation: affiliations.rows,
+      infrastructure: infrastructure.rows,
     };
   });
 

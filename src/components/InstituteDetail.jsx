@@ -80,6 +80,7 @@ function InstituteDetail({institute, clients, onUpdateClients, onBack, onUpdate,
     {id:'nstb', label:`NSTB (${institute.nstb.length})`},
     {id:'tax', label:`Tax Clearance (${institute.taxClearance.length})`},
     {id:'affiliation', label:`CTEVT Affiliation (${institute.affiliation.length})`},
+    {id:'infrastructure', label:`Infrastructure (${(institute.infrastructure||[]).length})`},
   ];
 
   const [saveErr, setSaveErr] = useState('');
@@ -599,6 +600,11 @@ function InstituteDetail({institute, clients, onUpdateClients, onBack, onUpdate,
         </>
       )}
 
+      {/* Infrastructure tab (D1) */}
+      {tab==='infrastructure' && (
+        <InfrastructureTab instituteId={institute.id} token={token} canEdit={canEdit} />
+      )}
+
       {/* Modals */}
       {modal?.type === 'editInstitute' && <InstituteForm institute={institute} onSave={saveProfile} onClose={()=>setModal(null)}/>}
       {modal?.type === 'deleteInstitute' && ReactDOM.createPortal(
@@ -841,4 +847,115 @@ function InstituteDetail({institute, clients, onUpdateClients, onBack, onUpdate,
     </div>
   );
 }
+// ── Infrastructure Tab (D1 — Office Space and Training Facilities) ─────────────
+
+const INFRA_COLS = ['S.N.', 'Particular', 'Description', 'Unit (Number)', 'Size', 'Remark'];
+const INFRA_BLANK = { particular:'', description:'', unit:'', size:'', remark:'' };
+
+function InfrastructureTab({ instituteId, token, canEdit }) {
+  const [rows, setRows] = useState(null);
+  const [editingId, setEditingId] = useState(null);
+  const [editForm, setEditForm] = useState({});
+  const [addForm, setAddForm] = useState(INFRA_BLANK);
+  const [adding, setAdding] = useState(false);
+  const [err, setErr] = useState('');
+
+  useEffect(() => {
+    api('GET', `/infrastructure/${instituteId}`, null, token).then(setRows).catch(() => setRows([]));
+  }, [instituteId, token]);
+
+  const reload = () => api('GET', `/infrastructure/${instituteId}`, null, token).then(setRows);
+
+  const startEdit = (row) => { setEditingId(row.id); setEditForm({ particular: row.particular, description: row.description||'', unit: row.unit||'', size: row.size||'', remark: row.remark||'' }); };
+  const cancelEdit = () => setEditingId(null);
+
+  const saveEdit = async () => {
+    if (!editForm.particular.trim()) return setErr('Particular is required.');
+    setErr('');
+    await api('PUT', `/infrastructure/${editingId}`, editForm, token);
+    setEditingId(null);
+    reload();
+  };
+
+  const deleteRow = async (id) => {
+    if (!confirm('Delete this row?')) return;
+    await api('DELETE', `/infrastructure/${id}`, null, token);
+    reload();
+  };
+
+  const saveAdd = async () => {
+    if (!addForm.particular.trim()) return setErr('Particular is required.');
+    setErr('');
+    await api('POST', '/infrastructure', { institute_id: instituteId, ...addForm }, token);
+    setAddForm(INFRA_BLANK);
+    setAdding(false);
+    reload();
+  };
+
+  if (!rows) return <div style={{padding:24, color:'var(--text3)'}}>Loading…</div>;
+
+  const tdS = { padding:'6px 10px', border:'1px solid var(--border)', fontSize:13, verticalAlign:'middle' };
+  const thS = { ...tdS, background:'var(--bg2)', fontWeight:600 };
+  const inp = { width:'100%', padding:'4px 6px', border:'1px solid var(--border)', borderRadius:4, fontSize:13, background:'var(--bg)', color:'var(--text1)' };
+
+  return (
+    <div>
+      <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:12}}>
+        <div style={{fontSize:13, color:'var(--text2)'}}>D1 — Office Space and Training Facilities (for ENSSURE report)</div>
+        {canEdit && !adding && <button className="btn btn-primary btn-sm" onClick={()=>setAdding(true)}>+ Add row</button>}
+      </div>
+      {err && <div style={{color:'#c00', marginBottom:8, fontSize:13}}>{err}</div>}
+      <div className="table-wrap">
+        <table style={{width:'100%', borderCollapse:'collapse'}}>
+          <thead>
+            <tr>{INFRA_COLS.map(h=><th key={h} style={thS}>{h}</th>)}{canEdit && <th style={thS}>Actions</th>}</tr>
+          </thead>
+          <tbody>
+            {rows.map((row, i) => editingId === row.id ? (
+              <tr key={row.id}>
+                <td style={tdS}>{i+1}</td>
+                {['particular','description','unit','size','remark'].map(f=>(
+                  <td key={f} style={tdS}><input style={inp} value={editForm[f]} onChange={e=>setEditForm(p=>({...p,[f]:e.target.value}))} /></td>
+                ))}
+                <td style={tdS}>
+                  <button className="btn btn-primary btn-sm" style={{marginRight:4}} onClick={saveEdit}>Save</button>
+                  <button className="btn btn-ghost btn-sm" onClick={cancelEdit}>Cancel</button>
+                </td>
+              </tr>
+            ) : (
+              <tr key={row.id}>
+                <td style={{...tdS, textAlign:'center'}}>{i+1}</td>
+                <td style={tdS}>{row.particular}</td>
+                <td style={tdS}>{row.description}</td>
+                <td style={{...tdS, textAlign:'center'}}>{row.unit}</td>
+                <td style={tdS}>{row.size}</td>
+                <td style={tdS}>{row.remark}</td>
+                {canEdit && <td style={tdS}>
+                  <button className="btn btn-ghost btn-sm" style={{marginRight:4}} onClick={()=>startEdit(row)}>✏</button>
+                  <button className="btn btn-danger btn-sm" onClick={()=>deleteRow(row.id)}>🗑</button>
+                </td>}
+              </tr>
+            ))}
+            {adding && (
+              <tr>
+                <td style={{...tdS, textAlign:'center'}}>{rows.length+1}</td>
+                {['particular','description','unit','size','remark'].map(f=>(
+                  <td key={f} style={tdS}><input style={inp} placeholder={f==='particular'?'e.g. Classroom':''} value={addForm[f]} onChange={e=>setAddForm(p=>({...p,[f]:e.target.value}))} /></td>
+                ))}
+                <td style={tdS}>
+                  <button className="btn btn-primary btn-sm" style={{marginRight:4}} onClick={saveAdd}>Add</button>
+                  <button className="btn btn-ghost btn-sm" onClick={()=>{setAdding(false);setErr('');}}>Cancel</button>
+                </td>
+              </tr>
+            )}
+            {rows.length === 0 && !adding && (
+              <tr><td colSpan={canEdit?7:6} style={{...tdS, textAlign:'center', color:'var(--text3)', padding:24}}>No infrastructure rows yet. Click "+ Add row" to begin.</td></tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
 export default InstituteDetail;

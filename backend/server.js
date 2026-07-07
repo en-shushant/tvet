@@ -91,6 +91,16 @@ async function runMigrations() {
       created_at TIMESTAMPTZ DEFAULT NOW()
     )`,
     `ALTER TABLE occupation_tools ADD COLUMN IF NOT EXISTS name TEXT`,
+    `CREATE TABLE IF NOT EXISTS institute_infrastructure (
+      id SERIAL PRIMARY KEY,
+      institute_id INTEGER NOT NULL REFERENCES institutes(id) ON DELETE CASCADE,
+      particular TEXT NOT NULL,
+      description TEXT,
+      unit TEXT,
+      size TEXT,
+      remark TEXT,
+      sort_order INTEGER DEFAULT 0
+    )`,
   ];
   for (const sql of migrations) {
     try { await pool.query(sql); }
@@ -160,6 +170,7 @@ fastify.register(require('./routes/summary'),         { prefix: '/api/summary' }
 fastify.register(require('./routes/documents'),       { prefix: '/api/documents' });
 fastify.register(require('./routes/locations'),       { prefix: '/api/locations' });
 fastify.register(require('./routes/occupation-tools'), { prefix: '/api/occupation-tools' });
+fastify.register(require('./routes/infrastructure'),   { prefix: '/api/infrastructure' });
 
 // ─── SPA FALLBACK ─────────────────────────────────────────────────────────────
 fastify.setNotFoundHandler((request, reply) => {
