@@ -857,8 +857,9 @@ function InfrastructureTab({ instituteId, token, canEdit }) {
   const [rows, setRows] = useState(null);
   const [editingId, setEditingId] = useState(null);
   const [editForm, setEditForm] = useState({});
-  const [addForm, setAddForm] = useState(INFRA_BLANK);
+  const [bulkRows, setBulkRows] = useState([{...INFRA_BLANK}]);
   const [adding, setAdding] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [err, setErr] = useState('');
 
   useEffect(() => {
@@ -884,13 +885,22 @@ function InfrastructureTab({ instituteId, token, canEdit }) {
     reload();
   };
 
-  const saveAdd = async () => {
-    if (!addForm.particular.trim()) return setErr('Particular is required.');
-    setErr('');
-    await api('POST', '/infrastructure', { institute_id: instituteId, ...addForm }, token);
-    setAddForm(INFRA_BLANK);
-    setAdding(false);
-    reload();
+  const updateBulk = (i, field, value) => setBulkRows(prev => prev.map((r, idx) => idx === i ? {...r, [field]: value} : r));
+  const addBulkRow = () => setBulkRows(prev => [...prev, {...INFRA_BLANK}]);
+  const removeBulkRow = (i) => setBulkRows(prev => prev.length === 1 ? prev : prev.filter((_, idx) => idx !== i));
+
+  const cancelAdd = () => { setAdding(false); setBulkRows([{...INFRA_BLANK}]); setErr(''); };
+
+  const saveBulk = async () => {
+    const valid = bulkRows.filter(r => r.particular.trim());
+    if (!valid.length) return setErr('At least one row must have a Particular.');
+    setErr(''); setSaving(true);
+    try {
+      await Promise.all(valid.map((r, i) => api('POST', '/infrastructure', { institute_id: instituteId, ...r, sort_order: (rows?.length || 0) + i }, token)));
+      setBulkRows([{...INFRA_BLANK}]);
+      setAdding(false);
+      reload();
+    } finally { setSaving(false); }
   };
 
   if (!rows) return <div style={{padding:24, color:'var(--text3)'}}>Loading…</div>;
@@ -903,7 +913,7 @@ function InfrastructureTab({ instituteId, token, canEdit }) {
     <div>
       <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:12}}>
         <div style={{fontSize:13, color:'var(--text2)'}}>D1 — Office Space and Training Facilities (for ENSSURE report)</div>
-        {canEdit && !adding && <button className="btn btn-primary btn-sm" onClick={()=>setAdding(true)}>+ Add row</button>}
+        {canEdit && !adding && <button className="btn btn-primary btn-sm" onClick={()=>setAdding(true)}>+ Add rows</button>}
       </div>
       {err && <div style={{color:'#c00', marginBottom:8, fontSize:13}}>{err}</div>}
       <div className="table-wrap">
@@ -944,30 +954,61 @@ function InfrastructureTab({ instituteId, token, canEdit }) {
                 </td>}
               </tr>
             ))}
-            {adding && (
-              <tr>
-                <td style={{...tdS, textAlign:'center'}}>{rows.length+1}</td>
-                {['particular','description','unit','size'].map(f=>(
-                  <td key={f} style={tdS}><input style={inp} placeholder={f==='particular'?'e.g. Classroom':''} value={addForm[f]} onChange={e=>setAddForm(p=>({...p,[f]:e.target.value}))} /></td>
-                ))}
-                <td style={tdS}>
-                  <select style={inp} value={addForm.ownership} onChange={e=>setAddForm(p=>({...p,ownership:e.target.value}))}>
-                    {OWNERSHIP_OPTS.map(o=><option key={o}>{o}</option>)}
-                  </select>
-                </td>
-                <td style={tdS}><input style={inp} value={addForm.remark} onChange={e=>setAddForm(p=>({...p,remark:e.target.value}))} /></td>
-                <td style={tdS}>
-                  <button className="btn btn-primary btn-sm" style={{marginRight:4}} onClick={saveAdd}>Add</button>
-                  <button className="btn btn-ghost btn-sm" onClick={()=>{setAdding(false);setErr('');}}>Cancel</button>
-                </td>
-              </tr>
-            )}
             {rows.length === 0 && !adding && (
-              <tr><td colSpan={canEdit?8:7} style={{...tdS, textAlign:'center', color:'var(--text3)', padding:24}}>No infrastructure rows yet. Click "+ Add row" to begin.</td></tr>
+              <tr><td colSpan={canEdit?8:7} style={{...tdS, textAlign:'center', color:'var(--text3)', padding:24}}>No infrastructure rows yet. Click "+ Add rows" to begin.</td></tr>
             )}
           </tbody>
         </table>
       </div>
+
+      {/* Bulk add panel */}
+      {adding && (
+        <div style={{marginTop:16, border:'1px solid var(--border)', borderRadius:6, padding:12, background:'var(--bg2)'}}>
+          <div style={{fontWeight:600, fontSize:13, marginBottom:8}}>Add rows</div>
+          <div className="table-wrap">
+            <table style={{width:'100%', borderCollapse:'collapse'}}>
+              <thead>
+                <tr>
+                  <th style={thS}>#</th>
+                  <th style={thS}>Particular *</th>
+                  <th style={thS}>Description</th>
+                  <th style={thS}>Unit (Number)</th>
+                  <th style={thS}>Size</th>
+                  <th style={thS}>Ownership</th>
+                  <th style={thS}>Remark</th>
+                  <th style={thS}></th>
+                </tr>
+              </thead>
+              <tbody>
+                {bulkRows.map((r, i) => (
+                  <tr key={i}>
+                    <td style={{...tdS, textAlign:'center', color:'var(--text3)', width:36}}>{rows.length + i + 1}</td>
+                    <td style={tdS}><input style={inp} placeholder="e.g. Classroom" value={r.particular} onChange={e=>updateBulk(i,'particular',e.target.value)} /></td>
+                    <td style={tdS}><input style={inp} value={r.description} onChange={e=>updateBulk(i,'description',e.target.value)} /></td>
+                    <td style={tdS}><input style={inp} value={r.unit} onChange={e=>updateBulk(i,'unit',e.target.value)} /></td>
+                    <td style={tdS}><input style={inp} value={r.size} onChange={e=>updateBulk(i,'size',e.target.value)} /></td>
+                    <td style={tdS}>
+                      <select style={inp} value={r.ownership} onChange={e=>updateBulk(i,'ownership',e.target.value)}>
+                        {OWNERSHIP_OPTS.map(o=><option key={o}>{o}</option>)}
+                      </select>
+                    </td>
+                    <td style={tdS}><input style={inp} value={r.remark} onChange={e=>updateBulk(i,'remark',e.target.value)} /></td>
+                    <td style={{...tdS, textAlign:'center'}}>
+                      <button className="btn btn-danger btn-sm" onClick={()=>removeBulkRow(i)} disabled={bulkRows.length===1}>✕</button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <div style={{display:'flex', gap:8, marginTop:10, alignItems:'center'}}>
+            <button className="btn btn-ghost btn-sm" onClick={addBulkRow}>+ Add another row</button>
+            <div style={{flex:1}}/>
+            <button className="btn btn-ghost btn-sm" onClick={cancelAdd}>Cancel</button>
+            <button className="btn btn-primary btn-sm" onClick={saveBulk} disabled={saving}>{saving ? 'Saving…' : `Save ${bulkRows.filter(r=>r.particular.trim()).length || ''} row(s)`}</button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
