@@ -1,5 +1,4 @@
 // routes/locations.js — Province / District / Local Level management
-const router = require('express').Router();
 const { pool } = require('../db/pool');
 const { authenticate, requireAdmin, requireSuperAdmin } = require('../middleware/auth');
 
@@ -3553,7 +3552,6 @@ async function ensureTables() {
       UNIQUE(district_id, name)
     )
   `);
-  // Seed Nepal data if empty
   const { rows } = await pool.query('SELECT COUNT(*) FROM provinces');
   if (parseInt(rows[0].count) === 0) {
     for (const prov of NEPAL_SEED) {
@@ -3582,11 +3580,10 @@ async function ensureTables() {
   tableReady = true;
 }
 
-router.use(authenticate);
+async function plugin(fastify, opts) {
+  fastify.addHook('preHandler', authenticate);
 
-// GET /api/locations — full hierarchy
-router.get('/', async (req, res, next) => {
-  try {
+  fastify.get('/', async (request, reply) => {
     await ensureTables();
     const provs = (await pool.query('SELECT * FROM provinces ORDER BY sort_order, name')).rows;
     const dists = (await pool.query('SELECT * FROM districts ORDER BY sort_order, name')).rows;
@@ -3597,96 +3594,74 @@ router.get('/', async (req, res, next) => {
       d.local_levels = lls.filter(ll => ll.district_id === d.id);
       distMap[d.province_id].push(d);
     });
-    const result = provs.map(p => ({ ...p, districts: distMap[p.id] || [] }));
-    res.json(result);
-  } catch(e) { next(e); }
-});
+    return provs.map(p => ({ ...p, districts: distMap[p.id] || [] }));
+  });
 
-// ── Provinces ──────────────────────────────────────────────────────────────
-router.post('/provinces', requireSuperAdmin, async (req, res, next) => {
-  try {
+  fastify.post('/provinces', { preHandler: requireSuperAdmin }, async (request, reply) => {
     await ensureTables();
-    const { name } = req.body;
-    if (!name?.trim()) return res.status(400).json({ error: 'name required' });
+    const { name } = request.body;
+    if (!name?.trim()) return reply.code(400).send({ error: 'name required' });
     const { rows } = await pool.query('INSERT INTO provinces (name) VALUES ($1) RETURNING *', [name.trim()]);
-    res.status(201).json(rows[0]);
-  } catch(e) { next(e); }
-});
+    return reply.code(201).send(rows[0]);
+  });
 
-router.put('/provinces/:id', requireSuperAdmin, async (req, res, next) => {
-  try {
-    const { name } = req.body;
-    if (!name?.trim()) return res.status(400).json({ error: 'name required' });
-    const { rows } = await pool.query('UPDATE provinces SET name=$1 WHERE id=$2 RETURNING *', [name.trim(), req.params.id]);
-    if (!rows.length) return res.status(404).json({ error: 'Not found' });
-    res.json(rows[0]);
-  } catch(e) { next(e); }
-});
+  fastify.put('/provinces/:id', { preHandler: requireSuperAdmin }, async (request, reply) => {
+    const { name } = request.body;
+    if (!name?.trim()) return reply.code(400).send({ error: 'name required' });
+    const { rows } = await pool.query('UPDATE provinces SET name=$1 WHERE id=$2 RETURNING *', [name.trim(), request.params.id]);
+    if (!rows.length) return reply.code(404).send({ error: 'Not found' });
+    return rows[0];
+  });
 
-router.delete('/provinces/:id', requireSuperAdmin, async (req, res, next) => {
-  try {
-    const { rows } = await pool.query('DELETE FROM provinces WHERE id=$1 RETURNING id', [req.params.id]);
-    if (!rows.length) return res.status(404).json({ error: 'Not found' });
-    res.json({ deleted: true });
-  } catch(e) { next(e); }
-});
+  fastify.delete('/provinces/:id', { preHandler: requireSuperAdmin }, async (request, reply) => {
+    const { rows } = await pool.query('DELETE FROM provinces WHERE id=$1 RETURNING id', [request.params.id]);
+    if (!rows.length) return reply.code(404).send({ error: 'Not found' });
+    return { deleted: true };
+  });
 
-// ── Districts ──────────────────────────────────────────────────────────────
-router.post('/districts', requireSuperAdmin, async (req, res, next) => {
-  try {
+  fastify.post('/districts', { preHandler: requireSuperAdmin }, async (request, reply) => {
     await ensureTables();
-    const { name, province_id } = req.body;
-    if (!name?.trim() || !province_id) return res.status(400).json({ error: 'name and province_id required' });
+    const { name, province_id } = request.body;
+    if (!name?.trim() || !province_id) return reply.code(400).send({ error: 'name and province_id required' });
     const { rows } = await pool.query('INSERT INTO districts (province_id, name) VALUES ($1, $2) RETURNING *', [province_id, name.trim()]);
-    res.status(201).json(rows[0]);
-  } catch(e) { next(e); }
-});
+    return reply.code(201).send(rows[0]);
+  });
 
-router.put('/districts/:id', requireSuperAdmin, async (req, res, next) => {
-  try {
-    const { name } = req.body;
-    if (!name?.trim()) return res.status(400).json({ error: 'name required' });
-    const { rows } = await pool.query('UPDATE districts SET name=$1 WHERE id=$2 RETURNING *', [name.trim(), req.params.id]);
-    if (!rows.length) return res.status(404).json({ error: 'Not found' });
-    res.json(rows[0]);
-  } catch(e) { next(e); }
-});
+  fastify.put('/districts/:id', { preHandler: requireSuperAdmin }, async (request, reply) => {
+    const { name } = request.body;
+    if (!name?.trim()) return reply.code(400).send({ error: 'name required' });
+    const { rows } = await pool.query('UPDATE districts SET name=$1 WHERE id=$2 RETURNING *', [name.trim(), request.params.id]);
+    if (!rows.length) return reply.code(404).send({ error: 'Not found' });
+    return rows[0];
+  });
 
-router.delete('/districts/:id', requireSuperAdmin, async (req, res, next) => {
-  try {
-    const { rows } = await pool.query('DELETE FROM districts WHERE id=$1 RETURNING id', [req.params.id]);
-    if (!rows.length) return res.status(404).json({ error: 'Not found' });
-    res.json({ deleted: true });
-  } catch(e) { next(e); }
-});
+  fastify.delete('/districts/:id', { preHandler: requireSuperAdmin }, async (request, reply) => {
+    const { rows } = await pool.query('DELETE FROM districts WHERE id=$1 RETURNING id', [request.params.id]);
+    if (!rows.length) return reply.code(404).send({ error: 'Not found' });
+    return { deleted: true };
+  });
 
-// ── Local Levels ───────────────────────────────────────────────────────────
-router.post('/local-levels', requireSuperAdmin, async (req, res, next) => {
-  try {
+  fastify.post('/local-levels', { preHandler: requireSuperAdmin }, async (request, reply) => {
     await ensureTables();
-    const { name, type, district_id } = req.body;
-    if (!name?.trim() || !type || !district_id) return res.status(400).json({ error: 'name, type and district_id required' });
+    const { name, type, district_id } = request.body;
+    if (!name?.trim() || !type || !district_id) return reply.code(400).send({ error: 'name, type and district_id required' });
     const { rows } = await pool.query('INSERT INTO local_levels (district_id, name, type) VALUES ($1, $2, $3) RETURNING *', [district_id, name.trim(), type]);
-    res.status(201).json(rows[0]);
-  } catch(e) { next(e); }
-});
+    return reply.code(201).send(rows[0]);
+  });
 
-router.put('/local-levels/:id', requireSuperAdmin, async (req, res, next) => {
-  try {
-    const { name, type } = req.body;
-    if (!name?.trim() || !type) return res.status(400).json({ error: 'name and type required' });
-    const { rows } = await pool.query('UPDATE local_levels SET name=$1, type=$2 WHERE id=$3 RETURNING *', [name.trim(), type, req.params.id]);
-    if (!rows.length) return res.status(404).json({ error: 'Not found' });
-    res.json(rows[0]);
-  } catch(e) { next(e); }
-});
+  fastify.put('/local-levels/:id', { preHandler: requireSuperAdmin }, async (request, reply) => {
+    const { name, type } = request.body;
+    if (!name?.trim() || !type) return reply.code(400).send({ error: 'name and type required' });
+    const { rows } = await pool.query('UPDATE local_levels SET name=$1, type=$2 WHERE id=$3 RETURNING *', [name.trim(), type, request.params.id]);
+    if (!rows.length) return reply.code(404).send({ error: 'Not found' });
+    return rows[0];
+  });
 
-router.delete('/local-levels/:id', requireSuperAdmin, async (req, res, next) => {
-  try {
-    const { rows } = await pool.query('DELETE FROM local_levels WHERE id=$1 RETURNING id', [req.params.id]);
-    if (!rows.length) return res.status(404).json({ error: 'Not found' });
-    res.json({ deleted: true });
-  } catch(e) { next(e); }
-});
+  fastify.delete('/local-levels/:id', { preHandler: requireSuperAdmin }, async (request, reply) => {
+    const { rows } = await pool.query('DELETE FROM local_levels WHERE id=$1 RETURNING id', [request.params.id]);
+    if (!rows.length) return reply.code(404).send({ error: 'Not found' });
+    return { deleted: true };
+  });
+}
 
-module.exports = router;
+module.exports = plugin;

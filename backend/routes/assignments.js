@@ -1,29 +1,6 @@
 // routes/assignments.js
-const router = require('express').Router();
 const { pool } = require('../db/pool');
 const { authenticate, requireWriter, requireAdmin } = require('../middleware/auth');
-
-router.use(authenticate);
-
-router.get('/', async (req, res, next) => {
-  try {
-    const { institute_id, fy } = req.query;
-    let q = `SELECT a.*, c.short_name as client_short_name, c.full_name as client_full_name, c.type as client_type,
-      json_agg(ao.* ORDER BY ao.sort_order) FILTER (WHERE ao.id IS NOT NULL) as occupations,
-      json_agg(al.* ORDER BY al.sort_order) FILTER (WHERE al.id IS NOT NULL) as locations
-      FROM assignments a
-      LEFT JOIN clients c ON c.id = a.client_id
-      LEFT JOIN assignment_occupations ao ON ao.assignment_id = a.id
-      LEFT JOIN assignment_locations al ON al.assignment_id = a.id
-      WHERE 1=1`;
-    const params = [];
-    if (institute_id) { params.push(institute_id); q += ` AND a.institute_id = $${params.length}`; }
-    if (fy) { params.push(fy); q += ` AND a.fiscal_year = $${params.length}`; }
-    q += ' GROUP BY a.id, c.id ORDER BY a.fiscal_year DESC, a.id';
-    const { rows } = await pool.query(q, params);
-    res.json(rows);
-  } catch(e) { next(e); }
-});
 
 function insertOccupation(client, assignmentId, o, i) {
   return client.query(
@@ -49,102 +26,124 @@ function insertOccupation(client, assignmentId, o, i) {
   );
 }
 
-router.post('/', requireWriter, async (req, res, next) => {
-  const client = await pool.connect();
-  try {
-    await client.query('BEGIN');
-    const { institute_id, client_id, client_name_manual, fiscal_year, assignment_name, training_type,
-      contract_value, contract_amount, start_date, end_date, start_fy, end_fy,
-      remarks, reference_file, reference_file_name, is_gesi, is_residential,
-      is_jv, jv_role, jv_partners,
-      country, description_of_work, duration_months, total_person_months, own_service_value,
-      jv_partner_names, jv_partner_person_months, narrative_description, actual_services_description,
-      num_groups, duration_days,
-      occupations = [], locations = [] } = req.body;
+async function plugin(fastify, opts) {
+  fastify.addHook('preHandler', authenticate);
 
-    if (!institute_id || !fiscal_year || !assignment_name)
-      return res.status(400).json({ error: 'institute_id, fiscal_year, assignment_name required' });
+  fastify.get('/', async (request, reply) => {
+    const { institute_id, fy } = request.query;
+    let q = `SELECT a.*, c.short_name as client_short_name, c.full_name as client_full_name, c.type as client_type,
+      json_agg(ao.* ORDER BY ao.sort_order) FILTER (WHERE ao.id IS NOT NULL) as occupations,
+      json_agg(al.* ORDER BY al.sort_order) FILTER (WHERE al.id IS NOT NULL) as locations
+      FROM assignments a
+      LEFT JOIN clients c ON c.id = a.client_id
+      LEFT JOIN assignment_occupations ao ON ao.assignment_id = a.id
+      LEFT JOIN assignment_locations al ON al.assignment_id = a.id
+      WHERE 1=1`;
+    const params = [];
+    if (institute_id) { params.push(institute_id); q += ` AND a.institute_id = $${params.length}`; }
+    if (fy) { params.push(fy); q += ` AND a.fiscal_year = $${params.length}`; }
+    q += ' GROUP BY a.id, c.id ORDER BY a.fiscal_year DESC, a.id';
+    const { rows } = await pool.query(q, params);
+    return rows;
+  });
 
-    const { rows: [asgn] } = await client.query(
-      `INSERT INTO assignments (institute_id,client_id,client_name_manual,fiscal_year,assignment_name,training_type,
-        contract_value,start_date,end_date,start_fy,end_fy,remarks,reference_file,reference_file_name,
-        is_gesi,is_residential,is_jv,jv_role,jv_partners,
-        country,description_of_work,duration_months,total_person_months,own_service_value,
-        jv_partner_names,jv_partner_person_months,narrative_description,actual_services_description,
-        num_groups,duration_days)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,
-        $20,$21,$22,$23,$24,$25,$26,$27,$28,$29,$30) RETURNING *`,
-      [institute_id, client_id||null, client_name_manual||null, fiscal_year, assignment_name, training_type,
-       contract_value||contract_amount||null, start_date||null, end_date||null, start_fy||null, end_fy||null,
-       remarks, reference_file||null, reference_file_name||null,
-       !!is_gesi, !!is_residential, !!is_jv, is_jv ? (jv_role||'Lead') : null, is_jv ? (jv_partners||null) : null,
-       country||'Nepal', description_of_work||null, duration_months||null, total_person_months||null, own_service_value||null,
-       jv_partner_names||null, jv_partner_person_months||null, narrative_description||null, actual_services_description||null,
-       num_groups||null, duration_days||null]
-    );
+  fastify.post('/', { preHandler: requireWriter }, async (request, reply) => {
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+      const { institute_id, client_id, client_name_manual, fiscal_year, assignment_name, training_type,
+        contract_value, contract_amount, start_date, end_date, start_fy, end_fy,
+        remarks, reference_file, reference_file_name, is_gesi, is_residential,
+        is_jv, jv_role, jv_partners,
+        country, description_of_work, duration_months, total_person_months, own_service_value,
+        jv_partner_names, jv_partner_person_months, narrative_description, actual_services_description,
+        num_groups, duration_days,
+        occupations = [], locations = [] } = request.body;
 
-    for (let i = 0; i < occupations.length; i++) {
-      await insertOccupation(client, asgn.id, occupations[i], i);
-    }
+      if (!institute_id || !fiscal_year || !assignment_name) {
+        await client.query('ROLLBACK');
+        return reply.code(400).send({ error: 'institute_id, fiscal_year, assignment_name required' });
+      }
 
-    await client.query('COMMIT');
-    res.status(201).json(asgn);
-  } catch(e) { await client.query('ROLLBACK'); next(e); }
-  finally { client.release(); }
-});
+      const { rows: [asgn] } = await client.query(
+        `INSERT INTO assignments (institute_id,client_id,client_name_manual,fiscal_year,assignment_name,training_type,
+          contract_value,start_date,end_date,start_fy,end_fy,remarks,reference_file,reference_file_name,
+          is_gesi,is_residential,is_jv,jv_role,jv_partners,
+          country,description_of_work,duration_months,total_person_months,own_service_value,
+          jv_partner_names,jv_partner_person_months,narrative_description,actual_services_description,
+          num_groups,duration_days)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,
+          $20,$21,$22,$23,$24,$25,$26,$27,$28,$29,$30) RETURNING *`,
+        [institute_id, client_id||null, client_name_manual||null, fiscal_year, assignment_name, training_type,
+         contract_value||contract_amount||null, start_date||null, end_date||null, start_fy||null, end_fy||null,
+         remarks, reference_file||null, reference_file_name||null,
+         !!is_gesi, !!is_residential, !!is_jv, is_jv ? (jv_role||'Lead') : null, is_jv ? (jv_partners||null) : null,
+         country||'Nepal', description_of_work||null, duration_months||null, total_person_months||null, own_service_value||null,
+         jv_partner_names||null, jv_partner_person_months||null, narrative_description||null, actual_services_description||null,
+         num_groups||null, duration_days||null]
+      );
 
-router.put('/:id', requireWriter, async (req, res, next) => {
-  const client = await pool.connect();
-  try {
-    await client.query('BEGIN');
-    const { id } = req.params;
-    const { client_id, client_name_manual, fiscal_year, assignment_name, training_type,
-      contract_value, contract_amount, start_date, end_date, start_fy, end_fy,
-      remarks, reference_file, reference_file_name, is_gesi, is_residential,
-      is_jv, jv_role, jv_partners,
-      country, description_of_work, duration_months, total_person_months, own_service_value,
-      jv_partner_names, jv_partner_person_months, narrative_description, actual_services_description,
-      num_groups, duration_days,
-      occupations = [], locations = [] } = req.body;
+      for (let i = 0; i < occupations.length; i++) {
+        await insertOccupation(client, asgn.id, occupations[i], i);
+      }
 
-    const { rows } = await client.query(
-      `UPDATE assignments SET client_id=$1,client_name_manual=$2,fiscal_year=$3,assignment_name=$4,training_type=$5,
-        contract_value=$6,start_date=$7,end_date=$8,start_fy=$9,end_fy=$10,remarks=$11,
-        reference_file=$12,reference_file_name=$13,is_gesi=$14,is_residential=$15,
-        is_jv=$16,jv_role=$17,jv_partners=$18,
-        country=$19,description_of_work=$20,duration_months=$21,total_person_months=$22,own_service_value=$23,
-        jv_partner_names=$24,jv_partner_person_months=$25,narrative_description=$26,actual_services_description=$27,
-        num_groups=$28,duration_days=$29
-       WHERE id=$30 RETURNING *`,
-      [client_id||null, client_name_manual||null, fiscal_year, assignment_name, training_type,
-       contract_value||contract_amount||null, start_date||null, end_date||null, start_fy||null, end_fy||null,
-       remarks, reference_file||null, reference_file_name||null,
-       !!is_gesi, !!is_residential,
-       !!is_jv, is_jv ? (jv_role||'Lead') : null, is_jv ? (jv_partners||null) : null,
-       country||'Nepal', description_of_work||null, duration_months||null, total_person_months||null, own_service_value||null,
-       jv_partner_names||null, jv_partner_person_months||null, narrative_description||null, actual_services_description||null,
-       num_groups||null, duration_days||null, id]
-    );
-    if (!rows.length) { await client.query('ROLLBACK'); return res.status(404).json({ error: 'Not found' }); }
+      await client.query('COMMIT');
+      return reply.code(201).send(asgn);
+    } catch(e) { await client.query('ROLLBACK'); throw e; }
+    finally { client.release(); }
+  });
 
-    await client.query('DELETE FROM assignment_occupations WHERE assignment_id = $1', [id]);
-    await client.query('DELETE FROM assignment_locations WHERE assignment_id = $1', [id]);
+  fastify.put('/:id', { preHandler: requireWriter }, async (request, reply) => {
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+      const { id } = request.params;
+      const { client_id, client_name_manual, fiscal_year, assignment_name, training_type,
+        contract_value, contract_amount, start_date, end_date, start_fy, end_fy,
+        remarks, reference_file, reference_file_name, is_gesi, is_residential,
+        is_jv, jv_role, jv_partners,
+        country, description_of_work, duration_months, total_person_months, own_service_value,
+        jv_partner_names, jv_partner_person_months, narrative_description, actual_services_description,
+        num_groups, duration_days,
+        occupations = [], locations = [] } = request.body;
 
-    for (let i = 0; i < occupations.length; i++) {
-      await insertOccupation(client, id, occupations[i], i);
-    }
+      const { rows } = await client.query(
+        `UPDATE assignments SET client_id=$1,client_name_manual=$2,fiscal_year=$3,assignment_name=$4,training_type=$5,
+          contract_value=$6,start_date=$7,end_date=$8,start_fy=$9,end_fy=$10,remarks=$11,
+          reference_file=$12,reference_file_name=$13,is_gesi=$14,is_residential=$15,
+          is_jv=$16,jv_role=$17,jv_partners=$18,
+          country=$19,description_of_work=$20,duration_months=$21,total_person_months=$22,own_service_value=$23,
+          jv_partner_names=$24,jv_partner_person_months=$25,narrative_description=$26,actual_services_description=$27,
+          num_groups=$28,duration_days=$29
+         WHERE id=$30 RETURNING *`,
+        [client_id||null, client_name_manual||null, fiscal_year, assignment_name, training_type,
+         contract_value||contract_amount||null, start_date||null, end_date||null, start_fy||null, end_fy||null,
+         remarks, reference_file||null, reference_file_name||null,
+         !!is_gesi, !!is_residential,
+         !!is_jv, is_jv ? (jv_role||'Lead') : null, is_jv ? (jv_partners||null) : null,
+         country||'Nepal', description_of_work||null, duration_months||null, total_person_months||null, own_service_value||null,
+         jv_partner_names||null, jv_partner_person_months||null, narrative_description||null, actual_services_description||null,
+         num_groups||null, duration_days||null, id]
+      );
+      if (!rows.length) { await client.query('ROLLBACK'); return reply.code(404).send({ error: 'Not found' }); }
 
-    await client.query('COMMIT');
-    res.json(rows[0]);
-  } catch(e) { await client.query('ROLLBACK'); next(e); }
-  finally { client.release(); }
-});
+      await client.query('DELETE FROM assignment_occupations WHERE assignment_id = $1', [id]);
+      await client.query('DELETE FROM assignment_locations WHERE assignment_id = $1', [id]);
 
-router.delete('/:id', requireAdmin, async (req, res, next) => {
-  try {
-    await pool.query('DELETE FROM assignments WHERE id = $1', [req.params.id]);
-    res.json({ deleted: true });
-  } catch(e) { next(e); }
-});
+      for (let i = 0; i < occupations.length; i++) {
+        await insertOccupation(client, id, occupations[i], i);
+      }
 
-module.exports = router;
+      await client.query('COMMIT');
+      return rows[0];
+    } catch(e) { await client.query('ROLLBACK'); throw e; }
+    finally { client.release(); }
+  });
+
+  fastify.delete('/:id', { preHandler: requireAdmin }, async (request, reply) => {
+    await pool.query('DELETE FROM assignments WHERE id = $1', [request.params.id]);
+    return { deleted: true };
+  });
+}
+
+module.exports = plugin;
