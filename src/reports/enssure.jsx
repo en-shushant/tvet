@@ -30,7 +30,10 @@ function getOccLevel(occ, occupations) {
 
 function occLocationStr(occ) {
   return (occ.locations || [])
-    .map(l => [l.palika, l.district, l.province].filter(Boolean).join(', '))
+    .map(l => {
+      const localLevels = (l.localLevels || []).map(ll => ll.name).filter(Boolean);
+      return [...localLevels, l.district, l.province].filter(Boolean).join(', ');
+    })
     .filter(Boolean).join('; ') || '—';
 }
 
