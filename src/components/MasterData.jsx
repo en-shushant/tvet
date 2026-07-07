@@ -213,6 +213,7 @@ function MasterData({clients, onUpdateClients, token, isAdmin, isEditor, isSuper
           <div className="form-group"><label>Level <span style={{fontWeight:400,color:'var(--text3)'}}>(optional)</span></label>
             <select value={form.level||''} onChange={e=>set('level',e.target.value)}>
               <option value="">— Not specified —</option>
+              <option>N/A</option>
               <option>Level 1</option>
               <option>Level 2</option>
               <option>Level 3</option>
@@ -467,6 +468,7 @@ function MasterData({clients, onUpdateClients, token, isAdmin, isEditor, isSuper
                   </span>
                   <span style={{margin:'0 8px', color:'var(--text3)'}}>—</span>
                   <select value={toolsLevel} onChange={e=>{ setToolsLevel(e.target.value); loadTools(toolsOccId, e.target.value); setToolsSelected([]); }} style={{fontSize:13, padding:'3px 8px', borderRadius:4, border:'1px solid var(--border)'}}>
+                    <option>N/A</option>
                     <option>Level 1</option>
                     <option>Level 2</option>
                     <option>Level 3</option>

@@ -132,7 +132,7 @@ function QuickAddOccupationModal({name, onSave, onClose}) {
       <div className="form-group"><label>Level (optional)</label>
         <select value={form.level} onChange={e=>set('level',e.target.value)}>
           <option value="">— Not specified —</option>
-          <option>Level 1</option><option>Level 2</option><option>Level 3</option><option>Professional</option>
+          <option>N/A</option><option>Level 1</option><option>Level 2</option><option>Level 3</option><option>Professional</option>
         </select>
       </div>
     </Modal>
@@ -533,7 +533,7 @@ function ExperienceForm({exp, clients, institute, onSave, onClose, onDuplicate, 
             </div>
             <div className="form-row" style={{gridTemplateColumns:'1fr 1fr 1fr 1fr 1fr 1fr', gap:8, marginBottom:8}}>
               <div><label>Duration (hrs)</label><input type="number" value={occ.duration} onChange={e=>setOcc(i,'duration',e.target.value)}/></div>
-              <div><label>Level</label><select value={occ.level||''} onChange={e=>setOcc(i,'level',e.target.value)}><option value="">—</option><option>Level 1</option><option>Level 2</option><option>Level 3</option><option>Professional</option></select></div>
+              <div><label>Level</label><select value={occ.level||''} onChange={e=>setOcc(i,'level',e.target.value)}><option value="">—</option><option>N/A</option><option>Level 1</option><option>Level 2</option><option>Level 3</option><option>Professional</option></select></div>
               <div><label>Trainees</label><input type="number" value={occ.trainees} onChange={e=>setOcc(i,'trainees',e.target.value)}/></div>
               <div><label>ST Appeared</label><input type="number" value={occ.skillTestAppeared} onChange={e=>setOcc(i,'skillTestAppeared',e.target.value)} placeholder="Optional"/></div>
               <div><label>ST Pass</label><input type="number" value={occ.skillTestPass} onChange={e=>setOcc(i,'skillTestPass',e.target.value)} placeholder="Optional"/></div>

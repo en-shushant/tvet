@@ -403,7 +403,7 @@ function ReportsView({ institutes, clients }) {
                 </select>
                 <div className="filter-label" style={{marginBottom:4}}>Level</div>
                 <select className="form-input" style={{marginBottom:6}} value={enssureToolsLevel} onChange={e => setEnssureToolsLevel(e.target.value)}>
-                  <option>Level 1</option><option>Level 2</option><option>Level 3</option><option>Professional</option><option>Technician</option>
+                  <option>N/A</option><option>Level 1</option><option>Level 2</option><option>Level 3</option><option>Professional</option><option>Technician</option>
                 </select>
                 <div className="filter-label" style={{marginBottom:4}}>Number of Events (multiplier)</div>
                 <input type="number" min="1" className="form-input" value={enssureEvents}
@@ -459,7 +459,7 @@ function ReportsView({ institutes, clients }) {
                   <div className="filter-label">Level</div>
                   <select className="form-input" value={toolsLevel} onChange={e => setToolsLevel(e.target.value)}>
                     <option value="">— Select level —</option>
-                    <option>Level 1</option><option>Level 2</option><option>Level 3</option><option>Professional</option>
+                    <option>N/A</option><option>Level 1</option><option>Level 2</option><option>Level 3</option><option>Professional</option>
                   </select>
                 </div>
 
