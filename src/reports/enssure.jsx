@@ -41,10 +41,20 @@ function buildProgram(occ) {
   return parts.join(', ') || '—';
 }
 
-function buildC1Rows(activeExps, occupations) {
+function durationMatches(occ, filterDuration) {
+  if (!filterDuration) return true;
+  const d = parseFloat(occ.duration) || 0;
+  if (filterDuration === '160plus') return d >= 160;
+  if (filterDuration === '390plus') return d >= 390;
+  if (filterDuration === '390more') return d > 390;
+  return true;
+}
+
+function buildC1Rows(activeExps, occupations, filterDuration) {
   const rows = [];
   for (const exp of activeExps) {
     for (const occ of (exp.occupations || [])) {
+      if (!durationMatches(occ, filterDuration)) continue;
       rows.push({
         occupation: getOccName(occ, occupations),
         program: buildProgram(occ),
@@ -59,10 +69,10 @@ function buildC1Rows(activeExps, occupations) {
   return rows;
 }
 
-function buildC2Rows(activeExps, occupations, proposedOccs = []) {
+function buildC2Rows(activeExps, occupations, proposedOccs = [], filterDuration = '') {
   if (!proposedOccs.length) return [];
   const names = proposedOccs.map(n => n.toLowerCase().trim());
-  return buildC1Rows(activeExps, occupations).filter(r =>
+  return buildC1Rows(activeExps, occupations, filterDuration).filter(r =>
     names.some(n => r.occupation.toLowerCase().trim().includes(n) || n.includes(r.occupation.toLowerCase().trim()))
   );
 }
@@ -83,7 +93,8 @@ function SectionTitle({ children }) {
 
 function ENSSUREReport({ fullInst, activeExps, occupations, opts = {} }) {
   const { fromFY, toFY, enssureOccs = [], enssureOccIds = [],
-          enssureToolsOccId = '', enssureToolsLevel = 'Level 1', enssureEvents = 1 } = opts;
+          enssureToolsOccId = '', enssureToolsLevel = 'Level 1', enssureEvents = 1,
+          filterDuration = '' } = opts;
   const [toolsData, setToolsData] = useState([]);
 
   const taxRows = (fullInst?.taxClearance || [])
@@ -93,8 +104,8 @@ function ENSSUREReport({ fullInst, activeExps, occupations, opts = {} }) {
   const totalTurnover    = taxRows.reduce((s, t) => s + (parseFloat(t.turnover) || 0), 0);
   const totalTaxable     = taxRows.reduce((s, t) => s + (parseFloat(t.taxableIncome) || 0), 0);
 
-  const c1 = buildC1Rows(activeExps, occupations);
-  const c2 = buildC2Rows(activeExps, occupations, enssureOccs);
+  const c1 = buildC1Rows(activeExps, occupations, filterDuration);
+  const c2 = buildC2Rows(activeExps, occupations, enssureOccs, filterDuration);
 
   useEffect(() => {
     if (!enssureToolsOccId || !enssureToolsLevel) { setToolsData([]); return; }
@@ -270,7 +281,7 @@ function ENSSUREReport({ fullInst, activeExps, occupations, opts = {} }) {
 function esc(s) { return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 
 function buildENSSUREPrintHTML(fullInst, activeExps, clients, reportId, fyRangeLabel, opts = {}) {
-  const { fromFY, toFY, enssureOccs = [], occupations = [], enssureToolsData = [], enssureEvents = 1 } = opts;
+  const { fromFY, toFY, enssureOccs = [], occupations = [], enssureToolsData = [], enssureEvents = 1, filterDuration = '' } = opts;
 
   const taxRows = (fullInst?.taxClearance || [])
     .filter(t => fyInRange(t.fy, fromFY || null, toFY || null))
@@ -281,8 +292,8 @@ function buildENSSUREPrintHTML(fullInst, activeExps, clients, reportId, fyRangeL
   const events = Math.max(1, parseInt(enssureEvents) || 1);
   const applyEv = t => ({ ...t, quantity: t.quantity != null ? t.quantity * events : null });
 
-  const c1 = buildC1Rows(activeExps, occupations);
-  const c2 = buildC2Rows(activeExps, occupations, enssureOccs);
+  const c1 = buildC1Rows(activeExps, occupations, filterDuration);
+  const c2 = buildC2Rows(activeExps, occupations, enssureOccs, filterDuration);
   const safetyTools = enssureToolsData.filter(t => (t.type||'').toLowerCase().includes('safety')).map(applyEv);
   const equipTools  = enssureToolsData.filter(t => !(t.type||'').toLowerCase().includes('safety') && !(t.type||'').toLowerCase().includes('stationery')).map(applyEv);
 
@@ -391,7 +402,7 @@ function subHead(text) {
 function spacer() { return new Paragraph({ spacing: { before: 80 }, children: [] }); }
 
 async function downloadENSSUREDOCX(fullInst, activeExps, reportId, opts = {}) {
-  const { fromFY, toFY, enssureOccs = [], occupations = [], enssureToolsData = [], enssureEvents = 1 } = opts;
+  const { fromFY, toFY, enssureOccs = [], occupations = [], enssureToolsData = [], enssureEvents = 1, filterDuration = '' } = opts;
   const firmName = fullInst?.name || 'Firm';
   const fyLabel = fromFY || toFY ? `FY ${fromFY || '…'} – ${toFY || '…'}` : '';
 
@@ -404,8 +415,8 @@ async function downloadENSSUREDOCX(fullInst, activeExps, reportId, opts = {}) {
   const events = Math.max(1, parseInt(enssureEvents) || 1);
   const applyEv = t => ({ ...t, quantity: t.quantity != null ? t.quantity * events : null });
 
-  const c1 = buildC1Rows(activeExps, occupations);
-  const c2 = buildC2Rows(activeExps, occupations, enssureOccs);
+  const c1 = buildC1Rows(activeExps, occupations, filterDuration);
+  const c2 = buildC2Rows(activeExps, occupations, enssureOccs, filterDuration);
   const safetyTools = enssureToolsData.filter(t => (t.type||'').toLowerCase().includes('safety')).map(applyEv);
   const equipTools  = enssureToolsData.filter(t => !(t.type||'').toLowerCase().includes('safety') && !(t.type||'').toLowerCase().includes('stationery')).map(applyEv);
 

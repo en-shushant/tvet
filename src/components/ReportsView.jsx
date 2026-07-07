@@ -253,7 +253,7 @@ function ReportsView({ institutes, clients }) {
   const opts = { fromFY, toFY, selectedOccs, occupations, sortBy,
     toolsOccIds, toolsLevel, toolsTypeFilter, toolsColumns, toolsLayout, toolsData, numGroups,
     enssureOccs, enssureOccIds, enssureToolsData, enssureToolsOccId, enssureToolsLevel, enssureEvents,
-    clients };
+    filterDuration, clients };
 
   const handlePrint = () => {
     const w = window.open('', '_blank');
