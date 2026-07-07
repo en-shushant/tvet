@@ -211,11 +211,11 @@ function ENSSUREReport({ fullInst, activeExps, occupations, opts = {} }) {
         <div style={{ fontWeight:600, marginBottom:4, fontSize:11 }}>D1. Office Space and Training Facilities</div>
         <table style={TBL}>
           <thead><tr>
-            {['S.N.','Particular','Description','Unit (Number)','Size','Remark'].map(h => <th key={h} style={TH}>{h}</th>)}
+            {['S.N.','Particular','Description','Unit (Number)','Size','Ownership','Remark'].map(h => <th key={h} style={TH}>{h}</th>)}
           </tr></thead>
           <tbody>
             {(fullInst?.infrastructure || []).length === 0
-              ? <tr><td colSpan={6} style={{...TDC, color:'#999', padding:12}}>No infrastructure data. Add rows in the institute's Infrastructure tab.</td></tr>
+              ? <tr><td colSpan={7} style={{...TDC, color:'#999', padding:12}}>No infrastructure data. Add rows in the institute's Infrastructure tab.</td></tr>
               : (fullInst.infrastructure).map((row, i) => (
                 <tr key={row.id}>
                   <td style={TDC}>{i+1}</td>
@@ -223,6 +223,7 @@ function ENSSUREReport({ fullInst, activeExps, occupations, opts = {} }) {
                   <td style={TD}>{row.description}</td>
                   <td style={TDC}>{row.unit}</td>
                   <td style={TD}>{row.size}</td>
+                  <td style={TDC}>{row.ownership||'Own'}</td>
                   <td style={TD}>{row.remark}</td>
                 </tr>
               ))
@@ -347,9 +348,9 @@ ${c2.length ? c2.map(expRow).join('') : `<tr><td colspan="8" class="c" style="co
 
 <h3>TECH D — Available Infrastructure and Equipment</h3>
 <h4>D1. Office Space and Training Facilities</h4>
-<table><thead><tr><th>S.N.</th><th>Particular</th><th>Description</th><th>Unit (Number)</th><th>Size</th><th>Remark</th></tr></thead><tbody>
-${(fullInst?.infrastructure||[]).length?fullInst.infrastructure.map((r,i)=>`<tr><td class="c">${i+1}</td><td>${esc(r.particular)}</td><td>${esc(r.description||'')}</td><td class="c">${esc(r.unit||'')}</td><td>${esc(r.size||'')}</td><td>${esc(r.remark||'')}</td></tr>`).join(''):
-`<tr><td colspan="6" class="c" style="color:#888">No infrastructure data.</td></tr>`}
+<table><thead><tr><th>S.N.</th><th>Particular</th><th>Description</th><th>Unit (Number)</th><th>Size</th><th>Ownership</th><th>Remark</th></tr></thead><tbody>
+${(fullInst?.infrastructure||[]).length?fullInst.infrastructure.map((r,i)=>`<tr><td class="c">${i+1}</td><td>${esc(r.particular)}</td><td>${esc(r.description||'')}</td><td class="c">${esc(r.unit||'')}</td><td>${esc(r.size||'')}</td><td class="c">${esc(r.ownership||'Own')}</td><td>${esc(r.remark||'')}</td></tr>`).join(''):
+`<tr><td colspan="7" class="c" style="color:#888">No infrastructure data.</td></tr>`}
 </tbody></table>
 
 <h4>D2. Safety Equipments</h4>
@@ -518,15 +519,15 @@ async function downloadENSSUREDOCX(fullInst, activeExps, reportId, opts = {}) {
 
   // D1
   children.push(subHead('D1. Office Space and Training Facilities'));
-  const d1ColW = [600, 1800, 2500, 1200, 1300, 1626];
+  const d1ColW = [500, 1600, 2200, 1000, 1100, 1000, 1626];
   const d1Rows = (fullInst?.infrastructure || []);
   children.push(new Table({
     width: { size: PW, type: WidthType.DXA }, columnWidths: d1ColW,
     rows: [
-      new TableRow({ tableHeader: true, children: ['S.N.','Particular','Description','Unit (Number)','Size','Remark'].map(h => hCell(h)) }),
+      new TableRow({ tableHeader: true, children: ['S.N.','Particular','Description','Unit (Number)','Size','Ownership','Remark'].map(h => hCell(h)) }),
       ...(d1Rows.length ? d1Rows.map((r,i) => new TableRow({ children: [
-        dCell(i+1,{center:true}), dCell(r.particular), dCell(r.description||''), dCell(r.unit||'',{center:true}), dCell(r.size||''), dCell(r.remark||''),
-      ]})) : [new TableRow({ children: [dCell('No infrastructure data.',{span:6})] })]),
+        dCell(i+1,{center:true}), dCell(r.particular), dCell(r.description||''), dCell(r.unit||'',{center:true}), dCell(r.size||''), dCell(r.ownership||'Own',{center:true}), dCell(r.remark||''),
+      ]})) : [new TableRow({ children: [dCell('No infrastructure data.',{span:7})] })]),
     ],
   }));
 

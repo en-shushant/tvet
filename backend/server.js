@@ -98,9 +98,11 @@ async function runMigrations() {
       description TEXT,
       unit TEXT,
       size TEXT,
+      ownership TEXT DEFAULT 'Own',
       remark TEXT,
       sort_order INTEGER DEFAULT 0
     )`,
+    `ALTER TABLE institute_infrastructure ADD COLUMN IF NOT EXISTS ownership TEXT DEFAULT 'Own'`,
   ];
   for (const sql of migrations) {
     try { await pool.query(sql); }

@@ -849,8 +849,9 @@ function InstituteDetail({institute, clients, onUpdateClients, onBack, onUpdate,
 }
 // ── Infrastructure Tab (D1 — Office Space and Training Facilities) ─────────────
 
-const INFRA_COLS = ['S.N.', 'Particular', 'Description', 'Unit (Number)', 'Size', 'Remark'];
-const INFRA_BLANK = { particular:'', description:'', unit:'', size:'', remark:'' };
+const INFRA_COLS = ['S.N.', 'Particular', 'Description', 'Unit (Number)', 'Size', 'Ownership', 'Remark'];
+const INFRA_BLANK = { particular:'', description:'', unit:'', size:'', ownership:'Own', remark:'' };
+const OWNERSHIP_OPTS = ['Own', 'Rented', 'Leased', 'Borrowed', 'Government'];
 
 function InfrastructureTab({ instituteId, token, canEdit }) {
   const [rows, setRows] = useState(null);
@@ -866,7 +867,7 @@ function InfrastructureTab({ instituteId, token, canEdit }) {
 
   const reload = () => api('GET', `/infrastructure/${instituteId}`, null, token).then(setRows);
 
-  const startEdit = (row) => { setEditingId(row.id); setEditForm({ particular: row.particular, description: row.description||'', unit: row.unit||'', size: row.size||'', remark: row.remark||'' }); };
+  const startEdit = (row) => { setEditingId(row.id); setEditForm({ particular: row.particular, description: row.description||'', unit: row.unit||'', size: row.size||'', ownership: row.ownership||'Own', remark: row.remark||'' }); };
   const cancelEdit = () => setEditingId(null);
 
   const saveEdit = async () => {
@@ -914,9 +915,15 @@ function InfrastructureTab({ instituteId, token, canEdit }) {
             {rows.map((row, i) => editingId === row.id ? (
               <tr key={row.id}>
                 <td style={tdS}>{i+1}</td>
-                {['particular','description','unit','size','remark'].map(f=>(
+                {['particular','description','unit','size'].map(f=>(
                   <td key={f} style={tdS}><input style={inp} value={editForm[f]} onChange={e=>setEditForm(p=>({...p,[f]:e.target.value}))} /></td>
                 ))}
+                <td style={tdS}>
+                  <select style={inp} value={editForm.ownership} onChange={e=>setEditForm(p=>({...p,ownership:e.target.value}))}>
+                    {OWNERSHIP_OPTS.map(o=><option key={o}>{o}</option>)}
+                  </select>
+                </td>
+                <td style={tdS}><input style={inp} value={editForm.remark} onChange={e=>setEditForm(p=>({...p,remark:e.target.value}))} /></td>
                 <td style={tdS}>
                   <button className="btn btn-primary btn-sm" style={{marginRight:4}} onClick={saveEdit}>Save</button>
                   <button className="btn btn-ghost btn-sm" onClick={cancelEdit}>Cancel</button>
@@ -929,6 +936,7 @@ function InfrastructureTab({ instituteId, token, canEdit }) {
                 <td style={tdS}>{row.description}</td>
                 <td style={{...tdS, textAlign:'center'}}>{row.unit}</td>
                 <td style={tdS}>{row.size}</td>
+                <td style={{...tdS, textAlign:'center'}}>{row.ownership||'Own'}</td>
                 <td style={tdS}>{row.remark}</td>
                 {canEdit && <td style={tdS}>
                   <button className="btn btn-ghost btn-sm" style={{marginRight:4}} onClick={()=>startEdit(row)}>✏</button>
@@ -939,9 +947,15 @@ function InfrastructureTab({ instituteId, token, canEdit }) {
             {adding && (
               <tr>
                 <td style={{...tdS, textAlign:'center'}}>{rows.length+1}</td>
-                {['particular','description','unit','size','remark'].map(f=>(
+                {['particular','description','unit','size'].map(f=>(
                   <td key={f} style={tdS}><input style={inp} placeholder={f==='particular'?'e.g. Classroom':''} value={addForm[f]} onChange={e=>setAddForm(p=>({...p,[f]:e.target.value}))} /></td>
                 ))}
+                <td style={tdS}>
+                  <select style={inp} value={addForm.ownership} onChange={e=>setAddForm(p=>({...p,ownership:e.target.value}))}>
+                    {OWNERSHIP_OPTS.map(o=><option key={o}>{o}</option>)}
+                  </select>
+                </td>
+                <td style={tdS}><input style={inp} value={addForm.remark} onChange={e=>setAddForm(p=>({...p,remark:e.target.value}))} /></td>
                 <td style={tdS}>
                   <button className="btn btn-primary btn-sm" style={{marginRight:4}} onClick={saveAdd}>Add</button>
                   <button className="btn btn-ghost btn-sm" onClick={()=>{setAdding(false);setErr('');}}>Cancel</button>
@@ -949,7 +963,7 @@ function InfrastructureTab({ instituteId, token, canEdit }) {
               </tr>
             )}
             {rows.length === 0 && !adding && (
-              <tr><td colSpan={canEdit?7:6} style={{...tdS, textAlign:'center', color:'var(--text3)', padding:24}}>No infrastructure rows yet. Click "+ Add row" to begin.</td></tr>
+              <tr><td colSpan={canEdit?8:7} style={{...tdS, textAlign:'center', color:'var(--text3)', padding:24}}>No infrastructure rows yet. Click "+ Add row" to begin.</td></tr>
             )}
           </tbody>
         </table>
