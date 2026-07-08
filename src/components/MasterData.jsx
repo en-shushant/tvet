@@ -62,9 +62,10 @@ function MasterData({clients, onUpdateClients, token, isAdmin, isEditor, isSuper
     loadTools(String(occId), level);
   };
 
-  const emptyRow = () => ({_key: uid(), name:'', description:'', unit:'', quantity:'', ownership:'Own', type:'Tool', remarks:''});
-  const addBulkRows = (n) => setBulkRows(prev => [...prev, ...Array.from({length:n}, emptyRow)]);
-  const enterBulkMode = () => { setBulkRows(Array.from({length:5}, emptyRow)); setToolsBulkMode(true); };
+  const [bulkType, setBulkType] = useState('Tool');
+  const emptyRow = (type='Tool') => ({_key: uid(), name:'', description:'', unit:'', quantity:'', ownership:'Own', type, remarks:''});
+  const addBulkRows = (n) => setBulkRows(prev => [...prev, ...Array.from({length:n}, () => emptyRow(bulkType))]);
+  const enterBulkMode = (type) => { setBulkType(type); setBulkRows(Array.from({length:5}, () => emptyRow(type))); setToolsBulkMode(true); };
 
   const loadTools = async (occId, level) => {
     if (!occId || !level) { setToolsList([]); return; }
@@ -480,7 +481,11 @@ function MasterData({clients, onUpdateClients, token, isAdmin, isEditor, isSuper
                     <button className="btn btn-danger btn-sm" onClick={deleteSelectedTools}>Delete {toolsSelected.length} selected</button>
                   )}
                   {canManageOccs && !toolsBulkMode && (
-                    <button className="btn btn-primary btn-sm" onClick={enterBulkMode}>+ Add items</button>
+                    <div style={{display:'flex', gap:6, flexWrap:'wrap'}}>
+                      {[['Tool','#0c5460','#d1ecf1'],['Consumable','#856404','#fef3cd'],['Safety Tool','#155724','#d4edda'],['Stationery','#4a1d96','#e2d9f3']].map(([t,color,bg])=>(
+                        <button key={t} className="btn btn-sm" style={{background:bg, color, border:`1px solid ${color}40`, fontWeight:600}} onClick={()=>enterBulkMode(t)}>+ Add {t}s</button>
+                      ))}
+                    </div>
                   )}
                   <button className="btn btn-ghost btn-sm" onClick={()=>{ setToolsOccId(''); setToolsLevel(''); setToolsList([]); setToolsSelected([]); setToolsBulkMode(false); }}>✕ Close</button>
                 </div>
@@ -490,7 +495,7 @@ function MasterData({clients, onUpdateClients, token, isAdmin, isEditor, isSuper
               {toolsBulkMode && (
                 <div style={{padding:16, borderBottom:'1px solid var(--border)', background:'var(--surface-raised,#fafbfc)'}}>
                   <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:10}}>
-                    <div style={{fontWeight:600, fontSize:13}}>Add Items</div>
+                    <div style={{fontWeight:600, fontSize:13}}>Add {bulkType}s</div>
                     <div style={{display:'flex', gap:6, alignItems:'center'}}>
                       <span style={{fontSize:12, color:'var(--text3)'}}>Add rows:</span>
                       {[1,2,3,5,10,20].map(n=>(
@@ -503,13 +508,12 @@ function MasterData({clients, onUpdateClients, token, isAdmin, isEditor, isSuper
                       <thead>
                         <tr>
                           <th style={{width:30, padding:'6px 4px', fontSize:11}}></th>
-                          <th style={{padding:'6px 8px', fontSize:11}}>#</th>
-                          <th style={{padding:'6px 8px', fontSize:11, width:130}}>Name *</th>
+                          <th style={{padding:'6px 8px', fontSize:11, width:32}}>#</th>
+                          <th style={{padding:'6px 8px', fontSize:11, width:160}}>Name *</th>
                           <th style={{padding:'6px 8px', fontSize:11}}>Description</th>
+                          <th style={{padding:'6px 8px', fontSize:11, width:60}}>QTY</th>
                           <th style={{padding:'6px 8px', fontSize:11, width:80}}>Unit</th>
-                          <th style={{padding:'6px 8px', fontSize:11, width:60}}>Qty</th>
                           <th style={{padding:'6px 8px', fontSize:11, width:100}}>Ownership</th>
-                          <th style={{padding:'6px 8px', fontSize:11, width:110}}>Type</th>
                           <th style={{padding:'6px 8px', fontSize:11}}>Remarks</th>
                         </tr>
                       </thead>
@@ -521,21 +525,16 @@ function MasterData({clients, onUpdateClients, token, isAdmin, isEditor, isSuper
                                 onClick={()=>setBulkRows(prev=>prev.filter((_,idx)=>idx!==i))}>✕</button>
                             </td>
                             <td style={{padding:'3px 4px', fontSize:11, textAlign:'center', color:'var(--text3)'}}>{i+1}</td>
-                            <td style={{padding:'3px 4px'}}><input value={row.name} onChange={e=>setBulkRows(prev=>{const n=[...prev];n[i]={...n[i],name:e.target.value};return n;})} placeholder="Name" style={{fontSize:12, padding:'4px 6px'}}/></td>
-                            <td style={{padding:'3px 4px'}}><input value={row.description} onChange={e=>setBulkRows(prev=>{const n=[...prev];n[i]={...n[i],description:e.target.value};return n;})} placeholder="Description" style={{fontSize:12, padding:'4px 6px'}}/></td>
-                            <td style={{padding:'3px 4px'}}><input value={row.unit} onChange={e=>setBulkRows(prev=>{const n=[...prev];n[i]={...n[i],unit:e.target.value};return n;})} placeholder="Unit" style={{fontSize:12, padding:'4px 6px'}}/></td>
-                            <td style={{padding:'3px 4px'}}><input type="number" value={row.quantity} onChange={e=>setBulkRows(prev=>{const n=[...prev];n[i]={...n[i],quantity:e.target.value};return n;})} style={{fontSize:12, padding:'4px 6px'}}/></td>
+                            <td style={{padding:'3px 4px'}}><input tabIndex={1} value={row.name} onChange={e=>setBulkRows(prev=>{const n=[...prev];n[i]={...n[i],name:e.target.value};return n;})} placeholder="Name" style={{fontSize:12, padding:'4px 6px'}}/></td>
+                            <td style={{padding:'3px 4px'}}><input tabIndex={1} value={row.description} onChange={e=>setBulkRows(prev=>{const n=[...prev];n[i]={...n[i],description:e.target.value};return n;})} placeholder="Description" style={{fontSize:12, padding:'4px 6px'}}/></td>
+                            <td style={{padding:'3px 4px'}}><input tabIndex={1} type="number" value={row.quantity} onChange={e=>setBulkRows(prev=>{const n=[...prev];n[i]={...n[i],quantity:e.target.value};return n;})} style={{fontSize:12, padding:'4px 6px'}}/></td>
+                            <td style={{padding:'3px 4px'}}><input tabIndex={1} value={row.unit} onChange={e=>setBulkRows(prev=>{const n=[...prev];n[i]={...n[i],unit:e.target.value};return n;})} placeholder="Unit" style={{fontSize:12, padding:'4px 6px'}}/></td>
                             <td style={{padding:'3px 4px'}}>
-                              <select value={row.ownership} onChange={e=>setBulkRows(prev=>{const n=[...prev];n[i]={...n[i],ownership:e.target.value};return n;})} style={{fontSize:12, padding:'4px 6px'}}>
-                                <option>Own</option><option>Rented</option>
+                              <select tabIndex={-1} value={row.ownership} onChange={e=>setBulkRows(prev=>{const n=[...prev];n[i]={...n[i],ownership:e.target.value};return n;})} style={{fontSize:12, padding:'4px 6px'}}>
+                                <option>Own</option><option>Rented</option><option>Borrowed</option><option>Government</option>
                               </select>
                             </td>
-                            <td style={{padding:'3px 4px'}}>
-                              <select value={row.type} onChange={e=>setBulkRows(prev=>{const n=[...prev];n[i]={...n[i],type:e.target.value};return n;})} style={{fontSize:12, padding:'4px 6px'}}>
-                                <option>Tool</option><option>Consumable</option><option>Safety Tool</option><option>Stationery</option>
-                              </select>
-                            </td>
-                            <td style={{padding:'3px 4px'}}><input value={row.remarks} onChange={e=>setBulkRows(prev=>{const n=[...prev];n[i]={...n[i],remarks:e.target.value};return n;})} placeholder="Remarks" style={{fontSize:12, padding:'4px 6px'}}/></td>
+                            <td style={{padding:'3px 4px'}}><input tabIndex={-1} value={row.remarks} onChange={e=>setBulkRows(prev=>{const n=[...prev];n[i]={...n[i],remarks:e.target.value};return n;})} placeholder="Remarks" style={{fontSize:12, padding:'4px 6px'}}/></td>
                           </tr>
                         ))}
                       </tbody>
