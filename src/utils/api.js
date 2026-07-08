@@ -14,7 +14,8 @@ export const API_BASE_PATH = '/api';
 export async function api(method, path, body, token, _retry = 0) {
   const base = getApiBase();
   const url = (base || '') + API_BASE_PATH + path;
-  const headers = { 'Content-Type': 'application/json' };
+  const headers = {};
+  if (body) headers['Content-Type'] = 'application/json';
   if (token) headers['Authorization'] = `Bearer ${token}`;
   let res;
   try {
