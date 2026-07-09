@@ -91,6 +91,7 @@ async function runMigrations() {
       created_at TIMESTAMPTZ DEFAULT NOW()
     )`,
     `ALTER TABLE occupation_tools ADD COLUMN IF NOT EXISTS name TEXT`,
+    `ALTER TABLE occupation_tools ALTER COLUMN description DROP NOT NULL`,
     `CREATE TABLE IF NOT EXISTS institute_infrastructure (
       id SERIAL PRIMARY KEY,
       institute_id INTEGER NOT NULL REFERENCES institutes(id) ON DELETE CASCADE,
