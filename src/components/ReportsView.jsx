@@ -5,20 +5,32 @@ import { exportToCSV } from '../utils/export.js';
 import { fyInRange, fyYear } from '../reports/helpers.js';
 import REPORT_FAMILIES from '../reports/index.js';
 
+const FILTER_KEY = 'tvettrack_reports_filters_v1';
+function loadFilters() {
+  try { return JSON.parse(sessionStorage.getItem(FILTER_KEY)) || {}; } catch { return {}; }
+}
+function saveFilters(patch) {
+  try {
+    const cur = loadFilters();
+    sessionStorage.setItem(FILTER_KEY, JSON.stringify({ ...cur, ...patch }));
+  } catch {}
+}
+
 function ReportsView({ institutes, clients }) {
-  const [familyId, setFamilyId]         = useState(REPORT_FAMILIES[0].id);
-  const [selectedInst, setSelectedInst] = useState('');
+  const f = loadFilters();
+  const [familyId, setFamilyId]         = useState(f.familyId || REPORT_FAMILIES[0].id);
+  const [selectedInst, setSelectedInst] = useState(f.selectedInst || '');
   const [fullInst, setFullInst]         = useState(null);
   const [loadingInst, setLoadingInst]   = useState(false);
-  const [reportId, setReportId]         = useState(REPORT_FAMILIES[0].reports[0].id);
+  const [reportId, setReportId]         = useState(f.reportId || REPORT_FAMILIES[0].reports[0].id);
   const [selectedIds, setSelectedIds]   = useState(null); // null = all
-  const [fromFY, setFromFY]             = useState('');
-  const [toFY, setToFY]                 = useState('');
+  const [fromFY, setFromFY]             = useState(f.fromFY || '');
+  const [toFY, setToFY]                 = useState(f.toFY || '');
   const [selectedOccs, setSelectedOccs] = useState([]); // for Table 3 occupation filter
   const [occupations, setOccupations]   = useState([]);
   const [sortBy, setSortBy]             = useState('default'); // for Table 2 occupation sort
   const [filterTrainingTypes, setFilterTrainingTypes] = useState([]); // Helvetas training type filter
-  const [filterDuration, setFilterDuration] = useState(''); // Helvetas duration filter
+  const [filterDuration, setFilterDuration] = useState(f.filterDuration || ''); // Helvetas duration filter
   const [filterDonorTypes, setFilterDonorTypes] = useState([]); // Donor/client type filter
   const [occSearch, setOccSearch] = useState('');
 
@@ -41,14 +53,18 @@ function ReportsView({ institutes, clients }) {
   const [toolsOccSearch, setToolsOccSearch] = useState('');
 
   // ENSSURE report state — multi-select proposed occupations
-  const [enssureOccIds, setEnssureOccIds] = useState([]);
+  const [enssureOccIds, setEnssureOccIds] = useState(f.enssureOccIds || []);
   const [enssureOccSearch, setEnssureOccSearch] = useState('');
   // ENSSURE D2/D3 explicit tools occupation + level + events multiplier
-  const [enssureToolsOccId, setEnssureToolsOccId] = useState('');
+  const [enssureToolsOccId, setEnssureToolsOccId] = useState(f.enssureToolsOccId || '');
   const [enssureToolsOccSearch, setEnssureToolsOccSearch] = useState('');
-  const [enssureToolsLevel, setEnssureToolsLevel] = useState('Level 1');
-  const [enssureEvents, setEnssureEvents] = useState(1);
+  const [enssureToolsLevel, setEnssureToolsLevel] = useState(f.enssureToolsLevel || 'Level 1');
+  const [enssureEvents, setEnssureEvents] = useState(f.enssureEvents || 1);
   const [enssureToolsData, setEnssureToolsData] = useState([]);
+
+  // Persist key filter state to sessionStorage
+  useEffect(() => { saveFilters({ familyId, selectedInst, reportId, fromFY, toFY, filterDuration, enssureOccIds, enssureToolsOccId, enssureToolsLevel, enssureEvents }); },
+    [familyId, selectedInst, reportId, fromFY, toFY, filterDuration, enssureOccIds, enssureToolsOccId, enssureToolsLevel, enssureEvents]);
 
   // Fetch tools for explicitly selected D2/D3 occupation + level
   useEffect(() => {
@@ -250,6 +266,20 @@ function ReportsView({ institutes, clients }) {
   const fyRangeLabel = fromFY || toFY ? `FY ${fromFY || '…'} – ${toFY || '…'}` : null;
   const noInstitute = !!family.noInstitute;
   const enssureOccs = enssureOccIds.map(id => occupations.find(o => String(o.id) === String(id))?.name).filter(Boolean);
+
+  // Count C1 rows with missing skill test pass or employment data
+  const enssureMissingCount = useMemo(() => {
+    if (familyId !== 'enssure' || !fullInst) return 0;
+    let n = 0;
+    for (const exp of activeExps) {
+      for (const occ of (exp.occupations || [])) {
+        if ((occ.skillTestPass == null || occ.skillTestPass === '') ||
+            (occ.employmentActual == null || occ.employmentActual === '')) n++;
+      }
+    }
+    return n;
+  }, [familyId, fullInst, activeExps]);
+
   const opts = { fromFY, toFY, selectedOccs, occupations, sortBy,
     toolsOccIds, toolsLevel, toolsTypeFilter, toolsColumns, toolsLayout, toolsData, numGroups,
     enssureOccs, enssureOccIds, enssureToolsData, enssureToolsOccId, enssureToolsLevel, enssureEvents,
@@ -386,6 +416,13 @@ function ReportsView({ institutes, clients }) {
             <span className="filter-panel-header-title">Filters</span>
           </div>
           <div className="filter-panel-body">
+
+            {/* ENSSURE — missing data warning badge */}
+            {familyId === 'enssure' && fullInst && enssureMissingCount > 0 && (
+              <div style={{background:'#fff3cd', border:'1px solid #ffc107', borderRadius:6, padding:'8px 12px', marginBottom:8, fontSize:12, color:'#856404'}}>
+                <strong>⚠ {enssureMissingCount} occupation row{enssureMissingCount !== 1 ? 's' : ''}</strong> missing skill test pass or employment data — C1 will show "—" for those fields.
+              </div>
+            )}
 
             {/* ENSSURE — D2/D3 tools occupation + level + events */}
             {familyId === 'enssure' && fullInst && (

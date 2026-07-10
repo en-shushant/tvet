@@ -162,6 +162,15 @@ function ExperienceForm({exp, clients, institute, onSave, onClose, onDuplicate, 
     return exp ? {...defaults, ...exp} : defaults;
   });
   const [showReportFields, setShowReportFields] = useState(false);
+  const isDirty = useRef(false);
+
+  // Mark dirty whenever form changes after initial render
+  useEffect(() => { isDirty.current = true; }, [form]);
+  // Reset dirty flag after successful save
+  const handleClose = () => {
+    if (isDirty.current && !window.confirm('You have unsaved changes. Close without saving?')) return;
+    onClose();
+  };
 
   const fileInputRef = useRef(null);
 
@@ -282,10 +291,10 @@ function ExperienceForm({exp, clients, institute, onSave, onClose, onDuplicate, 
 
   return (
     <>
-    <Modal title={exp ? 'Edit Assignment' : 'Add Assignment'} onClose={onClose} size="modal-lg"
+    <Modal title={exp ? 'Edit Assignment' : 'Add Assignment'} onClose={handleClose} size="modal-lg"
       footer={<>
-        <button className="btn btn-secondary" onClick={onClose}>Cancel</button>
-        <button className="btn btn-primary" onClick={async()=>{setFormErr('');if(form.occupations.some(o=>!o.ctevtOccupationId)){setFormErr('Please select an occupation for all occupation rows.');return;}try{await onSave(form);}catch(e){setFormErr(e.message||'Failed to save');}}} >Save assignment</button>
+        <button className="btn btn-secondary" onClick={handleClose}>Cancel</button>
+        <button className="btn btn-primary" onClick={async()=>{setFormErr('');if(form.occupations.some(o=>!o.ctevtOccupationId)){setFormErr('Please select an occupation for all occupation rows.');return;}try{await onSave(form);isDirty.current=false;}catch(e){setFormErr(e.message||'Failed to save');}}} >Save assignment</button>
       </>}>
       <ErrorBanner msg={formErr} onDismiss={()=>setFormErr('')}/>
 

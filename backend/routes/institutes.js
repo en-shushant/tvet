@@ -72,6 +72,8 @@ async function plugin(fastify, opts) {
       contact_person, phone, email, address, type, status, renewal_due, remarks, logo, website,
       desc_template_id, narrative_template_id, services_template_id } = request.body;
     if (!name || !reg_no) return reply.code(400).send({ error: 'name and reg_no required' });
+    if (name.length > 300) return reply.code(400).send({ error: 'name too long (max 300 chars)' });
+    if (remarks && remarks.length > 2000) return reply.code(400).send({ error: 'remarks too long (max 2000 chars)' });
     const { rows } = await pool.query(
       `INSERT INTO institutes (name,acronym,reg_no,reg_date,pan,permanent_account_no,
         contact_person,phone,email,address,type,status,renewal_due,remarks,logo,website,

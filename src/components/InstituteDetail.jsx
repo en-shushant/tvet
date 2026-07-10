@@ -891,6 +891,18 @@ function InfrastructureTab({ instituteId, token, canEdit }) {
 
   const cancelAdd = () => { setAdding(false); setBulkRows([{...INFRA_BLANK}]); setErr(''); };
 
+  const moveRow = async (id, direction) => {
+    const idx = rows.findIndex(r => r.id === id);
+    const swapIdx = idx + direction;
+    if (swapIdx < 0 || swapIdx >= rows.length) return;
+    const a = rows[idx], b = rows[swapIdx];
+    await Promise.all([
+      api('PUT', `/infrastructure/${a.id}`, { ...a, sort_order: b.sort_order ?? swapIdx }, token),
+      api('PUT', `/infrastructure/${b.id}`, { ...b, sort_order: a.sort_order ?? idx }, token),
+    ]);
+    reload();
+  };
+
   const saveBulk = async () => {
     const valid = bulkRows.filter(r => r.particular.trim());
     if (!valid.length) return setErr('At least one row must have a Particular.');
@@ -949,6 +961,8 @@ function InfrastructureTab({ instituteId, token, canEdit }) {
                 <td style={{...tdS, textAlign:'center'}}>{row.ownership||'Own'}</td>
                 <td style={tdS}>{row.remark}</td>
                 {canEdit && <td style={tdS}>
+                  <button className="btn btn-ghost btn-sm" style={{marginRight:2}} title="Move up" disabled={i===0} onClick={()=>moveRow(row.id,-1)}>↑</button>
+                  <button className="btn btn-ghost btn-sm" style={{marginRight:4}} title="Move down" disabled={i===rows.length-1} onClick={()=>moveRow(row.id,1)}>↓</button>
                   <button className="btn btn-ghost btn-sm" style={{marginRight:4}} onClick={()=>startEdit(row)}>✏</button>
                   <button className="btn btn-danger btn-sm" onClick={()=>deleteRow(row.id)}>🗑</button>
                 </td>}

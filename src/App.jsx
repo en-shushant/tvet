@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useMemo } from 'react';
+import { useState, useEffect, useRef, useMemo, lazy, Suspense } from 'react';
 import LoginPage from './components/LoginPage.jsx';
 import Dashboard from './components/Dashboard.jsx';
 import InstituteList from './components/InstituteList.jsx';
@@ -9,7 +9,7 @@ import JVGroupPanel from './components/JVGroupPanel.jsx';
 import ProjectCompliance from './components/ProjectCompliance.jsx';
 import ComparisonView from './components/ComparisonView.jsx';
 import MasterData from './components/MasterData.jsx';
-import ReportsView from './components/ReportsView.jsx';
+const ReportsView = lazy(() => import('./components/ReportsView.jsx'));
 import NepalMap from './components/NepalMap.jsx';
 import ChangePasswordModal from './components/ChangePasswordModal.jsx';
 import { NSTBBulkPage } from './components/NSTBForms.jsx';
@@ -552,7 +552,7 @@ function App() {
           {screen === 'summary' && <SummaryView institutes={institutes} clients={clients}/>}
           {screen === 'comparison' && <ComparisonView institutes={institutes} clients={clients}/>}
           {screen === 'compliance' && <ProjectCompliance institutes={institutes} clients={clients}/>}
-          {screen === 'reports' && <ReportsView institutes={institutes} clients={clients}/>}
+          {screen === 'reports' && <Suspense fallback={<div style={{padding:40,textAlign:'center',color:'var(--text3)'}}>Loading reports…</div>}><ReportsView institutes={institutes} clients={clients}/></Suspense>}
           {screen === 'master' && (isAdmin || isEditor) && <MasterData clients={clients} onUpdateClients={handleUpdateClients} token={token} isAdmin={isAdmin} isEditor={isEditor} isSuperAdmin={isSuperAdmin}/>}
           {screen === 'master' && !isAdmin && !isEditor && (
             <div style={{display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',height:'60%',gap:12,color:'var(--text3)'}}>

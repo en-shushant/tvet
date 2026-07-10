@@ -1,5 +1,17 @@
 require('dotenv').config();
-const fastify = require('fastify')({ logger: { level: 'warn' } });
+const fastify = require('fastify')({
+  logger: {
+    level: 'warn',
+    serializers: {
+      req(req) {
+        const out = { method: req.method, url: req.url };
+        // Never log auth request bodies (contain passwords)
+        if (!req.url?.includes('/auth/')) out.body = req.body;
+        return out;
+      },
+    },
+  },
+});
 const path = require('path');
 const { pool } = require('./db/pool');
 
@@ -7,6 +19,9 @@ const { pool } = require('./db/pool');
 fastify.register(require('@fastify/compress'));
 fastify.register(require('@fastify/helmet'), { contentSecurityPolicy: false });
 fastify.register(require('@fastify/cors'), { origin: '*' });
+fastify.register(require('@fastify/rate-limit'), {
+  global: false,
+});
 
 // Static frontend (must be registered before routes so SPA fallback works)
 fastify.register(require('@fastify/static'), {

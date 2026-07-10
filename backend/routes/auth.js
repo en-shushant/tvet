@@ -45,7 +45,7 @@ async function plugin(fastify, opts) {
     }
   });
 
-  fastify.post('/login', async (request, reply) => {
+  fastify.post('/login', { config: { rateLimit: { max: 10, timeWindow: '1 minute' } } }, async (request, reply) => {
     const { email, password } = request.body;
     if (!email || !password) return reply.code(400).send({ error: 'email and password required' });
     const capResult = await verifyCapToken(request.body['cap-token']);
