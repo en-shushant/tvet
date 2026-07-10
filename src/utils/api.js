@@ -157,7 +157,6 @@ export function normNSTBR(r) {
     letterDate: r.letter_date || '',
     letterType: r.letter_type || '',
     occupation: r.occupation || '',
-    ctevtOccupationId: r.ctevt_occupation_id || '',
     level: r.level || '',
     applied: r.applied ?? '',
     appeared: r.appeared ?? '',

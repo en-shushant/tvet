@@ -39,7 +39,7 @@ async function plugin(fastify, opts) {
       pool.query('SELECT * FROM institutes WHERE id = $1', [id]),
       pool.query(`
         SELECT a.*,
-          json_agg(DISTINCT ao.*) FILTER (WHERE ao.id IS NOT NULL) as occupations,
+          json_agg(ao.* ORDER BY ao.sort_order, ao.id) FILTER (WHERE ao.id IS NOT NULL) as occupations,
           json_agg(DISTINCT al.*) FILTER (WHERE al.id IS NOT NULL) as locations
         FROM assignments a
         LEFT JOIN assignment_occupations ao ON ao.assignment_id = a.id
@@ -69,14 +69,17 @@ async function plugin(fastify, opts) {
 
   fastify.post('/', { preHandler: requireAdmin }, async (request, reply) => {
     const { name, acronym, reg_no, reg_date, pan, permanent_account_no,
-      contact_person, phone, email, address, type, status, renewal_due, remarks, logo, website } = request.body;
+      contact_person, phone, email, address, type, status, renewal_due, remarks, logo, website,
+      desc_template_id, narrative_template_id, services_template_id } = request.body;
     if (!name || !reg_no) return reply.code(400).send({ error: 'name and reg_no required' });
     const { rows } = await pool.query(
       `INSERT INTO institutes (name,acronym,reg_no,reg_date,pan,permanent_account_no,
-        contact_person,phone,email,address,type,status,renewal_due,remarks,logo,website)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16) RETURNING *`,
+        contact_person,phone,email,address,type,status,renewal_due,remarks,logo,website,
+        desc_template_id,narrative_template_id,services_template_id)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19) RETURNING *`,
       [name,acronym,reg_no,reg_date,pan,permanent_account_no,
-       contact_person,phone,email,address,type,status||'Active',renewal_due,remarks,logo||null,website||null]
+       contact_person,phone,email,address,type,status||'Active',renewal_due,remarks,logo||null,website||null,
+       desc_template_id||null,narrative_template_id||null,services_template_id||null]
     );
     return reply.code(201).send(rows[0]);
   });

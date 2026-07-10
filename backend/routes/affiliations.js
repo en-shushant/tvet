@@ -35,7 +35,7 @@ async function plugin(fastify, opts) {
         await client.query(
           `INSERT INTO affiliation_programs (affiliation_id,name,level,duration_hours,seats_per_batch,sort_order)
            VALUES ($1,$2,$3,$4,$5,$6)`,
-          [aff.id,p.name,p.level,p.duration||null,p.seats||null,i]
+          [aff.id,p.name,p.level,p.duration_hours||null,p.seats_per_batch||null,i]
         );
       }
       await client.query('COMMIT');
@@ -62,7 +62,7 @@ async function plugin(fastify, opts) {
         await client.query(
           `INSERT INTO affiliation_programs (affiliation_id,name,level,duration_hours,seats_per_batch,sort_order)
            VALUES ($1,$2,$3,$4,$5,$6)`,
-          [request.params.id,p.name,p.level,p.duration||null,p.seats||null,i]
+          [request.params.id,p.name,p.level,p.duration_hours||null,p.seats_per_batch||null,i]
         );
       }
       await client.query('COMMIT');
