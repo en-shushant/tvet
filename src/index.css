@@ -502,59 +502,118 @@ textarea { resize: vertical; min-height: 80px; }
 .tab.active { color: var(--primary); border-bottom-color: var(--primary); font-weight: 700; }
 
 /* ── Modals ─────────────────────────────────────────────── */
+/* ── M3 Modal ─────────────────────────────────────────────────── */
 .modal-overlay {
   position: fixed; inset: 0;
-  background: rgba(42,53,71,0.5);
-  backdrop-filter: blur(4px);
+  background: rgba(18, 28, 42, 0.52);
+  backdrop-filter: blur(2px);
   z-index: 1000; display: flex;
   align-items: flex-start; justify-content: center;
-  padding: 32px 20px; overflow-y: auto;
+  padding: 40px 20px; overflow-y: auto;
 }
 
 .modal {
   background: var(--surface);
-  border-radius: var(--radius-xl);
+  border-radius: 28px;
   width: 100%; max-width: 640px;
-  max-height: calc(100vh - 64px);
+  max-height: calc(100vh - 80px);
   display: flex; flex-direction: column;
-  box-shadow: var(--shadow-lg); flex-shrink: 0;
-  border: 1px solid var(--border);
-  animation: slideIn 0.2s ease forwards;
+  /* M3 elevation level-3 */
+  box-shadow: 0 4px 8px 3px rgba(0,0,0,.15), 0 1px 3px rgba(0,0,0,.30);
+  flex-shrink: 0;
+  border: none;
+  animation: m3ModalIn 0.22s cubic-bezier(.2,.8,.4,1) forwards;
+}
+
+@keyframes m3ModalIn {
+  from { opacity: 0; transform: scale(.94) translateY(8px); }
+  to   { opacity: 1; transform: scale(1)  translateY(0); }
 }
 
 .modal-header { flex-shrink: 0; }
 .modal-footer { flex-shrink: 0; }
-.modal-body { padding: 22px 26px; overflow-y: auto; flex: 1; }
+.modal-body { padding: 0 24px 8px; overflow-y: auto; flex: 1; }
 
-.modal-lg { max-width: 880px; }
+.modal-lg { max-width: 900px; }
 .modal-xl { max-width: 1120px; }
 
 .modal-header {
   display: flex; align-items: center; justify-content: space-between;
-  padding: 20px 26px 18px;
-  border-bottom: 1px solid var(--border);
-  border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+  padding: 24px 24px 20px;
+  border-bottom: none;
 }
 
-.modal-title { font-size: 17px; font-weight: 700; color: var(--text); }
+/* M3 headline-small */
+.modal-title { font-size: 20px; font-weight: 500; color: var(--text); letter-spacing: 0; }
 
 .modal-footer {
-  padding: 16px 26px;
-  border-top: 1px solid var(--border);
-  display: flex; justify-content: flex-end; gap: 10px;
-  background: var(--bg); border-radius: 0 0 var(--radius-xl) var(--radius-xl);
+  padding: 20px 24px 24px;
+  border-top: none;
+  display: flex; justify-content: flex-end; gap: 8px;
+  background: transparent;
 }
 
-/* close btn */
+/* M3 icon button (close) */
 .modal-close {
-  background: var(--bg); border: 1.5px solid var(--border);
-  color: var(--text2); border-radius: 8px;
-  width: 32px; height: 32px;
+  background: transparent; border: none;
+  color: var(--text3); border-radius: 50%;
+  width: 40px; height: 40px;
   display: flex; align-items: center; justify-content: center;
-  cursor: pointer; font-size: 18px;
-  transition: all 0.15s; flex-shrink: 0;
+  cursor: pointer;
+  transition: background .15s, color .15s; flex-shrink: 0;
 }
-.modal-close:hover { background: var(--error-light); color: var(--error); border-color: rgba(250,137,107,0.4); }
+.modal-close:hover { background: var(--bg2); color: var(--text); }
+
+/* M3 outlined text fields inside modals */
+.modal-body .form-group input,
+.modal-body .form-group select,
+.modal-body .form-group textarea {
+  border-radius: 8px;
+  border: 1.5px solid var(--border2);
+  background: var(--surface);
+  transition: border-color .15s, box-shadow .15s;
+}
+.modal-body .form-group input:focus,
+.modal-body .form-group select:focus,
+.modal-body .form-group textarea:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 12%, transparent);
+  outline: none;
+}
+
+/* M3 form labels inside modal */
+.modal-body .form-group label {
+  font-size: 12px; font-weight: 500; letter-spacing: 0.2px;
+  color: var(--text3); margin-bottom: 5px;
+}
+
+/* M3 filled primary button */
+.modal-footer .btn-primary {
+  border-radius: 100px;
+  padding: 10px 24px;
+  font-weight: 500; font-size: 14px; letter-spacing: 0.1px;
+  box-shadow: none;
+}
+.modal-footer .btn-primary:hover {
+  box-shadow: 0 1px 3px rgba(0,0,0,.2);
+}
+
+/* M3 tonal secondary button */
+.modal-footer .btn-secondary {
+  border-radius: 100px;
+  padding: 10px 24px;
+  font-weight: 500; font-size: 14px; letter-spacing: 0.1px;
+  background: var(--bg); border-color: transparent;
+  color: var(--primary);
+}
+.modal-footer .btn-secondary:hover { background: var(--primary-light); }
+
+/* M3 danger button in modal footer */
+.modal-footer .btn-danger {
+  border-radius: 100px;
+  padding: 10px 24px;
+  font-weight: 500; font-size: 14px;
+}
 
 /* ── Filter chips ─────────────────────────────────────────────── */
 .chip {
