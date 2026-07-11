@@ -19,7 +19,7 @@ function getClient(clients, id) {
   return clients.find(c => c.id === id) || {};
 }
 
-function ExpCard({exp, clients, showFY, setModal, deleteExperience, canEdit, isAdmin}) {
+function ExpCard({exp, clients, showFY, setModal, deleteExperience, canEdit, isAdmin, idx=0}) {
   const client = getClient(clients, exp.clientId);
   const allLocs = exp.occupations.flatMap(o=>(o.locations||[]));
   const districts = [...new Set(allLocs.map(l=>l.district).filter(Boolean))];
@@ -27,15 +27,19 @@ function ExpCard({exp, clients, showFY, setModal, deleteExperience, canEdit, isA
   const missingOccs = (exp.occupations||[]).filter(o => !o.level || !o.duration);
   const totalTrainees = exp.occupations.reduce((s,o)=>s+(parseInt(o.trainees)||0),0);
 
+  const altBg = idx % 2 === 1 ? 'var(--bg)' : 'var(--surface)';
+  const hoverBg = idx % 2 === 1 ? 'var(--bg2)' : 'var(--bg)';
+
   return (
     <div style={{
       padding: '16px 20px',
       borderBottom: '1px solid var(--border)',
+      background: altBg,
       transition: 'background .12s',
       position: 'relative',
     }}
-      onMouseEnter={e => e.currentTarget.style.background = 'var(--bg)'}
-      onMouseLeave={e => e.currentTarget.style.background = ''}
+      onMouseEnter={e => e.currentTarget.style.background = hoverBg}
+      onMouseLeave={e => e.currentTarget.style.background = altBg}
     >
       <div style={{display:'flex', justifyContent:'space-between', alignItems:'flex-start', gap:16}}>
         {/* Left: content */}

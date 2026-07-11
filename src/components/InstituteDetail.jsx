@@ -405,7 +405,7 @@ function InstituteDetail({institute, clients, onUpdateClients, onBack, onUpdate,
                   </button>
                   {expandedFY['exp-'+fy] && (
                     <div className="fy-body">
-                      {items.map(exp => <ExpCard key={exp.id} exp={exp} clients={clients} showFY={false} setModal={setModal} deleteExperience={deleteExperience} canEdit={canEdit} isAdmin={isAdmin}/>)}
+                      {items.map((exp,i) => <ExpCard key={exp.id} idx={i} exp={exp} clients={clients} showFY={false} setModal={setModal} deleteExperience={deleteExperience} canEdit={canEdit} isAdmin={isAdmin}/>)}
                     </div>
                   )}
                 </div>
@@ -436,7 +436,7 @@ function InstituteDetail({institute, clients, onUpdateClients, onBack, onUpdate,
                         </button>
                         {expandedFY['client-'+key] && (
                           <div className="fy-body">
-                            {exps.sort((a,b)=>a.fy.localeCompare(b.fy)).map(exp => <ExpCard key={exp.id} exp={exp} clients={clients} showFY={true} setModal={setModal} deleteExperience={deleteExperience} canEdit={canEdit} isAdmin={isAdmin}/>)}
+                            {exps.sort((a,b)=>a.fy.localeCompare(b.fy)).map((exp,i) => <ExpCard key={exp.id} idx={i} exp={exp} clients={clients} showFY={true} setModal={setModal} deleteExperience={deleteExperience} canEdit={canEdit} isAdmin={isAdmin}/>)}
                           </div>
                         )}
                       </div>
