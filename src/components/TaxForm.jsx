@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import Modal from './ui/Modal.jsx';
 import { ErrorBanner } from './ui/Modal.jsx';
+import { useUnsavedGuard } from './ui/UnsavedGuard.jsx';
 import SearchableSelect from './ui/SearchableSelect.jsx';
 import { FISCAL_YEARS } from '../constants/data.js';
 
@@ -18,14 +19,16 @@ function TaxForm({record, onSave, onClose}) {
     fy:'2081/82', turnover:'', taxableIncome:'', taxPaid:'',
     certDate:'', karChutaNo:'', patraNo:'', incomeStatementDate:'', remarks:''
   });
-  const set = (k,v) => setForm(f=>({...f,[k]:v}));
+  const { handleClose, markDirty, markClean, UnsavedModal } = useUnsavedGuard(onClose);
+  const set = (k,v) => { markDirty(); setForm(f=>({...f,[k]:v})); };
   const [err, setErr] = useState('');
 
   return (
-    <Modal title={record ? 'Edit Tax Clearance' : 'Add Tax Clearance'} onClose={onClose}
+    <>{UnsavedModal}
+    <Modal title={record ? 'Edit Tax Clearance' : 'Add Tax Clearance'} onClose={handleClose}
       footer={<>
-        <button className="btn btn-secondary" onClick={onClose}>Cancel</button>
-        <button className="btn btn-primary" onClick={async()=>{setErr('');try{await onSave(form);}catch(e){setErr(e.message||'Failed to save');}}}>Save record</button>
+        <button className="btn btn-secondary" onClick={handleClose}>Cancel</button>
+        <button className="btn btn-primary" onClick={async()=>{setErr('');try{markClean();await onSave(form);}catch(e){markDirty();setErr(e.message||'Failed to save');}}}>Save record</button>
       </>}>
       <ErrorBanner msg={err} onDismiss={()=>setErr('')}/>
       <div className="form-row form-row-2">
@@ -72,6 +75,7 @@ function TaxForm({record, onSave, onClose}) {
         <textarea value={form.remarks} onChange={e=>set('remarks',e.target.value)} rows={2}/>
       </div>
     </Modal>
+    </>
   );
 }
 export default TaxForm;

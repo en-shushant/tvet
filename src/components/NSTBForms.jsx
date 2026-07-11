@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useUnsavedGuard } from './ui/UnsavedGuard.jsx';
 import Modal from './ui/Modal.jsx';
 import { ErrorBanner } from './ui/Modal.jsx';
 import SearchableSelect from './ui/SearchableSelect.jsx';
@@ -22,17 +23,19 @@ function NSTBEditModal({record, onSave, onClose}) {
   const [shared, setShared] = useState({ fy: record.fy, letterNo: record.letterNo||'', letterDate: record.letterDate||'', letterType: record.letterType||'Annual', remarks: record.remarks||'' });
   const [row, setRow] = useState({ occupation: record.occupation, level: record.level, applied: record.applied, appeared: record.appeared, pass: record.pass });
   const [err, setErr] = useState('');
-  const setS = (k,v) => setShared(s=>({...s,[k]:v}));
-  const setR = (k,v) => setRow(r=>({...r,[k]:v}));
+  const { handleClose, markDirty, markClean, UnsavedModal } = useUnsavedGuard(onClose);
+  const setS = (k,v) => { markDirty(); setShared(s=>({...s,[k]:v})); };
+  const setR = (k,v) => { markDirty(); setRow(r=>({...r,[k]:v})); };
   const handleSave = async () => {
     if (!row.occupation.trim()) { setErr('Occupation is required.'); return; }
     setErr('');
-    try { await onSave({ ...record, ...shared, ...row }); }
-    catch(e) { setErr(e.message || 'Failed to save'); }
+    try { markClean(); await onSave({ ...record, ...shared, ...row }); }
+    catch(e) { markDirty(); setErr(e.message || 'Failed to save'); }
   };
   return (
-    <Modal title="Edit NSTB Record" onClose={onClose}
-      footer={<><button className="btn btn-secondary" onClick={onClose}>Cancel</button><button className="btn btn-primary" onClick={handleSave}>Save</button></>}>
+    <>{UnsavedModal}
+    <Modal title="Edit NSTB Record" onClose={handleClose}
+      footer={<><button className="btn btn-secondary" onClick={handleClose}>Cancel</button><button className="btn btn-primary" onClick={handleSave}>Save</button></>}>
       <ErrorBanner msg={err} onDismiss={()=>setErr('')}/>
       <div className="form-row form-row-3" style={{marginBottom:12}}>
         <div className="form-group"><label>Fiscal year *</label>
@@ -66,6 +69,7 @@ function NSTBEditModal({record, onSave, onClose}) {
         </div>
       </div>
     </Modal>
+    </>
   );
 }
 

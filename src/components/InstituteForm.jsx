@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import Modal from './ui/Modal.jsx';
 import { ErrorBanner } from './ui/Modal.jsx';
+import { useUnsavedGuard } from './ui/UnsavedGuard.jsx';
 import { INSTITUTE_TYPES, INSTITUTE_STATUSES } from '../constants/data.js';
 
 function InstituteForm({institute, onSave, onClose}) {
@@ -10,18 +11,21 @@ function InstituteForm({institute, onSave, onClose}) {
     type:'Private', status:'Active', renewalDue:'', remarks:'', logo:null, website:'', googleMapLink:'', latitude:'', longitude:''
   });
 
-  const set = (k, v) => setForm(f => ({...f, [k]: v}));
+  const { handleClose, markDirty, markClean, UnsavedModal } = useUnsavedGuard(onClose);
+  const set = (k, v) => { markDirty(); setForm(f => ({...f, [k]: v})); };
   const [err, setErr] = useState('');
   const handleSave = () => {
     if(!form.name.trim()) { setErr('Institute name is required.'); return; }
     if(!form.regNo.trim()) { setErr('Registration number is required.'); return; }
+    markClean();
     onSave(form);
   };
 
   return (
-    <Modal title={institute ? 'Edit Institute Profile' : 'Add New Institute'} onClose={onClose} size="modal-lg"
+    <>{UnsavedModal}
+    <Modal title={institute ? 'Edit Institute Profile' : 'Add New Institute'} onClose={handleClose} size="modal-lg"
       footer={<>
-        <button className="btn btn-secondary" onClick={onClose}>Cancel</button>
+        <button className="btn btn-secondary" onClick={handleClose}>Cancel</button>
         <button className="btn btn-primary" onClick={handleSave}>
           {institute ? 'Save changes' : 'Add institute'}
         </button>
@@ -133,6 +137,7 @@ function InstituteForm({institute, onSave, onClose}) {
       </div>
       <ErrorBanner msg={err} onDismiss={()=>setErr('')}/>
     </Modal>
+    </>
   );
 }
 export default InstituteForm;

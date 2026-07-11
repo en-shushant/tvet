@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import Modal from './ui/Modal.jsx';
 import { ErrorBanner } from './ui/Modal.jsx';
+import { useUnsavedGuard } from './ui/UnsavedGuard.jsx';
 import SearchableSelect from './ui/SearchableSelect.jsx';
 import { AFFILIATION_TYPES, OCCUPATIONS } from '../constants/data.js';
 
@@ -11,7 +12,8 @@ function AffiliationForm({record, onSave, onClose}) {
     patraNo:'', chalaniNo:'', affiliationDate:'', type:'Thap Choto Awadhi',
     validityYears:2, expiryDate:'', status:'Active', remarks:'', programs:[]
   });
-  const set = (k,v) => setForm(f=>({...f,[k]:v}));
+  const { handleClose, markDirty, markClean, UnsavedModal } = useUnsavedGuard(onClose);
+  const set = (k,v) => { markDirty(); setForm(f=>({...f,[k]:v})); };
   const [err, setErr] = useState('');
 
   const addProg = () => set('programs', [...form.programs, {id:uid(), name:'', level:'Level 1', duration:'', seats:20}]);
@@ -19,10 +21,11 @@ function AffiliationForm({record, onSave, onClose}) {
   const removeProg = (i) => set('programs', form.programs.filter((_,idx)=>idx!==i));
 
   return (
-    <Modal title={record ? 'Edit Affiliation' : 'Add Affiliation'} onClose={onClose} size="modal-lg"
+    <>{UnsavedModal}
+    <Modal title={record ? 'Edit Affiliation' : 'Add Affiliation'} onClose={handleClose} size="modal-lg"
       footer={<>
-        <button className="btn btn-secondary" onClick={onClose}>Cancel</button>
-        <button className="btn btn-primary" onClick={async()=>{setErr('');try{await onSave(form);}catch(e){setErr(e.message||'Failed to save');}}}>Save affiliation</button>
+        <button className="btn btn-secondary" onClick={handleClose}>Cancel</button>
+        <button className="btn btn-primary" onClick={async()=>{setErr('');try{markClean();await onSave(form);}catch(e){markDirty();setErr(e.message||'Failed to save');}}}>Save affiliation</button>
       </>}>
       <ErrorBanner msg={err} onDismiss={()=>setErr('')}/>
       <div className="form-row form-row-3">
@@ -88,6 +91,7 @@ function AffiliationForm({record, onSave, onClose}) {
         <button className="add-row-btn" onClick={addProg}>+ Add program</button>
       </div>
     </Modal>
+    </>
   );
 }
 export default AffiliationForm;

@@ -2,6 +2,7 @@ import { useState, useRef, useEffect, useMemo } from 'react';
 import ReactDOM from 'react-dom';
 import Modal from './ui/Modal.jsx';
 import { ErrorBanner } from './ui/Modal.jsx';
+import { useUnsavedGuard } from './ui/UnsavedGuard.jsx';
 import SearchableSelect from './ui/SearchableSelect.jsx';
 import { DropdownPanel } from './ui/SearchableSelect.jsx';
 import { BulkDistrictPicker } from './BulkDistrictPicker.jsx';
@@ -162,16 +163,10 @@ function ExperienceForm({exp, clients, institute, onSave, onClose, onDuplicate, 
     return exp ? {...defaults, ...exp} : defaults;
   });
   const [showReportFields, setShowReportFields] = useState(false);
-  const [showUnsavedWarning, setShowUnsavedWarning] = useState(false);
-  const isDirty = useRef(false);
+  const { handleClose, markDirty, markClean, UnsavedModal } = useUnsavedGuard(onClose);
 
   // Mark dirty whenever form changes after initial render
-  useEffect(() => { isDirty.current = true; }, [form]);
-  // Reset dirty flag after successful save
-  const handleClose = () => {
-    if (isDirty.current) { setShowUnsavedWarning(true); return; }
-    onClose();
-  };
+  useEffect(() => { markDirty(); }, [form]);
 
   const fileInputRef = useRef(null);
 
@@ -295,7 +290,7 @@ function ExperienceForm({exp, clients, institute, onSave, onClose, onDuplicate, 
     <Modal title={exp ? 'Edit Assignment' : 'Add Assignment'} onClose={handleClose} size="modal-lg"
       footer={<>
         <button className="btn btn-secondary" onClick={handleClose}>Cancel</button>
-        <button className="btn btn-primary" onClick={async()=>{setFormErr('');if(form.occupations.some(o=>!o.ctevtOccupationId)){setFormErr('Please select an occupation for all occupation rows.');return;}try{await onSave(form);isDirty.current=false;}catch(e){setFormErr(e.message||'Failed to save');}}} >Save assignment</button>
+        <button className="btn btn-primary" onClick={async()=>{setFormErr('');if(form.occupations.some(o=>!o.ctevtOccupationId)){setFormErr('Please select an occupation for all occupation rows.');return;}try{markClean();await onSave(form);}catch(e){markDirty();setFormErr(e.message||'Failed to save');}}} >Save assignment</button>
       </>}>
       <ErrorBanner msg={formErr} onDismiss={()=>setFormErr('')}/>
 
@@ -603,15 +598,7 @@ function ExperienceForm({exp, clients, institute, onSave, onClose, onDuplicate, 
         <button className="add-row-btn" onClick={addOcc}>+ Add occupation row</button>
       </div>
     </Modal>
-    {showUnsavedWarning && (
-      <Modal title="Unsaved Changes" onClose={()=>setShowUnsavedWarning(false)}
-        footer={<>
-          <button className="btn btn-secondary" onClick={()=>setShowUnsavedWarning(false)}>Keep editing</button>
-          <button className="btn btn-danger" onClick={()=>{ setShowUnsavedWarning(false); onClose(); }}>Discard & close</button>
-        </>}>
-        <p style={{margin:0, color:'var(--text1)'}}>You have unsaved changes. Are you sure you want to close without saving?</p>
-      </Modal>
-    )}
+    {UnsavedModal}
     {saveClientModal && (
       <Modal title="Save client to Master data" onClose={()=>setSaveClientModal(null)}
         footer={<>
