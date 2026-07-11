@@ -45,13 +45,17 @@ function getOccupation(id) {
 const useMemo2 = useMemo;
 
 function InstituteDetail({institute, clients, onUpdateClients, onBack, onUpdate, onRefresh, onDelete, token, isAdmin, isEditor, jumpToTab, onBulkAdd, onAddNSTB}) {
-  const [tab, setTab] = useState(jumpToTab || 'profile');
+  const hashTab = window.location.hash.replace('#','');
+  const VALID_TABS = ['profile','experience','clients','nstb','tax','affiliation','infrastructure'];
+  const [tab, setTab] = useState(jumpToTab || (VALID_TABS.includes(hashTab) ? hashTab : 'profile'));
   const [modal, setModal] = useState(null);
   const [saving, setSaving] = useState(false);
   // Writers (admin + editor) can add/edit; viewers are read-only.
   const canEdit = !!(isAdmin || isEditor);
 
-  useEffect(() => { if(jumpToTab) setTab(jumpToTab); }, [jumpToTab]);
+  const switchTab = (t) => { setTab(t); window.location.hash = t; };
+
+  useEffect(() => { if(jumpToTab) { setTab(jumpToTab); window.location.hash = jumpToTab; } }, [jumpToTab]);
 
   // Unique clients for this institute derived from experience
   const instituteClients = useMemo(() => {
@@ -229,7 +233,7 @@ function InstituteDetail({institute, clients, onUpdateClients, onBack, onUpdate,
 
       {/* Tabs */}
       <div className="tabs">
-        {tabs.map(t=><button key={t.id} className={`tab ${tab===t.id?'active':''}`} onClick={()=>setTab(t.id)}>{t.label}</button>)}
+        {tabs.map(t=><button key={t.id} className={`tab ${tab===t.id?'active':''}`} onClick={()=>switchTab(t.id)}>{t.label}</button>)}
       </div>
       {saveErr && <ErrorBanner msg={saveErr} onDismiss={()=>setSaveErr('')}/>}
 
