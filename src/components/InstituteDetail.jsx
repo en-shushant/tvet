@@ -45,17 +45,18 @@ function getOccupation(id) {
 const useMemo2 = useMemo;
 
 function InstituteDetail({institute, clients, onUpdateClients, onBack, onUpdate, onRefresh, onDelete, token, isAdmin, isEditor, jumpToTab, onBulkAdd, onAddNSTB}) {
-  const hashTab = window.location.hash.replace('#','');
   const VALID_TABS = ['profile','experience','clients','nstb','tax','affiliation','infrastructure'];
-  const [tab, setTab] = useState(jumpToTab || (VALID_TABS.includes(hashTab) ? hashTab : 'profile'));
+  const tabKey = `inst_tab_${institute.id}`;
+  const savedTab = sessionStorage.getItem(tabKey);
+  const [tab, setTab] = useState(jumpToTab || (VALID_TABS.includes(savedTab) ? savedTab : 'profile'));
   const [modal, setModal] = useState(null);
   const [saving, setSaving] = useState(false);
   // Writers (admin + editor) can add/edit; viewers are read-only.
   const canEdit = !!(isAdmin || isEditor);
 
-  const switchTab = (t) => { setTab(t); window.location.hash = t; };
+  const switchTab = (t) => { setTab(t); sessionStorage.setItem(tabKey, t); };
 
-  useEffect(() => { if(jumpToTab) { setTab(jumpToTab); window.location.hash = jumpToTab; } }, [jumpToTab]);
+  useEffect(() => { if(jumpToTab) switchTab(jumpToTab); }, [jumpToTab]);
 
   // Unique clients for this institute derived from experience
   const instituteClients = useMemo(() => {
