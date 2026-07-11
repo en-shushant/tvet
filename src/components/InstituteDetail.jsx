@@ -51,6 +51,7 @@ function InstituteDetail({institute, clients, onUpdateClients, onBack, onUpdate,
   const [tab, setTab] = useState(jumpToTab || (VALID_TABS.includes(savedTab) ? savedTab : 'profile'));
   const [modal, setModal] = useState(null);
   const [saving, setSaving] = useState(false);
+  const [confirmModal, setConfirmModal] = useState(null); // {message, onConfirm}
   // Writers (admin + editor) can add/edit; viewers are read-only.
   const canEdit = !!(isAdmin || isEditor);
 
@@ -122,10 +123,12 @@ function InstituteDetail({institute, clients, onUpdateClients, onBack, onUpdate,
     setModal(null);
   });
 
-  const deleteExperience = withSave(async (id) => {
-    if(!window.confirm('Delete this assignment? This cannot be undone.')) return;
-    await api('DELETE', `/assignments/${id}`, null, token);
-    await onRefresh(institute.id);
+  const deleteExperience = (id) => setConfirmModal({
+    message: 'Delete this assignment? This cannot be undone.',
+    onConfirm: withSave(async () => {
+      await api('DELETE', `/assignments/${id}`, null, token);
+      await onRefresh(institute.id);
+    }),
   });
 
   const saveNSTB = withSave(async (formOrArray) => {
@@ -140,10 +143,12 @@ function InstituteDetail({institute, clients, onUpdateClients, onBack, onUpdate,
     setModal(null);
   });
 
-  const deleteNSTB = withSave(async (id) => {
-    if(!window.confirm('Delete this NSTB record?')) return;
-    await api('DELETE', `/nstb/${id}`, null, token);
-    await onRefresh(institute.id);
+  const deleteNSTB = (id) => setConfirmModal({
+    message: 'Delete this NSTB record?',
+    onConfirm: withSave(async () => {
+      await api('DELETE', `/nstb/${id}`, null, token);
+      await onRefresh(institute.id);
+    }),
   });
 
   const saveTax = withSave(async (form) => {
@@ -158,10 +163,12 @@ function InstituteDetail({institute, clients, onUpdateClients, onBack, onUpdate,
     setModal(null);
   });
 
-  const deleteTax = withSave(async (id) => {
-    if(!window.confirm('Delete this tax clearance record?')) return;
-    await api('DELETE', `/tax/${id}`, null, token);
-    await onRefresh(institute.id);
+  const deleteTax = (id) => setConfirmModal({
+    message: 'Delete this tax clearance record?',
+    onConfirm: withSave(async () => {
+      await api('DELETE', `/tax/${id}`, null, token);
+      await onRefresh(institute.id);
+    }),
   });
 
   const saveAffiliation = withSave(async (form) => {
@@ -175,10 +182,12 @@ function InstituteDetail({institute, clients, onUpdateClients, onBack, onUpdate,
     setModal(null);
   });
 
-  const deleteAffiliation = withSave(async (id) => {
-    if(!window.confirm('Delete this affiliation record?')) return;
-    await api('DELETE', `/affiliations/${id}`, null, token);
-    await onRefresh(institute.id);
+  const deleteAffiliation = (id) => setConfirmModal({
+    message: 'Delete this affiliation record?',
+    onConfirm: withSave(async () => {
+      await api('DELETE', `/affiliations/${id}`, null, token);
+      await onRefresh(institute.id);
+    }),
   });
 
   // Group by FY
@@ -1027,6 +1036,25 @@ function InfrastructureTab({ instituteId, token, canEdit }) {
             <button className="btn btn-primary btn-sm" onClick={saveBulk} disabled={saving}>{saving ? 'Saving…' : `Save ${bulkRows.filter(r=>r.particular.trim()).length || ''} row(s)`}</button>
           </div>
         </div>
+      )}
+
+      {/* ── Themed delete confirmation modal ── */}
+      {confirmModal && (
+        <Modal
+          title="Confirm Delete"
+          onClose={() => setConfirmModal(null)}
+          footer={<>
+            <button className="btn btn-secondary" onClick={() => setConfirmModal(null)}>Cancel</button>
+            <button className="btn btn-danger" disabled={saving} onClick={async () => {
+              await confirmModal.onConfirm();
+              setConfirmModal(null);
+            }}>
+              {saving ? 'Deleting…' : 'Delete'}
+            </button>
+          </>}
+        >
+          <p style={{ margin: 0, color: 'var(--text1)' }}>{confirmModal.message}</p>
+        </Modal>
       )}
     </div>
   );
