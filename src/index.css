@@ -673,13 +673,13 @@ textarea { resize: vertical; min-height: 80px; }
 }
 .fy-header {
   display: flex; align-items: center; gap: 12px;
-  padding: 13px 18px; background: var(--bg);
+  padding: 14px 20px; background: var(--surface);
   cursor: pointer; font-weight: 600; font-size: 13.5px;
   border: none; width: 100%; text-align: left;
   font-family: var(--font); color: var(--text);
   transition: background 0.15s;
 }
-.fy-header:hover { background: var(--bg2); }
+.fy-header:hover { background: var(--bg); }
 .fy-body { padding: 0; }
 
 /* ── Institute cards — M3 elevated card ─────────────────────────────────────────────── */
