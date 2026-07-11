@@ -117,18 +117,7 @@ function Dashboard({institutes, isEditor, onNavigate}) {
         />
       </div>
 
-      {/* Map */}
-      <div className="card mb-6" style={{padding:0, overflow:'hidden'}}>
-        <div style={{padding:'14px 20px', borderBottom:'1px solid var(--border)', display:'flex', alignItems:'center', justifyContent:'space-between'}}>
-          <span style={{fontWeight:600, fontSize:14}}>Institute locations — Nepal</span>
-          <div style={{display:'flex', gap:8}}>
-            <span style={{display:'flex', alignItems:'center', gap:4, fontSize:12}}><span style={{width:10, height:10, borderRadius:'50%', background:'var(--accent)', display:'inline-block'}}/>Active</span>
-            <span style={{display:'flex', alignItems:'center', gap:4, fontSize:12}}><span style={{width:10, height:10, borderRadius:'50%', background:'var(--amber)', display:'inline-block'}}/>Pending</span>
-            <span style={{display:'flex', alignItems:'center', gap:4, fontSize:12}}><span style={{width:10, height:10, borderRadius:'50%', background:'var(--red)', display:'inline-block'}}/>Expired</span>
-          </div>
-        </div>
-        <NepalMap institutes={institutes} onSelect={(inst)=>onNavigate('detail', inst)}/>
-      </div>
+      {/* Map — hidden for now */}
 
       {/* Alerts */}
       {alerts.length > 0 && (
