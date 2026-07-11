@@ -189,6 +189,7 @@ fastify.register(require('./routes/documents'),       { prefix: '/api/documents'
 fastify.register(require('./routes/locations'),       { prefix: '/api/locations' });
 fastify.register(require('./routes/occupation-tools'), { prefix: '/api/occupation-tools' });
 fastify.register(require('./routes/infrastructure'),   { prefix: '/api/infrastructure' });
+fastify.register(require('./routes/dashboard'),        { prefix: '/api/dashboard' });
 
 // ─── SPA FALLBACK ─────────────────────────────────────────────────────────────
 fastify.setNotFoundHandler((request, reply) => {
