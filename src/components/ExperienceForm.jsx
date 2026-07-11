@@ -162,13 +162,14 @@ function ExperienceForm({exp, clients, institute, onSave, onClose, onDuplicate, 
     return exp ? {...defaults, ...exp} : defaults;
   });
   const [showReportFields, setShowReportFields] = useState(false);
+  const [showUnsavedWarning, setShowUnsavedWarning] = useState(false);
   const isDirty = useRef(false);
 
   // Mark dirty whenever form changes after initial render
   useEffect(() => { isDirty.current = true; }, [form]);
   // Reset dirty flag after successful save
   const handleClose = () => {
-    if (isDirty.current && !window.confirm('You have unsaved changes. Close without saving?')) return;
+    if (isDirty.current) { setShowUnsavedWarning(true); return; }
     onClose();
   };
 
@@ -602,6 +603,15 @@ function ExperienceForm({exp, clients, institute, onSave, onClose, onDuplicate, 
         <button className="add-row-btn" onClick={addOcc}>+ Add occupation row</button>
       </div>
     </Modal>
+    {showUnsavedWarning && (
+      <Modal title="Unsaved Changes" onClose={()=>setShowUnsavedWarning(false)}
+        footer={<>
+          <button className="btn btn-secondary" onClick={()=>setShowUnsavedWarning(false)}>Keep editing</button>
+          <button className="btn btn-danger" onClick={()=>{ setShowUnsavedWarning(false); onClose(); }}>Discard & close</button>
+        </>}>
+        <p style={{margin:0, color:'var(--text1)'}}>You have unsaved changes. Are you sure you want to close without saving?</p>
+      </Modal>
+    )}
     {saveClientModal && (
       <Modal title="Save client to Master data" onClose={()=>setSaveClientModal(null)}
         footer={<>
