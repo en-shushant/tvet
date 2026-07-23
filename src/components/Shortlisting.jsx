@@ -228,7 +228,7 @@ function ConfirmModal({ message, onConfirm, onClose, saving }) {
 }
 
 // ── Row ────────────────────────────────────────────────────────────────────────
-function ShortlistRow({ row, idx, canEdit, isAdmin, onEdit, onDelete }) {
+function ShortlistRow({ row, idx, canEdit, isAdmin, onEdit, onDelete, showFY=true }) {
   const sc = statusColor(row.status);
   const altBg = idx % 2 === 1 ? 'var(--bg)' : 'var(--surface)';
   const hoverBg = idx % 2 === 1 ? 'var(--bg2)' : 'var(--bg)';
@@ -260,10 +260,12 @@ function ShortlistRow({ row, idx, canEdit, isAdmin, onEdit, onDelete }) {
         }
       </div>
 
-      {/* FY */}
-      <div style={{width:80, fontSize:12, fontWeight:600, color:'var(--primary-dark)', background:'var(--primary-light)', borderRadius:100, padding:'3px 10px', flexShrink:0, textAlign:'center'}}>
-        {row.fy || '—'}
-      </div>
+      {/* FY — hidden when already grouped by FY */}
+      {showFY && (
+        <div style={{width:80, fontSize:12, fontWeight:600, color:'var(--primary-dark)', background:'var(--primary-light)', borderRadius:100, padding:'3px 10px', flexShrink:0, textAlign:'center'}}>
+          {row.fy || '—'}
+        </div>
+      )}
 
       {/* Date */}
       <div style={{width:110, fontSize:12.5, color:'var(--text3)', flexShrink:0}}>
@@ -336,9 +338,9 @@ function TableHead({ groupBy }) {
   const col = {fontSize:11, fontWeight:600, color:'var(--text3)', textTransform:'uppercase', letterSpacing:'0.6px'};
   return (
     <div style={{display:'flex', alignItems:'center', gap:12, padding:'9px 20px', background:'var(--bg)', borderBottom:'1px solid var(--border)'}}>
-      <div style={{flex:2, ...col}}>{groupBy === 'org' ? 'Firm' : 'Organization'}</div>
-      <div style={{flex:2, ...col}}>{groupBy === 'org' ? 'Organization' : 'Firm'}</div>
-      <div style={{width:80, ...col, flexShrink:0}}>FY</div>
+      <div style={{flex:2, ...col}}>Firm</div>
+      <div style={{flex:2, ...col}}>Organization</div>
+      {groupBy !== 'fy' && <div style={{width:80, ...col, flexShrink:0}}>FY</div>}
       <div style={{width:110, ...col, flexShrink:0}}>Date / Validity</div>
       <div style={{width:80, ...col, flexShrink:0}}>Status</div>
       <div style={{flex:1, ...col}}>Remarks</div>
@@ -358,7 +360,7 @@ export default function Shortlisting({ institutes, clients, isAdmin, isEditor })
   const [saving, setSaving] = useState(false);
   const [modal, setModal] = useState(null); // {type:'add'|'edit'|'delete', data?}
   const [expanded, setExpanded] = useState({});
-  const [groupBy, setGroupBy] = useState('org'); // 'org' | 'firm'
+  const [groupBy, setGroupBy] = useState('fy'); // 'fy' | 'org' | 'firm'
   const [filterOrg, setFilterOrg] = useState('');
   const [filterFirm, setFilterFirm] = useState('');
   const [filterStatus, setFilterStatus] = useState('');
@@ -392,21 +394,29 @@ export default function Shortlisting({ institutes, clients, isAdmin, isEditor })
   const grouped = useMemo(() => {
     const map = new Map();
     for (const row of filtered) {
-      const key = groupBy === 'org'
-        ? (row.client_id ? String(row.client_id) : '__none__')
-        : String(row.institute_id);
-      if (!map.has(key)) map.set(key, { label: '', sub: '', rows: [] });
-      const g = map.get(key);
-      if (groupBy === 'org') {
-        g.label = row.client_name || 'No Organization';
-        g.sub   = row.client_short || '';
+      let key, label, sub;
+      if (groupBy === 'fy') {
+        key = row.fy || '__none__';
+        label = row.fy ? `FY ${row.fy}` : 'No Fiscal Year';
+        sub = '';
+      } else if (groupBy === 'org') {
+        key = row.client_id ? String(row.client_id) : '__none__';
+        label = row.client_name || 'No Organization';
+        sub = row.client_short || '';
       } else {
-        g.label = row.institute_name || '—';
-        g.sub   = row.institute_acronym || '';
+        key = String(row.institute_id);
+        label = row.institute_name || '—';
+        sub = row.institute_acronym || '';
       }
-      g.rows.push(row);
+      if (!map.has(key)) map.set(key, { label, sub, rows: [] });
+      map.get(key).rows.push(row);
     }
-    return [...map.entries()].sort((a,b) => a[1].label.localeCompare(b[1].label));
+    // Sort: FY descending (newest first), others alphabetical
+    return [...map.entries()].sort((a, b) =>
+      groupBy === 'fy'
+        ? b[0].localeCompare(a[0])
+        : a[1].label.localeCompare(b[1].label)
+    );
   }, [filtered, groupBy]);
 
   const toggle = (key) => setExpanded(e => ({ ...e, [key]: !e[key] }));
@@ -506,7 +516,7 @@ export default function Shortlisting({ institutes, clients, isAdmin, isEditor })
 
         {/* Group by toggle */}
         <div style={{display:'flex', background:'var(--bg)', borderRadius:100, padding:3, gap:2, flexShrink:0}}>
-          {[['org','By Organization'],['firm','By Firm']].map(([v,lbl]) => (
+          {[['fy','By FY'],['org','By Organization'],['firm','By Firm']].map(([v,lbl]) => (
             <button key={v} onClick={() => setGroupBy(v)} style={{
               padding:'5px 14px', borderRadius:100, border:'none', cursor:'pointer',
               fontFamily:'inherit', fontSize:12.5, fontWeight:500, transition:'all .15s',
@@ -553,6 +563,7 @@ export default function Shortlisting({ institutes, clients, isAdmin, isEditor })
                       <ShortlistRow
                         key={row.id} row={row} idx={i}
                         canEdit={canEdit} isAdmin={isAdmin}
+                        showFY={groupBy !== 'fy'}
                         onEdit={(r) => setModal({ type:'edit', data:r })}
                         onDelete={(r) => setModal({ type:'delete', data:r })}
                       />
