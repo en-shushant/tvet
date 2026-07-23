@@ -17,7 +17,7 @@ function InstituteForm({institute, onSave, onClose, isSuperAdmin}) {
   const [err, setErr] = useState('');
   const handleSave = () => {
     if(!form.name.trim()) { setErr('Institute name is required.'); return; }
-    if(!form.regNo.trim()) { setErr('Registration number is required.'); return; }
+    if(!form.isShortlistingOnly && !form.regNo.trim()) { setErr('Registration number is required.'); return; }
     markClean();
     onSave(form);
   };
@@ -61,7 +61,7 @@ function InstituteForm({institute, onSave, onClose, isSuperAdmin}) {
       </div>
       <div className="form-row form-row-2">
         <div className="form-group">
-          <label>Registration number *</label>
+          <label>Registration number {form.isShortlistingOnly ? <span style={{fontWeight:400,color:'var(--text3)'}}>(optional for shortlisting-only)</span> : '*'}</label>
           <input value={form.regNo} onChange={e=>set('regNo',e.target.value)} placeholder="e.g. XYZ/001/2065"/>
         </div>
       </div>

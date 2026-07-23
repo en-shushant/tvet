@@ -70,18 +70,22 @@ async function plugin(fastify, opts) {
   fastify.post('/', { preHandler: requireAdmin }, async (request, reply) => {
     const { name, acronym, reg_no, reg_date, pan, permanent_account_no,
       contact_person, phone, email, address, type, status, renewal_due, remarks, logo, website,
-      desc_template_id, narrative_template_id, services_template_id } = request.body;
-    if (!name || !reg_no) return reply.code(400).send({ error: 'name and reg_no required' });
+      desc_template_id, narrative_template_id, services_template_id,
+      google_map_link, latitude, longitude, is_shortlisting_only } = request.body;
+    if (!name) return reply.code(400).send({ error: 'name is required' });
+    if (!reg_no && !is_shortlisting_only) return reply.code(400).send({ error: 'reg_no is required' });
     if (name.length > 300) return reply.code(400).send({ error: 'name too long (max 300 chars)' });
     if (remarks && remarks.length > 2000) return reply.code(400).send({ error: 'remarks too long (max 2000 chars)' });
     const { rows } = await pool.query(
       `INSERT INTO institutes (name,acronym,reg_no,reg_date,pan,permanent_account_no,
         contact_person,phone,email,address,type,status,renewal_due,remarks,logo,website,
-        desc_template_id,narrative_template_id,services_template_id)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19) RETURNING *`,
-      [name,acronym,reg_no,reg_date,pan,permanent_account_no,
+        desc_template_id,narrative_template_id,services_template_id,
+        google_map_link,latitude,longitude,is_shortlisting_only)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23) RETURNING *`,
+      [name,acronym,reg_no||null,reg_date,pan,permanent_account_no,
        contact_person,phone,email,address,type,status||'Active',renewal_due,remarks,logo||null,website||null,
-       desc_template_id||null,narrative_template_id||null,services_template_id||null]
+       desc_template_id||null,narrative_template_id||null,services_template_id||null,
+       google_map_link||null,latitude||null,longitude||null,!!is_shortlisting_only]
     );
     return reply.code(201).send(rows[0]);
   });
@@ -94,16 +98,19 @@ async function plugin(fastify, opts) {
     }
     const { name, acronym, reg_no, reg_date, pan, permanent_account_no,
       contact_person, phone, email, address, type, status, renewal_due, remarks, logo, website,
-      desc_template_id, narrative_template_id, services_template_id } = request.body;
+      desc_template_id, narrative_template_id, services_template_id,
+      google_map_link, latitude, longitude, is_shortlisting_only } = request.body;
     const { rows } = await pool.query(
       `UPDATE institutes SET name=$1,acronym=$2,reg_no=$3,reg_date=$4,pan=$5,
         permanent_account_no=$6,contact_person=$7,phone=$8,email=$9,address=$10,
         type=$11,status=$12,renewal_due=$13,remarks=$14,logo=$15,website=$16,
-        desc_template_id=$17,narrative_template_id=$18,services_template_id=$19
-       WHERE id=$20 RETURNING *`,
-      [name,acronym,reg_no,reg_date,pan,permanent_account_no,
+        desc_template_id=$17,narrative_template_id=$18,services_template_id=$19,
+        google_map_link=$20,latitude=$21,longitude=$22,is_shortlisting_only=$23
+       WHERE id=$24 RETURNING *`,
+      [name,acronym,reg_no||null,reg_date,pan,permanent_account_no,
        contact_person,phone,email,address,type,status,renewal_due,remarks,logo||null,website||null,
-       desc_template_id||null,narrative_template_id||null,services_template_id||null,id]
+       desc_template_id||null,narrative_template_id||null,services_template_id||null,
+       google_map_link||null,latitude||null,longitude||null,!!is_shortlisting_only,id]
     );
     if (!rows.length) return reply.code(404).send({ error: 'Not found' });
     return rows[0];
