@@ -20,13 +20,16 @@ function ShortlistForm({ initial, institutes, clients, onSave, onClose, saving }
   const [multi, setMulti] = useState(false); // multi-firm mode (add only)
   const [selectedFirms, setSelectedFirms] = useState([]); // for multi mode
   const [firmSearch, setFirmSearch] = useState('');
+  // manual org = not in client list
+  const [manualOrg, setManualOrg] = useState(!!(initial?.client_name_manual && !initial?.client_id));
 
   const empty = {
-    client_id: '', institute_id: '', standing_list_name: '', fy: '',
+    client_id: '', client_name_manual: '', institute_id: '', standing_list_name: '', fy: '',
     shortlist_date: '', valid_until: '', status: 'Active', remarks: '',
   };
   const [form, setForm] = useState(initial ? {
     client_id:          initial.client_id    ?? '',
+    client_name_manual: initial.client_name_manual ?? '',
     institute_id:       initial.institute_id ?? '',
     standing_list_name: initial.standing_list_name ?? '',
     fy:                 initial.fy           ?? '',
@@ -80,11 +83,23 @@ function ShortlistForm({ initial, institutes, clients, onSave, onClose, saving }
       {/* Common fields */}
       <div className="form-row form-row-2">
         <div className="form-group">
-          <label>Organization (Client)</label>
-          <select value={form.client_id} onChange={e => set('client_id', e.target.value)}>
-            <option value="">— Select organization —</option>
-            {clients.map(c => <option key={c.id} value={c.id}>{c.fullName || c.full_name}{c.shortName || c.short_name ? ` (${c.shortName || c.short_name})` : ''}</option>)}
-          </select>
+          <label style={{display:'flex', alignItems:'center', justifyContent:'space-between'}}>
+            <span>Organization (Client)</span>
+            <button type="button"
+              onClick={() => { setManualOrg(v => !v); set('client_id', ''); set('client_name_manual', ''); }}
+              style={{fontSize:11.5, color:'var(--primary)', background:'none', border:'none', cursor:'pointer', padding:0, fontFamily:'inherit', fontWeight:500}}>
+              {manualOrg ? '← Select from list' : 'Enter manually →'}
+            </button>
+          </label>
+          {manualOrg ? (
+            <input value={form.client_name_manual} onChange={e => set('client_name_manual', e.target.value)}
+              placeholder="Organization name…" />
+          ) : (
+            <select value={form.client_id} onChange={e => set('client_id', e.target.value)}>
+              <option value="">— Select organization —</option>
+              {clients.map(c => <option key={c.id} value={c.id}>{c.fullName || c.full_name}{c.shortName || c.short_name ? ` (${c.shortName || c.short_name})` : ''}</option>)}
+            </select>
+          )}
         </div>
         <div className="form-group">
           <label>Fiscal Year *</label>
@@ -251,10 +266,15 @@ function ShortlistRow({ row, idx, canEdit, isAdmin, onEdit, onDelete, showFY=tru
 
       {/* Organization */}
       <div style={{flex:2, minWidth:0, fontSize:13, color:'var(--text2)'}}>
-        {row.client_name
+        {(row.client_name || row.client_name_manual)
           ? <>{row.client_short ? <span style={{fontWeight:600}}>{row.client_short}</span> : null}
             {row.client_short && <span style={{color:'var(--text3)'}}> · </span>}
-            {row.client_short ? <span style={{color:'var(--text3)'}}>{row.client_name}</span> : <span>{row.client_name}</span>}
+            <span style={row.client_short ? {color:'var(--text3)'} : {}}>
+              {row.client_name || row.client_name_manual}
+            </span>
+            {row.client_name_manual && !row.client_name && (
+              <span style={{fontSize:10, marginLeft:5, color:'var(--text3)', fontStyle:'italic'}}>manual</span>
+            )}
           </>
           : <span style={{color:'var(--text3)', fontStyle:'italic'}}>No organization</span>
         }
@@ -405,8 +425,8 @@ export default function Shortlisting({ institutes, clients, isAdmin, isEditor })
         label = row.fy ? `FY ${row.fy}` : 'No Fiscal Year';
         sub = '';
       } else if (groupBy === 'org') {
-        key = row.client_id ? String(row.client_id) : '__none__';
-        label = row.client_name || 'No Organization';
+        key = row.client_id ? String(row.client_id) : (row.client_name_manual ? `m:${row.client_name_manual}` : '__none__');
+        label = row.client_name || row.client_name_manual || 'No Organization';
         sub = row.client_short || '';
       } else {
         key = String(row.institute_id);
