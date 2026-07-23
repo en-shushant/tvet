@@ -493,7 +493,7 @@ function App() {
 
         <div className="page-content">
           {screen === 'dashboard' && <Dashboard institutes={institutes} isEditor={isEditor} onNavigate={(s, inst, tab)=>{ if(inst) handleSelectInstitute(inst).then(()=>{ if(tab) setJumpToTab(tab); }); else setScreen(s); }}/>}
-          {screen === 'institutes' && <InstituteList institutes={institutes} onSelect={handleSelectInstitute} onAdd={isAdmin ? ()=>setShowAddInstitute(true) : null} initialSearch={globalSearch}/>}
+          {screen === 'institutes' && <InstituteList institutes={isSuperAdmin ? institutes : institutes.filter(i => !i.isShortlistingOnly)} onSelect={handleSelectInstitute} onAdd={isAdmin ? ()=>setShowAddInstitute(true) : null} initialSearch={globalSearch}/>}
           {screen === 'detail' && selectedInstitute && (
             <InstituteDetail
               institute={selectedInstitute}
@@ -506,6 +506,7 @@ function App() {
               token={token}
               isAdmin={isAdmin}
               isEditor={isEditor}
+              isSuperAdmin={isSuperAdmin}
               jumpToTab={jumpToTab}
               onBulkAdd={()=>{ setBulkAddInstitute(selectedInstitute); window.location.hash=`bulkAdd/${selectedInstitute.id}`; setScreen('bulkAdd'); }}
               onAddNSTB={()=>{ setNstbAddInstitute(selectedInstitute); window.location.hash=`nstbAdd/${selectedInstitute.id}`; setScreen('nstbAdd'); }}
@@ -578,7 +579,7 @@ function App() {
 
       {/* Global modals */}
       {showAddInstitute && (
-        <InstituteForm onSave={handleAddInstitute} onClose={()=>setShowAddInstitute(false)}/>
+        <InstituteForm onSave={handleAddInstitute} onClose={()=>setShowAddInstitute(false)} isSuperAdmin={isSuperAdmin}/>
       )}
       {showChangePwd && <ChangePasswordModal onClose={()=>setShowChangePwd(false)}/>}
     </div>

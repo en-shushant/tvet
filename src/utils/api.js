@@ -90,6 +90,7 @@ export function normInst(r) {
     totalStAppeared: parseInt(r.total_st_appeared) || 0,
     totalClients: parseInt(r.total_clients) || 0,
     totalAffPrograms: parseInt(r.total_aff_programs) || 0,
+    isShortlistingOnly: !!r.is_shortlisting_only,
   };
 }
 
@@ -230,6 +231,7 @@ export function instToAPI(f) {
     google_map_link: f.googleMapLink || null,
     latitude: f.latitude ? parseFloat(f.latitude) : null,
     longitude: f.longitude ? parseFloat(f.longitude) : null,
+    is_shortlisting_only: !!f.isShortlistingOnly,
   };
 }
 

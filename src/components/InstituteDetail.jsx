@@ -44,7 +44,7 @@ function getOccupation(id) {
 
 const useMemo2 = useMemo;
 
-function InstituteDetail({institute, clients, onUpdateClients, onBack, onUpdate, onRefresh, onDelete, token, isAdmin, isEditor, jumpToTab, onBulkAdd, onAddNSTB}) {
+function InstituteDetail({institute, clients, onUpdateClients, onBack, onUpdate, onRefresh, onDelete, token, isAdmin, isEditor, isSuperAdmin, jumpToTab, onBulkAdd, onAddNSTB}) {
   const VALID_TABS = ['profile','experience','clients','nstb','tax','affiliation','infrastructure'];
   const tabKey = `inst_tab_${institute.id}`;
   const savedTab = sessionStorage.getItem(tabKey);
@@ -230,6 +230,11 @@ function InstituteDetail({institute, clients, onUpdateClients, onBack, onUpdate,
             {institute.logo && <img src={institute.logo} alt="" style={{width:40, height:40, objectFit:'contain', borderRadius:6, border:'1px solid var(--border)', background:'#fff', padding:3}}/>}
             <h2 style={{fontSize:18, fontWeight:600}}>{institute.name}</h2>
             {institute.acronym && <span className="badge badge-purple" style={{fontSize:12, fontFamily:'var(--font-mono)'}}>{institute.acronym}</span>}
+            {institute.isShortlistingOnly && (
+              <span style={{fontSize:11, fontWeight:600, padding:'3px 10px', borderRadius:100, background:'var(--warning-light)', color:'#7A4D00', border:'1px solid rgba(255,174,31,.3)'}}>
+                Shortlisting Only
+              </span>
+            )}
             <StatusBadge status={institute.status}/>
             {!canEdit && <span className="badge badge-gray" title="Your role does not have edit permission" style={{fontSize:10}}>👁 Read-only</span>}
           </div>
@@ -620,7 +625,7 @@ function InstituteDetail({institute, clients, onUpdateClients, onBack, onUpdate,
       )}
 
       {/* Modals */}
-      {modal?.type === 'editInstitute' && <InstituteForm institute={institute} onSave={saveProfile} onClose={()=>setModal(null)}/>}
+      {modal?.type === 'editInstitute' && <InstituteForm institute={institute} onSave={saveProfile} onClose={()=>setModal(null)} isSuperAdmin={isSuperAdmin}/>}
       {modal?.type === 'deleteInstitute' && ReactDOM.createPortal(
         <div className="modal-overlay" onClick={()=>setModal(null)}>
           <div className="modal" style={{maxWidth:420}} onClick={e=>e.stopPropagation()}>

@@ -4,11 +4,12 @@ import { ErrorBanner } from './ui/Modal.jsx';
 import { useUnsavedGuard } from './ui/UnsavedGuard.jsx';
 import { INSTITUTE_TYPES, INSTITUTE_STATUSES } from '../constants/data.js';
 
-function InstituteForm({institute, onSave, onClose}) {
+function InstituteForm({institute, onSave, onClose, isSuperAdmin}) {
   const [form, setForm] = useState(institute || {
     name:'', acronym:'', regNo:'', regDate:'', pan:'', permanentAccountNo:'',
     contactPerson:'', phone:'', email:'', address:'',
-    type:'Private', status:'Active', renewalDue:'', remarks:'', logo:null, website:'', googleMapLink:'', latitude:'', longitude:''
+    type:'Private', status:'Active', renewalDue:'', remarks:'', logo:null, website:'', googleMapLink:'', latitude:'', longitude:'',
+    isShortlistingOnly: false,
   });
 
   const { handleClose, markDirty, markClean, UnsavedModal } = useUnsavedGuard(onClose);
@@ -135,6 +136,26 @@ function InstituteForm({institute, onSave, onClose}) {
         <label>Remarks</label>
         <textarea value={form.remarks} onChange={e=>set('remarks',e.target.value)} rows={2}/>
       </div>
+      {isSuperAdmin && (
+        <div style={{
+          display:'flex', alignItems:'flex-start', gap:12,
+          padding:'14px 16px', borderRadius:12,
+          background: form.isShortlistingOnly ? 'var(--warning-light)' : 'var(--bg)',
+          border: `1px solid ${form.isShortlistingOnly ? 'rgba(255,174,31,.35)' : 'var(--border)'}`,
+          transition:'background .15s, border-color .15s', marginBottom:4,
+        }}>
+          <div style={{paddingTop:1}}>
+            <div className={`toggle${form.isShortlistingOnly?' on':''}`} style={{flexShrink:0}}
+              onClick={()=>set('isShortlistingOnly',!form.isShortlistingOnly)}/>
+          </div>
+          <div>
+            <div style={{fontWeight:600, fontSize:13.5, color:'var(--text)'}}>Shortlisting Only</div>
+            <div style={{fontSize:12, color:'var(--text3)', marginTop:2}}>
+              This firm will only be visible in the Shortlisting section — hidden from the main Institutes list for all non-superadmin users.
+            </div>
+          </div>
+        </div>
+      )}
       <ErrorBanner msg={err} onDismiss={()=>setErr('')}/>
     </Modal>
     </>
