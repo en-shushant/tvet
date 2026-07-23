@@ -119,6 +119,19 @@ async function runMigrations() {
       sort_order INTEGER DEFAULT 0
     )`,
     `ALTER TABLE institute_infrastructure ADD COLUMN IF NOT EXISTS ownership TEXT DEFAULT 'Own'`,
+    `CREATE TABLE IF NOT EXISTS shortlists (
+      id SERIAL PRIMARY KEY,
+      client_id INTEGER REFERENCES clients(id) ON DELETE SET NULL,
+      institute_id INTEGER NOT NULL REFERENCES institutes(id) ON DELETE CASCADE,
+      standing_list_name TEXT,
+      shortlist_date DATE NOT NULL,
+      valid_until DATE,
+      status TEXT DEFAULT 'Active',
+      remarks TEXT,
+      created_at TIMESTAMPTZ DEFAULT NOW(),
+      updated_at TIMESTAMPTZ DEFAULT NOW()
+    )`,
+    `ALTER TABLE shortlists ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW()`,
   ];
   for (const sql of migrations) {
     try { await pool.query(sql); }
@@ -190,6 +203,7 @@ fastify.register(require('./routes/locations'),       { prefix: '/api/locations'
 fastify.register(require('./routes/occupation-tools'), { prefix: '/api/occupation-tools' });
 fastify.register(require('./routes/infrastructure'),   { prefix: '/api/infrastructure' });
 fastify.register(require('./routes/dashboard'),        { prefix: '/api/dashboard' });
+fastify.register(require('./routes/shortlists'),       { prefix: '/api/shortlists' });
 
 // ─── SPA FALLBACK ─────────────────────────────────────────────────────────────
 fastify.setNotFoundHandler((request, reply) => {

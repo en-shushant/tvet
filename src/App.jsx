@@ -10,6 +10,7 @@ import ProjectCompliance from './components/ProjectCompliance.jsx';
 import ComparisonView from './components/ComparisonView.jsx';
 import MasterData from './components/MasterData.jsx';
 const ReportsView = lazy(() => import('./components/ReportsView.jsx'));
+const Shortlisting = lazy(() => import('./components/Shortlisting.jsx'));
 import NepalMap from './components/NepalMap.jsx';
 import ChangePasswordModal from './components/ChangePasswordModal.jsx';
 import { NSTBBulkPage } from './components/NSTBForms.jsx';
@@ -250,6 +251,7 @@ function App() {
     {id:'summary', icon:'bar_chart', label:'Summary View', editorHidden: true},
     {id:'comparison', icon:'compare_arrows', label:'Comparison', editorHidden: true},
     {id:'compliance', icon:'fact_check', label:'Project Compliance', editorHidden: true},
+    {id:'shortlisting', icon:'playlist_add_check', label:'Shortlisting'},
     {id:'reports', icon:'description', label:'Reports'},
     {id:'master', icon:'category', label:'Master Data', adminOnly: false, editorHidden: false},
     {id:'users', icon:'manage_accounts', label:'User Management', adminOnly: true},
@@ -324,6 +326,7 @@ function App() {
     nstbAdd: 'Add NSTB Records',
     summary: 'Summary view',
     comparison: 'Comparison view',
+    shortlisting: 'Shortlisting',
     reports: 'Reports',
     master: 'Master data',
     users: 'User management',
@@ -552,6 +555,7 @@ function App() {
           {screen === 'summary' && <SummaryView institutes={institutes} clients={clients}/>}
           {screen === 'comparison' && <ComparisonView institutes={institutes} clients={clients}/>}
           {screen === 'compliance' && <ProjectCompliance institutes={institutes} clients={clients}/>}
+          {screen === 'shortlisting' && <Suspense fallback={<div style={{padding:40,textAlign:'center',color:'var(--text3)'}}>Loading…</div>}><Shortlisting institutes={institutes} clients={clients} isAdmin={isAdmin} isEditor={isEditor} token={token}/></Suspense>}
           {screen === 'reports' && <Suspense fallback={<div style={{padding:40,textAlign:'center',color:'var(--text3)'}}>Loading reports…</div>}><ReportsView institutes={institutes} clients={clients}/></Suspense>}
           {screen === 'master' && (isAdmin || isEditor) && <MasterData clients={clients} onUpdateClients={handleUpdateClients} token={token} isAdmin={isAdmin} isEditor={isEditor} isSuperAdmin={isSuperAdmin}/>}
           {screen === 'master' && !isAdmin && !isEditor && (
