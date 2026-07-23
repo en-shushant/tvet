@@ -2,6 +2,9 @@ import { useState, useEffect, useMemo, useCallback } from 'react';
 import Modal from './ui/Modal.jsx';
 import { api } from '../utils/api.js';
 import { getSession } from '../utils/auth.js';
+import { FISCAL_YEARS } from '../constants/data.js';
+
+const FYS = [...FISCAL_YEARS].reverse(); // newest first
 
 const fmt = (d) => d ? new Date(d + 'T00:00:00').toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'numeric' }) : '—';
 
@@ -13,14 +16,20 @@ function statusColor(s) {
 
 // ── Add/Edit Modal ─────────────────────────────────────────────────────────────
 function ShortlistForm({ initial, institutes, clients, onSave, onClose, saving }) {
+  const isEdit = !!initial?.id;
+  const [multi, setMulti] = useState(false); // multi-firm mode (add only)
+  const [selectedFirms, setSelectedFirms] = useState([]); // for multi mode
+  const [firmSearch, setFirmSearch] = useState('');
+
   const empty = {
-    client_id: '', institute_id: '', standing_list_name: '',
+    client_id: '', institute_id: '', standing_list_name: '', fy: '',
     shortlist_date: '', valid_until: '', status: 'Active', remarks: '',
   };
   const [form, setForm] = useState(initial ? {
     client_id:          initial.client_id    ?? '',
     institute_id:       initial.institute_id ?? '',
     standing_list_name: initial.standing_list_name ?? '',
+    fy:                 initial.fy           ?? '',
     shortlist_date:     initial.shortlist_date ? initial.shortlist_date.slice(0,10) : '',
     valid_until:        initial.valid_until   ? initial.valid_until.slice(0,10)     : '',
     status:             initial.status        ?? 'Active',
@@ -30,26 +39,45 @@ function ShortlistForm({ initial, institutes, clients, onSave, onClose, saving }
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
   const [err, setErr] = useState('');
 
+  const toggleFirm = (id) => setSelectedFirms(prev =>
+    prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
+  );
+
+  const filteredInstitutes = useMemo(() => {
+    if (!firmSearch) return institutes;
+    const q = firmSearch.toLowerCase();
+    return institutes.filter(i => (i.name + ' ' + (i.acronym||'')).toLowerCase().includes(q));
+  }, [institutes, firmSearch]);
+
   const handleSave = async () => {
-    if (!form.institute_id) return setErr('Please select a firm (institute).');
+    if (!form.fy) return setErr('Fiscal year is required.');
     if (!form.shortlist_date) return setErr('Shortlisting date is required.');
-    setErr('');
-    await onSave(form);
+    if (multi && !isEdit) {
+      if (selectedFirms.length === 0) return setErr('Select at least one firm.');
+      setErr('');
+      // Pass array — parent saves all in parallel then reloads once
+      await onSave(selectedFirms.map(instId => ({ ...form, institute_id: instId })));
+    } else {
+      if (!form.institute_id) return setErr('Please select a firm.');
+      setErr('');
+      await onSave(form);
+    }
   };
 
   return (
     <Modal
-      title={initial?.id ? 'Edit Shortlist Entry' : 'Add Shortlist Entry'}
+      title={isEdit ? 'Edit Shortlist Entry' : 'Add Shortlist Entry'}
       onClose={onClose}
       footer={<>
         <button className="btn btn-secondary" onClick={onClose}>Cancel</button>
         <button className="btn btn-primary" onClick={handleSave} disabled={saving}>
-          {saving ? 'Saving…' : initial?.id ? 'Update' : 'Add'}
+          {saving ? 'Saving…' : isEdit ? 'Update' : multi ? `Add ${selectedFirms.length || ''} Firms` : 'Add'}
         </button>
       </>}
     >
       {err && <div style={{ background:'var(--error-light)', color:'#c0391e', borderRadius:10, padding:'10px 14px', marginBottom:14, fontSize:13 }}>{err}</div>}
 
+      {/* Common fields */}
       <div className="form-row form-row-2">
         <div className="form-group">
           <label>Organization (Client)</label>
@@ -59,35 +87,31 @@ function ShortlistForm({ initial, institutes, clients, onSave, onClose, saving }
           </select>
         </div>
         <div className="form-group">
-          <label>Firm (Institute) *</label>
-          <select value={form.institute_id} onChange={e => set('institute_id', e.target.value)}>
-            <option value="">— Select firm —</option>
-            {institutes.map(i => <option key={i.id} value={i.id}>{i.acronym ? `[${i.acronym}] ` : ''}{i.name}</option>)}
+          <label>Fiscal Year *</label>
+          <select value={form.fy} onChange={e => set('fy', e.target.value)}>
+            <option value="">— Select FY —</option>
+            {FYS.map(fy => <option key={fy} value={fy}>{fy}</option>)}
           </select>
         </div>
       </div>
 
-      <div className="form-group">
-        <label>Standing List Name</label>
-        <input
-          value={form.standing_list_name}
-          onChange={e => set('standing_list_name', e.target.value)}
-          placeholder="e.g. Roster of Firms 2024, ADB Consultants List…"
-        />
-      </div>
-
       <div className="form-row form-row-2">
+        <div className="form-group">
+          <label>Standing List Name</label>
+          <input value={form.standing_list_name} onChange={e => set('standing_list_name', e.target.value)}
+            placeholder="e.g. Roster of Firms, ADB Consultants List…" />
+        </div>
         <div className="form-group">
           <label>Shortlisting Date *</label>
           <input type="date" value={form.shortlist_date} onChange={e => set('shortlist_date', e.target.value)} />
         </div>
+      </div>
+
+      <div className="form-row form-row-2">
         <div className="form-group">
           <label>Valid Until</label>
           <input type="date" value={form.valid_until} onChange={e => set('valid_until', e.target.value)} />
         </div>
-      </div>
-
-      <div className="form-row form-row-2">
         <div className="form-group">
           <label>Status</label>
           <select value={form.status} onChange={e => set('status', e.target.value)}>
@@ -96,11 +120,97 @@ function ShortlistForm({ initial, institutes, clients, onSave, onClose, saving }
             <option value="Pending">Pending</option>
           </select>
         </div>
-        <div className="form-group">
-          <label>Remarks</label>
-          <input value={form.remarks} onChange={e => set('remarks', e.target.value)} placeholder="Optional notes" />
-        </div>
       </div>
+
+      <div className="form-group">
+        <label>Remarks</label>
+        <input value={form.remarks} onChange={e => set('remarks', e.target.value)} placeholder="Optional notes" />
+      </div>
+
+      {/* Firm selection */}
+      {!isEdit && (
+        <div style={{display:'flex', gap:8, marginBottom:10}}>
+          {[['single','Single firm'],['multi','Multiple firms']].map(([v,lbl]) => (
+            <button key={v} type="button" onClick={() => { setMulti(v==='multi'); setSelectedFirms([]); set('institute_id',''); }}
+              style={{
+                padding:'6px 16px', borderRadius:100, border:'none', cursor:'pointer',
+                fontFamily:'inherit', fontSize:12.5, fontWeight:500, transition:'all .15s',
+                background: (multi ? v==='multi' : v==='single') ? 'var(--primary)' : 'var(--bg)',
+                color:      (multi ? v==='multi' : v==='single') ? '#fff'            : 'var(--text3)',
+              }}>{lbl}</button>
+          ))}
+        </div>
+      )}
+
+      {/* Single firm dropdown */}
+      {(!isEdit && !multi) && (
+        <div className="form-group">
+          <label>Firm (Institute) *</label>
+          <select value={form.institute_id} onChange={e => set('institute_id', e.target.value)}>
+            <option value="">— Select firm —</option>
+            {institutes.map(i => <option key={i.id} value={i.id}>{i.acronym ? `[${i.acronym}] ` : ''}{i.name}</option>)}
+          </select>
+        </div>
+      )}
+
+      {/* Edit: show firm as read-only dropdown */}
+      {isEdit && (
+        <div className="form-group">
+          <label>Firm (Institute)</label>
+          <select value={form.institute_id} onChange={e => set('institute_id', e.target.value)}>
+            <option value="">— Select firm —</option>
+            {institutes.map(i => <option key={i.id} value={i.id}>{i.acronym ? `[${i.acronym}] ` : ''}{i.name}</option>)}
+          </select>
+        </div>
+      )}
+
+      {/* Multi-firm checklist */}
+      {(!isEdit && multi) && (
+        <div className="form-group">
+          <label>Select Firms * ({selectedFirms.length} selected)</label>
+          <div style={{border:'1.5px solid var(--border)', borderRadius:10, overflow:'hidden'}}>
+            <div style={{padding:'8px 12px', borderBottom:'1px solid var(--border)', background:'var(--bg)'}}>
+              <input
+                placeholder="Search firms…"
+                value={firmSearch}
+                onChange={e => setFirmSearch(e.target.value)}
+                style={{border:'none', background:'transparent', outline:'none', width:'100%', fontSize:13}}
+              />
+            </div>
+            <div style={{maxHeight:220, overflowY:'auto'}}>
+              {filteredInstitutes.map(i => {
+                const checked = selectedFirms.includes(i.id);
+                return (
+                  <label key={i.id} style={{
+                    display:'flex', alignItems:'center', gap:10, padding:'8px 14px',
+                    cursor:'pointer', fontSize:13, transition:'background .1s',
+                    background: checked ? 'var(--primary-light)' : 'transparent',
+                    color: checked ? 'var(--primary-dark)' : 'var(--text)',
+                    fontWeight: checked ? 600 : 400,
+                  }}
+                    onMouseEnter={e=>{if(!checked) e.currentTarget.style.background='var(--bg)';}}
+                    onMouseLeave={e=>{if(!checked) e.currentTarget.style.background='';}}
+                  >
+                    <input type="checkbox" checked={checked} onChange={() => toggleFirm(i.id)}
+                      style={{accentColor:'var(--primary)', flexShrink:0}} />
+                    {i.acronym ? <span style={{color:'var(--text3)', fontWeight:500}}>[{i.acronym}]</span> : null}
+                    {i.name}
+                  </label>
+                );
+              })}
+            </div>
+            {selectedFirms.length > 0 && (
+              <div style={{padding:'8px 14px', borderTop:'1px solid var(--border)', background:'var(--bg)', fontSize:12, color:'var(--text3)'}}>
+                {selectedFirms.length} firm{selectedFirms.length>1?'s':''} selected
+                <button type="button" onClick={() => setSelectedFirms([])}
+                  style={{marginLeft:8, background:'none', border:'none', color:'var(--primary)', cursor:'pointer', fontSize:12, padding:0}}>
+                  Clear all
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </Modal>
   );
 }
@@ -148,6 +258,11 @@ function ShortlistRow({ row, idx, canEdit, isAdmin, onEdit, onDelete }) {
           </>
           : <span style={{color:'var(--text3)', fontStyle:'italic'}}>No organization</span>
         }
+      </div>
+
+      {/* FY */}
+      <div style={{width:80, fontSize:12, fontWeight:600, color:'var(--primary-dark)', background:'var(--primary-light)', borderRadius:100, padding:'3px 10px', flexShrink:0, textAlign:'center'}}>
+        {row.fy || '—'}
       </div>
 
       {/* Date */}
@@ -218,13 +333,15 @@ function GroupHeader({ label, sub, count, expanded, onToggle }) {
 
 // ── Table header row ───────────────────────────────────────────────────────────
 function TableHead({ groupBy }) {
+  const col = {fontSize:11, fontWeight:600, color:'var(--text3)', textTransform:'uppercase', letterSpacing:'0.6px'};
   return (
     <div style={{display:'flex', alignItems:'center', gap:12, padding:'9px 20px', background:'var(--bg)', borderBottom:'1px solid var(--border)'}}>
-      <div style={{flex:2, fontSize:11, fontWeight:600, color:'var(--text3)', textTransform:'uppercase', letterSpacing:'0.6px'}}>{groupBy === 'org' ? 'Firm' : 'Organization'}</div>
-      <div style={{flex:2, fontSize:11, fontWeight:600, color:'var(--text3)', textTransform:'uppercase', letterSpacing:'0.6px'}}>{groupBy === 'org' ? 'Organization' : 'Firm'}</div>
-      <div style={{width:110, fontSize:11, fontWeight:600, color:'var(--text3)', textTransform:'uppercase', letterSpacing:'0.6px', flexShrink:0}}>Date / Validity</div>
-      <div style={{width:80, fontSize:11, fontWeight:600, color:'var(--text3)', textTransform:'uppercase', letterSpacing:'0.6px', flexShrink:0}}>Status</div>
-      <div style={{flex:1, fontSize:11, fontWeight:600, color:'var(--text3)', textTransform:'uppercase', letterSpacing:'0.6px'}}>Remarks</div>
+      <div style={{flex:2, ...col}}>{groupBy === 'org' ? 'Firm' : 'Organization'}</div>
+      <div style={{flex:2, ...col}}>{groupBy === 'org' ? 'Organization' : 'Firm'}</div>
+      <div style={{width:80, ...col, flexShrink:0}}>FY</div>
+      <div style={{width:110, ...col, flexShrink:0}}>Date / Validity</div>
+      <div style={{width:80, ...col, flexShrink:0}}>Status</div>
+      <div style={{flex:1, ...col}}>Remarks</div>
       <div style={{width:70, flexShrink:0}}></div>
     </div>
   );
@@ -245,6 +362,7 @@ export default function Shortlisting({ institutes, clients, isAdmin, isEditor })
   const [filterOrg, setFilterOrg] = useState('');
   const [filterFirm, setFilterFirm] = useState('');
   const [filterStatus, setFilterStatus] = useState('');
+  const [filterFY, setFilterFY] = useState('');
   const [search, setSearch] = useState('');
 
   const load = useCallback(async () => {
@@ -261,13 +379,14 @@ export default function Shortlisting({ institutes, clients, isAdmin, isEditor })
     if (filterOrg    && String(r.client_id)    !== filterOrg)    return false;
     if (filterFirm   && String(r.institute_id) !== filterFirm)   return false;
     if (filterStatus && r.status !== filterStatus)               return false;
+    if (filterFY     && r.fy !== filterFY)                       return false;
     if (search) {
       const q = search.toLowerCase();
-      const hay = [r.institute_name, r.institute_acronym, r.client_name, r.client_short, r.standing_list_name, r.remarks].join(' ').toLowerCase();
+      const hay = [r.institute_name, r.institute_acronym, r.client_name, r.client_short, r.standing_list_name, r.fy, r.remarks].join(' ').toLowerCase();
       if (!hay.includes(q)) return false;
     }
     return true;
-  }), [rows, filterOrg, filterFirm, filterStatus, search]);
+  }), [rows, filterOrg, filterFirm, filterStatus, filterFY, search]);
 
   // Group the filtered rows
   const grouped = useMemo(() => {
@@ -292,13 +411,16 @@ export default function Shortlisting({ institutes, clients, isAdmin, isEditor })
 
   const toggle = (key) => setExpanded(e => ({ ...e, [key]: !e[key] }));
 
-  const handleSave = async (form) => {
+  const handleSave = async (formOrArray) => {
     setSaving(true);
     try {
-      if (modal?.data?.id) {
-        await api('PUT', `/shortlists/${modal.data.id}`, form, token);
+      if (Array.isArray(formOrArray)) {
+        // Bulk: save all in parallel
+        await Promise.all(formOrArray.map(f => api('POST', '/shortlists', f, token)));
+      } else if (modal?.data?.id) {
+        await api('PUT', `/shortlists/${modal.data.id}`, formOrArray, token);
       } else {
-        await api('POST', '/shortlists', form, token);
+        await api('POST', '/shortlists', formOrArray, token);
       }
       await load();
       setModal(null);
@@ -364,6 +486,12 @@ export default function Shortlisting({ institutes, clients, isAdmin, isEditor })
         <select value={filterFirm} onChange={e => setFilterFirm(e.target.value)} style={{minWidth:160}}>
           <option value="">All firms</option>
           {sortedInstitutes.map(i => <option key={i.id} value={i.id}>{i.acronym ? `[${i.acronym}] ` : ''}{i.name}</option>)}
+        </select>
+
+        {/* Filter: FY */}
+        <select value={filterFY} onChange={e => setFilterFY(e.target.value)} style={{minWidth:120}}>
+          <option value="">All FYs</option>
+          {FYS.map(fy => <option key={fy} value={fy}>{fy}</option>)}
         </select>
 
         {/* Filter: Status */}

@@ -132,6 +132,7 @@ async function runMigrations() {
       updated_at TIMESTAMPTZ DEFAULT NOW()
     )`,
     `ALTER TABLE shortlists ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW()`,
+    `ALTER TABLE shortlists ADD COLUMN IF NOT EXISTS fy TEXT`,
   ];
   for (const sql of migrations) {
     try { await pool.query(sql); }
