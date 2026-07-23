@@ -4,7 +4,7 @@ import Pagination from './ui/Pagination.jsx';
 import Modal from './ui/Modal.jsx';
 import { ErrorBanner } from './ui/Modal.jsx';
 import LocationsEditor from './LocationsEditor.jsx';
-import { CLIENT_TYPES, TRAINING_TYPES, TRAINING_TYPES_DEFAULT, SECTORS, NSTB_LEVELS, INSTITUTE_TYPES, INSTITUTE_STATUSES, AFFILIATION_TYPES, LOCAL_LEVEL_TYPES, FISCAL_YEARS, OCCUPATIONS, getTrainingTypes, saveTrainingTypes, setTrainingTypesVar, getFiscalYears, saveFiscalYears, setFiscalYearsVar } from '../constants/data.js';
+import { CLIENT_TYPES, TRAINING_TYPES, TRAINING_TYPES_DEFAULT, SECTORS, NSTB_LEVELS, INSTITUTE_TYPES, INSTITUTE_STATUSES, AFFILIATION_TYPES, LOCAL_LEVEL_TYPES, FISCAL_YEARS, OCCUPATIONS, getTrainingTypes, saveTrainingTypes, setTrainingTypesVar, getFiscalYears, saveFiscalYears, setFiscalYearsVar, getCurrentFY, saveCurrentFY } from '../constants/data.js';
 import { api, clientToAPI, normClient } from '../utils/api.js';
 import { getSession } from '../utils/auth.js';
 
@@ -20,6 +20,7 @@ function MasterData({clients, onUpdateClients, token, isAdmin, isEditor, isSuper
   const [ttInput, setTtInput] = useState('');
   const [editTt, setEditTt] = useState(null);
   const [fiscalYears, setFiscalYears] = useState(getFiscalYears());
+  const [currentFY, setCurrentFY] = useState(getCurrentFY);
   const [fyInput, setFyInput] = useState('');
   const [editFy, setEditFy] = useState(null);
 
@@ -680,25 +681,40 @@ function MasterData({clients, onUpdateClients, token, isAdmin, isEditor, isSuper
                 {fiscalYears.map((fy, i) => {
                   const y = parseInt(fy);
                   const ad = isNaN(y) ? '' : `${y-57}/${String(y-56).slice(-2)}`;
+                  const isCurrent = fy === currentFY;
                   return (
-                    <tr key={i}>
+                    <tr key={i} style={isCurrent ? {background:'var(--success-light)'} : {}}>
                       <td className="mono text-muted" style={{fontSize:11}}>{i+1}</td>
                       <td style={{fontSize:13}}>
-                        {editFy?.idx===i
-                          ? <input autoFocus value={editFy.val} onChange={e=>setEditFy({idx:i,val:e.target.value})}
-                              onKeyDown={e=>{if(e.key==='Enter')updateFY(i,editFy.val);if(e.key==='Escape')setEditFy(null);}}
-                              style={{width:90}} maxLength={7}/>
-                          : <span className="mono">{fy}</span>
-                        }
+                        <div style={{display:'flex', alignItems:'center', gap:8}}>
+                          {editFy?.idx===i
+                            ? <input autoFocus value={editFy.val} onChange={e=>setEditFy({idx:i,val:e.target.value})}
+                                onKeyDown={e=>{if(e.key==='Enter')updateFY(i,editFy.val);if(e.key==='Escape')setEditFy(null);}}
+                                style={{width:90}} maxLength={7}/>
+                            : <span className="mono">{fy}</span>
+                          }
+                          {isCurrent && (
+                            <span style={{fontSize:10, fontWeight:700, padding:'2px 8px', borderRadius:100, background:'var(--success)', color:'#fff'}}>
+                              Current
+                            </span>
+                          )}
+                        </div>
                       </td>
                       <td className="mono text-muted" style={{fontSize:11}}>{ad}</td>
-                      <td style={{display:'flex', gap:4}}>
+                      <td style={{display:'flex', gap:4, alignItems:'center'}}>
                         {editFy?.idx===i
                           ? <>
                               <button className="btn btn-primary btn-sm" onClick={()=>updateFY(i,editFy.val)}>Save</button>
                               <button className="btn btn-ghost btn-sm" onClick={()=>setEditFy(null)}>✕</button>
                             </>
                           : <>
+                              {!isCurrent && (
+                                <button className="btn btn-ghost btn-sm" title="Set as current FY"
+                                  onClick={() => { saveCurrentFY(fy); setCurrentFY(fy); }}
+                                  style={{fontSize:11}}>
+                                  Set current
+                                </button>
+                              )}
                               <button className="btn btn-ghost btn-sm" onClick={()=>setEditFy({idx:i,val:fy})}>✏</button>
                               <button className="btn btn-danger btn-sm" onClick={()=>removeFY(i)}>🗑</button>
                             </>

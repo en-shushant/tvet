@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo, useCallback } from 'react';
 import Modal from './ui/Modal.jsx';
 import { api } from '../utils/api.js';
 import { getSession } from '../utils/auth.js';
-import { FISCAL_YEARS } from '../constants/data.js';
+import { FISCAL_YEARS, getCurrentFY } from '../constants/data.js';
 
 const FYS = [...FISCAL_YEARS].reverse(); // newest first
 
@@ -307,7 +307,7 @@ function ShortlistRow({ row, idx, canEdit, isAdmin, onEdit, onDelete, showFY=tru
 }
 
 // ── Group header ───────────────────────────────────────────────────────────────
-function GroupHeader({ label, sub, count, expanded, onToggle }) {
+function GroupHeader({ label, sub, count, expanded, onToggle, isCurrent }) {
   return (
     <button onClick={onToggle} style={{
       width:'100%', display:'flex', alignItems:'center', gap:12,
@@ -322,9 +322,14 @@ function GroupHeader({ label, sub, count, expanded, onToggle }) {
       <span className="material-icons-round" style={{fontSize:16, color:'var(--text3)', flexShrink:0}}>
         {expanded ? 'expand_more' : 'chevron_right'}
       </span>
-      <div style={{flex:1}}>
+      <div style={{flex:1, display:'flex', alignItems:'center', gap:8}}>
         <div style={{fontWeight:600, fontSize:13.5, color:'var(--text)'}}>{label}</div>
-        {sub && <div style={{fontSize:11.5, color:'var(--text3)', marginTop:1}}>{sub}</div>}
+        {isCurrent && (
+          <span style={{fontSize:10, fontWeight:700, padding:'2px 9px', borderRadius:100, background:'var(--success)', color:'#fff', flexShrink:0}}>
+            Current
+          </span>
+        )}
+        {sub && <div style={{fontSize:11.5, color:'var(--text3)'}}>{sub}</div>}
       </div>
       <span style={{fontSize:11, fontWeight:600, padding:'3px 10px', borderRadius:100, background:'var(--primary-light)', color:'var(--primary-dark)', flexShrink:0}}>
         {count} {count === 1 ? 'entry' : 'entries'}
@@ -452,6 +457,8 @@ export default function Shortlisting({ institutes, clients, isAdmin, isEditor })
   const sortedInstitutes = useMemo(() =>
     [...institutes].sort((a,b) => a.name.localeCompare(b.name)), [institutes]);
 
+  const currentFY = getCurrentFY();
+
   return (
     <div className="fade-in" style={{display:'flex', flexDirection:'column', gap:20}}>
 
@@ -555,6 +562,7 @@ export default function Shortlisting({ institutes, clients, isAdmin, isEditor })
                   count={group.rows.length}
                   expanded={isOpen}
                   onToggle={() => toggle(key)}
+                  isCurrent={groupBy === 'fy' && currentFY && key === currentFY}
                 />
                 {isOpen && (
                   <>

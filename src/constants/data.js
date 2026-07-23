@@ -11,6 +11,10 @@ export function saveFiscalYears(list) { localStorage.setItem(FY_KEY, JSON.string
 export let FISCAL_YEARS = getFiscalYears();
 export function setFiscalYearsVar(list) { FISCAL_YEARS = list; }
 
+const CURRENT_FY_KEY = 'tvettrack_current_fy';
+export function getCurrentFY() { try { return localStorage.getItem(CURRENT_FY_KEY) || ''; } catch { return ''; } }
+export function saveCurrentFY(fy) { try { localStorage.setItem(CURRENT_FY_KEY, fy); } catch {} }
+
 export const CLIENT_TYPES = ['Government','NGO','INGO','Association','Private Limited','Public Limited','Other'];
 
 export const INSTITUTE_TYPES = ['Private','Government','NGO','INGO'];
