@@ -3,10 +3,183 @@ import Modal from './ui/Modal.jsx';
 import { api } from '../utils/api.js';
 import { getSession } from '../utils/auth.js';
 import { FISCAL_YEARS, getCurrentFY } from '../constants/data.js';
+import { adToBS, BS_MONTHS, toNpNum } from '../constants/nepali.js';
 
 const FYS = [...FISCAL_YEARS].reverse(); // newest first
 
 const fmt = (d) => d ? new Date(d + 'T00:00:00').toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'numeric' }) : '—';
+
+function adDateToBS(adStr) {
+  if (!adStr) return '';
+  const [y, m, d] = adStr.slice(0, 10).split('-').map(Number);
+  const bs = adToBS(new Date(Date.UTC(y, m - 1, d)));
+  return `${toNpNum(bs.y)}-${toNpNum(bs.m).padStart ? toNpNum(String(bs.m).padStart(2,'0')) : toNpNum(bs.m)}-${toNpNum(String(bs.d).padStart(2,'0'))}`;
+}
+
+function bsDateLabel(adStr) {
+  if (!adStr) return '';
+  const [y, m, d] = adStr.slice(0, 10).split('-').map(Number);
+  const bs = adToBS(new Date(Date.UTC(y, m - 1, d)));
+  return `${toNpNum(bs.d)} ${BS_MONTHS[bs.m - 1]} ${toNpNum(bs.y)}`;
+}
+
+function todayBS() {
+  const now = new Date();
+  const ktmStr = now.toLocaleDateString('en-CA', { timeZone: 'Asia/Kathmandu' });
+  const [y, m, d] = ktmStr.split('-').map(Number);
+  const bs = adToBS(new Date(Date.UTC(y, m - 1, d)));
+  return `${toNpNum(bs.d)} ${BS_MONTHS[bs.m - 1]} ${toNpNum(bs.y)}`;
+}
+
+// ── Letter generator — opens print-ready A4 in new window ─────────────────────
+function openShortlistLetter(row) {
+  const orgName    = row.client_name || row.client_name_manual || '';
+  const orgShort   = row.client_short || '';
+  const orgAddress = row.client_address || '';
+  const firmName   = row.institute_name || '';
+  const firmAcronym = row.institute_acronym || '';
+  const firmAddress = row.institute_address || '';
+  const firmPhone  = row.institute_phone || '';
+  const firmEmail  = row.institute_email || '';
+  const firmContact = row.institute_contact || '';
+  const firmRegNo  = row.institute_reg_no || '';
+  const listName   = row.standing_list_name || 'Standing List';
+  const fy         = row.fy || '';
+  const dateBS     = bsDateLabel(row.shortlist_date);
+  const validBS    = bsDateLabel(row.valid_until);
+  const dateAD     = fmt(row.shortlist_date);
+  const validAD    = fmt(row.valid_until);
+  const status     = row.status || 'Active';
+  const remarks    = row.remarks || '';
+  const todayBSStr = todayBS();
+
+  const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Shortlisting Letter — ${firmAcronym || firmName}</title>
+<style>
+  @page { size: A4; margin: 22mm 20mm 20mm 25mm; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Times New Roman', Georgia, serif; font-size: 12pt; color: #111; line-height: 1.6; background: #fff; }
+  .page { max-width: 170mm; margin: 0 auto; }
+
+  .org-block { text-align: center; border-bottom: 2px solid #222; padding-bottom: 10px; margin-bottom: 20px; }
+  .org-name  { font-size: 16pt; font-weight: 700; letter-spacing: 0.5px; }
+  .org-sub   { font-size: 10pt; color: #444; margin-top: 3px; }
+
+  .meta-row  { display: flex; justify-content: space-between; font-size: 10.5pt; margin-bottom: 20px; }
+
+  .to-block  { margin-bottom: 18px; font-size: 11.5pt; }
+  .to-label  { font-weight: 700; }
+
+  .subject   { font-size: 12pt; font-weight: 700; margin-bottom: 18px; text-decoration: underline; }
+  .body-text { margin-bottom: 14px; text-align: justify; }
+
+  table { width: 100%; border-collapse: collapse; margin: 14px 0 18px; font-size: 11pt; }
+  th { background: #f0f0f0; border: 1px solid #bbb; padding: 6px 10px; text-align: left; font-weight: 700; }
+  td { border: 1px solid #bbb; padding: 6px 10px; }
+  td:first-child { font-weight: 600; width: 45%; color: #333; }
+
+  .remarks-block { font-style: italic; font-size: 11pt; color: #444; margin-bottom: 18px; padding-left: 12px; border-left: 3px solid #ddd; }
+
+  .sign-area { margin-top: 50px; display: flex; justify-content: flex-end; }
+  .sign-box  { text-align: center; width: 200px; }
+  .sign-line { border-top: 1px solid #555; padding-top: 6px; margin-top: 60px; }
+  .sign-name { font-weight: 700; font-size: 11pt; }
+  .sign-org  { font-size: 10pt; color: #444; }
+
+  .footer-note { margin-top: 30px; border-top: 1px solid #ddd; padding-top: 8px; font-size: 9pt; color: #888; text-align: center; }
+
+  @media print {
+    body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    .no-print { display: none !important; }
+  }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <!-- Organization header -->
+  <div class="org-block">
+    <div class="org-name">${orgName}${orgShort && orgShort !== orgName ? ` (${orgShort})` : ''}</div>
+    ${orgAddress ? `<div class="org-sub">${orgAddress}</div>` : ''}
+  </div>
+
+  <!-- Date + Ref -->
+  <div class="meta-row">
+    <div><strong>मिति:</strong> ${todayBSStr}</div>
+    <div><strong>Date:</strong> ${new Date().toLocaleDateString('en-GB', { day:'2-digit', month:'long', year:'numeric' })}</div>
+  </div>
+
+  <!-- To block -->
+  <div class="to-block">
+    <div class="to-label">To,</div>
+    <div>The Director / Manager,</div>
+    <div><strong>${firmName}${firmAcronym ? ` (${firmAcronym})` : ''}</strong></div>
+    ${firmAddress ? `<div>${firmAddress}</div>` : ''}
+    ${firmPhone   ? `<div>Phone: ${firmPhone}</div>` : ''}
+    ${firmEmail   ? `<div>Email: ${firmEmail}</div>` : ''}
+    ${firmRegNo   ? `<div>Reg. No.: ${firmRegNo}</div>` : ''}
+  </div>
+
+  <!-- Subject -->
+  <div class="subject">
+    Subject: Shortlisting Notification — ${listName}${fy ? ' (FY ' + fy + ')' : ''}
+  </div>
+
+  <!-- Body -->
+  <div class="body-text">
+    Dear Sir/Madam,
+  </div>
+  <div class="body-text">
+    We are pleased to inform you that <strong>${firmName}${firmAcronym ? ` (${firmAcronym})` : ''}</strong> has been shortlisted for the <strong>${listName}</strong>${orgName ? ' maintained by <strong>' + orgName + '</strong>' : ''}${fy ? ' for Fiscal Year <strong>' + fy + '</strong>' : ''}.
+  </div>
+  <div class="body-text">
+    The details of the shortlisting are as follows:
+  </div>
+
+  <!-- Details table -->
+  <table>
+    <tr><th colspan="2">Shortlisting Details</th></tr>
+    <tr><td>Standing List Name</td><td>${listName}</td></tr>
+    ${fy ? `<tr><td>Fiscal Year</td><td>${fy}</td></tr>` : ''}
+    <tr><td>Shortlisting Date</td><td>${dateBS ? dateBS + ' (BS)' : ''} ${dateAD !== '—' ? '/ ' + dateAD + ' (AD)' : ''}</td></tr>
+    ${validBS ? `<tr><td>Valid Until</td><td>${validBS} (BS) / ${validAD} (AD)</td></tr>` : ''}
+    <tr><td>Status</td><td><strong>${status}</strong></td></tr>
+    ${orgName ? `<tr><td>Organization</td><td>${orgName}</td></tr>` : ''}
+  </table>
+
+  ${remarks ? `<div class="remarks-block">Note: ${remarks}</div>` : ''}
+
+  <div class="body-text">
+    Please ensure that all required documents and qualifications remain current and valid throughout the period of this shortlisting. We look forward to your participation.
+  </div>
+
+  <!-- Signature -->
+  <div class="sign-area">
+    <div class="sign-box">
+      <div class="sign-line">
+        <div class="sign-name">Authorized Signatory</div>
+        <div class="sign-org">${orgName}</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="footer-note">Generated by TVETtrack · ${new Date().toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'numeric' })}</div>
+
+</div>
+
+<script>
+  window.onload = function() { window.print(); };
+</script>
+</body>
+</html>`;
+
+  const w = window.open('', '_blank', 'width=900,height=700');
+  w.document.write(html);
+  w.document.close();
+}
 
 function statusColor(s) {
   if (s === 'Active')  return { bg: 'var(--success-light)', color: '#0b9b85' };
@@ -307,6 +480,11 @@ function ShortlistRow({ row, idx, canEdit, isAdmin, onEdit, onDelete, showFY=tru
 
       {/* Actions */}
       <div style={{display:'flex', gap:2, flexShrink:0}}>
+        <button title="Generate Letter" onClick={() => openShortlistLetter(row)}
+          style={{width:30,height:30,borderRadius:50,border:'none',background:'transparent',color:'var(--text3)',cursor:'pointer',display:'inline-flex',alignItems:'center',justifyContent:'center'}}
+          onMouseEnter={e=>{e.currentTarget.style.background='var(--primary-light)';e.currentTarget.style.color='var(--primary-dark)';}}
+          onMouseLeave={e=>{e.currentTarget.style.background='';e.currentTarget.style.color='var(--text3)';}}
+        ><span className="material-icons-round" style={{fontSize:15}}>description</span></button>
         {canEdit && (
           <button title="Edit" onClick={() => onEdit(row)}
             style={{width:30,height:30,borderRadius:50,border:'none',background:'transparent',color:'var(--text3)',cursor:'pointer',display:'inline-flex',alignItems:'center',justifyContent:'center'}}
@@ -369,7 +547,7 @@ function TableHead({ groupBy }) {
       <div style={{width:110, ...col, flexShrink:0}}>Date / Validity</div>
       <div style={{width:80, ...col, flexShrink:0}}>Status</div>
       <div style={{flex:1, ...col}}>Remarks</div>
-      <div style={{width:70, flexShrink:0}}></div>
+      <div style={{width:100, flexShrink:0}}></div>
     </div>
   );
 }
