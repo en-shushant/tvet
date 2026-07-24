@@ -860,6 +860,24 @@ function InstituteDetail({institute, clients, onUpdateClients, onBack, onUpdate,
       {modal?.type === 'addAffiliation' && <AffiliationForm onSave={saveAffiliation} onClose={()=>setModal(null)}/>}
       {modal?.type === 'editAffiliation' && <AffiliationForm record={modal.data} onSave={saveAffiliation} onClose={()=>setModal(null)}/>}
 
+      {confirmModal && (
+        <Modal
+          title="Confirm Delete"
+          onClose={() => setConfirmModal(null)}
+          footer={<>
+            <button className="btn btn-secondary" onClick={() => setConfirmModal(null)}>Cancel</button>
+            <button className="btn btn-danger" disabled={saving} onClick={async () => {
+              await confirmModal.onConfirm();
+              setConfirmModal(null);
+            }}>
+              {saving ? 'Deleting…' : 'Delete'}
+            </button>
+          </>}
+        >
+          <p style={{ margin: 0, color: 'var(--text1)' }}>{confirmModal.message}</p>
+        </Modal>
+      )}
+
       {tab==='clients' && (
         <div>
           {instituteClients.length === 0
@@ -887,6 +905,7 @@ function InfrastructureTab({ instituteId, token, canEdit }) {
   const [adding, setAdding] = useState(false);
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState('');
+  const [confirmModal, setConfirmModal] = useState(null);
 
   useEffect(() => {
     api('GET', `/infrastructure/${instituteId}`, null, token).then(setRows).catch(() => setRows([]));
@@ -905,10 +924,14 @@ function InfrastructureTab({ instituteId, token, canEdit }) {
     reload();
   };
 
-  const deleteRow = async (id) => {
-    if (!confirm('Delete this row?')) return;
-    await api('DELETE', `/infrastructure/${id}`, null, token);
-    reload();
+  const deleteRow = (id) => {
+    setConfirmModal({
+      message: 'Delete this infrastructure row?',
+      onConfirm: async () => {
+        await api('DELETE', `/infrastructure/${id}`, null, token);
+        reload();
+      },
+    });
   };
 
   const updateBulk = (i, field, value) => setBulkRows(prev => prev.map((r, idx) => idx === i ? {...r, [field]: value} : r));
