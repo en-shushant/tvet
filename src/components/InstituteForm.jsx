@@ -4,27 +4,6 @@ import { ErrorBanner } from './ui/Modal.jsx';
 import { useUnsavedGuard } from './ui/UnsavedGuard.jsx';
 import { INSTITUTE_TYPES, INSTITUTE_STATUSES } from '../constants/data.js';
 
-function ImgUpload({ label, hint, value, onChange, preview = 'contain' }) {
-  return (
-    <div className="form-group">
-      <label>{label}</label>
-      <div style={{display:'flex', alignItems:'center', gap:12}}>
-        {value && <img src={value} alt="" style={{height:48, maxWidth:180, objectFit:preview, border:'1px solid var(--border)', borderRadius:6, background:'#fff', padding:3}}/>}
-        <label style={{cursor:'pointer'}}>
-          <input type="file" accept="image/*" style={{display:'none'}} onChange={e=>{
-            const file=e.target.files[0]; if(!file) return;
-            const reader=new FileReader();
-            reader.onload=ev=>onChange(ev.target.result);
-            reader.readAsDataURL(file);
-          }}/>
-          <span className="btn btn-secondary btn-sm">{value ? 'Change' : 'Upload'}</span>
-        </label>
-        {value && <span className="btn btn-ghost btn-sm" style={{cursor:'pointer'}} onClick={()=>onChange(null)}>✕ Remove</span>}
-      </div>
-      {hint && <div className="input-hint">{hint}</div>}
-    </div>
-  );
-}
 
 function InstituteForm({institute, onSave, onClose, isSuperAdmin}) {
   const [form, setForm] = useState(institute || {
@@ -181,62 +160,6 @@ function InstituteForm({institute, onSave, onClose, isSuperAdmin}) {
           </div>
         </div>
       )}
-      {/* ── Nepali Letter Fields ── */}
-      <div style={{borderTop:'1px solid var(--border)', paddingTop:16, marginTop:4}}>
-        <div style={{fontWeight:700, fontSize:13, color:'var(--text2)', marginBottom:4}}>नेपाली विवरण (Nepali Fields for Letter)</div>
-        <div style={{fontSize:12, color:'var(--text3)', marginBottom:10}}>Used in the generated letter. Leave blank to fall back to English fields above.</div>
-        <div className="form-group">
-          <label>संस्थाको नाम (नेपालीमा)</label>
-          <input value={form.nameNp} onChange={e=>set('nameNp',e.target.value)} placeholder="e.g. वर्ल्ड लिङ्क टेक्निकल ट्रेनिङ् इन्स्टिच्च्यूट प्रा.लि."/>
-        </div>
-        <div className="form-row form-row-2">
-          <div className="form-group">
-            <label>ठेगाना (नेपालीमा)</label>
-            <input value={form.addressNp} onChange={e=>set('addressNp',e.target.value)} placeholder="e.g. टोखा-१०, काठमाडौं"/>
-          </div>
-          <div className="form-group">
-            <label>मुख्य व्यक्तिको नाम (नेपालीमा)</label>
-            <input value={form.contactPersonNp} onChange={e=>set('contactPersonNp',e.target.value)} placeholder="e.g. ठाकुर सुवेदी"/>
-          </div>
-        </div>
-      </div>
-
-      {/* ── Letter Generation ── */}
-      <div style={{borderTop:'1px solid var(--border)', paddingTop:16, marginTop:4}}>
-        <div style={{fontWeight:700, fontSize:13, color:'var(--text2)', marginBottom:12}}>Letter Generation</div>
-        <ImgUpload
-          label="Letterhead image"
-          hint="Full-width banner image shown at the top of generated letters. Upload a scan or exported image of your official letterhead."
-          value={form.letterhead} onChange={v=>set('letterhead',v)} preview="contain"
-        />
-        <div className="form-row form-row-2">
-          <ImgUpload label="Authorized signature" hint="Signature image used in letters." value={form.sign} onChange={v=>set('sign',v)}/>
-          <ImgUpload label="Stamp / Seal" hint="Official stamp or seal image." value={form.stamp} onChange={v=>set('stamp',v)}/>
-        </div>
-        <div className="form-row form-row-2" style={{marginTop:8}}>
-          <div className="form-group">
-            <label>Text start from top (mm)</label>
-            <input type="number" min={0} max={200} value={form.letterTopMargin ?? 15}
-              onChange={e=>set('letterTopMargin', Number(e.target.value))}/>
-            <div className="input-hint">Push body text down to clear letterhead content</div>
-          </div>
-          <div className="form-group">
-            <label>Bottom padding (mm)</label>
-            <input type="number" min={0} max={100} value={form.letterBottomPadding ?? 15}
-              onChange={e=>set('letterBottomPadding', Number(e.target.value))}/>
-            <div className="input-hint">Space at the bottom of the page</div>
-          </div>
-        </div>
-        <div className="form-row form-row-2" style={{marginTop:0}}>
-          <div className="form-group">
-            <label>Left / right padding (mm)</label>
-            <input type="number" min={0} max={60} value={form.letterLrPadding ?? 5}
-              onChange={e=>set('letterLrPadding', Number(e.target.value))}/>
-            <div className="input-hint">Horizontal margin inside the page</div>
-          </div>
-        </div>
-      </div>
-
       <ErrorBanner msg={err} onDismiss={()=>setErr('')}/>
     </Modal>
     </>

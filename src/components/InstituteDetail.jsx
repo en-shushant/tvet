@@ -87,7 +87,7 @@ function InstituteDetail({institute, clients, onUpdateClients, onBack, onUpdate,
     {id:'tax', label:`Tax Clearance (${institute.taxClearance.length})`},
     {id:'affiliation', label:`CTEVT Affiliation (${institute.affiliation.length})`},
     {id:'infrastructure', label:`Infrastructure (${(institute.infrastructure||[]).length})`},
-    {id:'documents', label:'Documents'},
+    {id:'documents', label:'Letter Generation'},
   ];
 
   const [saveErr, setSaveErr] = useState('');
@@ -1105,67 +1105,115 @@ function DocImgUpload({ label, hint, value, onChange, disabled }) {
 }
 
 function DocumentsTab({ institute, token, canEdit, onUpdate }) {
-  const [docs, setDocs] = useState({
-    ocrRegistration: institute.ocrRegistration || null,
-    ocrRenewal: institute.ocrRenewal || null,
-    vatRegistration: institute.vatRegistration || null,
-    taxClearanceDoc: institute.taxClearanceDoc || null,
-    vatExtension: institute.vatExtension || null,
-    ctevtAffiliation: institute.ctevtAffiliation || null,
-    ctevtRenewal: institute.ctevtRenewal || null,
+  const fromInst = (inst) => ({
+    nameNp: inst.nameNp || '',
+    addressNp: inst.addressNp || '',
+    contactPersonNp: inst.contactPersonNp || '',
+    letterhead: inst.letterhead || null,
+    sign: inst.sign || null,
+    stamp: inst.stamp || null,
+    letterTopMargin: inst.letterTopMargin ?? 15,
+    letterBottomPadding: inst.letterBottomPadding ?? 15,
+    letterLrPadding: inst.letterLrPadding ?? 5,
+    ocrRegistration: inst.ocrRegistration || null,
+    ocrRenewal: inst.ocrRenewal || null,
+    vatRegistration: inst.vatRegistration || null,
+    taxClearanceDoc: inst.taxClearanceDoc || null,
+    vatExtension: inst.vatExtension || null,
+    ctevtAffiliation: inst.ctevtAffiliation || null,
+    ctevtRenewal: inst.ctevtRenewal || null,
   });
+
+  const [fields, setFields] = useState(() => fromInst(institute));
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState('');
   const [saved, setSaved] = useState(false);
-  const dirty = useRef(false);
 
-  useEffect(() => {
-    setDocs({
-      ocrRegistration: institute.ocrRegistration || null,
-      ocrRenewal: institute.ocrRenewal || null,
-      vatRegistration: institute.vatRegistration || null,
-      taxClearanceDoc: institute.taxClearanceDoc || null,
-      vatExtension: institute.vatExtension || null,
-      ctevtAffiliation: institute.ctevtAffiliation || null,
-      ctevtRenewal: institute.ctevtRenewal || null,
-    });
-    dirty.current = false;
-  }, [institute.id]);
+  useEffect(() => { setFields(fromInst(institute)); setSaved(false); }, [institute.id]);
 
-  const set = (k, v) => { dirty.current = true; setSaved(false); setDocs(d=>({...d,[k]:v})); };
+  const set = (k, v) => { setSaved(false); setFields(f => ({...f, [k]: v})); };
 
   const handleSave = async () => {
     setSaving(true); setErr('');
     try {
-      const payload = instToAPI({ ...institute, ...docs });
-      const updated = await api('PUT', `/institutes/${institute.id}`, payload, token);
-      if (onUpdate) onUpdate({ ...institute, ...docs });
+      await api('PUT', `/institutes/${institute.id}`, instToAPI({ ...institute, ...fields }), token);
+      if (onUpdate) onUpdate({ ...institute, ...fields });
       setSaved(true);
-      dirty.current = false;
     } catch(e) { setErr(e.message); }
     finally { setSaving(false); }
   };
 
+  const SectionTitle = ({children}) => (
+    <div style={{fontWeight:700, fontSize:13, color:'var(--text2)', marginBottom:12, marginTop:20, paddingTop:16, borderTop:'1px solid var(--border)'}}>{children}</div>
+  );
+
   return (
-    <div className="card" style={{maxWidth:720}}>
-      <div className="section-title" style={{marginBottom:12}}>Supporting Documents</div>
-      <div style={{fontSize:12, color:'var(--text3)', marginBottom:20}}>
-        Upload scanned images of certificates. These can be appended to generated letters.
+    <div className="card" style={{maxWidth:760}}>
+
+      {/* ── Nepali Fields ── */}
+      <div className="section-title" style={{marginBottom:12}}>नेपाली विवरण (Nepali Fields for Letter)</div>
+      <div style={{fontSize:12, color:'var(--text3)', marginBottom:14}}>Used in the generated letter. Leave blank to fall back to English fields.</div>
+      <div className="form-group">
+        <label style={{fontSize:13, fontWeight:600, color:'var(--text2)'}}>संस्थाको नाम (नेपालीमा)</label>
+        <input className="form-input" value={fields.nameNp} disabled={!canEdit}
+          onChange={e=>set('nameNp',e.target.value)} placeholder="e.g. वर्ल्ड लिङ्क टेक्निकल ट्रेनिङ् इन्स्टिच्च्यूट प्रा.लि." style={{width:'100%', marginTop:4}}/>
+      </div>
+      <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:'0 20px'}}>
+        <div className="form-group">
+          <label style={{fontSize:13, fontWeight:600, color:'var(--text2)'}}>ठेगाना (नेपालीमा)</label>
+          <input className="form-input" value={fields.addressNp} disabled={!canEdit}
+            onChange={e=>set('addressNp',e.target.value)} placeholder="e.g. टोखा-१०, काठमाडौं" style={{width:'100%', marginTop:4}}/>
+        </div>
+        <div className="form-group">
+          <label style={{fontSize:13, fontWeight:600, color:'var(--text2)'}}>मुख्य व्यक्तिको नाम (नेपालीमा)</label>
+          <input className="form-input" value={fields.contactPersonNp} disabled={!canEdit}
+            onChange={e=>set('contactPersonNp',e.target.value)} placeholder="e.g. ठाकुर सुवेदी" style={{width:'100%', marginTop:4}}/>
+        </div>
       </div>
 
+      {/* ── Letter Images ── */}
+      <SectionTitle>Letter Images</SectionTitle>
+      <DocImgUpload label="Letterhead" hint="Full-width banner shown at the top of generated letters." value={fields.letterhead} onChange={v=>set('letterhead',v)} disabled={!canEdit}/>
+      <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:'0 20px'}}>
+        <DocImgUpload label="Authorized Signature" value={fields.sign} onChange={v=>set('sign',v)} disabled={!canEdit}/>
+        <DocImgUpload label="Stamp / Seal" value={fields.stamp} onChange={v=>set('stamp',v)} disabled={!canEdit}/>
+      </div>
+
+      {/* ── Page Padding ── */}
+      <SectionTitle>Page Padding (mm)</SectionTitle>
+      <div style={{display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:'0 20px'}}>
+        {[
+          ['Top', 'letterTopMargin', 0, 200, 'Push text below the letterhead'],
+          ['Bottom', 'letterBottomPadding', 0, 100, 'Space at the bottom of the page'],
+          ['Left / Right', 'letterLrPadding', 0, 60, 'Horizontal margin inside the page'],
+        ].map(([label, key, min, max, hint]) => (
+          <div key={key} className="form-group">
+            <label style={{fontSize:13, fontWeight:600, color:'var(--text2)'}}>{label}</label>
+            <input type="number" className="form-input" min={min} max={max}
+              value={fields[key]} disabled={!canEdit}
+              onChange={e=>set(key, Number(e.target.value))}
+              style={{width:'100%', marginTop:4}}/>
+            <div style={{fontSize:11, color:'var(--text3)', marginTop:3}}>{hint}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* ── Supporting Documents ── */}
+      <SectionTitle>Supporting Documents</SectionTitle>
+      <div style={{fontSize:12, color:'var(--text3)', marginBottom:14}}>Upload scanned images of certificates. These can be appended to generated letters.</div>
       <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:'0 24px'}}>
-        <DocImgUpload label="OCR दर्ता (Registration)" value={docs.ocrRegistration} onChange={v=>set('ocrRegistration',v)} disabled={!canEdit}/>
-        <DocImgUpload label="OCR नवीकरण (Renewal)" value={docs.ocrRenewal} onChange={v=>set('ocrRenewal',v)} disabled={!canEdit}/>
-        <DocImgUpload label="भ्याट दर्ता (VAT Registration)" value={docs.vatRegistration} onChange={v=>set('vatRegistration',v)} disabled={!canEdit}/>
-        <DocImgUpload label="कर चुक्ता (Tax Clearance)" value={docs.taxClearanceDoc} onChange={v=>set('taxClearanceDoc',v)} disabled={!canEdit}/>
-        <DocImgUpload label="भ्याट म्याद थप (VAT Date Extension)" value={docs.vatExtension} onChange={v=>set('vatExtension',v)} disabled={!canEdit}/>
-        <div/>{/* spacer */}
-        <DocImgUpload label="CTEVT सम्बन्धन (Affiliation)" value={docs.ctevtAffiliation} onChange={v=>set('ctevtAffiliation',v)} disabled={!canEdit}/>
-        <DocImgUpload label="CTEVT नवीकरण (Renewal)" value={docs.ctevtRenewal} onChange={v=>set('ctevtRenewal',v)} disabled={!canEdit}/>
+        <DocImgUpload label="OCR दर्ता (Registration)" value={fields.ocrRegistration} onChange={v=>set('ocrRegistration',v)} disabled={!canEdit}/>
+        <DocImgUpload label="OCR नवीकरण (Renewal)" value={fields.ocrRenewal} onChange={v=>set('ocrRenewal',v)} disabled={!canEdit}/>
+        <DocImgUpload label="भ्याट दर्ता (VAT Registration)" value={fields.vatRegistration} onChange={v=>set('vatRegistration',v)} disabled={!canEdit}/>
+        <DocImgUpload label="कर चुक्ता (Tax Clearance)" value={fields.taxClearanceDoc} onChange={v=>set('taxClearanceDoc',v)} disabled={!canEdit}/>
+        <DocImgUpload label="भ्याट म्याद थप (VAT Date Extension)" value={fields.vatExtension} onChange={v=>set('vatExtension',v)} disabled={!canEdit}/>
+        <div/>
+        <DocImgUpload label="CTEVT सम्बन्धन (Affiliation)" value={fields.ctevtAffiliation} onChange={v=>set('ctevtAffiliation',v)} disabled={!canEdit}/>
+        <DocImgUpload label="CTEVT नवीकरण (Renewal)" value={fields.ctevtRenewal} onChange={v=>set('ctevtRenewal',v)} disabled={!canEdit}/>
       </div>
 
       {canEdit && (
-        <div style={{marginTop:16, display:'flex', alignItems:'center', gap:12}}>
+        <div style={{marginTop:20, display:'flex', alignItems:'center', gap:12}}>
           <button className="btn btn-primary" onClick={handleSave} disabled={saving}>
             {saving ? 'Saving…' : 'Save documents'}
           </button>
