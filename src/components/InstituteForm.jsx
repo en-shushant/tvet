@@ -3,6 +3,7 @@ import Modal from './ui/Modal.jsx';
 import { ErrorBanner } from './ui/Modal.jsx';
 import { useUnsavedGuard } from './ui/UnsavedGuard.jsx';
 import { INSTITUTE_TYPES, INSTITUTE_STATUSES } from '../constants/data.js';
+import { Btn, MdTextField, MdSelect, MdOption, MdToggle } from '../md.jsx';
 
 
 function InstituteForm({institute, onSave, onClose, isSuperAdmin}) {
@@ -28,13 +29,14 @@ function InstituteForm({institute, onSave, onClose, isSuperAdmin}) {
 
   return (
     <>{UnsavedModal}
-    <Modal title={institute ? 'Edit Institute Profile' : 'Add New Institute'} onClose={handleClose} size="modal-lg"
+    <Modal title={institute ? 'Edit Institute Profile' : 'Add New Institute'} onClose={handleClose} size="lg"
       footer={<>
-        <button className="btn btn-secondary" onClick={handleClose}>Cancel</button>
-        <button className="btn btn-primary" onClick={handleSave}>
+        <Btn className="btn btn-secondary" onClick={handleClose}>Cancel</Btn>
+        <Btn className="btn btn-primary" onClick={handleSave}>
           {institute ? 'Save changes' : 'Add institute'}
-        </button>
+        </Btn>
       </>}>
+      {/* Logo */}
       <div className="form-group">
         <label>Institute logo</label>
         <div style={{display:'flex', alignItems:'center', gap:12}}>
@@ -52,110 +54,113 @@ function InstituteForm({institute, onSave, onClose, isSuperAdmin}) {
         </div>
         <div className="input-hint">PNG or JPG shown on the institute card. Max ~500 KB recommended.</div>
       </div>
+
       <div className="form-row form-row-2">
         <div className="form-group">
-          <label>Institute name *</label>
-          <input value={form.name} onChange={e=>set('name',e.target.value)} placeholder="Full official name"/>
+          <MdTextField label="Institute name *" value={form.name}
+            onChange={e=>set('name',e.target.value)} placeholder="Full official name"/>
         </div>
         <div className="form-group">
-          <label>Acronym / Short name *</label>
-          <input value={form.acronym||''} onChange={e=>set('acronym',e.target.value)} placeholder="e.g. WLTTI, NVA"/>
-          <div className="input-hint">Used in reports and comparison view</div>
+          <MdTextField label="Acronym / Short name" value={form.acronym||''}
+            onChange={e=>set('acronym',e.target.value)} placeholder="e.g. WLTTI, NVA"
+            supporting-text="Used in reports and comparison view"/>
         </div>
       </div>
       <div className="form-row form-row-2">
         <div className="form-group">
-          <label>Registration number {form.isShortlistingOnly ? <span style={{fontWeight:400,color:'var(--text3)'}}>(optional for shortlisting-only)</span> : '*'}</label>
-          <input value={form.regNo} onChange={e=>set('regNo',e.target.value)} placeholder="e.g. XYZ/001/2065"/>
+          <MdTextField
+            label={`Registration number${form.isShortlistingOnly ? ' (optional)' : ' *'}`}
+            value={form.regNo} onChange={e=>set('regNo',e.target.value)}
+            placeholder="e.g. XYZ/001/2065"/>
         </div>
       </div>
       <div className="form-row form-row-2">
         <div className="form-group">
-          <label>Registration date</label>
-          <input value={form.regDate} onChange={e=>set('regDate',e.target.value)} placeholder="YYYY/MM/DD"/>
+          <MdTextField label="Registration date" value={form.regDate}
+            onChange={e=>set('regDate',e.target.value)} placeholder="YYYY/MM/DD"/>
         </div>
         <div className="form-group">
-          <label>PAN / VAT <span style={{fontWeight:400, color:'var(--text3)'}}>(Sthayee Lekha no.)</span></label>
-          <input value={form.pan} onChange={e=>set('pan',e.target.value)} placeholder="9-digit PAN"/>
+          <MdTextField label="PAN / VAT (Sthayee Lekha no.)" value={form.pan}
+            onChange={e=>set('pan',e.target.value)} placeholder="9-digit PAN"/>
         </div>
       </div>
       <div className="form-row form-row-3">
         <div className="form-group">
-          <label>Contact person</label>
-          <input value={form.contactPerson} onChange={e=>set('contactPerson',e.target.value)}/>
+          <MdTextField label="Contact person" value={form.contactPerson}
+            onChange={e=>set('contactPerson',e.target.value)}/>
         </div>
         <div className="form-group">
-          <label>Phone</label>
-          <input value={form.phone} onChange={e=>set('phone',e.target.value)}/>
+          <MdTextField label="Phone" value={form.phone}
+            onChange={e=>set('phone',e.target.value)}/>
         </div>
         <div className="form-group">
-          <label>Mobile</label>
-          <input value={form.mobile||''} onChange={e=>set('mobile',e.target.value)}/>
+          <MdTextField label="Mobile" value={form.mobile||''}
+            onChange={e=>set('mobile',e.target.value)}/>
         </div>
         <div className="form-group">
-          <label>Email</label>
-          <input type="email" value={form.email} onChange={e=>set('email',e.target.value)}/>
+          <MdTextField type="email" label="Email" value={form.email}
+            onChange={e=>set('email',e.target.value)}/>
         </div>
       </div>
       <div className="form-group">
-        <label>Address</label>
-        <input value={form.address} onChange={e=>set('address',e.target.value)} placeholder="Full address"/>
+        <MdTextField label="Address" value={form.address}
+          onChange={e=>set('address',e.target.value)} placeholder="Full address"/>
       </div>
       <div className="form-group">
-        <label>Website <span style={{fontWeight:400, color:'var(--text3)'}}>(optional)</span></label>
-        <input value={form.website||''} onChange={e=>set('website',e.target.value)} placeholder="https://www.example.com"/>
+        <MdTextField label="Website (optional)" value={form.website||''}
+          onChange={e=>set('website',e.target.value)} placeholder="https://www.example.com"/>
       </div>
       <div className="form-group">
-        <label>Google Maps Link <span style={{fontWeight:400, color:'var(--text3)'}}>(optional — paste the share link for exact location)</span></label>
-        <input value={form.googleMapLink||''} onChange={e=>set('googleMapLink',e.target.value)} placeholder="https://maps.app.goo.gl/..."/>
+        <MdTextField label="Google Maps Link (optional)" value={form.googleMapLink||''}
+          onChange={e=>set('googleMapLink',e.target.value)} placeholder="https://maps.app.goo.gl/..."
+          supporting-text="Paste the share link for exact location"/>
       </div>
       <div className="form-row form-row-2">
         <div className="form-group">
-          <label>Latitude <span style={{fontWeight:400, color:'var(--text3)'}}>(optional)</span></label>
-          <input type="number" step="any" value={form.latitude||''} onChange={e=>set('latitude',e.target.value)} placeholder="e.g. 27.7172"/>
+          <MdTextField type="number" label="Latitude (optional)" value={form.latitude||''}
+            onChange={e=>set('latitude',e.target.value)} placeholder="e.g. 27.7172" step="any"/>
         </div>
         <div className="form-group">
-          <label>Longitude <span style={{fontWeight:400, color:'var(--text3)'}}>(optional)</span></label>
-          <input type="number" step="any" value={form.longitude||''} onChange={e=>set('longitude',e.target.value)} placeholder="e.g. 85.3240"/>
+          <MdTextField type="number" label="Longitude (optional)" value={form.longitude||''}
+            onChange={e=>set('longitude',e.target.value)} placeholder="e.g. 85.3240" step="any"/>
         </div>
       </div>
-      <div style={{fontSize:11, color:'var(--text3)', marginTop:-8, marginBottom:4}}>
-        💡 From Google Maps: right-click your location → the coordinates shown at top can be copied. Or open the Google Maps link above and copy from the URL.
+      <div style={{fontSize:11, color:'var(--text3)', marginTop:-8, marginBottom:16}}>
+        💡 From Google Maps: right-click your location → copy the coordinates shown at top, or copy from the URL.
       </div>
       <div className="form-row form-row-3">
         <div className="form-group">
-          <label>Institute type</label>
-          <select value={form.type} onChange={e=>set('type',e.target.value)}>
-            {INSTITUTE_TYPES.map(t=><option key={t}>{t}</option>)}
-          </select>
+          <MdSelect label="Institute type" value={form.type} onChange={e=>set('type',e.target.value)}>
+            {INSTITUTE_TYPES.map(t=><MdOption key={t} value={t}>{t}</MdOption>)}
+          </MdSelect>
         </div>
         <div className="form-group">
-          <label>Status</label>
-          <select value={form.status} onChange={e=>set('status',e.target.value)}>
-            {INSTITUTE_STATUSES.map(s=><option key={s}>{s}</option>)}
-          </select>
+          <MdSelect label="Status" value={form.status} onChange={e=>set('status',e.target.value)}>
+            {INSTITUTE_STATUSES.map(s=><MdOption key={s} value={s}>{s}</MdOption>)}
+          </MdSelect>
         </div>
         <div className="form-group">
-          <label>Renewal due date</label>
-          <input value={form.renewalDue} onChange={e=>set('renewalDue',e.target.value)} placeholder="YYYY/MM/DD"/>
+          <MdTextField label="Renewal due date" value={form.renewalDue}
+            onChange={e=>set('renewalDue',e.target.value)} placeholder="YYYY/MM/DD"/>
         </div>
       </div>
       <div className="form-group">
-        <label>Remarks</label>
-        <textarea value={form.remarks} onChange={e=>set('remarks',e.target.value)} rows={2}/>
+        <MdTextField type="textarea" label="Remarks" value={form.remarks}
+          onChange={e=>set('remarks',e.target.value)} rows={2}/>
       </div>
       {isSuperAdmin && (
         <div style={{
-          display:'flex', alignItems:'flex-start', gap:12,
+          display:'flex', alignItems:'flex-start', gap:14,
           padding:'14px 16px', borderRadius:12,
           background: form.isShortlistingOnly ? 'var(--warning-light)' : 'var(--bg)',
           border: `1px solid ${form.isShortlistingOnly ? 'rgba(255,174,31,.35)' : 'var(--border)'}`,
           transition:'background .15s, border-color .15s', marginBottom:4,
         }}>
-          <div style={{paddingTop:1}}>
-            <div className={`toggle${form.isShortlistingOnly?' on':''}`} style={{flexShrink:0}}
-              onClick={()=>set('isShortlistingOnly',!form.isShortlistingOnly)}/>
-          </div>
+          <MdToggle
+            selected={form.isShortlistingOnly}
+            onChange={e=>set('isShortlistingOnly',e.target.selected)}
+            style={{flexShrink:0, marginTop:2}}
+          />
           <div>
             <div style={{fontWeight:600, fontSize:13.5, color:'var(--text)'}}>Shortlisting Only</div>
             <div style={{fontSize:12, color:'var(--text3)', marginTop:2}}>

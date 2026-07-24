@@ -4,6 +4,7 @@ import Modal from './ui/Modal.jsx';
 import { ErrorBanner } from './ui/Modal.jsx';
 import SearchableSelect from './ui/SearchableSelect.jsx';
 import { FISCAL_YEARS, NSTB_LEVELS, OCCUPATIONS } from '../constants/data.js';
+import { Btn, MdTextField, MdSelect, MdOption } from '../md.jsx';
 
 const fyToAD = (fy) => {
   if (!fy) return '';
@@ -35,37 +36,51 @@ function NSTBEditModal({record, onSave, onClose}) {
   return (
     <>{UnsavedModal}
     <Modal title="Edit NSTB Record" onClose={handleClose}
-      footer={<><button className="btn btn-secondary" onClick={handleClose}>Cancel</button><button className="btn btn-primary" onClick={handleSave}>Save</button></>}>
+      footer={<><Btn className="btn btn-secondary" onClick={handleClose}>Cancel</Btn><Btn className="btn btn-primary" onClick={handleSave}>Save</Btn></>}>
       <ErrorBanner msg={err} onDismiss={()=>setErr('')}/>
       <div className="form-row form-row-3" style={{marginBottom:12}}>
         <div className="form-group"><label>Fiscal year *</label>
           <SearchableSelect value={shared.fy} onChange={v=>setS('fy',v)} options={FISCAL_YEARS.slice().reverse().map(fy=>({value:fy,label:`${fy} (${fyToAD(fy)})`}))}/>
         </div>
-        <div className="form-group"><label>Letter no.</label><input value={shared.letterNo} onChange={e=>setS('letterNo',e.target.value)}/></div>
-        <div className="form-group"><label>Letter date</label><input value={shared.letterDate} onChange={e=>setS('letterDate',e.target.value)} placeholder="YYYY/MM/DD"/></div>
+        <div className="form-group">
+          <MdTextField label="Letter no." value={shared.letterNo} onChange={e=>setS('letterNo',e.target.value)}/>
+        </div>
+        <div className="form-group">
+          <MdTextField label="Letter date" value={shared.letterDate} onChange={e=>setS('letterDate',e.target.value)} placeholder="YYYY/MM/DD"/>
+        </div>
       </div>
       <div className="form-row form-row-2" style={{marginBottom:16}}>
-        <div className="form-group"><label>Letter type</label>
-          <select value={shared.letterType} onChange={e=>setS('letterType',e.target.value)}><option>Annual</option><option>Consolidated</option></select>
+        <div className="form-group">
+          <MdSelect label="Letter type" value={shared.letterType} onChange={e=>setS('letterType',e.target.value)}>
+            <MdOption value="Annual">Annual</MdOption>
+            <MdOption value="Consolidated">Consolidated</MdOption>
+          </MdSelect>
         </div>
-        <div className="form-group"><label>Remarks</label><input value={shared.remarks} onChange={e=>setS('remarks',e.target.value)}/></div>
+        <div className="form-group">
+          <MdTextField label="Remarks" value={shared.remarks} onChange={e=>setS('remarks',e.target.value)}/>
+        </div>
       </div>
       <div className="form-group"><label>Occupation *</label>
         <SearchableSelect value={row.occupation} onChange={v=>setR('occupation',v)} placeholder="— Select occupation —"
           options={OCCUPATIONS.map(o=>({value:o.name, label:o.name}))}/>
       </div>
       <div className="form-row" style={{gridTemplateColumns:'2fr 1fr 1fr 1fr', gap:8}}>
-        <div className="form-group" style={{marginBottom:0}}><label>Level</label>
-          <select value={row.level} onChange={e=>setR('level',e.target.value)}>{NSTB_LEVELS.map(l=><option key={l}>{l}</option>)}</select>
+        <div className="form-group" style={{marginBottom:0}}>
+          <MdSelect label="Level" value={row.level} onChange={e=>setR('level',e.target.value)}>
+            {NSTB_LEVELS.map(l=><MdOption key={l} value={l}>{l}</MdOption>)}
+          </MdSelect>
         </div>
-        <div className="form-group" style={{marginBottom:0}}><label>Applied</label>
-          <input type="number" value={row.applied} onChange={e=>setR('applied',e.target.value===''?'':parseInt(e.target.value))}/>
+        <div className="form-group" style={{marginBottom:0}}>
+          <MdTextField type="number" label="Applied" value={row.applied}
+            onChange={e=>setR('applied',e.target.value===''?'':parseInt(e.target.value))}/>
         </div>
-        <div className="form-group" style={{marginBottom:0}}><label>Appeared</label>
-          <input type="number" value={row.appeared} onChange={e=>setR('appeared',e.target.value===''?'':parseInt(e.target.value))}/>
+        <div className="form-group" style={{marginBottom:0}}>
+          <MdTextField type="number" label="Appeared" value={row.appeared}
+            onChange={e=>setR('appeared',e.target.value===''?'':parseInt(e.target.value))}/>
         </div>
-        <div className="form-group" style={{marginBottom:0}}><label>Pass</label>
-          <input type="number" value={row.pass} onChange={e=>setR('pass',e.target.value===''?'':parseInt(e.target.value))}/>
+        <div className="form-group" style={{marginBottom:0}}>
+          <MdTextField type="number" label="Pass" value={row.pass}
+            onChange={e=>setR('pass',e.target.value===''?'':parseInt(e.target.value))}/>
         </div>
       </div>
     </Modal>
@@ -107,9 +122,9 @@ function NSTBBulkPage({instituteName, onSave, onBack}) {
           <div style={{fontSize:12, color:'var(--text3)', marginTop:4}}>One occupation per row — all rows share the same letter details.</div>
         </div>
         <div style={{display:'flex', gap:8}}>
-          <button className="btn btn-ghost" onClick={addRow}>+ Add row</button>
-          <button className="btn btn-secondary" onClick={onBack}>Cancel</button>
-          <button className="btn btn-primary" onClick={handleSave} disabled={saving}>{saving ? 'Saving…' : `Save ${rows.length} record${rows.length>1?'s':''}`}</button>
+          <Btn className="btn btn-ghost" onClick={addRow}>+ Add row</Btn>
+          <Btn className="btn btn-secondary" onClick={onBack}>Cancel</Btn>
+          <Btn className="btn btn-primary" onClick={handleSave} disabled={saving}>{saving ? 'Saving…' : `Save ${rows.length} record${rows.length>1?'s':''}`}</Btn>
         </div>
       </div>
 
@@ -120,24 +135,27 @@ function NSTBBulkPage({instituteName, onSave, onBack}) {
           <div className="form-group" style={{marginBottom:0}}><label>Fiscal year *</label>
             <SearchableSelect value={shared.fy} onChange={v=>setS('fy',v)} options={FISCAL_YEARS.slice().reverse().map(fy=>({value:fy,label:`${fy} (${fyToAD(fy)})`}))}/>
           </div>
-          <div className="form-group" style={{marginBottom:0}}><label>Letter no.</label>
-            <input value={shared.letterNo} onChange={e=>setS('letterNo',e.target.value)} placeholder="Patra Sankhya"/>
+          <div className="form-group" style={{marginBottom:0}}>
+            <MdTextField label="Letter no." value={shared.letterNo} onChange={e=>setS('letterNo',e.target.value)} placeholder="Patra Sankhya"/>
           </div>
-          <div className="form-group" style={{marginBottom:0}}><label>Letter date</label>
-            <input value={shared.letterDate} onChange={e=>setS('letterDate',e.target.value)} placeholder="YYYY/MM/DD"/>
+          <div className="form-group" style={{marginBottom:0}}>
+            <MdTextField label="Letter date" value={shared.letterDate} onChange={e=>setS('letterDate',e.target.value)} placeholder="YYYY/MM/DD"/>
           </div>
         </div>
         <div className="form-row form-row-2">
-          <div className="form-group" style={{marginBottom:0}}><label>Letter type</label>
-            <select value={shared.letterType} onChange={e=>setS('letterType',e.target.value)}><option>Annual</option><option>Consolidated</option></select>
+          <div className="form-group" style={{marginBottom:0}}>
+            <MdSelect label="Letter type" value={shared.letterType} onChange={e=>setS('letterType',e.target.value)}>
+              <MdOption value="Annual">Annual</MdOption>
+              <MdOption value="Consolidated">Consolidated</MdOption>
+            </MdSelect>
           </div>
-          <div className="form-group" style={{marginBottom:0}}><label>Remarks</label>
-            <input value={shared.remarks} onChange={e=>setS('remarks',e.target.value)}/>
+          <div className="form-group" style={{marginBottom:0}}>
+            <MdTextField label="Remarks" value={shared.remarks} onChange={e=>setS('remarks',e.target.value)}/>
           </div>
         </div>
       </div>
 
-      {/* Occupation table */}
+      {/* Occupation table — native inputs/selects for compact table cells */}
       <div style={{overflowX:'auto'}}>
         <table style={{width:'100%', borderCollapse:'collapse', fontSize:12}}>
           <thead>
@@ -185,9 +203,9 @@ function NSTBBulkPage({instituteName, onSave, onBack}) {
 
       {err && <ErrorBanner msg={err} onDismiss={()=>setErr('')}/>}
       <div style={{position:'sticky', bottom:0, background:'var(--bg1)', borderTop:'1px solid var(--border)', padding:'12px 0', marginTop:20, display:'flex', justifyContent:'flex-end', gap:8}}>
-        <button className="btn btn-ghost" onClick={addRow}>+ Add row</button>
-        <button className="btn btn-secondary" onClick={onBack}>Cancel</button>
-        <button className="btn btn-primary" onClick={handleSave}>Save {rows.length} record{rows.length>1?'s':''}</button>
+        <Btn className="btn btn-ghost" onClick={addRow}>+ Add row</Btn>
+        <Btn className="btn btn-secondary" onClick={onBack}>Cancel</Btn>
+        <Btn className="btn btn-primary" onClick={handleSave}>Save {rows.length} record{rows.length>1?'s':''}</Btn>
       </div>
     </div>
   );

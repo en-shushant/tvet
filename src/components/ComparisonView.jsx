@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { FISCAL_YEARS, OCCUPATIONS } from '../constants/data.js';
 import { exportComparisonToCSV } from '../utils/export.js';
+import { Btn } from '../md.jsx';
 import { getSession } from '../utils/auth.js';
 import { api, normInst } from '../utils/api.js';
 import StatusBadge from './ui/StatusBadge.jsx';
@@ -286,7 +287,7 @@ function ComparisonView({institutes, clients}) {
         ) : (
           <>
             <div style={{display:'flex', justifyContent:'flex-end', gap:8, marginBottom:12}}>
-              <button className="btn btn-secondary btn-sm" onClick={()=>exportComparisonToCSV(selectedInstObjects, selectedFYs)}>↓ Export (CSV)</button>
+              <Btn className="btn btn-secondary btn-sm" onClick={()=>exportComparisonToCSV(selectedInstObjects, selectedFYs)}>↓ Export (CSV)</Btn>
             </div>
             {/* JV group cards */}
             {jvGroups.map(g => {

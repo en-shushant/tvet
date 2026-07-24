@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import StatusBadge from './ui/StatusBadge.jsx';
 import Pagination from './ui/Pagination.jsx';
+import { Btn } from '../md.jsx';
 import { usePagination } from '../utils/hooks.js';
 import { INSTITUTE_TYPES, INSTITUTE_STATUSES } from '../constants/data.js';
 
@@ -32,10 +33,10 @@ function InstituteList({institutes, onSelect, onAdd, initialSearch=''}) {
           <div className="page-header-sub">{filtered.length} of {institutes.length} institutes</div>
         </div>
         {onAdd && (
-          <button className="btn btn-primary" onClick={onAdd}>
+          <Btn className="btn btn-primary" onClick={onAdd}>
             <span className="material-icons-round" style={{fontSize:16}}>add</span>
             Add Institute
-          </button>
+          </Btn>
         )}
       </div>
 

@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { FISCAL_YEARS, OCCUPATIONS, SECTORS, CLIENT_TYPES } from '../constants/data.js';
+import { Btn } from '../md.jsx';
 import { exportSummaryToMD, exportSummaryToPDF, exportSummaryToCSV } from '../utils/export.js';
 import { getSession } from '../utils/auth.js';
 import { api, normInst } from '../utils/api.js';
@@ -249,8 +250,8 @@ function SummaryView({institutes, clients}) {
                   </div>
                 </div>
                 <div style={{display:'flex',gap:8,flexShrink:0,alignItems:'center'}}>
-                  <button className="btn btn-secondary btn-sm" onClick={()=>exportSummaryToMD(institute, summaryRows, selectedFYs)}>↓ MD</button>
-                  <button className="btn btn-secondary btn-sm" onClick={()=>exportSummaryToPDF(institute, summaryRows, selectedFYs)}>↓ PDF</button>
+                  <Btn className="btn btn-secondary btn-sm" onClick={()=>exportSummaryToMD(institute, summaryRows, selectedFYs)}>↓ MD</Btn>
+                  <Btn className="btn btn-secondary btn-sm" onClick={()=>exportSummaryToPDF(institute, summaryRows, selectedFYs)}>↓ PDF</Btn>
                 </div>
               </div>
               {/* Quick stats strip */}

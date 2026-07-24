@@ -3,6 +3,7 @@ import { usePagination } from '../utils/hooks.js';
 import Pagination from './ui/Pagination.jsx';
 import Modal from './ui/Modal.jsx';
 import { ErrorBanner } from './ui/Modal.jsx';
+import { Btn, MdTextField, MdSelect, MdOption } from '../md.jsx';
 import LocationsEditor from './LocationsEditor.jsx';
 import { CLIENT_TYPES, TRAINING_TYPES, TRAINING_TYPES_DEFAULT, SECTORS, NSTB_LEVELS, INSTITUTE_TYPES, INSTITUTE_STATUSES, AFFILIATION_TYPES, LOCAL_LEVEL_TYPES, FISCAL_YEARS, OCCUPATIONS, getTrainingTypes, saveTrainingTypes, setTrainingTypesVar, getFiscalYears, saveFiscalYears, setFiscalYearsVar, getCurrentFY, saveCurrentFY } from '../constants/data.js';
 import { api, clientToAPI, normClient } from '../utils/api.js';
@@ -161,24 +162,36 @@ function MasterData({clients, onUpdateClients, token, isAdmin, isEditor, isSuper
     return (
       <Modal title={client ? 'Edit client' : 'Add new client'} onClose={onClose}
         footer={<>
-          <button className="btn btn-secondary" onClick={onClose}>Cancel</button>
-          <button className="btn btn-primary" onClick={()=>onSave(form)}>Save client</button>
+          <Btn className="btn btn-secondary" onClick={onClose}>Cancel</Btn>
+          <Btn className="btn btn-primary" onClick={()=>onSave(form)}>Save client</Btn>
         </>}>
-        <div className="form-group"><label>Full name *</label><input value={form.fullName} onChange={e=>set('fullName',e.target.value)} placeholder="Official full name"/></div>
+        <div className="form-group">
+          <MdTextField label="Full name *" value={form.fullName} onChange={e=>set('fullName',e.target.value)} placeholder="Official full name"/>
+        </div>
         <div className="form-row form-row-2">
-          <div className="form-group"><label>Short name / acronym *</label><input value={form.shortName} onChange={e=>set('shortName',e.target.value)} placeholder="e.g. PCTVET, FEB"/></div>
-          <div className="form-group"><label>Client type</label>
-            <select value={form.type} onChange={e=>set('type',e.target.value)}>
-              {CLIENT_TYPES.map(t=><option key={t}>{t}</option>)}
-            </select>
+          <div className="form-group">
+            <MdTextField label="Short name / acronym *" value={form.shortName} onChange={e=>set('shortName',e.target.value)} placeholder="e.g. PCTVET, FEB"/>
+          </div>
+          <div className="form-group">
+            <MdSelect label="Client type" value={form.type} onChange={e=>set('type',e.target.value)}>
+              {CLIENT_TYPES.map(t=><MdOption key={t} value={t}>{t}</MdOption>)}
+            </MdSelect>
           </div>
         </div>
-        <div className="form-group"><label>Address</label><input value={form.address||''} onChange={e=>set('address',e.target.value)}/></div>
-        <div className="form-row form-row-2">
-          <div className="form-group"><label>Phone</label><input value={form.phone||''} onChange={e=>set('phone',e.target.value)} placeholder="Office phone number"/></div>
-          <div className="form-group"><label>Email</label><input type="email" value={form.email||''} onChange={e=>set('email',e.target.value)} placeholder="Office email"/></div>
+        <div className="form-group">
+          <MdTextField label="Address" value={form.address||''} onChange={e=>set('address',e.target.value)}/>
         </div>
-        <div className="form-group"><label>Website <span style={{fontWeight:400,color:'var(--text3)'}}>(optional)</span></label><input value={form.website||''} onChange={e=>set('website',e.target.value)} placeholder="https://"/></div>
+        <div className="form-row form-row-2">
+          <div className="form-group">
+            <MdTextField label="Phone" value={form.phone||''} onChange={e=>set('phone',e.target.value)} placeholder="Office phone number"/>
+          </div>
+          <div className="form-group">
+            <MdTextField type="email" label="Email" value={form.email||''} onChange={e=>set('email',e.target.value)} placeholder="Office email"/>
+          </div>
+        </div>
+        <div className="form-group">
+          <MdTextField label="Website (optional)" value={form.website||''} onChange={e=>set('website',e.target.value)} placeholder="https://"/>
+        </div>
 
         {/* Letter generation fields */}
         <div style={{margin:'16px 0 10px', borderTop:'1px solid var(--border)', paddingTop:14}}>
@@ -189,8 +202,12 @@ function MasterData({clients, onUpdateClients, token, isAdmin, isEditor, isSuper
             Used in the signature block when generating shortlisting letters for this organization.
           </div>
           <div className="form-row form-row-2">
-            <div className="form-group"><label>Authorized Signatory Name</label><input value={form.signatoryName||''} onChange={e=>set('signatoryName',e.target.value)} placeholder="e.g. Ram Prasad Sharma"/></div>
-            <div className="form-group"><label>Signatory Position / Designation</label><input value={form.signatoryPosition||''} onChange={e=>set('signatoryPosition',e.target.value)} placeholder="e.g. Project Director"/></div>
+            <div className="form-group">
+              <MdTextField label="Authorized Signatory Name" value={form.signatoryName||''} onChange={e=>set('signatoryName',e.target.value)} placeholder="e.g. Ram Prasad Sharma"/>
+            </div>
+            <div className="form-group">
+              <MdTextField label="Signatory Position / Designation" value={form.signatoryPosition||''} onChange={e=>set('signatoryPosition',e.target.value)} placeholder="e.g. Project Director"/>
+            </div>
           </div>
           <div className="form-group">
             <label>Letterhead Image <span style={{fontWeight:400,color:'var(--text3)'}}>(optional — shown at top of generated letters)</span></label>
@@ -211,7 +228,9 @@ function MasterData({clients, onUpdateClients, token, isAdmin, isEditor, isSuper
           </div>
         </div>
 
-        <div className="form-group"><label>Remarks</label><textarea value={form.remarks||''} onChange={e=>set('remarks',e.target.value)} rows={2}/></div>
+        <div className="form-group">
+          <MdTextField type="textarea" label="Remarks" value={form.remarks||''} onChange={e=>set('remarks',e.target.value)} rows={2}/>
+        </div>
       </Modal>
     );
   };
@@ -239,28 +258,32 @@ function MasterData({clients, onUpdateClients, token, isAdmin, isEditor, isSuper
     return (
       <Modal title={occ ? 'Edit occupation' : 'Add occupation'} onClose={onClose}
         footer={<>
-          <button className="btn btn-secondary" onClick={onClose}>Cancel</button>
-          <button className="btn btn-primary" onClick={()=>onSave(form)}>Save</button>
+          <Btn className="btn btn-secondary" onClick={onClose}>Cancel</Btn>
+          <Btn className="btn btn-primary" onClick={()=>onSave(form)}>Save</Btn>
         </>}>
-        <div className="form-group"><label>Occupation name *</label><input value={form.name} onChange={e=>set('name',e.target.value)} placeholder="Full occupation name"/></div>
+        <div className="form-group">
+          <MdTextField label="Occupation name *" value={form.name} onChange={e=>set('name',e.target.value)} placeholder="Full occupation name"/>
+        </div>
         <div className="form-row form-row-2">
-          <div className="form-group"><label>Sector *</label>
-            <select value={form.sector} onChange={e=>set('sector',e.target.value)}>
-              {SECTORS.map(s=><option key={s}>{s}</option>)}
-            </select>
+          <div className="form-group">
+            <MdSelect label="Sector *" value={form.sector} onChange={e=>set('sector',e.target.value)}>
+              {SECTORS.map(s=><MdOption key={s} value={s}>{s}</MdOption>)}
+            </MdSelect>
           </div>
-          <div className="form-group"><label>Level <span style={{fontWeight:400,color:'var(--text3)'}}>(optional)</span></label>
-            <select value={form.level||''} onChange={e=>set('level',e.target.value)}>
-              <option value="">— Not specified —</option>
-              <option>N/A</option>
-              <option>Level 1</option>
-              <option>Level 2</option>
-              <option>Level 3</option>
-              <option>Professional</option>
-            </select>
+          <div className="form-group">
+            <MdSelect label="Level (optional)" value={form.level||''} onChange={e=>set('level',e.target.value)}>
+              <MdOption value="">— Not specified —</MdOption>
+              <MdOption value="N/A">N/A</MdOption>
+              <MdOption value="Level 1">Level 1</MdOption>
+              <MdOption value="Level 2">Level 2</MdOption>
+              <MdOption value="Level 3">Level 3</MdOption>
+              <MdOption value="Professional">Professional</MdOption>
+            </MdSelect>
           </div>
         </div>
-        <div className="form-group"><label>Duration (hrs) <span style={{fontWeight:400,color:'var(--text3)'}}>(optional)</span></label><input type="number" value={form.duration||''} onChange={e=>set('duration',e.target.value)} placeholder="e.g. 390"/></div>
+        <div className="form-group">
+          <MdTextField type="number" label="Duration (hrs) (optional)" value={form.duration||''} onChange={e=>set('duration',e.target.value)} placeholder="e.g. 390"/>
+        </div>
       </Modal>
     );
   };
@@ -271,34 +294,44 @@ function MasterData({clients, onUpdateClients, token, isAdmin, isEditor, isSuper
     return (
       <Modal title={tool ? 'Edit item' : 'Add tool / consumable'} onClose={onClose}
         footer={<>
-          <button className="btn btn-secondary" onClick={onClose}>Cancel</button>
-          <button className="btn btn-primary" onClick={()=>onSave(form)}>Save</button>
+          <Btn className="btn btn-secondary" onClick={onClose}>Cancel</Btn>
+          <Btn className="btn btn-primary" onClick={()=>onSave(form)}>Save</Btn>
         </>}>
         <div className="form-row form-row-2">
-          <div className="form-group"><label>Name *</label><input value={form.name||''} onChange={e=>set('name',e.target.value)} placeholder="e.g. Wire Stripper"/></div>
-          <div className="form-group"><label>Description</label><input value={form.description||''} onChange={e=>set('description',e.target.value)} placeholder="e.g. 6 inch insulated handle"/></div>
-        </div>
-        <div className="form-row form-row-2">
-          <div className="form-group"><label>Unit</label><input value={form.unit||''} onChange={e=>set('unit',e.target.value)} placeholder="e.g. Piece, Meter, Set"/></div>
-          <div className="form-group"><label>Quantity</label><input type="number" value={form.quantity||''} onChange={e=>set('quantity',e.target.value)} placeholder="e.g. 10"/></div>
-        </div>
-        <div className="form-row form-row-2">
-          <div className="form-group"><label>Ownership</label>
-            <select value={form.ownership||'Own'} onChange={e=>set('ownership',e.target.value)}>
-              <option>Own</option>
-              <option>Rented</option>
-            </select>
+          <div className="form-group">
+            <MdTextField label="Name *" value={form.name||''} onChange={e=>set('name',e.target.value)} placeholder="e.g. Wire Stripper"/>
           </div>
-          <div className="form-group"><label>Type</label>
-            <select value={form.type||'Tool'} onChange={e=>set('type',e.target.value)}>
-              <option>Tool</option>
-              <option>Consumable</option>
-              <option>Safety Tool</option>
-              <option>Stationery</option>
-            </select>
+          <div className="form-group">
+            <MdTextField label="Description" value={form.description||''} onChange={e=>set('description',e.target.value)} placeholder="e.g. 6 inch insulated handle"/>
           </div>
         </div>
-        <div className="form-group"><label>Remarks</label><input value={form.remarks||''} onChange={e=>set('remarks',e.target.value)}/></div>
+        <div className="form-row form-row-2">
+          <div className="form-group">
+            <MdTextField label="Unit" value={form.unit||''} onChange={e=>set('unit',e.target.value)} placeholder="e.g. Piece, Meter, Set"/>
+          </div>
+          <div className="form-group">
+            <MdTextField type="number" label="Quantity" value={form.quantity||''} onChange={e=>set('quantity',e.target.value)} placeholder="e.g. 10"/>
+          </div>
+        </div>
+        <div className="form-row form-row-2">
+          <div className="form-group">
+            <MdSelect label="Ownership" value={form.ownership||'Own'} onChange={e=>set('ownership',e.target.value)}>
+              <MdOption value="Own">Own</MdOption>
+              <MdOption value="Rented">Rented</MdOption>
+            </MdSelect>
+          </div>
+          <div className="form-group">
+            <MdSelect label="Type" value={form.type||'Tool'} onChange={e=>set('type',e.target.value)}>
+              <MdOption value="Tool">Tool</MdOption>
+              <MdOption value="Consumable">Consumable</MdOption>
+              <MdOption value="Safety Tool">Safety Tool</MdOption>
+              <MdOption value="Stationery">Stationery</MdOption>
+            </MdSelect>
+          </div>
+        </div>
+        <div className="form-group">
+          <MdTextField label="Remarks" value={form.remarks||''} onChange={e=>set('remarks',e.target.value)}/>
+        </div>
       </Modal>
     );
   };
@@ -366,7 +399,7 @@ function MasterData({clients, onUpdateClients, token, isAdmin, isEditor, isSuper
               <span className="search-icon">🔍</span>
               <input value={clientSearch} onChange={e=>setClientSearch(e.target.value)} placeholder="Search clients by name, acronym or type..."/>
             </div>
-            <button className="btn btn-primary btn-sm" onClick={()=>setClientModal({type:'add'})}>+ Add client</button>
+            <Btn className="btn btn-primary btn-sm" onClick={()=>setClientModal({type:'add'})}>+ Add client</Btn>
           </div>
           <div className="card" style={{padding:0, overflow:'hidden'}}>
             <table>
@@ -378,7 +411,7 @@ function MasterData({clients, onUpdateClients, token, isAdmin, isEditor, isSuper
                     <td style={{fontSize:12}}>{c.fullName}</td>
                     <td><span className="badge badge-info">{c.type}</span></td>
                     <td style={{fontSize:12, color:'var(--text3)'}}>{c.address}</td>
-                    <td><button className="btn btn-ghost btn-sm" onClick={()=>setClientModal({type:'edit', data:c})}>✏</button></td>
+                    <td><Btn className="btn btn-ghost btn-sm" onClick={()=>setClientModal({type:'edit', data:c})}>✏</Btn></td>
                   </tr>
                 ))}
               </tbody>
@@ -401,7 +434,7 @@ function MasterData({clients, onUpdateClients, token, isAdmin, isEditor, isSuper
               <option value="">All sectors ({SECTORS.length})</option>
               {SECTORS.map(s=><option key={s}>{s}</option>)}
             </select>
-            {canManageOccs && <button className="btn btn-primary btn-sm" onClick={()=>setOccModal({type:'add'})}>+ Add occupation</button>}
+            {canManageOccs && <Btn className="btn btn-primary btn-sm" onClick={()=>setOccModal({type:'add'})}>+ Add occupation</Btn>}
           </div>
           <div style={{fontSize:12, color:'var(--text3)', marginBottom:8}}>
             {filteredOccs.length} occupation{filteredOccs.length!==1?'s':''} {sectorFilter ? `in ${sectorFilter}` : 'across all sectors'}
@@ -419,8 +452,8 @@ function MasterData({clients, onUpdateClients, token, isAdmin, isEditor, isSuper
                     <td>{o.level ? <span className="badge badge-info" style={{fontSize:10}}>{o.level}</span> : <span className="text-muted">—</span>}</td>
                     <td className="mono">{o.duration ? o.duration+' hrs' : '—'}</td>
                     <td style={{display:'flex', gap:4}}>
-                      {canManageOccs && <button className="btn btn-ghost btn-sm" onClick={()=>setOccModal({type:'edit', data:o})}>✏</button>}
-                      {isAdmin && <button className="btn btn-danger btn-sm" onClick={()=>deleteOccupation(o)}>🗑</button>}
+                      {canManageOccs && <Btn className="btn btn-ghost btn-sm" onClick={()=>setOccModal({type:'edit', data:o})}>✏</Btn>}
+                      {isAdmin && <Btn className="btn btn-danger btn-sm" onClick={()=>deleteOccupation(o)}>🗑</Btn>}
                     </td>
                   </tr>
                 ))}
@@ -516,7 +549,7 @@ function MasterData({clients, onUpdateClients, token, isAdmin, isEditor, isSuper
                 </div>
                 <div style={{display:'flex', gap:8, alignItems:'center'}}>
                   {canManageOccs && toolsSelected.length > 0 && (
-                    <button className="btn btn-danger btn-sm" onClick={deleteSelectedTools}>Delete {toolsSelected.length} selected</button>
+                    <Btn className="btn btn-danger btn-sm" onClick={deleteSelectedTools}>Delete {toolsSelected.length} selected</Btn>
                   )}
                   {canManageOccs && !toolsBulkMode && (
                     <div style={{display:'flex', gap:6, flexWrap:'wrap'}}>
@@ -525,7 +558,7 @@ function MasterData({clients, onUpdateClients, token, isAdmin, isEditor, isSuper
                       ))}
                     </div>
                   )}
-                  <button className="btn btn-ghost btn-sm" onClick={()=>{ setToolsOccId(''); setToolsLevel(''); setToolsList([]); setToolsSelected([]); setToolsBulkMode(false); }}>✕ Close</button>
+                  <Btn className="btn btn-ghost btn-sm" onClick={()=>{ setToolsOccId(''); setToolsLevel(''); setToolsList([]); setToolsSelected([]); setToolsBulkMode(false); }}>✕ Close</Btn>
                 </div>
               </div>
 
@@ -537,7 +570,7 @@ function MasterData({clients, onUpdateClients, token, isAdmin, isEditor, isSuper
                     <div style={{display:'flex', gap:6, alignItems:'center'}}>
                       <span style={{fontSize:12, color:'var(--text3)'}}>Add rows:</span>
                       {[1,2,3,5,10,20].map(n=>(
-                        <button key={n} className="btn btn-ghost btn-sm" style={{padding:'2px 8px', fontSize:11}} onClick={()=>addBulkRows(n)}>+{n}</button>
+                        <Btn key={n} className="btn btn-ghost btn-sm" style={{padding:'2px 8px', fontSize:11}} onClick={()=>addBulkRows(n)}>+{n}</Btn>
                       ))}
                     </div>
                   </div>
@@ -559,8 +592,8 @@ function MasterData({clients, onUpdateClients, token, isAdmin, isEditor, isSuper
                         {bulkRows.map((row, i) => (
                           <tr key={row._key}>
                             <td style={{padding:'3px 4px', textAlign:'center'}}>
-                              <button className="btn btn-ghost btn-sm" style={{padding:'1px 4px', fontSize:11, color:'var(--danger,#ef4444)'}}
-                                onClick={()=>setBulkRows(prev=>prev.filter((_,idx)=>idx!==i))}>✕</button>
+                              <Btn className="btn btn-ghost btn-sm" style={{padding:'1px 4px', fontSize:11, color:'var(--danger,#ef4444)'}}
+                                onClick={()=>setBulkRows(prev=>prev.filter((_,idx)=>idx!==i))}>✕</Btn>
                             </td>
                             <td style={{padding:'3px 4px', fontSize:11, textAlign:'center', color:'var(--text3)'}}>{i+1}</td>
                             <td style={{padding:'3px 4px'}}><input tabIndex={1} value={row.name} onChange={e=>setBulkRows(prev=>{const n=[...prev];n[i]={...n[i],name:e.target.value};return n;})} placeholder="Name" style={{fontSize:12, padding:'4px 6px'}}/></td>
@@ -581,10 +614,10 @@ function MasterData({clients, onUpdateClients, token, isAdmin, isEditor, isSuper
                   <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginTop:10}}>
                     <span style={{fontSize:12, color:'var(--text3)'}}>{bulkRows.length} row{bulkRows.length!==1?'s':''} · {bulkRows.filter(r=>r.name.trim()).length} with data</span>
                     <div style={{display:'flex', gap:8}}>
-                      <button className="btn btn-secondary btn-sm" onClick={()=>{setToolsBulkMode(false);setBulkRows([]);}}>Cancel</button>
-                      <button className="btn btn-primary btn-sm" onClick={saveBulkRows} disabled={bulkSaving || !bulkRows.some(r=>r.name.trim())}>
+                      <Btn className="btn btn-secondary btn-sm" onClick={()=>{setToolsBulkMode(false);setBulkRows([]);}}>Cancel</Btn>
+                      <Btn className="btn btn-primary btn-sm" onClick={saveBulkRows} disabled={bulkSaving || !bulkRows.some(r=>r.name.trim())}>
                         {bulkSaving ? 'Saving...' : `Save ${bulkRows.filter(r=>r.name.trim()).length} item${bulkRows.filter(r=>r.name.trim()).length!==1?'s':''}`}
-                      </button>
+                      </Btn>
                     </div>
                   </div>
                 </div>
@@ -630,8 +663,8 @@ function MasterData({clients, onUpdateClients, token, isAdmin, isEditor, isSuper
                           <td style={{fontSize:12, color:'var(--text3)'}}>{t.remarks || ''}</td>
                           {canManageOccs && (
                             <td style={{display:'flex', gap:4}}>
-                              <button className="btn btn-ghost btn-sm" onClick={()=>setToolModal(t)}>✏</button>
-                              <button className="btn btn-danger btn-sm" onClick={()=>deleteTool(t.id)}>🗑</button>
+                              <Btn className="btn btn-ghost btn-sm" onClick={()=>setToolModal(t)}>✏</Btn>
+                              <Btn className="btn btn-danger btn-sm" onClick={()=>deleteTool(t.id)}>🗑</Btn>
                             </td>
                           )}
                         </tr>
@@ -658,7 +691,7 @@ function MasterData({clients, onUpdateClients, token, isAdmin, isEditor, isSuper
             <input value={ttInput} onChange={e=>setTtInput(e.target.value)}
               onKeyDown={e=>e.key==='Enter'&&addTT()}
               placeholder="New training type name…" style={{flex:1}}/>
-            <button className="btn btn-primary btn-sm" onClick={addTT}>+ Add</button>
+            <Btn className="btn btn-primary btn-sm" onClick={addTT}>+ Add</Btn>
           </div>
           <div className="card" style={{padding:0, overflow:'hidden'}}>
             <table>
@@ -678,12 +711,12 @@ function MasterData({clients, onUpdateClients, token, isAdmin, isEditor, isSuper
                     <td style={{display:'flex', gap:4}}>
                       {editTt?.idx === i
                         ? <>
-                            <button className="btn btn-primary btn-sm" onClick={()=>updateTT(i,editTt.val)}>Save</button>
-                            <button className="btn btn-ghost btn-sm" onClick={()=>setEditTt(null)}>✕</button>
+                            <Btn className="btn btn-primary btn-sm" onClick={()=>updateTT(i,editTt.val)}>Save</Btn>
+                            <Btn className="btn btn-ghost btn-sm" onClick={()=>setEditTt(null)}>✕</Btn>
                           </>
                         : <>
-                            <button className="btn btn-ghost btn-sm" onClick={()=>setEditTt({idx:i, val:t})}>✏</button>
-                            <button className="btn btn-danger btn-sm" onClick={()=>removeTT(i)}>🗑</button>
+                            <Btn className="btn btn-ghost btn-sm" onClick={()=>setEditTt({idx:i, val:t})}>✏</Btn>
+                            <Btn className="btn btn-danger btn-sm" onClick={()=>removeTT(i)}>🗑</Btn>
                           </>
                       }
                     </td>
@@ -693,9 +726,9 @@ function MasterData({clients, onUpdateClients, token, isAdmin, isEditor, isSuper
             </table>
           </div>
           <div style={{marginTop:12}}>
-            <button className="btn btn-ghost btn-sm" onClick={()=>saveTT([...TRAINING_TYPES_DEFAULT])}>
+            <Btn className="btn btn-ghost btn-sm" onClick={()=>saveTT([...TRAINING_TYPES_DEFAULT])}>
               ↺ Reset to defaults
-            </button>
+            </Btn>
           </div>
         </div>
       )}
@@ -709,7 +742,7 @@ function MasterData({clients, onUpdateClients, token, isAdmin, isEditor, isSuper
             <input value={fyInput} onChange={e=>setFyInput(e.target.value)}
               onKeyDown={e=>e.key==='Enter'&&addFY()}
               placeholder="e.g. 2084/85" style={{flex:1}} maxLength={7}/>
-            <button className="btn btn-primary btn-sm" onClick={addFY}>+ Add</button>
+            <Btn className="btn btn-primary btn-sm" onClick={addFY}>+ Add</Btn>
           </div>
           <div className="card" style={{padding:0, overflow:'hidden'}}>
             <table>
@@ -741,19 +774,19 @@ function MasterData({clients, onUpdateClients, token, isAdmin, isEditor, isSuper
                       <td style={{display:'flex', gap:4, alignItems:'center'}}>
                         {editFy?.idx===i
                           ? <>
-                              <button className="btn btn-primary btn-sm" onClick={()=>updateFY(i,editFy.val)}>Save</button>
-                              <button className="btn btn-ghost btn-sm" onClick={()=>setEditFy(null)}>✕</button>
+                              <Btn className="btn btn-primary btn-sm" onClick={()=>updateFY(i,editFy.val)}>Save</Btn>
+                              <Btn className="btn btn-ghost btn-sm" onClick={()=>setEditFy(null)}>✕</Btn>
                             </>
                           : <>
                               {!isCurrent && (
-                                <button className="btn btn-ghost btn-sm" title="Set as current FY"
+                                <Btn className="btn btn-ghost btn-sm" title="Set as current FY"
                                   onClick={() => { saveCurrentFY(fy); setCurrentFY(fy); }}
                                   style={{fontSize:11}}>
                                   Set current
-                                </button>
+                                </Btn>
                               )}
-                              <button className="btn btn-ghost btn-sm" onClick={()=>setEditFy({idx:i,val:fy})}>✏</button>
-                              <button className="btn btn-danger btn-sm" onClick={()=>removeFY(i)}>🗑</button>
+                              <Btn className="btn btn-ghost btn-sm" onClick={()=>setEditFy({idx:i,val:fy})}>✏</Btn>
+                              <Btn className="btn btn-danger btn-sm" onClick={()=>removeFY(i)}>🗑</Btn>
                             </>
                         }
                       </td>
@@ -764,11 +797,11 @@ function MasterData({clients, onUpdateClients, token, isAdmin, isEditor, isSuper
             </table>
           </div>
           <div style={{marginTop:12, display:'flex', gap:8}}>
-            <button className="btn btn-ghost btn-sm" onClick={()=>{
+            <Btn className="btn btn-ghost btn-sm" onClick={()=>{
               const fys=[];
               for(let y=2065;y<=2083;y++) fys.push(`${y}/${String(y+1).slice(-2)}`);
               saveFY(fys);
-            }}>↺ Reset to defaults</button>
+            }}>↺ Reset to defaults</Btn>
           </div>
         </div>
       )}

@@ -4,6 +4,7 @@ import { ErrorBanner } from './ui/Modal.jsx';
 import { useUnsavedGuard } from './ui/UnsavedGuard.jsx';
 import SearchableSelect from './ui/SearchableSelect.jsx';
 import { FISCAL_YEARS } from '../constants/data.js';
+import { Btn, MdTextField } from '../md.jsx';
 
 const fyToAD = (fy) => {
   if (!fy) return '';
@@ -27,8 +28,8 @@ function TaxForm({record, onSave, onClose}) {
     <>{UnsavedModal}
     <Modal title={record ? 'Edit Tax Clearance' : 'Add Tax Clearance'} onClose={handleClose}
       footer={<>
-        <button className="btn btn-secondary" onClick={handleClose}>Cancel</button>
-        <button className="btn btn-primary" onClick={async()=>{setErr('');try{markClean();await onSave(form);}catch(e){markDirty();setErr(e.message||'Failed to save');}}}>Save record</button>
+        <Btn className="btn btn-secondary" onClick={handleClose}>Cancel</Btn>
+        <Btn className="btn btn-primary" onClick={async()=>{setErr('');try{markClean();await onSave(form);}catch(e){markDirty();setErr(e.message||'Failed to save');}}}>Save record</Btn>
       </>}>
       <ErrorBanner msg={err} onDismiss={()=>setErr('')}/>
       <div className="form-row form-row-2">
@@ -38,41 +39,41 @@ function TaxForm({record, onSave, onClose}) {
             options={FISCAL_YEARS.slice().reverse().map(fy=>({value:fy,label:`${fy}  (${fyToAD(fy)})`}))}/>
         </div>
         <div className="form-group">
-          <label>Certificate date *</label>
-          <input value={form.certDate} onChange={e=>set('certDate',e.target.value)} placeholder="YYYY/MM/DD"/>
+          <MdTextField label="Certificate date *" value={form.certDate}
+            onChange={e=>set('certDate',e.target.value)} placeholder="YYYY/MM/DD"/>
         </div>
       </div>
       <div className="form-row form-row-3">
         <div className="form-group">
-          <label>Total turnover / Karobar (NPR) *</label>
-          <input type="number" value={form.turnover} onChange={e=>set('turnover',parseInt(e.target.value)||'')}/>
+          <MdTextField type="number" label="Total turnover / Karobar (NPR) *"
+            value={form.turnover} onChange={e=>set('turnover',parseInt(e.target.value)||'')}/>
         </div>
         <div className="form-group">
-          <label>Taxable income / Kar Yogya Aay (NPR) *</label>
-          <input type="number" value={form.taxableIncome} onChange={e=>set('taxableIncome',parseInt(e.target.value)||'')}/>
+          <MdTextField type="number" label="Taxable income / Kar Yogya Aay (NPR) *"
+            value={form.taxableIncome} onChange={e=>set('taxableIncome',parseInt(e.target.value)||'')}/>
         </div>
         <div className="form-group">
-          <label>Tax paid / Dakhila Gareko Kar (NPR) *</label>
-          <input type="number" value={form.taxPaid} onChange={e=>set('taxPaid',parseInt(e.target.value)||'')}/>
+          <MdTextField type="number" label="Tax paid / Dakhila Gareko Kar (NPR) *"
+            value={form.taxPaid} onChange={e=>set('taxPaid',parseInt(e.target.value)||'')}/>
         </div>
       </div>
       <div className="form-row form-row-3">
         <div className="form-group">
-          <label>Kar Chukta No.</label>
-          <input value={form.karChutaNo} onChange={e=>set('karChutaNo',e.target.value)}/>
+          <MdTextField label="Kar Chukta No." value={form.karChutaNo}
+            onChange={e=>set('karChutaNo',e.target.value)}/>
         </div>
         <div className="form-group">
-          <label>Patra Sankhya (Letter no.)</label>
-          <input value={form.patraNo} onChange={e=>set('patraNo',e.target.value)}/>
+          <MdTextField label="Patra Sankhya (Letter no.)" value={form.patraNo}
+            onChange={e=>set('patraNo',e.target.value)}/>
         </div>
         <div className="form-group">
-          <label>Income statement date</label>
-          <input value={form.incomeStatementDate} onChange={e=>set('incomeStatementDate',e.target.value)} placeholder="YYYY/MM/DD"/>
+          <MdTextField label="Income statement date" value={form.incomeStatementDate}
+            onChange={e=>set('incomeStatementDate',e.target.value)} placeholder="YYYY/MM/DD"/>
         </div>
       </div>
       <div className="form-group">
-        <label>Remarks</label>
-        <textarea value={form.remarks} onChange={e=>set('remarks',e.target.value)} rows={2}/>
+        <MdTextField type="textarea" label="Remarks" value={form.remarks}
+          onChange={e=>set('remarks',e.target.value)} rows={2}/>
       </div>
     </Modal>
     </>

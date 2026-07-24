@@ -4,6 +4,7 @@ import { ErrorBanner } from './ui/Modal.jsx';
 import { useUnsavedGuard } from './ui/UnsavedGuard.jsx';
 import SearchableSelect from './ui/SearchableSelect.jsx';
 import { AFFILIATION_TYPES, OCCUPATIONS } from '../constants/data.js';
+import { Btn, MdTextField, MdSelect, MdOption } from '../md.jsx';
 
 const uid = () => Math.random().toString(36).slice(2,9);
 
@@ -22,44 +23,44 @@ function AffiliationForm({record, onSave, onClose}) {
 
   return (
     <>{UnsavedModal}
-    <Modal title={record ? 'Edit Affiliation' : 'Add Affiliation'} onClose={handleClose} size="modal-lg"
+    <Modal title={record ? 'Edit Affiliation' : 'Add Affiliation'} onClose={handleClose} size="lg"
       footer={<>
-        <button className="btn btn-secondary" onClick={handleClose}>Cancel</button>
-        <button className="btn btn-primary" onClick={async()=>{setErr('');try{markClean();await onSave(form);}catch(e){markDirty();setErr(e.message||'Failed to save');}}}>Save affiliation</button>
+        <Btn className="btn btn-secondary" onClick={handleClose}>Cancel</Btn>
+        <Btn className="btn btn-primary" onClick={async()=>{setErr('');try{markClean();await onSave(form);}catch(e){markDirty();setErr(e.message||'Failed to save');}}}>Save affiliation</Btn>
       </>}>
       <ErrorBanner msg={err} onDismiss={()=>setErr('')}/>
       <div className="form-row form-row-3">
         <div className="form-group">
-          <label>Affiliation No. <span style={{fontWeight:400, color:'var(--text3)'}}>(Chalani no./Patra Sankhya)</span></label>
-          <input value={form.chalaniNo} onChange={e=>set('chalaniNo',e.target.value)} placeholder="e.g. 3496"/>
+          <MdTextField label="Affiliation No. (Chalani / Patra Sankhya)" value={form.chalaniNo}
+            onChange={e=>set('chalaniNo',e.target.value)} placeholder="e.g. 3496"/>
         </div>
         <div className="form-group">
-          <label>Affiliation date *</label>
-          <input value={form.affiliationDate} onChange={e=>set('affiliationDate',e.target.value)} placeholder="YYYY/MM/DD"/>
+          <MdTextField label="Affiliation date *" value={form.affiliationDate}
+            onChange={e=>set('affiliationDate',e.target.value)} placeholder="YYYY/MM/DD"/>
         </div>
       </div>
       <div className="form-row form-row-3">
         <div className="form-group">
-          <label>Affiliation type</label>
-          <select value={form.type} onChange={e=>set('type',e.target.value)}>
-            {AFFILIATION_TYPES.map(t=><option key={t}>{t}</option>)}
-          </select>
+          <MdSelect label="Affiliation type" value={form.type} onChange={e=>set('type',e.target.value)}>
+            {AFFILIATION_TYPES.map(t=><MdOption key={t} value={t}>{t}</MdOption>)}
+          </MdSelect>
         </div>
         <div className="form-group">
-          <label>Validity (years)</label>
-          <input type="number" value={form.validityYears} onChange={e=>set('validityYears',parseInt(e.target.value))}/>
+          <MdTextField type="number" label="Validity (years)" value={form.validityYears}
+            onChange={e=>set('validityYears',parseInt(e.target.value))}/>
         </div>
         <div className="form-group">
-          <label>Expiry date</label>
-          <input value={form.expiryDate} onChange={e=>set('expiryDate',e.target.value)} placeholder="YYYY/MM/DD"/>
+          <MdTextField label="Expiry date" value={form.expiryDate}
+            onChange={e=>set('expiryDate',e.target.value)} placeholder="YYYY/MM/DD"/>
         </div>
       </div>
       <div className="form-row form-row-2">
         <div className="form-group">
-          <label>Status</label>
-          <select value={form.status} onChange={e=>set('status',e.target.value)}>
-            <option>Active</option><option>Expired</option><option>Pending Renewal</option>
-          </select>
+          <MdSelect label="Status" value={form.status} onChange={e=>set('status',e.target.value)}>
+            <MdOption value="Active">Active</MdOption>
+            <MdOption value="Expired">Expired</MdOption>
+            <MdOption value="Pending Renewal">Pending Renewal</MdOption>
+          </MdSelect>
         </div>
       </div>
 
@@ -69,21 +70,25 @@ function AffiliationForm({record, onSave, onClose}) {
           <div className="repeatable-row" key={prog.id||i}>
             <button className="remove-btn" onClick={()=>removeProg(i)}>✕</button>
             <div className="form-row" style={{gridTemplateColumns:'2fr 1fr 1fr 1fr', gap:8, marginBottom:0}}>
-              <div>
+              <div className="form-group" style={{marginBottom:0}}>
                 <label>Program / occupation name</label>
                 <SearchableSelect value={prog.name} onChange={v=>setProg(i,'name',v)} placeholder="— Select —"
                   options={OCCUPATIONS.map(o=>({value:o.name,label:o.name}))}/>
               </div>
-              <div><label>Level</label>
-                <select value={prog.level} onChange={e=>setProg(i,'level',e.target.value)}>
-                  <option>Level 1</option><option>Level 2</option><option>Professional</option>
-                </select>
+              <div className="form-group" style={{marginBottom:0}}>
+                <MdSelect label="Level" value={prog.level} onChange={e=>setProg(i,'level',e.target.value)}>
+                  <MdOption value="Level 1">Level 1</MdOption>
+                  <MdOption value="Level 2">Level 2</MdOption>
+                  <MdOption value="Professional">Professional</MdOption>
+                </MdSelect>
               </div>
-              <div><label>Duration (hrs)</label>
-                <input type="number" value={prog.duration} onChange={e=>setProg(i,'duration',e.target.value)}/>
+              <div className="form-group" style={{marginBottom:0}}>
+                <MdTextField type="number" label="Duration (hrs)"
+                  value={prog.duration} onChange={e=>setProg(i,'duration',e.target.value)}/>
               </div>
-              <div><label>Seats/batch</label>
-                <input type="number" value={prog.seats} onChange={e=>setProg(i,'seats',e.target.value)}/>
+              <div className="form-group" style={{marginBottom:0}}>
+                <MdTextField type="number" label="Seats/batch"
+                  value={prog.seats} onChange={e=>setProg(i,'seats',e.target.value)}/>
               </div>
             </div>
           </div>

@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import Modal from './ui/Modal.jsx';
+import { Btn, MdTextField, MdSelect, MdOption, MdToggle } from '../md.jsx';
 import { api } from '../utils/api.js';
 import { getSession } from '../utils/auth.js';
 import { FISCAL_YEARS, getCurrentFY } from '../constants/data.js';
@@ -334,10 +335,10 @@ function ShortlistForm({ initial, institutes, clients, onSave, onClose, saving }
       title={isEdit ? 'Edit Shortlist Entry' : 'Add Shortlist Entry'}
       onClose={onClose}
       footer={<>
-        <button className="btn btn-secondary" onClick={onClose}>Cancel</button>
-        <button className="btn btn-primary" onClick={handleSave} disabled={saving}>
+        <Btn className="btn btn-secondary" onClick={onClose}>Cancel</Btn>
+        <Btn className="btn btn-primary" onClick={handleSave} disabled={saving}>
           {saving ? 'Saving…' : isEdit ? 'Update' : multi ? `Add ${selectedFirms.length || ''} Firms` : 'Add'}
-        </button>
+        </Btn>
       </>}
     >
       {err && <div style={{ background:'var(--error-light)', color:'#c0391e', borderRadius:10, padding:'10px 14px', marginBottom:14, fontSize:13 }}>{err}</div>}
@@ -345,63 +346,57 @@ function ShortlistForm({ initial, institutes, clients, onSave, onClose, saving }
       {/* Common fields */}
       <div className="form-row form-row-2">
         <div className="form-group">
-          <label style={{display:'flex', alignItems:'center', justifyContent:'space-between'}}>
-            <span>Organization (Client)</span>
+          <div style={{display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:4}}>
+            <span style={{fontSize:13, fontWeight:500}}>Organization (Client)</span>
             <button type="button"
               onClick={() => { setManualOrg(v => !v); set('client_id', ''); set('client_name_manual', ''); }}
               style={{fontSize:11.5, color:'var(--primary)', background:'none', border:'none', cursor:'pointer', padding:0, fontFamily:'inherit', fontWeight:500}}>
               {manualOrg ? '← Select from list' : 'Enter manually →'}
             </button>
-          </label>
+          </div>
           {manualOrg ? (
-            <input value={form.client_name_manual} onChange={e => set('client_name_manual', e.target.value)}
+            <MdTextField label="Organization name" value={form.client_name_manual} onChange={e => set('client_name_manual', e.target.value)}
               placeholder="Organization name…" />
           ) : (
-            <select value={form.client_id} onChange={e => set('client_id', e.target.value)}>
-              <option value="">— Select organization —</option>
-              {clients.map(c => <option key={c.id} value={c.id}>{c.fullName || c.full_name}{c.shortName || c.short_name ? ` (${c.shortName || c.short_name})` : ''}</option>)}
-            </select>
+            <MdSelect label="Organization (Client)" value={form.client_id} onChange={e => set('client_id', e.target.value)}>
+              <MdOption value="">— Select organization —</MdOption>
+              {clients.map(c => <MdOption key={c.id} value={String(c.id)}>{c.fullName || c.full_name}{c.shortName || c.short_name ? ` (${c.shortName || c.short_name})` : ''}</MdOption>)}
+            </MdSelect>
           )}
         </div>
         <div className="form-group">
-          <label>Fiscal Year *</label>
-          <select value={form.fy} onChange={e => set('fy', e.target.value)}>
-            <option value="">— Select FY —</option>
-            {FYS.map(fy => <option key={fy} value={fy}>{fy}</option>)}
-          </select>
+          <MdSelect label="Fiscal Year *" value={form.fy} onChange={e => set('fy', e.target.value)}>
+            <MdOption value="">— Select FY —</MdOption>
+            {FYS.map(fy => <MdOption key={fy} value={fy}>{fy}</MdOption>)}
+          </MdSelect>
         </div>
       </div>
 
       <div className="form-row form-row-2">
         <div className="form-group">
-          <label>Standing List Name</label>
-          <input value={form.standing_list_name} onChange={e => set('standing_list_name', e.target.value)}
+          <MdTextField label="Standing List Name" value={form.standing_list_name} onChange={e => set('standing_list_name', e.target.value)}
             placeholder="e.g. Roster of Firms, ADB Consultants List…" />
         </div>
         <div className="form-group">
-          <label>Shortlisting Date *</label>
-          <input type="date" value={form.shortlist_date} onChange={e => set('shortlist_date', e.target.value)} />
+          <MdTextField type="date" label="Shortlisting Date *" value={form.shortlist_date} onChange={e => set('shortlist_date', e.target.value)} />
         </div>
       </div>
 
       <div className="form-row form-row-2">
         <div className="form-group">
-          <label>Valid Until</label>
-          <input type="date" value={form.valid_until} onChange={e => set('valid_until', e.target.value)} />
+          <MdTextField type="date" label="Valid Until" value={form.valid_until} onChange={e => set('valid_until', e.target.value)} />
         </div>
         <div className="form-group">
-          <label>Status</label>
-          <select value={form.status} onChange={e => set('status', e.target.value)}>
-            <option value="Active">Active</option>
-            <option value="Expired">Expired</option>
-            <option value="Pending">Pending</option>
-          </select>
+          <MdSelect label="Status" value={form.status} onChange={e => set('status', e.target.value)}>
+            <MdOption value="Active">Active</MdOption>
+            <MdOption value="Expired">Expired</MdOption>
+            <MdOption value="Pending">Pending</MdOption>
+          </MdSelect>
         </div>
       </div>
 
       <div className="form-group">
-        <label>Remarks</label>
-        <input value={form.remarks} onChange={e => set('remarks', e.target.value)} placeholder="Optional notes" />
+        <MdTextField label="Remarks" value={form.remarks} onChange={e => set('remarks', e.target.value)} placeholder="Optional notes" />
       </div>
 
       {/* Firm selection */}
@@ -422,22 +417,20 @@ function ShortlistForm({ initial, institutes, clients, onSave, onClose, saving }
       {/* Single firm dropdown */}
       {(!isEdit && !multi) && (
         <div className="form-group">
-          <label>Firm (Institute) *</label>
-          <select value={form.institute_id} onChange={e => set('institute_id', e.target.value)}>
-            <option value="">— Select firm —</option>
-            {institutes.map(i => <option key={i.id} value={i.id}>{i.acronym ? `[${i.acronym}] ` : ''}{i.name}</option>)}
-          </select>
+          <MdSelect label="Firm (Institute) *" value={form.institute_id} onChange={e => set('institute_id', e.target.value)}>
+            <MdOption value="">— Select firm —</MdOption>
+            {institutes.map(i => <MdOption key={i.id} value={String(i.id)}>{i.acronym ? `[${i.acronym}] ` : ''}{i.name}</MdOption>)}
+          </MdSelect>
         </div>
       )}
 
       {/* Edit: show firm as read-only dropdown */}
       {isEdit && (
         <div className="form-group">
-          <label>Firm (Institute)</label>
-          <select value={form.institute_id} onChange={e => set('institute_id', e.target.value)}>
-            <option value="">— Select firm —</option>
-            {institutes.map(i => <option key={i.id} value={i.id}>{i.acronym ? `[${i.acronym}] ` : ''}{i.name}</option>)}
-          </select>
+          <MdSelect label="Firm (Institute)" value={form.institute_id} onChange={e => set('institute_id', e.target.value)}>
+            <MdOption value="">— Select firm —</MdOption>
+            {institutes.map(i => <MdOption key={i.id} value={String(i.id)}>{i.acronym ? `[${i.acronym}] ` : ''}{i.name}</MdOption>)}
+          </MdSelect>
         </div>
       )}
 
@@ -523,15 +516,15 @@ function LetterOptsModal({ row, onClose }) {
 
   return (
     <Modal title="Generate Letter" onClose={onClose} footer={<>
-      <button className="btn btn-secondary" onClick={onClose}>Cancel</button>
-      <button className="btn btn-primary" onClick={() => {
+      <Btn className="btn btn-secondary" onClick={onClose}>Cancel</Btn>
+      <Btn className="btn btn-primary" onClick={() => {
         openShortlistLetter(row, { includeSignStamp: inclSign, docs: inclDocs, pageTopMargin, lhGap, pageBottomPadding });
         onClose();
-      }}>Generate &amp; Print</button>
+      }}>Generate &amp; Print</Btn>
     </>}>
       <div style={{display:'flex', flexDirection:'column', gap:14}}>
         <div style={{display:'flex', alignItems:'center', gap:12, padding:'12px 14px', borderRadius:8, border:'1px solid var(--border)', background:'var(--bg)'}}>
-          <div className={`toggle${inclSign?' on':''}`} onClick={()=>setInclSign(v=>!v)} style={{flexShrink:0}}/>
+          <MdToggle selected={inclSign} onChange={e=>setInclSign(e.target.selected)} style={{flexShrink:0}}/>
           <div>
             <div style={{fontWeight:600, fontSize:13}}>Include signature &amp; stamp</div>
             <div style={{fontSize:11.5, color:'var(--text3)', marginTop:1}}>
@@ -545,22 +538,16 @@ function LetterOptsModal({ row, onClose }) {
         {row.institute_letterhead && (
           <div style={{display:'flex', gap:12, flexWrap:'wrap'}}>
             <div className="form-group" style={{flex:1, margin:0, minWidth:110}}>
-              <label style={{fontSize:12, fontWeight:600}}>Top (mm)</label>
-              <input type="number" min={0} max={200} value={pageTopMargin}
-                onChange={e=>setPageTopMargin(Number(e.target.value))}
-                style={{width:'100%', marginTop:4}}/>
+              <MdTextField type="number" label="Top (mm)" min={0} max={200} value={pageTopMargin}
+                onChange={e=>setPageTopMargin(Number(e.target.value))} />
             </div>
             <div className="form-group" style={{flex:1, margin:0, minWidth:110}}>
-              <label style={{fontSize:12, fontWeight:600}}>Bottom (mm)</label>
-              <input type="number" min={0} max={100} value={pageBottomPadding}
-                onChange={e=>setPageBottomPadding(Number(e.target.value))}
-                style={{width:'100%', marginTop:4}}/>
+              <MdTextField type="number" label="Bottom (mm)" min={0} max={100} value={pageBottomPadding}
+                onChange={e=>setPageBottomPadding(Number(e.target.value))} />
             </div>
             <div className="form-group" style={{flex:1, margin:0, minWidth:110}}>
-              <label style={{fontSize:12, fontWeight:600}}>Left/right (mm)</label>
-              <input type="number" min={0} max={60} value={lhGap}
-                onChange={e=>setLhGap(Number(e.target.value))}
-                style={{width:'100%', marginTop:4}}/>
+              <MdTextField type="number" label="Left/right (mm)" min={0} max={60} value={lhGap}
+                onChange={e=>setLhGap(Number(e.target.value))} />
             </div>
           </div>
         )}
@@ -591,8 +578,8 @@ function LetterOptsModal({ row, onClose }) {
 function ConfirmModal({ message, onConfirm, onClose, saving }) {
   return (
     <Modal title="Confirm Delete" onClose={onClose} footer={<>
-      <button className="btn btn-secondary" onClick={onClose}>Cancel</button>
-      <button className="btn btn-danger" onClick={onConfirm} disabled={saving}>{saving ? 'Deleting…' : 'Delete'}</button>
+      <Btn className="btn btn-secondary" onClick={onClose}>Cancel</Btn>
+      <Btn className="btn btn-danger" onClick={onConfirm} disabled={saving}>{saving ? 'Deleting…' : 'Delete'}</Btn>
     </>}>
       <p style={{ margin:0, color:'var(--text2)' }}>{message}</p>
     </Modal>
@@ -855,10 +842,10 @@ export default function Shortlisting({ institutes, clients, isAdmin, isEditor })
           </div>
         </div>
         {canEdit && (
-          <button className="btn btn-primary" onClick={() => setModal({ type:'add' })}>
+          <Btn className="btn btn-primary" onClick={() => setModal({ type:'add' })}>
             <span className="material-icons-round" style={{fontSize:16}}>add</span>
             Add Entry
-          </button>
+          </Btn>
         )}
       </div>
 

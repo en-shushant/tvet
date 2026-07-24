@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { ErrorBanner } from './ui/Modal.jsx';
 import { api } from '../utils/api.js';
+import { Btn } from '../md.jsx';
 
 function ClientDocuments({ client, instituteId, token, canEdit, isAdmin }) {
   const [docs, setDocs] = useState([]);
@@ -119,7 +120,7 @@ function ClientDocuments({ client, instituteId, token, canEdit, isAdmin }) {
                         <div style={{fontSize:10, color:'var(--text3)', marginTop:2}}>{fmtSize(doc.file_size)} · {new Date(doc.uploaded_at).toLocaleDateString()}</div>
                         <div style={{display:'flex', gap:4, marginTop:6}}>
                           {doc.url && <a href={doc.url} target="_blank" rel="noreferrer" className="btn btn-ghost btn-sm" style={{fontSize:10, padding:'2px 6px'}}>View</a>}
-                          {(canEdit || isAdmin) && <button className="btn btn-danger btn-sm" style={{fontSize:10, padding:'2px 6px'}} onClick={()=>deleteDoc(doc)}>🗑</button>}
+                          {(canEdit || isAdmin) && <Btn className="btn btn-danger btn-sm" style={{fontSize:10, padding:'2px 6px'}} onClick={()=>deleteDoc(doc)}>🗑</Btn>}
                         </div>
                       </div>
                     </div>
@@ -148,10 +149,10 @@ function ClientDocuments({ client, instituteId, token, canEdit, isAdmin }) {
                 </div>
               ))}
               <div style={{display:'flex', gap:8, marginTop:4}}>
-                <button className="btn btn-primary btn-sm" onClick={handleUpload} disabled={uploading}>
+                <Btn className="btn btn-primary btn-sm" onClick={handleUpload} disabled={uploading}>
                   {uploading ? '⏳ Uploading…' : `⬆ Upload ${pending.length} file${pending.length!==1?'s':''}`}
-                </button>
-                <button className="btn btn-ghost btn-sm" onClick={()=>{ pending.forEach(p=>{if(p.preview)URL.revokeObjectURL(p.preview);}); setPending([]); }}>Cancel</button>
+                </Btn>
+                <Btn className="btn btn-ghost btn-sm" onClick={()=>{ pending.forEach(p=>{if(p.preview)URL.revokeObjectURL(p.preview);}); setPending([]); }}>Cancel</Btn>
               </div>
             </div>
           )}
@@ -159,9 +160,9 @@ function ClientDocuments({ client, instituteId, token, canEdit, isAdmin }) {
           {canEdit && (
             <div style={{marginTop: docs.length || pending.length ? 4 : 0}}>
               <input ref={fileRef} type="file" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,.webp" multiple style={{display:'none'}} onChange={handleSelect}/>
-              <button className="btn btn-secondary btn-sm" onClick={()=>fileRef.current?.click()}>
+              <Btn className="btn btn-secondary btn-sm" onClick={()=>fileRef.current?.click()}>
                 📎 Upload experience letters
-              </button>
+              </Btn>
               <span style={{fontSize:11, color:'var(--text3)', marginLeft:10}}>PDF, image, or Word document</span>
             </div>
           )}

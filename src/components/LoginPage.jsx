@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useMemo } from 'react';
 import ReactDOM from 'react-dom';
 import Modal from './ui/Modal.jsx';
 import { ErrorBanner } from './ui/Modal.jsx';
+import { Btn, MdTextField, MdSelect, MdOption } from '../md.jsx';
 import SearchableSelect from './ui/SearchableSelect.jsx';
 import { api, normInst, clientToAPI, normClient } from '../utils/api.js';
 import { API_URL_KEY, getApiBase } from '../utils/api.js';
@@ -108,19 +109,14 @@ function LoginPage({ onLogin }) {
           <div style={{background:'var(--surface)',borderRadius:16,padding:'36px 40px',boxShadow:'var(--shadow-md)',border:'1px solid var(--border)'}}>
             <form onSubmit={handleSubmit}>
               <div style={{marginBottom:20}}>
-                <label style={{display:'block',fontSize:12.5,fontWeight:600,color:'var(--text2)',marginBottom:7}}>Email address</label>
-                <input
-                  type="email" value={email} onChange={e=>setEmail(e.target.value)}
-                  placeholder="you@organization.com" autoFocus required
-                  style={{width:'100%'}}
-                />
+                <MdTextField type="email" label="Email address" value={email}
+                  onChange={e=>setEmail(e.target.value)}
+                  placeholder="you@organization.com" autoFocus required style={{width:'100%'}}/>
               </div>
               <div style={{marginBottom:20}}>
-                <label style={{display:'block',fontSize:12.5,fontWeight:600,color:'var(--text2)',marginBottom:7}}>Password</label>
-                <input
-                  type="password" value={password} onChange={e=>setPassword(e.target.value)}
-                  placeholder="Enter your password" required style={{width:'100%'}}
-                />
+                <MdTextField type="password" label="Password" value={password}
+                  onChange={e=>setPassword(e.target.value)}
+                  placeholder="Enter your password" required style={{width:'100%'}}/>
               </div>
               <div style={{marginBottom:20}}>
                 <cap-widget
@@ -136,12 +132,12 @@ function LoginPage({ onLogin }) {
                   {error}
                 </div>
               )}
-              <button type="submit" className="btn btn-primary" disabled={loading}
+              <Btn type="submit" className="btn btn-primary" disabled={loading}
                 style={{width:'100%',justifyContent:'center',padding:'12px',fontSize:14.5}}>
                 {loading
                   ? <><span className="material-icons-round" style={{fontSize:16,animation:'spin 1s linear infinite'}}>refresh</span> Signing in…</>
                   : <><span className="material-icons-round" style={{fontSize:16}}>login</span> Sign In</>}
-              </button>
+              </Btn>
             </form>
           </div>
           <div style={{textAlign:'center',marginTop:24,fontSize:12,color:'var(--text3)'}}>
@@ -189,7 +185,7 @@ function AssignFirmsModal({ user, institutes, onSave, onClose }) {
       <div className="modal" style={{maxWidth:480}} onClick={e=>e.stopPropagation()}>
         <div className="modal-header">
           <div className="modal-title">Assign firms — {user.name}</div>
-          <button className="btn btn-ghost btn-sm" onClick={onClose}>✕</button>
+          <Btn className="btn btn-ghost btn-sm" onClick={onClose}>✕</Btn>
         </div>
         <div style={{padding:'16px 24px 24px'}}>
           <div className="search-wrap" style={{marginBottom:12}}>
@@ -217,8 +213,8 @@ function AssignFirmsModal({ user, institutes, onSave, onClose }) {
           <div style={{fontSize:12,color:'var(--text3)',marginTop:8}}>{assignedIds.length} firm{assignedIds.length!==1?'s':''} selected</div>
           {err && <div style={{color:'var(--error)',fontSize:12,marginTop:6}}>{err}</div>}
           <div style={{display:'flex',gap:8,justifyContent:'flex-end',marginTop:16}}>
-            <button className="btn btn-secondary" onClick={onClose}>Cancel</button>
-            <button className="btn btn-primary" onClick={handleSave} disabled={saving}>{saving?'Saving…':'Save'}</button>
+            <Btn className="btn btn-secondary" onClick={onClose}>Cancel</Btn>
+            <Btn className="btn btn-primary" onClick={handleSave} disabled={saving}>{saving?'Saving…':'Save'}</Btn>
           </div>
         </div>
       </div>
@@ -264,7 +260,7 @@ function UserModal({ user, institutes, isSuperAdmin, onSave, onClose }) {
       <div className="modal" style={{ maxWidth: 460 }} onClick={e => e.stopPropagation()}>
         <div className="modal-header">
           <div className="modal-title">{isEdit ? 'Edit user' : 'Add user'}</div>
-          <button className="btn btn-ghost btn-sm" onClick={onClose}>✕</button>
+          <Btn className="btn btn-ghost btn-sm" onClick={onClose}>✕</Btn>
         </div>
         <div style={{ padding: '20px 24px 24px' }}>
           <div style={{display:'flex', alignItems:'center', gap:16, marginBottom:16}}>
@@ -291,29 +287,25 @@ function UserModal({ user, institutes, isSuperAdmin, onSave, onClose }) {
           </div>
           <div className="form-row">
             <div className="form-group">
-              <label className="form-label">Full name</label>
-              <input className="form-input" value={form.name} onChange={e => setForm(f=>({...f,name:e.target.value}))} placeholder="Full name" />
+              <MdTextField label="Full name" value={form.name} onChange={e => setForm(f=>({...f,name:e.target.value}))} placeholder="Full name"/>
             </div>
           </div>
           <div className="form-row">
             <div className="form-group">
-              <label className="form-label">Email</label>
-              <input className="form-input" value={form.email} onChange={e => setForm(f=>({...f,email:e.target.value}))} placeholder="email@example.com" disabled={isEdit} />
+              <MdTextField label="Email" value={form.email} onChange={e => setForm(f=>({...f,email:e.target.value}))} placeholder="email@example.com" disabled={isEdit}/>
             </div>
             <div className="form-group">
-              <label className="form-label">Role</label>
-              <select className="form-input" value={form.role} onChange={e => setForm(f=>({...f,role:e.target.value}))}>
-                {isSuperAdmin && <option value="superadmin">Superadmin</option>}
-                {isSuperAdmin && <option value="admin">Admin</option>}
-                <option value="editor">Editor</option>
-                <option value="viewer">Viewer</option>
-              </select>
+              <MdSelect label="Role" value={form.role} onChange={e => setForm(f=>({...f,role:e.target.value}))}>
+                {isSuperAdmin && <MdOption value="superadmin">Superadmin</MdOption>}
+                {isSuperAdmin && <MdOption value="admin">Admin</MdOption>}
+                <MdOption value="editor">Editor</MdOption>
+                <MdOption value="viewer">Viewer</MdOption>
+              </MdSelect>
             </div>
           </div>
           <div className="form-row">
             <div className="form-group">
-              <label className="form-label">{isEdit ? 'New password (leave blank to keep)' : 'Password'}</label>
-              <input className="form-input" type="password" value={form.password} onChange={e => setForm(f=>({...f,password:e.target.value}))} placeholder={isEdit ? 'Leave blank to keep' : 'Password'} />
+              <MdTextField type="password" label={isEdit ? 'New password (leave blank to keep)' : 'Password'} value={form.password} onChange={e => setForm(f=>({...f,password:e.target.value}))} placeholder={isEdit ? 'Leave blank to keep' : 'Password'}/>
             </div>
           </div>
           {isEdit && (
@@ -328,8 +320,8 @@ function UserModal({ user, institutes, isSuperAdmin, onSave, onClose }) {
           )}
           {err && <div style={{ color: 'var(--red)', fontSize: 12, margin: '8px 0' }}>{err}</div>}
           <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 16 }}>
-            <button className="btn btn-secondary" onClick={onClose}>Cancel</button>
-            <button className="btn btn-primary" onClick={handleSave} disabled={saving}>{saving ? 'Saving…' : 'Save'}</button>
+            <Btn className="btn btn-secondary" onClick={onClose}>Cancel</Btn>
+            <Btn className="btn btn-primary" onClick={handleSave} disabled={saving}>{saving ? 'Saving…' : 'Save'}</Btn>
           </div>
         </div>
       </div>
@@ -403,7 +395,7 @@ function UserManagement({institutes, isSuperAdmin}) {
           <span className="search-icon">🔍</span>
           <input className="search-input" placeholder="Search users…" value={search} onChange={e => setSearch(e.target.value)} />
         </div>
-        <button className="btn btn-primary btn-sm" onClick={() => setModal('add')}>+ Add user</button>
+        <Btn className="btn btn-primary btn-sm" onClick={() => setModal('add')}>+ Add user</Btn>
       </div>
       <div className="card" style={{ padding: 0 }}>
         <div className="table-wrap">
@@ -454,17 +446,17 @@ function UserManagement({institutes, isSuperAdmin}) {
                   <td>
                     <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
                       {u.role === 'editor' && (
-                        <button className="btn btn-secondary btn-sm" onClick={() => setAssignModal(u)}>
+                        <Btn className="btn btn-secondary btn-sm" onClick={() => setAssignModal(u)}>
                           <span className="material-icons-round" style={{fontSize:13,verticalAlign:'middle',marginRight:3}}>business</span>
                           Assign Firms
-                        </button>
+                        </Btn>
                       )}
-                      <button className="btn btn-ghost btn-sm" onClick={() => setModal(u)}>Edit</button>
-                      <button className={`btn btn-sm ${u.is_active ? 'btn-danger' : 'btn-secondary'}`}
+                      <Btn className="btn btn-ghost btn-sm" onClick={() => setModal(u)}>Edit</Btn>
+                      <Btn className={`btn btn-sm ${u.is_active ? 'btn-danger' : 'btn-secondary'}`}
                         onClick={() => toggleActive(u)}>
                         {u.is_active ? 'Deactivate' : 'Activate'}
-                      </button>
-                      {isSuperAdmin && <button className="btn btn-danger btn-sm" onClick={() => deleteUser(u)}>🗑</button>}
+                      </Btn>
+                      {isSuperAdmin && <Btn className="btn btn-danger btn-sm" onClick={() => deleteUser(u)}>🗑</Btn>}
                     </div>
                   </td>
                 </tr>

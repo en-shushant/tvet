@@ -1,5 +1,205 @@
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
+/* ═══════════════════════════════════════════════════════════════
+   Material Design 3 System Tokens — mapped to app palette
+   These drive @material/web component colours automatically.
+   ═══════════════════════════════════════════════════════════════ */
+:root {
+  /* Primary */
+  --md-sys-color-primary:              #5D87FF;
+  --md-sys-color-on-primary:           #ffffff;
+  --md-sys-color-primary-container:    #ECF2FF;
+  --md-sys-color-on-primary-container: #4570EA;
+  /* Secondary */
+  --md-sys-color-secondary:              #49BEFF;
+  --md-sys-color-on-secondary:           #ffffff;
+  --md-sys-color-secondary-container:    #E8F7FF;
+  --md-sys-color-on-secondary-container: #006A9C;
+  /* Error */
+  --md-sys-color-error:              #FA896B;
+  --md-sys-color-on-error:           #ffffff;
+  --md-sys-color-error-container:    #FDDDD6;
+  --md-sys-color-on-error-container: #B83220;
+  /* Surface */
+  --md-sys-color-surface:              #FFFFFF;
+  --md-sys-color-on-surface:           #13202F;
+  --md-sys-color-surface-variant:      #EEF2F7;
+  --md-sys-color-on-surface-variant:   #344563;
+  --md-sys-color-surface-container:    #EEF2F7;
+  --md-sys-color-surface-container-high:   #E2E8F2;
+  --md-sys-color-surface-container-highest:#CBD5E8;
+  /* Outline */
+  --md-sys-color-outline:        #B8CCDE;
+  --md-sys-color-outline-variant:#D9E3EF;
+  /* Background */
+  --md-sys-color-background:    #EEF2F7;
+  --md-sys-color-on-background: #13202F;
+  /* Tonal surface */
+  --md-sys-color-inverse-surface:    #1E2D42;
+  --md-sys-color-inverse-on-surface: #EEF2F7;
+  /* Typography */
+  --md-sys-typescale-body-large-font:   var(--font);
+  --md-sys-typescale-body-medium-font:  var(--font);
+  --md-sys-typescale-label-large-font:  var(--font);
+  --md-sys-typescale-label-medium-font: var(--font);
+}
+
+/* ── Shape / corner tokens ── */
+:root {
+  --md-sys-shape-corner-full:        100px;
+  --md-sys-shape-corner-extra-large: 28px;
+  --md-sys-shape-corner-large:       16px;
+  --md-sys-shape-corner-medium:      12px;
+  --md-sys-shape-corner-small:       8px;
+  --md-sys-shape-corner-extra-small: 4px;
+}
+
+/* ── Button custom props — size variants and themed colours ── */
+md-filled-button, md-filled-tonal-button, md-text-button, md-outlined-button {
+  --md-filled-button-label-text-font:       var(--font);
+  --md-filled-tonal-button-label-text-font: var(--font);
+  --md-text-button-label-text-font:         var(--font);
+  --md-outlined-button-label-text-font:     var(--font);
+  font-family: var(--font);
+}
+
+/* sm variant */
+md-filled-button.sm, md-filled-tonal-button.sm, md-text-button.sm, md-outlined-button.sm {
+  --md-filled-button-container-height:       32px;
+  --md-filled-tonal-button-container-height: 32px;
+  --md-text-button-container-height:         32px;
+  --md-outlined-button-container-height:     32px;
+  --md-filled-button-label-text-size:         12px;
+  --md-filled-tonal-button-label-text-size:   12px;
+  --md-text-button-label-text-size:           12px;
+}
+/* xs variant */
+md-filled-button.xs, md-filled-tonal-button.xs, md-text-button.xs {
+  --md-filled-button-container-height:       28px;
+  --md-filled-tonal-button-container-height: 28px;
+  --md-text-button-container-height:         28px;
+  --md-filled-button-label-text-size:         11px;
+  --md-filled-tonal-button-label-text-size:   11px;
+  --md-text-button-label-text-size:           11px;
+}
+
+/* Danger tonal button */
+md-filled-tonal-button.danger {
+  --md-filled-tonal-button-container-color:             var(--error-light);
+  --md-filled-tonal-button-label-text-color:            var(--error);
+  --md-filled-tonal-button-hover-container-color:       color-mix(in srgb, var(--error) 20%, transparent);
+  --md-filled-tonal-button-pressed-container-color:     color-mix(in srgb, var(--error) 28%, transparent);
+  --md-filled-tonal-button-hover-label-text-color:      var(--error);
+  --md-filled-tonal-button-focus-label-text-color:      var(--error);
+  --md-filled-tonal-button-pressed-label-text-color:    var(--error);
+}
+
+/* Success filled button */
+md-filled-button.success {
+  --md-filled-button-container-color:   var(--success);
+  --md-filled-button-label-text-color:  #fff;
+  --md-filled-button-hover-label-text-color:   #fff;
+  --md-filled-button-pressed-label-text-color: #fff;
+}
+
+/* Warning filled button */
+md-filled-button.warning {
+  --md-filled-button-container-color:   var(--warning);
+  --md-filled-button-label-text-color:  #fff;
+  --md-filled-button-hover-label-text-color:   #fff;
+  --md-filled-button-pressed-label-text-color: #fff;
+}
+
+/* Icon button */
+md-icon-button {
+  --md-icon-button-icon-color: var(--text3);
+  --md-icon-button-hover-icon-color: var(--text2);
+  --md-icon-button-hover-state-layer-color: var(--bg2);
+}
+
+/* ── Text field ── */
+md-outlined-text-field {
+  width: 100%;
+  --md-outlined-text-field-label-text-font:         var(--font);
+  --md-outlined-text-field-input-text-font:         var(--font);
+  --md-outlined-text-field-supporting-text-font:    var(--font);
+  --md-outlined-text-field-container-shape:         8px;
+  --md-outlined-text-field-focus-outline-color:     var(--primary);
+  --md-outlined-text-field-focus-label-text-color:  var(--primary);
+  --md-outlined-text-field-outline-color:           var(--border2);
+  --md-outlined-text-field-hover-outline-color:     var(--text3);
+  --md-outlined-text-field-label-text-color:        var(--text3);
+  --md-outlined-text-field-input-text-color:        var(--text);
+}
+
+/* ── Select ── */
+md-outlined-select {
+  width: 100%;
+  --md-outlined-select-text-field-label-text-font:        var(--font);
+  --md-outlined-select-text-field-input-text-font:        var(--font);
+  --md-outlined-select-text-field-container-shape:        8px;
+  --md-outlined-select-text-field-focus-outline-color:    var(--primary);
+  --md-outlined-select-text-field-focus-label-text-color: var(--primary);
+  --md-outlined-select-text-field-outline-color:          var(--border2);
+  --md-outlined-select-text-field-hover-outline-color:    var(--text3);
+  --md-outlined-select-text-field-input-text-color:       var(--text);
+}
+md-select-option {
+  --md-menu-item-label-text-font: var(--font);
+}
+
+/* ── Switch ── */
+md-switch {
+  --md-switch-selected-track-color:        var(--primary);
+  --md-switch-selected-handle-color:       #fff;
+  --md-switch-selected-hover-track-color:  var(--primary-dark);
+  --md-switch-selected-pressed-track-color:var(--primary-dark);
+  --md-switch-unselected-track-color:      var(--bg3);
+  --md-switch-unselected-outline-color:    var(--border2);
+  --md-switch-unselected-handle-color:     var(--text3);
+}
+
+/* ── Dialog ── */
+md-dialog {
+  --md-dialog-container-shape: 28px;
+  --md-dialog-headline-color:  var(--text);
+  --md-dialog-supporting-text-color: var(--text2);
+  --md-dialog-container-color: var(--surface);
+  font-family: var(--font);
+  min-width: 280px;
+  max-width: 640px;
+}
+md-dialog[size="lg"] { max-width: 900px; }
+md-dialog[size="xl"] { max-width: 1120px; }
+
+/* ── Filter chip ── */
+md-filter-chip {
+  --md-filter-chip-label-text-font:            var(--font);
+  --md-filter-chip-container-shape:            20px;
+  --md-filter-chip-selected-container-color:   var(--primary);
+  --md-filter-chip-selected-label-text-color:  #fff;
+  --md-filter-chip-outline-color:              var(--border);
+  --md-filter-chip-label-text-color:           var(--text2);
+  --md-filter-chip-hover-label-text-color:     var(--primary);
+  --md-filter-chip-hover-outline-color:        var(--primary);
+}
+
+/* ── Secondary tab bar ── */
+md-tabs {
+  --md-secondary-tab-active-indicator-color:  var(--primary);
+  --md-secondary-tab-active-label-text-color: var(--primary);
+  --md-secondary-tab-label-text-font:         var(--font);
+  --md-secondary-tab-label-text-size:         13.5px;
+  --md-secondary-tab-label-text-weight:       500;
+  --md-secondary-tab-active-label-text-weight: 600;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 24px;
+  width: 100%;
+}
+md-secondary-tab {
+  --md-secondary-tab-label-text-font: var(--font);
+}
+
 :root {
   /* ── MaterialM palette ── */
   --primary: #5D87FF;

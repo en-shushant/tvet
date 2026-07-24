@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react';
 import { FISCAL_YEARS, CLIENT_TYPES, OCCUPATIONS } from '../constants/data.js';
+import { Btn } from '../md.jsx';
 
 const pct = (n, d) => d > 0 ? ((n/d)*100).toFixed(1) + '%' : '—';
 const fmt = (n) => n ? Number(n).toLocaleString('en-IN') : '—';
@@ -185,10 +186,10 @@ function JVGroupPanel({institutes, jvGroups, onChange}) {
             {draft.partnerIds.length} firm{draft.partnerIds.length!==1?'s':''} selected {draft.partnerIds.length>=2&&'✓'}
           </div>
           <div style={{display:'flex', gap:6}}>
-            <button className="btn btn-primary btn-sm" style={{fontSize:11}} onClick={save} disabled={draft.partnerIds.length<2}>
+            <Btn className="btn btn-primary btn-sm" style={{fontSize:11}} onClick={save} disabled={draft.partnerIds.length<2}>
               {editId ? 'Save changes' : 'Create JV'}
-            </button>
-            <button className="btn btn-secondary btn-sm" style={{fontSize:11}} onClick={cancel}>Cancel</button>
+            </Btn>
+            <Btn className="btn btn-secondary btn-sm" style={{fontSize:11}} onClick={cancel}>Cancel</Btn>
           </div>
         </div>
       )}

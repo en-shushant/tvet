@@ -5,6 +5,7 @@ import { ErrorBanner } from './ui/Modal.jsx';
 import { useUnsavedGuard } from './ui/UnsavedGuard.jsx';
 import SearchableSelect from './ui/SearchableSelect.jsx';
 import { DropdownPanel } from './ui/SearchableSelect.jsx';
+import { Btn, MdTextField, MdSelect, MdOption, MdToggle } from '../md.jsx';
 import { BulkDistrictPicker } from './BulkDistrictPicker.jsx';
 import { PROVINCES, FISCAL_YEARS, TRAINING_TYPES, SECTORS, OCCUPATIONS, CLIENT_TYPES, getAllDistricts } from '../constants/data.js';
 import { api } from '../utils/api.js';
@@ -118,23 +119,27 @@ function QuickAddOccupationModal({name, onSave, onClose}) {
   };
   return (
     <Modal title={`Add new occupation`} onClose={onClose}
-      footer={<><button className="btn btn-secondary" onClick={onClose}>Cancel</button><button className="btn btn-primary" onClick={handleSave}>Save &amp; select</button></>}>
+      footer={<><Btn className="btn btn-secondary" onClick={onClose}>Cancel</Btn><Btn className="btn btn-primary" onClick={handleSave}>Save &amp; select</Btn></>}>
       <ErrorBanner msg={err} onDismiss={()=>setErr('')}/>
       <div className="form-row form-row-2">
-        <div className="form-group"><label>Name *</label>
-          <input value={form.name} onChange={e=>set('name',e.target.value)}/>
+        <div className="form-group">
+          <MdTextField label="Name *" value={form.name} onChange={e=>set('name',e.target.value)}/>
         </div>
-        <div className="form-group"><label>Sector *</label>
-          <select value={form.sector} onChange={e=>set('sector',e.target.value)}>
-            {SECTORS.map(s=><option key={s}>{s}</option>)}
-          </select>
+        <div className="form-group">
+          <MdSelect label="Sector *" value={form.sector} onChange={e=>set('sector',e.target.value)}>
+            {SECTORS.map(s=><MdOption key={s} value={s}>{s}</MdOption>)}
+          </MdSelect>
         </div>
       </div>
-      <div className="form-group"><label>Level (optional)</label>
-        <select value={form.level} onChange={e=>set('level',e.target.value)}>
-          <option value="">— Not specified —</option>
-          <option>N/A</option><option>Level 1</option><option>Level 2</option><option>Level 3</option><option>Professional</option>
-        </select>
+      <div className="form-group">
+        <MdSelect label="Level (optional)" value={form.level} onChange={e=>set('level',e.target.value)}>
+          <MdOption value="">— Not specified —</MdOption>
+          <MdOption value="N/A">N/A</MdOption>
+          <MdOption value="Level 1">Level 1</MdOption>
+          <MdOption value="Level 2">Level 2</MdOption>
+          <MdOption value="Level 3">Level 3</MdOption>
+          <MdOption value="Professional">Professional</MdOption>
+        </MdSelect>
       </div>
     </Modal>
   );
@@ -287,10 +292,10 @@ function ExperienceForm({exp, clients, institute, onSave, onClose, onDuplicate, 
 
   return (
     <>
-    <Modal title={exp ? 'Edit Assignment' : 'Add Assignment'} onClose={handleClose} size="modal-lg"
+    <Modal title={exp ? 'Edit Assignment' : 'Add Assignment'} onClose={handleClose} size="lg"
       footer={<>
-        <button className="btn btn-secondary" onClick={handleClose}>Cancel</button>
-        <button className="btn btn-primary" onClick={async()=>{setFormErr('');if(form.occupations.some(o=>!o.ctevtOccupationId)){setFormErr('Please select an occupation for all occupation rows.');return;}try{markClean();await onSave(form);}catch(e){markDirty();setFormErr(e.message||'Failed to save');}}} >Save assignment</button>
+        <Btn className="btn btn-secondary" onClick={handleClose}>Cancel</Btn>
+        <Btn className="btn btn-primary" onClick={async()=>{setFormErr('');if(form.occupations.some(o=>!o.ctevtOccupationId)){setFormErr('Please select an occupation for all occupation rows.');return;}try{markClean();await onSave(form);}catch(e){markDirty();setFormErr(e.message||'Failed to save');}}}>Save assignment</Btn>
       </>}>
       <ErrorBanner msg={formErr} onDismiss={()=>setFormErr('')}/>
 
@@ -299,10 +304,10 @@ function ExperienceForm({exp, clients, institute, onSave, onClose, onDuplicate, 
         <div className="form-group">
           <div style={{display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:4}}>
             <label style={{marginBottom:0}}>Client *</label>
-            <button type="button" className="btn btn-ghost btn-sm" style={{fontSize:11, padding:'1px 6px'}}
+            <Btn type="button" className="btn btn-ghost btn-sm" style={{fontSize:11, padding:'1px 6px'}}
               onClick={()=>{ set('manualClient', !form.manualClient); set('clientId',''); set('clientName',''); }}>
               {form.manualClient ? '← Use list' : '+ Manual entry'}
-            </button>
+            </Btn>
           </div>
           {form.manualClient
             ? <div style={{display:'flex', gap:6, alignItems:'center'}}>
@@ -310,10 +315,10 @@ function ExperienceForm({exp, clients, institute, onSave, onClose, onDuplicate, 
                 {onSaveClient && form.clientName?.trim() && token && (() => {
                   // Decode JWT payload (no verify — server is the source of truth) to check role.
                   try { const p = JSON.parse(atob(token.split('.')[1])); if (p.role === 'admin' || p.role === 'editor' || p.role === 'superadmin') return (
-                    <button type="button" className="btn btn-ghost btn-sm" style={{fontSize:11, whiteSpace:'nowrap'}}
+                    <Btn type="button" className="btn btn-ghost btn-sm" style={{fontSize:11, whiteSpace:'nowrap'}}
                       onClick={()=>setSaveClientModal({fullName: form.clientName.trim(), shortName:'', type:'Government', address:'', remarks:''})}>
                       💾 Save to list
-                    </button>
+                    </Btn>
                   ); } catch {}
                   return null;
                 })()}
@@ -337,23 +342,19 @@ function ExperienceForm({exp, clients, institute, onSave, onClose, onDuplicate, 
         </div>
       </div>
       <div className="form-group">
-        <label>Assignment name *</label>
-        <input value={form.assignmentName} onChange={e=>set('assignmentName',e.target.value)} placeholder="As stated in the experience letter"/>
+        <MdTextField label="Assignment name *" value={form.assignmentName} onChange={e=>set('assignmentName',e.target.value)} placeholder="As stated in the experience letter"/>
       </div>
       <div className="form-row form-row-3">
         <div className="form-group">
-          <label>Training type</label>
-          <select value={form.trainingType} onChange={e=>set('trainingType',e.target.value)}>
-            {TRAINING_TYPES.map(t=><option key={t}>{t}</option>)}
-          </select>
+          <MdSelect label="Training type" value={form.trainingType} onChange={e=>set('trainingType',e.target.value)}>
+            {TRAINING_TYPES.map(t=><MdOption key={t} value={t}>{t}</MdOption>)}
+          </MdSelect>
         </div>
         <div className="form-group">
-          <label>Contract amount (NPR)</label>
-          <input type="number" value={form.contractValue} onChange={e=>set('contractValue',e.target.value)} placeholder="Optional"/>
+          <MdTextField type="number" label="Contract amount (NPR)" value={form.contractValue} onChange={e=>set('contractValue',e.target.value)} placeholder="Optional"/>
         </div>
         <div className="form-group">
-          <label>Remarks</label>
-          <input value={form.remarks} onChange={e=>set('remarks',e.target.value)} placeholder="Optional"/>
+          <MdTextField label="Remarks" value={form.remarks} onChange={e=>set('remarks',e.target.value)} placeholder="Optional"/>
         </div>
       </div>
       <div style={{display:'flex', gap:24, marginBottom:16, padding:'10px 14px', background:'var(--bg2)', borderRadius:'var(--radius)', border:'1px solid var(--border)'}}>
@@ -385,17 +386,15 @@ function ExperienceForm({exp, clients, institute, onSave, onClose, onDuplicate, 
       {form.isJV && (
         <div style={{display:'flex', gap:16, marginBottom:16, padding:'12px 14px', background:'color-mix(in srgb, var(--orange,#f59e0b) 8%, var(--bg2))', borderRadius:'var(--radius)', border:'1px solid color-mix(in srgb, var(--orange,#f59e0b) 30%, var(--border))'}}>
           <div style={{flex:1}}>
-            <label className="form-label">JV Role</label>
-            <select className="form-input" value={form.jvRole} onChange={e=>set('jvRole', e.target.value)}>
-              <option value="Lead">Lead</option>
-              <option value="JV Member">JV Member</option>
-              <option value="Subconsultant">Subconsultant</option>
-            </select>
+            <MdSelect label="JV Role" value={form.jvRole} onChange={e=>set('jvRole', e.target.value)}>
+              <MdOption value="Lead">Lead</MdOption>
+              <MdOption value="JV Member">JV Member</MdOption>
+              <MdOption value="Subconsultant">Subconsultant</MdOption>
+            </MdSelect>
           </div>
           <div style={{flex:1}}>
-            <label className="form-label">Number of JV Partners</label>
-            <input type="number" className="form-input" min="1" placeholder="e.g. 3"
-              value={form.jvPartners} onChange={e=>set('jvPartners', e.target.value)}/>
+            <MdTextField type="number" label="Number of JV Partners" value={form.jvPartners}
+              onChange={e=>set('jvPartners', e.target.value)} placeholder="e.g. 3"/>
           </div>
         </div>
       )}
@@ -413,12 +412,10 @@ function ExperienceForm({exp, clients, institute, onSave, onClose, onDuplicate, 
       </div>
       <div className="form-row form-row-2">
         <div className="form-group">
-          <label>Contract start date</label>
-          <input value={form.startDate} onChange={e=>set('startDate',e.target.value)} placeholder="YYYY/MM/DD"/>
+          <MdTextField label="Contract start date" value={form.startDate} onChange={e=>set('startDate',e.target.value)} placeholder="YYYY/MM/DD"/>
         </div>
         <div className="form-group">
-          <label>Contract end date</label>
-          <input value={form.endDate} onChange={e=>set('endDate',e.target.value)} placeholder="YYYY/MM/DD"/>
+          <MdTextField label="Contract end date" value={form.endDate} onChange={e=>set('endDate',e.target.value)} placeholder="YYYY/MM/DD"/>
         </div>
       </div>
 
@@ -428,16 +425,16 @@ function ExperienceForm({exp, clients, institute, onSave, onClose, onDuplicate, 
         <div style={{display:'flex', gap:8, alignItems:'flex-start'}}>
           <div style={{flex:1}}>
             <div style={{display:'flex', gap:8, alignItems:'center', marginBottom: form.referenceFile ? 8 : 0}}>
-              <button className="btn btn-secondary btn-sm" onClick={()=>fileInputRef.current?.click()}>
+              <Btn className="btn btn-secondary btn-sm" onClick={()=>fileInputRef.current?.click()}>
                 📎 {form.referenceFileName ? 'Change file' : 'Attach file'}
-              </button>
+              </Btn>
               {form.referenceFile && (
-                <button className="btn btn-ghost btn-sm" onClick={()=>{set('referenceFile',null);set('referenceFileName','');}}>✕ Remove</button>
+                <Btn className="btn btn-ghost btn-sm" onClick={()=>{set('referenceFile',null);set('referenceFileName','');}}>✕ Remove</Btn>
               )}
               {form.referenceFile && form.referenceFileName?.match(/\.pdf$/i) && (
-                <button className="btn btn-ghost btn-sm" onClick={()=>{
+                <Btn className="btn btn-ghost btn-sm" onClick={()=>{
                   const w=window.open(); w.document.write(`<iframe src="${form.referenceFile}" width="100%" height="100%" style="border:none"/>`);
-                }}>👁 Preview PDF</button>
+                }}>👁 Preview PDF</Btn>
               )}
             </div>
             {form.referenceFile && (
@@ -476,34 +473,28 @@ function ExperienceForm({exp, clients, institute, onSave, onClose, onDuplicate, 
           <div style={{padding:'14px', border:'1px solid var(--border)', borderTop:'none', borderRadius:'0 0 var(--radius) var(--radius)'}}>
             <div className="form-row form-row-2">
               <div className="form-group">
-                <label>Country</label>
-                <input value={form.country} onChange={e=>set('country', e.target.value)} placeholder="Nepal"/>
+                <MdTextField label="Country" value={form.country} onChange={e=>set('country', e.target.value)} placeholder="Nepal"/>
               </div>
               <div className="form-group">
-                <label>Duration of assignment (months)</label>
-                <input type="number" value={form.durationMonths} onChange={e=>set('durationMonths', e.target.value)} placeholder="e.g. 8"/>
+                <MdTextField type="number" label="Duration of assignment (months)" value={form.durationMonths} onChange={e=>set('durationMonths', e.target.value)} placeholder="e.g. 8"/>
               </div>
             </div>
             {/* PPMO-specific fields — hidden until PPMO format is finalized */}
             <div className="form-row form-row-2">
               <div className="form-group">
-                <label>Total person-months of assignment</label>
-                <input type="number" value={form.totalPersonMonths} onChange={e=>set('totalPersonMonths', e.target.value)} placeholder="e.g. 24"/>
+                <MdTextField type="number" label="Total person-months of assignment" value={form.totalPersonMonths} onChange={e=>set('totalPersonMonths', e.target.value)} placeholder="e.g. 24"/>
               </div>
               <div className="form-group">
-                <label>Value of services provided by your firm (NPR/US$)</label>
-                <input type="number" value={form.ownServiceValue} onChange={e=>set('ownServiceValue', e.target.value)} placeholder="If different from total contract value"/>
+                <MdTextField type="number" label="Value of services provided by your firm (NPR/US$)" value={form.ownServiceValue} onChange={e=>set('ownServiceValue', e.target.value)} placeholder="If different from total contract value"/>
               </div>
             </div>
             {form.isJV && (
               <div className="form-row form-row-2">
                 <div className="form-group">
-                  <label>Name of JV partner(s) / sub-consultants</label>
-                  <input value={form.jvPartnerNames} onChange={e=>set('jvPartnerNames', e.target.value)} placeholder="e.g. ABC Consultants, XYZ Pvt. Ltd."/>
+                  <MdTextField label="Name of JV partner(s) / sub-consultants" value={form.jvPartnerNames} onChange={e=>set('jvPartnerNames', e.target.value)} placeholder="e.g. ABC Consultants, XYZ Pvt. Ltd."/>
                 </div>
                 <div className="form-group">
-                  <label>Professional person-months by JV partners</label>
-                  <input type="number" value={form.jvPartnerPersonMonths} onChange={e=>set('jvPartnerPersonMonths', e.target.value)} placeholder="e.g. 10"/>
+                  <MdTextField type="number" label="Professional person-months by JV partners" value={form.jvPartnerPersonMonths} onChange={e=>set('jvPartnerPersonMonths', e.target.value)} placeholder="e.g. 10"/>
                 </div>
               </div>
             )}
@@ -520,8 +511,7 @@ function ExperienceForm({exp, clients, institute, onSave, onClose, onDuplicate, 
             <button className="remove-btn" tabIndex={-1} onClick={()=>removeOcc(i)}>✕</button>
             <div className="form-row form-row-2" style={{marginBottom:8}}>
               <div className="form-group" style={{marginBottom:0}}>
-                <label>Occupation name in letter</label>
-                <input value={occ.nameInLetter} onChange={e=>setOcc(i,'nameInLetter',e.target.value)} placeholder="As written by client"/>
+                <MdTextField label="Occupation name in letter" value={occ.nameInLetter} onChange={e=>setOcc(i,'nameInLetter',e.target.value)} placeholder="As written by client"/>
               </div>
               <div className="form-group" style={{marginBottom:0}}>
                 <label>Occupation *</label>
@@ -537,20 +527,29 @@ function ExperienceForm({exp, clients, institute, onSave, onClose, onDuplicate, 
               </div>
             </div>
             <div className="form-row" style={{gridTemplateColumns:'1fr 1fr 1fr 1fr 1fr 1fr', gap:8, marginBottom:8}}>
-              <div><label>Duration (hrs)</label><input type="number" value={occ.duration} onChange={e=>setOcc(i,'duration',e.target.value)}/></div>
-              <div><label>Level</label><select value={occ.level||''} onChange={e=>setOcc(i,'level',e.target.value)}><option value="">—</option><option>N/A</option><option>Level 1</option><option>Level 2</option><option>Level 3</option><option>Professional</option></select></div>
-              <div><label>Trainees</label><input type="number" value={occ.trainees} onChange={e=>setOcc(i,'trainees',e.target.value)}/></div>
-              <div><label>ST Appeared</label><input type="number" value={occ.skillTestAppeared} onChange={e=>setOcc(i,'skillTestAppeared',e.target.value)} placeholder="Optional"/></div>
-              <div><label>ST Pass</label><input type="number" value={occ.skillTestPass} onChange={e=>setOcc(i,'skillTestPass',e.target.value)} placeholder="Optional"/></div>
-              <div><label>Employ%</label><input type="number" value={occ.employmentActual} onChange={e=>setOcc(i,'employmentActual',e.target.value)} placeholder="Optional"/></div>
+              <div><MdTextField type="number" label="Duration (hrs)" value={occ.duration} onChange={e=>setOcc(i,'duration',e.target.value)}/></div>
+              <div>
+                <MdSelect label="Level" value={occ.level||''} onChange={e=>setOcc(i,'level',e.target.value)}>
+                  <MdOption value="">—</MdOption>
+                  <MdOption value="N/A">N/A</MdOption>
+                  <MdOption value="Level 1">Level 1</MdOption>
+                  <MdOption value="Level 2">Level 2</MdOption>
+                  <MdOption value="Level 3">Level 3</MdOption>
+                  <MdOption value="Professional">Professional</MdOption>
+                </MdSelect>
+              </div>
+              <div><MdTextField type="number" label="Trainees" value={occ.trainees} onChange={e=>setOcc(i,'trainees',e.target.value)}/></div>
+              <div><MdTextField type="number" label="ST Appeared" value={occ.skillTestAppeared} onChange={e=>setOcc(i,'skillTestAppeared',e.target.value)} placeholder="Optional"/></div>
+              <div><MdTextField type="number" label="ST Pass" value={occ.skillTestPass} onChange={e=>setOcc(i,'skillTestPass',e.target.value)} placeholder="Optional"/></div>
+              <div><MdTextField type="number" label="Employ%" value={occ.employmentActual} onChange={e=>setOcc(i,'employmentActual',e.target.value)} placeholder="Optional"/></div>
             </div>
             <div style={{display:'flex', gap:16, marginBottom:8}}>
               <label className="toggle-wrap">
-                <button className={`toggle ${occ.skillTestProvisioned?'on':''}`} onClick={()=>setOcc(i,'skillTestProvisioned',!occ.skillTestProvisioned)}/>
+                <MdToggle selected={occ.skillTestProvisioned} onChange={()=>setOcc(i,'skillTestProvisioned',!occ.skillTestProvisioned)}/>
                 Skill test provisioned
               </label>
               <label className="toggle-wrap">
-                <button className={`toggle ${occ.employmentProvisioned?'on':''}`} onClick={()=>setOcc(i,'employmentProvisioned',!occ.employmentProvisioned)}/>
+                <MdToggle selected={occ.employmentProvisioned} onChange={()=>setOcc(i,'employmentProvisioned',!occ.employmentProvisioned)}/>
                 Employment provisioned
               </label>
             </div>
@@ -602,8 +601,8 @@ function ExperienceForm({exp, clients, institute, onSave, onClose, onDuplicate, 
     {saveClientModal && (
       <Modal title="Save client to Master data" onClose={()=>setSaveClientModal(null)}
         footer={<>
-          <button className="btn btn-secondary" onClick={()=>setSaveClientModal(null)}>Cancel</button>
-          <button className="btn btn-primary" onClick={async()=>{
+          <Btn className="btn btn-secondary" onClick={()=>setSaveClientModal(null)}>Cancel</Btn>
+          <Btn className="btn btn-primary" onClick={async()=>{
             if(!saveClientModal.fullName.trim()) { setSaveClientErr('Full name is required'); return; }
             if(!saveClientModal.shortName.trim()) { setSaveClientErr('Short name is required'); return; }
             setSaveClientErr('');
@@ -614,27 +613,27 @@ function ExperienceForm({exp, clients, institute, onSave, onClose, onDuplicate, 
               set('clientName', '');
               setSaveClientModal(null);
             } catch(err) { setSaveClientErr('Failed to save client: ' + err.message); }
-          }}>Save & select</button>
+          }}>Save & select</Btn>
         </>}>
         <ErrorBanner msg={saveClientErr} onDismiss={()=>setSaveClientErr('')}/>
         <div style={{fontSize:12, color:'var(--text2)', marginBottom:12}}>
           Save <strong>{saveClientModal.fullName}</strong> to the clients list so it can be reused in future assignments.
         </div>
-        <div className="form-group"><label>Full name *</label>
-          <input value={saveClientModal.fullName} onChange={e=>setSaveClientModal(m=>({...m,fullName:e.target.value}))} placeholder="Official full name"/>
+        <div className="form-group">
+          <MdTextField label="Full name *" value={saveClientModal.fullName} onChange={e=>setSaveClientModal(m=>({...m,fullName:e.target.value}))} placeholder="Official full name"/>
         </div>
         <div className="form-row form-row-2">
-          <div className="form-group"><label>Short name / acronym *</label>
-            <input value={saveClientModal.shortName} onChange={e=>setSaveClientModal(m=>({...m,shortName:e.target.value}))} placeholder="e.g. PCTVET"/>
+          <div className="form-group">
+            <MdTextField label="Short name / acronym *" value={saveClientModal.shortName} onChange={e=>setSaveClientModal(m=>({...m,shortName:e.target.value}))} placeholder="e.g. PCTVET"/>
           </div>
-          <div className="form-group"><label>Client type</label>
-            <select value={saveClientModal.type} onChange={e=>setSaveClientModal(m=>({...m,type:e.target.value}))}>
-              {CLIENT_TYPES.map(t=><option key={t}>{t}</option>)}
-            </select>
+          <div className="form-group">
+            <MdSelect label="Client type" value={saveClientModal.type} onChange={e=>setSaveClientModal(m=>({...m,type:e.target.value}))}>
+              {CLIENT_TYPES.map(t=><MdOption key={t} value={t}>{t}</MdOption>)}
+            </MdSelect>
           </div>
         </div>
-        <div className="form-group"><label>Address</label>
-          <input value={saveClientModal.address} onChange={e=>setSaveClientModal(m=>({...m,address:e.target.value}))}/>
+        <div className="form-group">
+          <MdTextField label="Address" value={saveClientModal.address} onChange={e=>setSaveClientModal(m=>({...m,address:e.target.value}))}/>
         </div>
       </Modal>
     )}

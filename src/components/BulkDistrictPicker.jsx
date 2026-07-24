@@ -2,6 +2,7 @@ import { useState, useMemo } from 'react';
 import { PROVINCES, getAllDistricts, FISCAL_YEARS, TRAINING_TYPES, OCCUPATIONS } from '../constants/data.js';
 import SearchableSelect from './ui/SearchableSelect.jsx';
 import { ErrorBanner } from './ui/Modal.jsx';
+import { Btn } from '../md.jsx';
 
 function DistrictMultiPicker({onAdd, buttonLabel='+ Add districts'}) {
   const [open, setOpen] = useState(false);
@@ -42,7 +43,7 @@ function DistrictMultiPicker({onAdd, buttonLabel='+ Add districts'}) {
           <option value="">All provinces</option>
           {PROVINCES.map(p=><option key={p.id} value={p.name}>{p.name}</option>)}
         </select>
-        {selected.length > 0 && <button className="btn btn-primary btn-sm" onClick={handleAdd}>Add {selected.length}</button>}
+        {selected.length > 0 && <Btn className="btn btn-primary btn-sm" onClick={handleAdd}>Add {selected.length}</Btn>}
         <button onClick={()=>{setOpen(false);setSelected([]);setSearch('');}} style={{background:'none',border:'none',cursor:'pointer',color:'var(--text3)',fontSize:14,flexShrink:0}}>✕</button>
       </div>
       {selected.length > 0 && (
@@ -114,9 +115,9 @@ function BulkAssignmentForm({instituteName, clients, onSave, onBack}) {
           <div style={{fontSize:12, color:'var(--text3)', marginTop:4}}>Fill each row as one assignment. Rows with blank assignment name will be skipped.</div>
         </div>
         <div style={{display:'flex', gap:8}}>
-          <button className="btn btn-ghost" onClick={addRow}>+ Add row</button>
-          <button className="btn btn-secondary" onClick={onBack}>Cancel</button>
-          <button className="btn btn-primary" onClick={handleSave}>Save {rows.length} assignment{rows.length>1?'s':''}</button>
+          <Btn className="btn btn-ghost" onClick={addRow}>+ Add row</Btn>
+          <Btn className="btn btn-secondary" onClick={onBack}>Cancel</Btn>
+          <Btn className="btn btn-primary" onClick={handleSave}>Save {rows.length} assignment{rows.length>1?'s':''}</Btn>
         </div>
       </div>
       <div style={{overflowX:'auto'}}>
@@ -191,9 +192,9 @@ function BulkAssignmentForm({instituteName, clients, onSave, onBack}) {
       </div>
       {err && <ErrorBanner msg={err} onDismiss={()=>setErr('')}/>}
       <div style={{position:'sticky', bottom:0, background:'var(--bg1)', borderTop:'1px solid var(--border)', padding:'12px 0', marginTop:20, display:'flex', justifyContent:'flex-end', gap:8}}>
-        <button className="btn btn-ghost" onClick={addRow}>+ Add row</button>
-        <button className="btn btn-secondary" onClick={onBack}>Cancel</button>
-        <button className="btn btn-primary" onClick={handleSave}>Save {rows.length} assignment{rows.length>1?'s':''}</button>
+        <Btn className="btn btn-ghost" onClick={addRow}>+ Add row</Btn>
+        <Btn className="btn btn-secondary" onClick={onBack}>Cancel</Btn>
+        <Btn className="btn btn-primary" onClick={handleSave}>Save {rows.length} assignment{rows.length>1?'s':''}</Btn>
       </div>
     </div>
   );

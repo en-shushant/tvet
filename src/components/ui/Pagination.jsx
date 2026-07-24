@@ -1,3 +1,5 @@
+import { Btn } from '../../md.jsx';
+
 export default function Pagination({ page, setPage, totalPages, total, start, end, label = 'items' }) {
   if (totalPages <= 1) return null;
 
@@ -17,10 +19,10 @@ export default function Pagination({ page, setPage, totalPages, total, start, en
         Showing <strong style={{color:'var(--text2)'}}>{start + 1}–{end}</strong> of <strong style={{color:'var(--text2)'}}>{total}</strong> {label}
       </span>
       <div style={{display:'flex', gap:5, alignItems:'center'}}>
-        <button className="btn btn-secondary btn-sm" onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}
+        <Btn className="btn btn-secondary btn-sm" onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}
           style={{display:'flex', alignItems:'center', gap:3}}>
           <span className="material-icons-round" style={{fontSize:14}}>chevron_left</span> Prev
-        </button>
+        </Btn>
         {pages.map((p, i) =>
           p === '...'
             ? <span key={`e${i}`} style={{padding:'0 4px', color:'var(--text3)', fontSize:13}}>…</span>
@@ -34,10 +36,10 @@ export default function Pagination({ page, setPage, totalPages, total, start, en
                   boxShadow: p === page ? '0 2px 8px rgba(93,135,255,0.3)' : 'none',
                 }}>{p}</button>
         )}
-        <button className="btn btn-secondary btn-sm" onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages}
+        <Btn className="btn btn-secondary btn-sm" onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages}
           style={{display:'flex', alignItems:'center', gap:3}}>
           Next <span className="material-icons-round" style={{fontSize:14}}>chevron_right</span>
-        </button>
+        </Btn>
       </div>
     </div>
   );

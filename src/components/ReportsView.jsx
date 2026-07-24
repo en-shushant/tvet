@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { getSession } from '../utils/auth.js';
 import { api, normInst } from '../utils/api.js';
 import { exportToCSV } from '../utils/export.js';
+import { Btn } from '../md.jsx';
 import { fyInRange, fyYear } from '../reports/helpers.js';
 import REPORT_FAMILIES from '../reports/index.js';
 
@@ -386,8 +387,8 @@ function ReportsView({ institutes, clients }) {
                 {allFYs.map(fy => <option key={fy} value={fy}>{fy}</option>)}
               </select>
               {(fromFY || toFY) && (
-                <button className="btn btn-ghost btn-sm" style={{fontSize:10, padding:'2px 6px'}}
-                  onClick={() => { setFromFY(''); setToFY(''); setSelectedIds(null); }}>✕</button>
+                <Btn className="btn btn-ghost btn-sm" style={{fontSize:10, padding:'2px 6px'}}
+                  onClick={() => { setFromFY(''); setToFY(''); setSelectedIds(null); }}>✕</Btn>
               )}
             </div>
           )}
@@ -455,7 +456,7 @@ function ReportsView({ institutes, clients }) {
                 <div className="filter-label" style={{justifyContent:'space-between', fontWeight:700, color:'var(--accent)'}}>
                   <span>Proposed Occupations (C2)</span>
                   {enssureOccIds.length > 0 && (
-                    <button className="btn btn-ghost btn-sm" style={{fontSize:10, padding:'1px 5px'}} onClick={() => setEnssureOccIds([])}>Clear</button>
+                    <Btn className="btn btn-ghost btn-sm" style={{fontSize:10, padding:'1px 5px'}} onClick={() => setEnssureOccIds([])}>Clear</Btn>
                   )}
                 </div>
                 <input className="form-input" value={enssureOccSearch} onChange={e => setEnssureOccSearch(e.target.value)}
@@ -628,8 +629,8 @@ function ReportsView({ institutes, clients }) {
                 <div className="filter-label" style={{justifyContent:'space-between'}}>
                   <span>Assignments</span>
                   <span style={{display:'flex', gap:4, fontSize:10, fontWeight:400, letterSpacing:0}}>
-                    <button className="btn btn-ghost btn-sm" style={{fontSize:10, padding:'1px 5px'}} onClick={selectAll}>All</button>
-                    <button className="btn btn-ghost btn-sm" style={{fontSize:10, padding:'1px 5px'}} onClick={clearAll}>None</button>
+                    <Btn className="btn btn-ghost btn-sm" style={{fontSize:10, padding:'1px 5px'}} onClick={selectAll}>All</Btn>
+                    <Btn className="btn btn-ghost btn-sm" style={{fontSize:10, padding:'1px 5px'}} onClick={clearAll}>None</Btn>
                   </span>
                 </div>
                 {rangeFiltered.length === 0 ? (
@@ -705,7 +706,7 @@ function ReportsView({ institutes, clients }) {
                         )}
                       </div>
                     )}
-                    <button className="btn btn-primary btn-sm" onClick={() => {
+                    <Btn className="btn btn-primary btn-sm" onClick={() => {
                       const sections = fwInstIds.map(id => {
                         const inst = fwFullInsts[id];
                         if (!inst) return '';
@@ -739,7 +740,7 @@ function ReportsView({ institutes, clients }) {
                       w.document.write(combined);
                       w.document.close();
                       setTimeout(() => w.print(), 300);
-                    }} disabled={fwInstIds.length === 0}>🖨 Print / PDF</button>
+                    }} disabled={fwInstIds.length === 0}>🖨 Print / PDF</Btn>
                   </div>
                 </div>
 
@@ -880,12 +881,12 @@ function ReportsView({ institutes, clients }) {
                 )}
                 <div style={{marginLeft:'auto', display:'flex', gap:8}}>
                   {!isAggregate && (
-                    <button className="btn btn-secondary btn-sm" onClick={handleCSV} disabled={!activeExps.length}>⬇ CSV</button>
+                    <Btn className="btn btn-secondary btn-sm" onClick={handleCSV} disabled={!activeExps.length}>⬇ CSV</Btn>
                   )}
                   {isAggregate && family.downloadDOCX && (
-                    <button className="btn btn-secondary btn-sm" onClick={handleWord} disabled={!canPrint}>⬇ Word (.docx)</button>
+                    <Btn className="btn btn-secondary btn-sm" onClick={handleWord} disabled={!canPrint}>⬇ Word (.docx)</Btn>
                   )}
-                  <button className="btn btn-primary btn-sm" onClick={noInstitute ? handlePrintTools : handlePrint} disabled={!canPrint}>🖨 Print / PDF</button>
+                  <Btn className="btn btn-primary btn-sm" onClick={noInstitute ? handlePrintTools : handlePrint} disabled={!canPrint}>🖨 Print / PDF</Btn>
                 </div>
               </div>
 

@@ -3,6 +3,7 @@ import { PROVINCES, setProvinces, LOCAL_LEVEL_TYPES } from '../constants/data.js
 import { api } from '../utils/api.js';
 import Modal from './ui/Modal.jsx';
 import { ErrorBanner } from './ui/Modal.jsx';
+import { Btn, MdTextField, MdSelect, MdOption } from '../md.jsx';
 
 function LocationsEditor({token}) {
   const [provinces, setProvinces] = useState([]);
@@ -55,17 +56,16 @@ function LocationsEditor({token}) {
     };
     return (
       <Modal title={title} onClose={()=>setModal(null)}
-        footer={<><button className="btn btn-secondary" onClick={()=>setModal(null)}>Cancel</button>
-          <button className="btn btn-primary" onClick={submit} disabled={saving}>{saving?'Saving…':'Save'}</button></>}>
+        footer={<><Btn className="btn btn-secondary" onClick={()=>setModal(null)}>Cancel</Btn>
+          <Btn className="btn btn-primary" onClick={submit} disabled={saving}>{saving?'Saving…':'Save'}</Btn></>}>
         {merr && <ErrorBanner msg={merr} onDismiss={()=>setMerr('')}/>}
         {fields.map(f => (
           <div key={f.key} className="form-group">
-            <label>{f.label}{f.required&&' *'}</label>
             {f.type==='select'
-              ? <select value={form[f.key]} onChange={e=>set(f.key,e.target.value)}>
-                  {f.options.map(o=><option key={o} value={o}>{o}</option>)}
-                </select>
-              : <input value={form[f.key]} onChange={e=>set(f.key,e.target.value)} placeholder={f.placeholder||''}/>
+              ? <MdSelect label={`${f.label}${f.required?' *':''}`} value={form[f.key]} onChange={e=>set(f.key,e.target.value)}>
+                  {f.options.map(o=><MdOption key={o} value={o}>{o}</MdOption>)}
+                </MdSelect>
+              : <MdTextField label={`${f.label}${f.required?' *':''}`} value={form[f.key]} onChange={e=>set(f.key,e.target.value)} placeholder={f.placeholder||''}/>
             }
           </div>
         ))}
@@ -84,15 +84,15 @@ function LocationsEditor({token}) {
         <div className="card" style={{width:220,padding:0,overflow:'hidden',flexShrink:0}}>
           <div style={{padding:'10px 14px',borderBottom:'1px solid var(--border)',display:'flex',alignItems:'center',justifyContent:'space-between'}}>
             <span style={{fontWeight:600,fontSize:13}}>Provinces ({provinces.length})</span>
-            <button className="btn btn-primary btn-sm" onClick={()=>setModal({type:'addProvince'})}>+</button>
+            <Btn className="btn btn-primary btn-sm" onClick={()=>setModal({type:'addProvince'})}>+</Btn>
           </div>
           {provinces.map(p=>(
             <div key={p.id} onClick={()=>{setSelProvince(p.id);setSelDistrict(null);}}
               style={{padding:'8px 14px',cursor:'pointer',background:selProvince===p.id?'var(--primary-light)':'',borderBottom:'1px solid var(--border)',display:'flex',alignItems:'center',justifyContent:'space-between',gap:6}}>
               <span style={{fontSize:13,fontWeight:selProvince===p.id?600:400}}>{p.name}</span>
               <div style={{display:'flex',gap:4,flexShrink:0}}>
-                <button className="btn btn-ghost btn-sm" style={{padding:'1px 5px'}} onClick={e=>{e.stopPropagation();setModal({type:'editProvince',item:p});}}>✏</button>
-                <button className="btn btn-danger btn-sm" style={{padding:'1px 5px'}} onClick={e=>{e.stopPropagation();del(`/locations/provinces/${p.id}`,()=>{setSelProvince(null);load();});}}>🗑</button>
+                <Btn className="btn btn-ghost btn-sm" style={{padding:'1px 5px'}} onClick={e=>{e.stopPropagation();setModal({type:'editProvince',item:p});}}>✏</Btn>
+                <Btn className="btn btn-danger btn-sm" style={{padding:'1px 5px'}} onClick={e=>{e.stopPropagation();del(`/locations/provinces/${p.id}`,()=>{setSelProvince(null);load();});}}>🗑</Btn>
               </div>
             </div>
           ))}
@@ -103,15 +103,15 @@ function LocationsEditor({token}) {
           <div className="card" style={{width:230,padding:0,overflow:'hidden',flexShrink:0}}>
             <div style={{padding:'10px 14px',borderBottom:'1px solid var(--border)',display:'flex',alignItems:'center',justifyContent:'space-between'}}>
               <span style={{fontWeight:600,fontSize:13}}>Districts ({(province.districts||[]).length})</span>
-              <button className="btn btn-primary btn-sm" onClick={()=>setModal({type:'addDistrict'})}>+</button>
+              <Btn className="btn btn-primary btn-sm" onClick={()=>setModal({type:'addDistrict'})}>+</Btn>
             </div>
             {(province.districts||[]).map(d=>(
               <div key={d.id} onClick={()=>setSelDistrict(d.id)}
                 style={{padding:'8px 14px',cursor:'pointer',background:selDistrict===d.id?'var(--primary-light)':'',borderBottom:'1px solid var(--border)',display:'flex',alignItems:'center',justifyContent:'space-between',gap:6}}>
                 <span style={{fontSize:13,fontWeight:selDistrict===d.id?600:400}}>{d.name}</span>
                 <div style={{display:'flex',gap:4,flexShrink:0}}>
-                  <button className="btn btn-ghost btn-sm" style={{padding:'1px 5px'}} onClick={e=>{e.stopPropagation();setModal({type:'editDistrict',item:d});}}>✏</button>
-                  <button className="btn btn-danger btn-sm" style={{padding:'1px 5px'}} onClick={e=>{e.stopPropagation();del(`/locations/districts/${d.id}`,()=>{setSelDistrict(null);load();});}}>🗑</button>
+                  <Btn className="btn btn-ghost btn-sm" style={{padding:'1px 5px'}} onClick={e=>{e.stopPropagation();setModal({type:'editDistrict',item:d});}}>✏</Btn>
+                  <Btn className="btn btn-danger btn-sm" style={{padding:'1px 5px'}} onClick={e=>{e.stopPropagation();del(`/locations/districts/${d.id}`,()=>{setSelDistrict(null);load();});}}>🗑</Btn>
                 </div>
               </div>
             ))}
@@ -123,7 +123,7 @@ function LocationsEditor({token}) {
           <div className="card" style={{flex:1,padding:0,overflow:'hidden'}}>
             <div style={{padding:'10px 14px',borderBottom:'1px solid var(--border)',display:'flex',alignItems:'center',justifyContent:'space-between'}}>
               <span style={{fontWeight:600,fontSize:13}}>Local Levels — {district.name} ({(district.local_levels||[]).length})</span>
-              <button className="btn btn-primary btn-sm" onClick={()=>setModal({type:'addLL'})}>+</button>
+              <Btn className="btn btn-primary btn-sm" onClick={()=>setModal({type:'addLL'})}>+</Btn>
             </div>
             <table style={{width:'100%'}}>
               <thead><tr><th>#</th><th>Name</th><th>Type</th><th></th></tr></thead>
@@ -134,8 +134,8 @@ function LocationsEditor({token}) {
                     <td style={{fontSize:13}}>{ll.name}</td>
                     <td><span style={{fontSize:11,background:'var(--primary-light)',borderRadius:4,padding:'1px 6px'}}>{ll.type}</span></td>
                     <td style={{display:'flex',gap:4}}>
-                      <button className="btn btn-ghost btn-sm" onClick={()=>setModal({type:'editLL',item:ll})}>✏</button>
-                      <button className="btn btn-danger btn-sm" onClick={()=>del(`/locations/local-levels/${ll.id}`,load)}>🗑</button>
+                      <Btn className="btn btn-ghost btn-sm" onClick={()=>setModal({type:'editLL',item:ll})}>✏</Btn>
+                      <Btn className="btn btn-danger btn-sm" onClick={()=>del(`/locations/local-levels/${ll.id}`,load)}>🗑</Btn>
                     </td>
                   </tr>
                 ))}

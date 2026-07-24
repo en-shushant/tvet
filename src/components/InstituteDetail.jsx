@@ -15,6 +15,7 @@ import ExpCard from './ExpCard.jsx';
 import ClientDocuments from './ClientDocuments.jsx';
 import { FISCAL_YEARS, NSTB_LEVELS, OCCUPATIONS } from '../constants/data.js';
 import { api, instToAPI, expToAPI, nstbToAPI, taxToAPI, affToAPI, clientToAPI, normClient } from '../utils/api.js';
+import { Btn, MdTextField } from '../md.jsx';
 import { DESCRIPTION_VARIATIONS } from '../utils/descriptionTemplates.js';
 import { NARRATIVE_VARIATIONS, SERVICES_VARIATIONS } from '../utils/specificTemplates.js';
 import { getSession } from '../utils/auth.js';
@@ -225,7 +226,7 @@ function InstituteDetail({institute, clients, onUpdateClients, onBack, onUpdate,
     <div className="fade-in">
       {/* Header */}
       <div style={{display:'flex', alignItems:'center', gap:12, marginBottom:20}}>
-        <button className="btn btn-ghost btn-sm" onClick={onBack}>← Back</button>
+        <Btn className="btn btn-ghost btn-sm" onClick={onBack}>← Back</Btn>
         <div style={{flex:1}}>
           <div style={{display:'flex', alignItems:'center', gap:10}}>
             {institute.logo && <img src={institute.logo} alt="" style={{width:40, height:40, objectFit:'contain', borderRadius:6, border:'1px solid var(--border)', background:'#fff', padding:3}}/>}
@@ -243,8 +244,8 @@ function InstituteDetail({institute, clients, onUpdateClients, onBack, onUpdate,
             Reg: {institute.regNo} &nbsp;·&nbsp; PAN: {institute.pan}
           </div>
         </div>
-        {canEdit && <button className="btn btn-secondary btn-sm" onClick={()=>setModal({type:'editInstitute'})}>✏ Edit profile</button>}
-        {isAdmin && <button className="btn btn-danger btn-sm" onClick={()=>setModal({type:'deleteInstitute'})}>🗑 Delete</button>}
+        {canEdit && <Btn className="btn btn-secondary btn-sm" onClick={()=>setModal({type:'editInstitute'})}>✏ Edit profile</Btn>}
+        {isAdmin && <Btn className="btn btn-danger btn-sm" onClick={()=>setModal({type:'deleteInstitute'})}>🗑 Delete</Btn>}
       </div>
 
       {/* Tabs */}
@@ -381,8 +382,8 @@ function InstituteDetail({institute, clients, onUpdateClients, onBack, onUpdate,
               </button>
             </div>
             {canEdit && <div style={{display:'flex', gap:6}}>
-              <button className="btn btn-secondary btn-sm" onClick={onBulkAdd}>⊞ Bulk add</button>
-              <button className="btn btn-primary btn-sm" onClick={()=>setModal({type:'addExp'})}>+ Add assignment</button>
+              <Btn className="btn btn-secondary btn-sm" onClick={onBulkAdd}>⊞ Bulk add</Btn>
+              <Btn className="btn btn-primary btn-sm" onClick={()=>setModal({type:'addExp'})}>+ Add assignment</Btn>
             </div>}
           </div>
 
@@ -467,7 +468,7 @@ function InstituteDetail({institute, clients, onUpdateClients, onBack, onUpdate,
       {tab==='nstb' && (
         <>
           {canEdit && <div style={{display:'flex', justifyContent:'flex-end', marginBottom:12}}>
-            <button className="btn btn-primary btn-sm" onClick={onAddNSTB}>+ Add NSTB records</button>
+            <Btn className="btn btn-primary btn-sm" onClick={onAddNSTB}>+ Add NSTB records</Btn>
           </div>}
           {institute.nstb.length > 0 && (() => {
             const totA = institute.nstb.reduce((s,r)=>s+(parseInt(r.applied)||0),0);
@@ -521,8 +522,8 @@ function InstituteDetail({institute, clients, onUpdateClients, onBack, onUpdate,
                             <td><span className={`badge ${parseFloat(pct(r.pass,r.appeared))>=70?'badge-active':'badge-pending'}`}>{pct(r.pass, r.appeared)}</span></td>
                             <td className="text-sm text-muted">{r.letterNo}</td>
                             <td style={{display:'flex', gap:4}}>
-                              {canEdit && <button className="btn btn-ghost btn-sm" onClick={()=>setModal({type:'editNSTB', data:r})}>✏</button>}
-                              {isAdmin && <button className="btn btn-danger btn-sm" onClick={()=>deleteNSTB(r.id)}>🗑</button>}
+                              {canEdit && <Btn className="btn btn-ghost btn-sm" onClick={()=>setModal({type:'editNSTB', data:r})}>✏</Btn>}
+                              {isAdmin && <Btn className="btn btn-danger btn-sm" onClick={()=>deleteNSTB(r.id)}>🗑</Btn>}
                             </td>
                           </tr>
                         ))}
@@ -540,7 +541,7 @@ function InstituteDetail({institute, clients, onUpdateClients, onBack, onUpdate,
       {tab==='tax' && (
         <>
           <div style={{display:'flex', justifyContent:'flex-end', marginBottom:12}}>
-            {canEdit && <button className="btn btn-primary btn-sm" onClick={()=>setModal({type:'addTax'})}>+ Add tax clearance</button>}
+            {canEdit && <Btn className="btn btn-primary btn-sm" onClick={()=>setModal({type:'addTax'})}>+ Add tax clearance</Btn>}
           </div>
           {institute.taxClearance.length === 0
             ? <div className="empty-state"><div className="empty-state-icon">🧾</div><div className="empty-state-title">No tax clearance records</div></div>
@@ -561,8 +562,8 @@ function InstituteDetail({institute, clients, onUpdateClients, onBack, onUpdate,
                         <td className="text-sm">{t.certDate}</td>
                         <td className="mono text-sm">{t.karChutaNo}</td>
                         <td style={{display:'flex', gap:4}}>
-                          {canEdit && <button className="btn btn-ghost btn-sm" onClick={()=>setModal({type:'editTax', data:t})}>✏</button>}
-                          {isAdmin && <button className="btn btn-danger btn-sm" onClick={()=>deleteTax(t.id)}>🗑</button>}
+                          {canEdit && <Btn className="btn btn-ghost btn-sm" onClick={()=>setModal({type:'editTax', data:t})}>✏</Btn>}
+                          {isAdmin && <Btn className="btn btn-danger btn-sm" onClick={()=>deleteTax(t.id)}>🗑</Btn>}
                         </td>
                       </tr>
                     ))}
@@ -578,7 +579,7 @@ function InstituteDetail({institute, clients, onUpdateClients, onBack, onUpdate,
       {tab==='affiliation' && (
         <>
           <div style={{display:'flex', justifyContent:'flex-end', marginBottom:12}}>
-            {canEdit && <button className="btn btn-primary btn-sm" onClick={()=>setModal({type:'addAffiliation'})}>+ Add affiliation</button>}
+            {canEdit && <Btn className="btn btn-primary btn-sm" onClick={()=>setModal({type:'addAffiliation'})}>+ Add affiliation</Btn>}
           </div>
           {institute.affiliation.length === 0
             ? <div className="empty-state"><div className="empty-state-icon">📜</div><div className="empty-state-title">No CTEVT affiliations</div></div>
@@ -595,8 +596,8 @@ function InstituteDetail({institute, clients, onUpdateClients, onBack, onUpdate,
                   <span style={{fontSize:12, color:'var(--text3)', marginLeft:8}}>{aff.affiliationDate} → {aff.expiryDate}</span>
                   <span className={`badge ${aff.status==='Active'?'badge-active':aff.status==='Expired'?'badge-expired':'badge-pending'}`} style={{marginLeft:'auto'}}>{aff.status}</span>
                   <span className="badge badge-gray" style={{marginLeft:8}}>{aff.programs.length} programs</span>
-                  {canEdit && <button className="btn btn-ghost btn-sm" style={{marginLeft:8}} onClick={e=>{e.stopPropagation();setModal({type:'editAffiliation',data:aff});}}>✏</button>}
-                  {isAdmin && <button className="btn btn-danger btn-sm" style={{marginLeft:4}} onClick={e=>{e.stopPropagation();deleteAffiliation(aff.id);}}>🗑</button>}
+                  {canEdit && <Btn className="btn btn-ghost btn-sm" style={{marginLeft:8}} onClick={e=>{e.stopPropagation();setModal({type:'editAffiliation',data:aff});}}>✏</Btn>}
+                  {isAdmin && <Btn className="btn btn-danger btn-sm" style={{marginLeft:4}} onClick={e=>{e.stopPropagation();deleteAffiliation(aff.id);}}>🗑</Btn>}
                 </button>
                 {expandedFY['aff-'+aff.id] && (
                   <div className="table-wrap">
@@ -638,7 +639,7 @@ function InstituteDetail({institute, clients, onUpdateClients, onBack, onUpdate,
           <div className="modal" style={{maxWidth:420}} onClick={e=>e.stopPropagation()}>
             <div className="modal-header">
               <span className="modal-title">Delete institute</span>
-              <button className="btn btn-ghost btn-sm" onClick={()=>setModal(null)}>✕</button>
+              <Btn className="btn btn-ghost btn-sm" onClick={()=>setModal(null)}>✕</Btn>
             </div>
             <div className="modal-body">
               <p style={{fontSize:14,color:'var(--text2)',marginBottom:8}}>
@@ -647,12 +648,12 @@ function InstituteDetail({institute, clients, onUpdateClients, onBack, onUpdate,
               <p style={{fontSize:13,color:'var(--red)'}}>This will delete all experience, NSTB, tax, and affiliation records. This cannot be undone.</p>
             </div>
             <div className="modal-footer">
-              <button className="btn btn-secondary" onClick={()=>setModal(null)}>Cancel</button>
-              <button className="btn btn-danger" disabled={saving} onClick={async()=>{
+              <Btn className="btn btn-secondary" onClick={()=>setModal(null)}>Cancel</Btn>
+              <Btn className="btn btn-danger" disabled={saving} onClick={async()=>{
                 setSaving(true); setSaveErr('');
                 try { await api('DELETE', `/institutes/${institute.id}`, null, token); onDelete(institute.id); }
                 catch(err) { setSaveErr(err.message); setSaving(false); }
-              }}>{saving ? 'Deleting…' : 'Delete permanently'}</button>
+              }}>{saving ? 'Deleting…' : 'Delete permanently'}</Btn>
             </div>
           </div>
         </div>,
@@ -663,11 +664,11 @@ function InstituteDetail({institute, clients, onUpdateClients, onBack, onUpdate,
       {modal?.type === 'dupFY' && (
         <Modal title="Duplicate assignment to another FY" onClose={()=>setModal(null)}
           footer={<>
-            <button className="btn btn-secondary" onClick={()=>setModal(null)}>Cancel</button>
-            <button className="btn btn-primary" onClick={()=>{
+            <Btn className="btn btn-secondary" onClick={()=>setModal(null)}>Cancel</Btn>
+            <Btn className="btn btn-primary" onClick={()=>{
               const fy = document.getElementById('dupFYSelect').value;
               saveExperience({...modal.data, id:undefined, fy});
-            }}>Duplicate</button>
+            }}>Duplicate</Btn>
           </>}>
           <p style={{fontSize:13, color:'var(--text2)', marginBottom:16}}>
             Duplicating: <strong>{modal.data.assignmentName}</strong><br/>
@@ -843,10 +844,10 @@ function InstituteDetail({institute, clients, onUpdateClients, onBack, onUpdate,
               <div className="modal-footer" style={{justifyContent:'space-between'}}>
                 <div style={{fontSize:12, color:'var(--text3)'}}>Assignment ID #{exp.id}</div>
                 <div style={{display:'flex', gap:8}}>
-                  {canEdit && <button className="btn btn-secondary btn-sm" onClick={()=>setModal({type:'editExp', data:exp})}>
+                  {canEdit && <Btn className="btn btn-secondary btn-sm" onClick={()=>setModal({type:'editExp', data:exp})}>
                     <span className="material-icons-round" style={{fontSize:14}}>edit</span> Edit
-                  </button>}
-                  <button className="btn btn-primary btn-sm" onClick={()=>setModal(null)}>Close</button>
+                  </Btn>}
+                  <Btn className="btn btn-primary btn-sm" onClick={()=>setModal(null)}>Close</Btn>
                 </div>
               </div>
             </div>
@@ -865,13 +866,13 @@ function InstituteDetail({institute, clients, onUpdateClients, onBack, onUpdate,
           title="Confirm Delete"
           onClose={() => setConfirmModal(null)}
           footer={<>
-            <button className="btn btn-secondary" onClick={() => setConfirmModal(null)}>Cancel</button>
-            <button className="btn btn-danger" disabled={saving} onClick={async () => {
+            <Btn className="btn btn-secondary" onClick={() => setConfirmModal(null)}>Cancel</Btn>
+            <Btn className="btn btn-danger" disabled={saving} onClick={async () => {
               await confirmModal.onConfirm();
               setConfirmModal(null);
             }}>
               {saving ? 'Deleting…' : 'Delete'}
-            </button>
+            </Btn>
           </>}
         >
           <p style={{ margin: 0, color: 'var(--text1)' }}>{confirmModal.message}</p>
@@ -974,7 +975,7 @@ function InfrastructureTab({ instituteId, token, canEdit }) {
     <div>
       <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:12}}>
         <div style={{fontSize:13, color:'var(--text2)'}}>D1 — Office Space and Training Facilities (for ENSSURE report)</div>
-        {canEdit && !adding && <button className="btn btn-primary btn-sm" onClick={()=>setAdding(true)}>+ Add rows</button>}
+        {canEdit && !adding && <Btn className="btn btn-primary btn-sm" onClick={()=>setAdding(true)}>+ Add rows</Btn>}
       </div>
       {err && <div style={{color:'#c00', marginBottom:8, fontSize:13}}>{err}</div>}
       <div className="table-wrap">
@@ -996,8 +997,8 @@ function InfrastructureTab({ instituteId, token, canEdit }) {
                 </td>
                 <td style={tdS}><input style={inp} value={editForm.remark} onChange={e=>setEditForm(p=>({...p,remark:e.target.value}))} /></td>
                 <td style={tdS}>
-                  <button className="btn btn-primary btn-sm" style={{marginRight:4}} onClick={saveEdit}>Save</button>
-                  <button className="btn btn-ghost btn-sm" onClick={cancelEdit}>Cancel</button>
+                  <Btn className="btn btn-primary btn-sm" style={{marginRight:4}} onClick={saveEdit}>Save</Btn>
+                  <Btn className="btn btn-ghost btn-sm" onClick={cancelEdit}>Cancel</Btn>
                 </td>
               </tr>
             ) : (
@@ -1010,10 +1011,10 @@ function InfrastructureTab({ instituteId, token, canEdit }) {
                 <td style={{...tdS, textAlign:'center'}}>{row.ownership||'Own'}</td>
                 <td style={tdS}>{row.remark}</td>
                 {canEdit && <td style={tdS}>
-                  <button className="btn btn-ghost btn-sm" style={{marginRight:2}} title="Move up" disabled={i===0} onClick={()=>moveRow(row.id,-1)}>↑</button>
-                  <button className="btn btn-ghost btn-sm" style={{marginRight:4}} title="Move down" disabled={i===rows.length-1} onClick={()=>moveRow(row.id,1)}>↓</button>
-                  <button className="btn btn-ghost btn-sm" style={{marginRight:4}} onClick={()=>startEdit(row)}>✏</button>
-                  <button className="btn btn-danger btn-sm" onClick={()=>deleteRow(row.id)}>🗑</button>
+                  <Btn className="btn btn-ghost btn-sm" style={{marginRight:2}} title="Move up" disabled={i===0} onClick={()=>moveRow(row.id,-1)}>↑</Btn>
+                  <Btn className="btn btn-ghost btn-sm" style={{marginRight:4}} title="Move down" disabled={i===rows.length-1} onClick={()=>moveRow(row.id,1)}>↓</Btn>
+                  <Btn className="btn btn-ghost btn-sm" style={{marginRight:4}} onClick={()=>startEdit(row)}>✏</Btn>
+                  <Btn className="btn btn-danger btn-sm" onClick={()=>deleteRow(row.id)}>🗑</Btn>
                 </td>}
               </tr>
             ))}
@@ -1057,7 +1058,7 @@ function InfrastructureTab({ instituteId, token, canEdit }) {
                     </td>
                     <td style={tdS}><input style={inp} value={r.remark} onChange={e=>updateBulk(i,'remark',e.target.value)} /></td>
                     <td style={{...tdS, textAlign:'center'}}>
-                      <button className="btn btn-danger btn-sm" onClick={()=>removeBulkRow(i)} disabled={bulkRows.length===1}>✕</button>
+                      <Btn className="btn btn-danger btn-sm" onClick={()=>removeBulkRow(i)} disabled={bulkRows.length===1}>✕</Btn>
                     </td>
                   </tr>
                 ))}
@@ -1065,10 +1066,10 @@ function InfrastructureTab({ instituteId, token, canEdit }) {
             </table>
           </div>
           <div style={{display:'flex', gap:8, marginTop:10, alignItems:'center'}}>
-            <button className="btn btn-ghost btn-sm" onClick={addBulkRow}>+ Add another row</button>
+            <Btn className="btn btn-ghost btn-sm" onClick={addBulkRow}>+ Add another row</Btn>
             <div style={{flex:1}}/>
-            <button className="btn btn-ghost btn-sm" onClick={cancelAdd}>Cancel</button>
-            <button className="btn btn-primary btn-sm" onClick={saveBulk} disabled={saving}>{saving ? 'Saving…' : `Save ${bulkRows.filter(r=>r.particular.trim()).length || ''} row(s)`}</button>
+            <Btn className="btn btn-ghost btn-sm" onClick={cancelAdd}>Cancel</Btn>
+            <Btn className="btn btn-primary btn-sm" onClick={saveBulk} disabled={saving}>{saving ? 'Saving…' : `Save ${bulkRows.filter(r=>r.particular.trim()).length || ''} row(s)`}</Btn>
           </div>
         </div>
       )}
@@ -1079,13 +1080,13 @@ function InfrastructureTab({ instituteId, token, canEdit }) {
           title="Confirm Delete"
           onClose={() => setConfirmModal(null)}
           footer={<>
-            <button className="btn btn-secondary" onClick={() => setConfirmModal(null)}>Cancel</button>
-            <button className="btn btn-danger" disabled={saving} onClick={async () => {
+            <Btn className="btn btn-secondary" onClick={() => setConfirmModal(null)}>Cancel</Btn>
+            <Btn className="btn btn-danger" disabled={saving} onClick={async () => {
               await confirmModal.onConfirm();
               setConfirmModal(null);
             }}>
               {saving ? 'Deleting…' : 'Delete'}
-            </button>
+            </Btn>
           </>}
         >
           <p style={{ margin: 0, color: 'var(--text1)' }}>{confirmModal.message}</p>
@@ -1178,20 +1179,17 @@ function DocumentsTab({ institute, token, canEdit, onUpdate }) {
       <div className="section-title" style={{marginBottom:12}}>नेपाली विवरण (Nepali Fields for Letter)</div>
       <div style={{fontSize:12, color:'var(--text3)', marginBottom:14}}>Used in the generated letter. Leave blank to fall back to English fields.</div>
       <div className="form-group">
-        <label style={{fontSize:13, fontWeight:600, color:'var(--text2)'}}>संस्थाको नाम (नेपालीमा)</label>
-        <input className="form-input" value={fields.nameNp} disabled={!canEdit}
-          onChange={e=>set('nameNp',e.target.value)} placeholder="e.g. वर्ल्ड लिङ्क टेक्निकल ट्रेनिङ् इन्स्टिच्च्यूट प्रा.लि." style={{width:'100%', marginTop:4}}/>
+        <MdTextField label="संस्थाको नाम (नेपालीमा)" value={fields.nameNp} disabled={!canEdit}
+          onChange={e=>set('nameNp',e.target.value)} placeholder="e.g. वर्ल्ड लिङ्क टेक्निकल ट्रेनिङ् इन्स्टिच्च्यूट प्रा.लि." style={{width:'100%'}}/>
       </div>
       <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:'0 20px'}}>
         <div className="form-group">
-          <label style={{fontSize:13, fontWeight:600, color:'var(--text2)'}}>ठेगाना (नेपालीमा)</label>
-          <input className="form-input" value={fields.addressNp} disabled={!canEdit}
-            onChange={e=>set('addressNp',e.target.value)} placeholder="e.g. टोखा-१०, काठमाडौं" style={{width:'100%', marginTop:4}}/>
+          <MdTextField label="ठेगाना (नेपालीमा)" value={fields.addressNp} disabled={!canEdit}
+            onChange={e=>set('addressNp',e.target.value)} placeholder="e.g. टोखा-१०, काठमाडौं" style={{width:'100%'}}/>
         </div>
         <div className="form-group">
-          <label style={{fontSize:13, fontWeight:600, color:'var(--text2)'}}>मुख्य व्यक्तिको नाम (नेपालीमा)</label>
-          <input className="form-input" value={fields.contactPersonNp} disabled={!canEdit}
-            onChange={e=>set('contactPersonNp',e.target.value)} placeholder="e.g. ठाकुर सुवेदी" style={{width:'100%', marginTop:4}}/>
+          <MdTextField label="मुख्य व्यक्तिको नाम (नेपालीमा)" value={fields.contactPersonNp} disabled={!canEdit}
+            onChange={e=>set('contactPersonNp',e.target.value)} placeholder="e.g. ठाकुर सुवेदी" style={{width:'100%'}}/>
         </div>
       </div>
 
@@ -1212,12 +1210,8 @@ function DocumentsTab({ institute, token, canEdit, onUpdate }) {
           ['Left / Right', 'letterLrPadding', 0, 60, 'Horizontal margin inside the page'],
         ].map(([label, key, min, max, hint]) => (
           <div key={key} className="form-group">
-            <label style={{fontSize:13, fontWeight:600, color:'var(--text2)'}}>{label}</label>
-            <input type="number" className="form-input" min={min} max={max}
-              value={fields[key]} disabled={!canEdit}
-              onChange={e=>set(key, Number(e.target.value))}
-              style={{width:'100%', marginTop:4}}/>
-            <div style={{fontSize:11, color:'var(--text3)', marginTop:3}}>{hint}</div>
+            <MdTextField type="number" label={label} value={fields[key]} disabled={!canEdit}
+              onChange={e=>set(key, Number(e.target.value))} supporting-text={hint} style={{width:'100%'}}/>
           </div>
         ))}
       </div>
@@ -1238,9 +1232,9 @@ function DocumentsTab({ institute, token, canEdit, onUpdate }) {
 
       {canEdit && (
         <div style={{marginTop:20, display:'flex', alignItems:'center', gap:12}}>
-          <button className="btn btn-primary" onClick={handleSave} disabled={saving}>
+          <Btn className="btn btn-primary" onClick={handleSave} disabled={saving}>
             {saving ? 'Saving…' : 'Save documents'}
-          </button>
+          </Btn>
           {saved && <span style={{fontSize:12, color:'var(--green)'}}>Saved ✓</span>}
           {err && <span style={{fontSize:12, color:'var(--red)'}}>{err}</span>}
         </div>
