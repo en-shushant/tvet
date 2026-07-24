@@ -108,16 +108,22 @@ function openShortlistLetter(row, opts = {}) {
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Devanagari:wght@400;600;700&display=swap" rel="stylesheet">
 <style>
-  @page { size: A4; margin: ${useLhBg ? '0' : `${pageTopMargin}mm 18mm 15mm 20mm`}; }
+  @page { size: A4; margin: 0; }
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body {
     font-family: 'Noto Sans Devanagari', 'Mangal', 'Arial Unicode MS', sans-serif;
     font-size: 10.5pt; color: #111; line-height: 1.65;
     -webkit-print-color-adjust: exact; print-color-adjust: exact;
-    ${useLhBg ? `background-image:url('${firmLetterhead}');background-size:100% 297mm;background-repeat:no-repeat;background-position:top left;` : ''}
+    background: #e8e8e8;
   }
+  @media print { body { background: none; } }
   .page {
-    ${useLhBg ? `padding:${pageTopMargin}mm ${lhGap}mm 14mm ${lhGap}mm;min-height:297mm;width:210mm;` : ''}
+    width: 210mm;
+    min-height: 297mm;
+    margin: 0 auto;
+    background: #fff;
+    padding: ${useLhBg ? `${pageTopMargin}mm ${lhGap}mm 14mm ${lhGap}mm` : `${pageTopMargin}mm 20mm 15mm 20mm`};
+    ${useLhBg ? `background-image:url('${firmLetterhead}');background-size:100% 297mm;background-repeat:no-repeat;background-position:top left;` : ''}
   }
   .lh-regpan { display:flex;justify-content:space-between;font-size:9pt;font-style:italic;color:#7b1a1a;margin-bottom:5px; }
   .lh-center { text-align:center; }
