@@ -222,26 +222,25 @@ function openShortlistLetter(row, opts = {}) {
       </table>
     </td></tr>
 
-    <!-- bottom: date | stamp | name+sig -->
+    <!-- bottom: date | name+stamp+sign -->
     <tr><td colspan="2" style="padding:0;">
-      <div style="display:flex;min-height:100px;">
-        <div style="flex:0 0 34%;padding:8px 10px;border-right:1px solid #666;line-height:2;font-size:10pt;">
+      <div style="display:flex;min-height:80px;">
+        <div style="flex:0 0 38%;padding:8px 10px;border-right:1px solid #666;line-height:2;font-size:10pt;">
           <div>निवेदन दिएको मिति: ${todayBSStr}</div>
           ${fyNp ? `<div>आ.व.: ${fyNp}</div>` : ''}
         </div>
-        <div style="flex:0 0 32%;border-right:1px solid #666;text-align:center;padding:6px 4px;">
-          <div style="font-size:9pt;margin-bottom:3px;">फर्मको छाप:</div>
-          ${includeSignStamp && firmStamp
-            ? `<img src="${firmStamp}" style="display:block;margin:0 auto;max-width:110px;height:auto;">`
-            : '<div style="width:80px;height:80px;border-radius:50%;border:1.5px dashed #aaa;display:flex;align-items:center;justify-content:center;color:#aaa;font-size:9pt;text-align:center;margin:0 auto;">फर्मको<br>छाप</div>'
-          }
-        </div>
-        <div style="flex:1;padding:8px 10px;font-size:10pt;line-height:2;">
+        <div style="flex:1;padding:8px 12px;font-size:10pt;line-height:2;">
           <div>निवेदकको नाम: ${firmContactNp || '_______________'}</div>
-          <div style="border-top:1px solid #555;margin-top:4px;padding-top:3px;">हस्ताक्षर: ${includeSignStamp && firmSign
-            ? `<img src="${firmSign}" style="display:inline-block;vertical-align:middle;max-width:160px;height:auto;margin-left:4px;">`
-            : '_______________'
-          }</div>
+          <div style="display:flex;align-items:flex-end;gap:10px;margin-top:6px;">
+            ${includeSignStamp && firmSign
+              ? `<img src="${firmSign}" style="display:block;">`
+              : '<div style="width:120px;border-top:1px solid #555;padding-top:3px;font-size:9pt;color:#888;">हस्ताक्षर</div>'
+            }
+            ${includeSignStamp && firmStamp
+              ? `<img src="${firmStamp}" style="display:block;">`
+              : '<div style="width:70px;height:70px;border-radius:50%;border:1.5px dashed #aaa;display:flex;align-items:center;justify-content:center;color:#aaa;font-size:9pt;text-align:center;">फर्मको<br>छाप</div>'
+            }
+          </div>
         </div>
       </div>
     </td></tr>
