@@ -230,6 +230,12 @@ md-secondary-tab {
   --text2: #344563;
   --text3: #5E7491;
 
+  /* ── M3 surface tier aliases (semantic names for bg/bg2/bg3) ── */
+  --surface-dim:            var(--bg2);
+  --surface-container-low:  var(--bg);
+  --surface-container:      var(--bg2);
+  --surface-container-high: var(--bg3);
+
   /* ── Legacy aliases ── */
   --accent: var(--primary-dark);
   --accent2: var(--primary);
@@ -621,6 +627,14 @@ body {
 
 /* ── Tables ─────────────────────────────────────────────── */
 .table-wrap { overflow-x: auto; border-radius: var(--radius-xl); box-shadow: var(--shadow); }
+
+/* Auto-scroll wide tables on narrow screens (UI contexts only, not print) */
+.page-content table,
+.modal-body table {
+  display: block;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
 
 table { width: 100%; border-collapse: collapse; }
 
