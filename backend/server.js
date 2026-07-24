@@ -1,5 +1,6 @@
 require('dotenv').config();
 const fastify = require('fastify')({
+  bodyLimit: 20 * 1024 * 1024, // 20 MB — needed for base64 letterhead/stamp/sign images
   logger: {
     level: 'warn',
     serializers: {
