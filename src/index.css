@@ -708,8 +708,8 @@ textarea { resize: vertical; min-height: 80px; }
   background: rgba(18, 28, 42, 0.52);
   backdrop-filter: blur(2px);
   z-index: 1000; display: flex;
-  align-items: flex-start; justify-content: center;
-  padding: 40px 20px; overflow-y: auto;
+  align-items: center; justify-content: center;
+  padding: 20px; overflow-y: auto;
 }
 
 .modal {

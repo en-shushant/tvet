@@ -1,53 +1,31 @@
-import { useEffect, useRef } from 'react';
+import { useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { MdDialogEl } from '../../md.jsx';
-import { Btn } from '../../md.jsx';
 
 export default function Modal({ title, onClose, children, footer, size = '' }) {
-  const ref = useRef(null);
-
-  // open on mount, listen for dialog cancel (Escape key / scrim click)
   useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    el.show();
-    const onCancel = () => onClose();
-    el.addEventListener('cancel', onCancel);
-    return () => el.removeEventListener('cancel', onCancel);
-  }, []);  // eslint-disable-line react-hooks/exhaustive-deps
+    const onKey = (e) => { if (e.key === 'Escape') onClose(); };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [onClose]);
 
-  const handleClose = () => {
-    ref.current?.close();
-    onClose();
-  };
+  const sizeClass = size === 'lg' ? 'modal-lg' : size === 'xl' ? 'modal-xl' : '';
 
-  // Portal to document.body so position:fixed inside md-dialog isn't
-  // trapped by any ancestor CSS transform in the app layout.
   return createPortal(
-    <MdDialogEl ref={ref} size={size || undefined}>
-      <div slot="headline" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <span style={{ fontWeight: 500 }}>{title}</span>
-        <button
-          onClick={handleClose}
-          style={{
-            background: 'none', border: 'none', cursor: 'pointer',
-            color: 'var(--text3)', borderRadius: '50%',
-            width: 36, height: 36, display: 'flex', alignItems: 'center', justifyContent: 'center',
-            transition: 'background .15s',
-          }}
-          onMouseOver={e => e.currentTarget.style.background = 'var(--bg2)'}
-          onMouseOut={e => e.currentTarget.style.background = 'none'}
-        >
-          <span className="material-icons-round" style={{ fontSize: 18 }}>close</span>
-        </button>
-      </div>
-      <div slot="content" style={{ paddingTop: 4 }}>{children}</div>
-      {footer && (
-        <div slot="actions" style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
-          {footer}
+    <div
+      className="modal-overlay"
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+    >
+      <div className={`modal ${sizeClass}`} role="dialog" aria-modal="true">
+        <div className="modal-header">
+          <span className="modal-title">{title}</span>
+          <button className="modal-close" onClick={onClose} aria-label="Close">
+            <span className="material-icons-round" style={{ fontSize: 20 }}>close</span>
+          </button>
         </div>
-      )}
-    </MdDialogEl>,
+        <div className="modal-body">{children}</div>
+        {footer && <div className="modal-footer">{footer}</div>}
+      </div>
+    </div>,
     document.body
   );
 }
