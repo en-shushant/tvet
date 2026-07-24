@@ -90,128 +90,156 @@ function openShortlistLetter(row, opts = {}) {
 </div>`).join('');
 
   const useLhBg = !!firmLetterhead;
+  const fyNp = fy ? toNpNum(fy) : '';
 
   const html = `<!DOCTYPE html>
 <html lang="ne">
 <head>
 <meta charset="UTF-8">
-<title>छनोट पत्र — ${firmAcronym || firmName}</title>
+<title>मौजुदा सूची — ${firmAcronym || firmName}</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Devanagari:wght@400;600;700&display=swap" rel="stylesheet">
 <style>
-  /* When letterhead image: no @page margin — page div carries the padding */
-  @page { size: A4; margin: ${useLhBg ? '0' : `${pageTopMargin}mm 18mm 18mm 22mm`}; }
+  @page { size: A4; margin: ${useLhBg ? '0' : `${pageTopMargin}mm 18mm 15mm 20mm`}; }
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body {
     font-family: 'Noto Sans Devanagari', 'Mangal', 'Arial Unicode MS', sans-serif;
-    font-size: 11.5pt; color: #111; line-height: 1.75;
+    font-size: 10.5pt; color: #111; line-height: 1.65;
     -webkit-print-color-adjust: exact; print-color-adjust: exact;
-    ${useLhBg ? `
-    background-image: url('${firmLetterhead}');
-    background-size: 100% 297mm;
-    background-repeat: no-repeat;
-    background-position: top left;` : ''}
+    ${useLhBg ? `background-image:url('${firmLetterhead}');background-size:100% 297mm;background-repeat:no-repeat;background-position:top left;` : ''}
   }
-  /* Content sits on top of the background letterhead */
   .page {
-    ${useLhBg
-      ? `padding: ${pageTopMargin}mm ${lhGap}mm 20mm ${lhGap}mm; min-height: 297mm; width: 210mm; position: relative;`
-      : 'max-width: 174mm; margin: 0 auto;'
-    }
+    ${useLhBg ? `padding:${pageTopMargin}mm ${lhGap}mm 14mm ${lhGap}mm;min-height:297mm;width:210mm;` : ''}
   }
-
-  /* Text-based letterhead fallback */
-  .lh-regpan { display:flex; justify-content:space-between; font-size:9pt; font-style:italic; color:#7b1a1a; margin-bottom:6px; }
+  .lh-regpan { display:flex;justify-content:space-between;font-size:9pt;font-style:italic;color:#7b1a1a;margin-bottom:5px; }
   .lh-center { text-align:center; }
-  .lh-logo   { max-height:80px; max-width:80px; object-fit:contain; margin-bottom:4px; }
-  .lh-name   { font-size:16pt; font-weight:700; color:#7b1a1a; line-height:1.3; }
-  .lh-meta   { font-size:9pt; color:#333; margin-top:5px; line-height:1.6; }
-  .lh-border { border-bottom:3px double #7b1a1a; margin:8px 0 ${lhGap}mm; }
+  .lh-logo   { max-height:75px;max-width:75px;object-fit:contain;margin-bottom:3px; }
+  .lh-name   { font-size:15pt;font-weight:700;color:#7b1a1a;line-height:1.3; }
+  .lh-meta   { font-size:9pt;color:#444;margin-top:4px;line-height:1.6; }
+  .lh-border { border-bottom:3px double #7b1a1a;margin:7px 0 ${lhGap}mm; }
 
-  .ref-row   { display:flex; justify-content:space-between; font-size:11pt; margin-bottom:14px; }
-  .to-block  { margin-bottom:14px; font-size:11.5pt; line-height:1.7; }
-  .subject   { text-align:center; font-size:12pt; font-weight:700;
-               text-decoration:underline; text-underline-offset:3px; margin-bottom:14px; }
-  .body-text { margin-bottom:11px; text-align:justify; }
+  .ref-row  { display:flex;justify-content:space-between;align-items:baseline;margin-bottom:10px;font-size:11pt; }
+  .ref-bold { font-weight:700;font-size:13pt; }
+  .to-block { margin-bottom:12px;font-size:10.5pt;line-height:1.75; }
+  .subject  { text-align:center;font-size:11pt;font-weight:700;text-decoration:underline;text-underline-offset:3px;margin-bottom:10px; }
+  .body-txt { margin-bottom:8px;font-size:10pt;text-align:justify;line-height:1.7; }
+  .tapasil  { font-weight:700;font-size:10.5pt;margin-bottom:3px; }
 
-  .tapasil-label { font-weight:700; font-size:11.5pt; margin-bottom:4px; }
-  table { width:100%; border-collapse:collapse; margin-bottom:14px; font-size:11pt; }
-  td { border:1px solid #bbb; padding:6px 10px; }
-  td.lbl { font-weight:600; width:44%; color:#333; background:#fafafa; }
+  table { width:100%;border-collapse:collapse;font-size:10pt; }
+  td    { border:1px solid #666;padding:5px 8px;vertical-align:top; }
+  .hdr  { font-weight:600;padding:5px 8px; }
+  .chk  { line-height:1.95;padding:5px 10px; }
+  .half { width:50%; }
+  .w22  { width:22%; }
+  .tall { min-height:36px; }
 
-  .remarks-block { font-size:11pt; color:#444; margin-bottom:14px; padding:7px 12px; border-left:3px solid #ccc; background:#fafafa; }
-
-  .bottom-row { margin-top:36px; display:flex; align-items:flex-end; justify-content:space-between; border:1px solid #bbb; }
-  .bot-cell   { padding:10px 14px; flex:1; font-size:11pt; line-height:2; }
-  .bot-stamp  { flex:0 0 130px; min-height:110px; border-left:1px solid #bbb; border-right:1px solid #bbb; display:flex; align-items:center; justify-content:center; }
-  .stamp-ring { width:95px; height:95px; border-radius:50%; border:1.5px dashed #aaa; display:flex; align-items:center; justify-content:center; color:#bbb; font-size:9pt; text-align:center; line-height:1.4; }
-  .sign-line  { margin-top:6px; border-top:1px solid #888; padding-top:4px; }
+  .stamp-ring { width:80px;height:80px;border-radius:50%;border:1.5px dashed #aaa;
+                display:inline-flex;align-items:center;justify-content:center;
+                color:#aaa;font-size:9pt;text-align:center;line-height:1.4; }
+  .sign-line  { border-top:1px solid #555;margin-top:4px;padding-top:3px; }
 </style>
 </head>
 <body>
 <div class="page">
 
-  ${!useLhBg
-    ? `${firmRegNo || firmPan ? `<div class="lh-regpan"><span>${firmRegNo ? 'Govt. Regd.No. ' + firmRegNo : ''}</span><span>${firmPan ? 'PAN No. ' + firmPan : ''}</span></div>` : ''}
-       <div class="lh-center">
-         ${firmLogo ? `<img src="${firmLogo}" class="lh-logo" alt="${firmName}">` : ''}
-         <div class="lh-name">${firmName}${firmAcronym && firmAcronym !== firmName ? ` (${firmAcronym})` : ''}</div>
-         ${firmMeta ? `<div class="lh-meta">${firmMeta}</div>` : ''}
-       </div>
-       <div class="lh-border"></div>`
-    : ''
-  }
+  ${!useLhBg ? `
+  ${firmRegNo || firmPan ? `<div class="lh-regpan"><span>${firmRegNo ? 'Govt. Regd.No. ' + firmRegNo : ''}</span><span>${firmPan ? 'PAN No. ' + firmPan : ''}</span></div>` : ''}
+  <div class="lh-center">
+    ${firmLogo ? `<img src="${firmLogo}" class="lh-logo" alt="${firmName}">` : ''}
+    <div class="lh-name">${firmName}${firmAcronym && firmAcronym !== firmName ? ` (${firmAcronym})` : ''}</div>
+    ${firmMeta ? `<div class="lh-meta">${firmMeta}</div>` : ''}
+  </div>
+  <div class="lh-border"></div>` : ''}
 
   <div class="ref-row">
-    <div><strong>Ref.</strong></div>
-    <div><strong>मिति:</strong> ${todayBSStr}</div>
+    <span class="ref-bold">Ref.</span>
+    <span>मिति: ${todayBSStr}</span>
   </div>
 
   <div class="to-block">
     <div>श्री ${toContact || 'कार्यालय प्रमुख'} ज्यू,</div>
-    <div><strong>${toName}${toShort && toShort !== toName ? ` (${toShort})` : ''}</strong></div>
+    <div>${toName}${toShort && toShort !== toName ? `, (${toShort})` : ','}</div>
     ${toAddress ? `<div>${toAddress}</div>` : ''}
   </div>
 
-  <div class="subject">विषय: मौजुदा सूचीमा दर्ता भएको पुष्टि।</div>
+  <div class="subject">विषय: मौजुदा सूचीमा दर्ता गरी पाऊँ।</div>
 
-  <div class="body-text">
-    सार्वजनिक खरिद नियमावली बमोजिम <strong>${toName}</strong> को <strong>${listName}</strong>${fy ? ' आ.व. <strong>' + fy + '</strong> को लागि' : ''} मौजुदा सूचीमा दर्ता भएको व्यहोरा तपशिलमा उल्लेखित विवरण अनुसार पुष्टि गर्दछौं।
+  <div class="body-txt">
+    सार्वजनिक खरिद नियमावली, २०६४ को नियम १८ को उपनियम (१) बमोजिम तपशिलमा उल्लेखित विवरण अनुसारको पृष्ठाई गर्ने कागजात संलग्न गरी मौजुदा सूचीमा दर्ता हुन यो निवेदन पेश गरेको छु।
   </div>
+  <div class="tapasil">तपशिल:</div>
 
-  <div class="tapasil-label">तपशिल:</div>
   <table>
-    <tr><td class="lbl">फर्म/संस्थाको नाम</td><td>${firmName}${firmAcronym ? ' (' + firmAcronym + ')' : ''}</td></tr>
-    ${firmRegNo  ? `<tr><td class="lbl">दर्ता नं.</td><td>${firmRegNo}</td></tr>` : ''}
-    ${firmPan    ? `<tr><td class="lbl">स्थायी लेखा नं. (PAN)</td><td>${firmPan}</td></tr>` : ''}
-    ${firmAddress? `<tr><td class="lbl">ठेगाना</td><td>${firmAddress}</td></tr>` : ''}
-    <tr><td class="lbl">स्थायी सूचीको नाम</td><td>${listName}</td></tr>
-    ${fy         ? `<tr><td class="lbl">आर्थिक वर्ष</td><td>${fy}</td></tr>` : ''}
-    <tr><td class="lbl">छनोट मिति</td><td>${dateBS ? dateBS + ' (वि.सं.)' : ''} ${dateAD !== '—' ? '/ ' + dateAD + ' (ई.सं.)' : ''}</td></tr>
-    ${validBS    ? `<tr><td class="lbl">मान्य मिति सम्म</td><td>${validBS} (वि.सं.) / ${validAD} (ई.सं.)</td></tr>` : ''}
-    <tr><td class="lbl">स्थिति</td><td><strong>${statusNp}</strong></td></tr>
-    ${toName     ? `<tr><td class="lbl">खरिद गर्ने निकाय</td><td>${toName}</td></tr>` : ''}
+    <!-- §1 firm details -->
+    <tr><td colspan="2" class="hdr">१. मौजुदा सूचीको लागि निवेदन दिने व्यक्ति, संस्था, आपूर्तिकर्ता, निर्माण व्यवसायी, परामर्शदाता वा सेवा प्रदायकको विवरण:</td></tr>
+    <tr>
+      <td class="half">(क) नाम: ${firmName}${firmAcronym ? ' (' + firmAcronym + ')' : ''}</td>
+      <td class="half">(ख) ठेगाना: ${firmAddress}</td>
+    </tr>
+    <tr>
+      <td class="half">(ग) पत्राचार गर्ने ठेगाना: ${firmAddress}</td>
+      <td class="half">(घ) मुख्य व्यक्तिको नाम: ${firmContact}</td>
+    </tr>
+    <tr>
+      <td class="half">(ड) टेलिफोन नं: ${firmPhone}</td>
+      <td class="half">(च) मोबाईल नं: </td>
+    </tr>
+
+    <!-- §2 document checklist -->
+    <tr><td colspan="2" class="hdr">२. मौजुदा सूचीमा दर्ता हुनको लागि निम्न बमोजिमको प्रमाणपत्र संलग्न गर्नुहोला।</td></tr>
+    <tr><td colspan="2" class="chk">
+      (क) संस्था वा फर्म दर्ताको प्रमाणपत्र &nbsp;छ ☑&nbsp; छैन □<br>
+      (ख) नविकरण गरिएको &nbsp;छ ☑&nbsp; छैन □<br>
+      (ग) मूल्य अभिवृद्धि कर वा स्थायी लेखा नम्बर दर्ताको प्रमाणपत्र &nbsp;छ ☑&nbsp; छैन □<br>
+      (घ) कर चुक्ताको प्रमाणपत्र &nbsp;छ ☑&nbsp; छैन □<br>
+      (ड) कुन खरिदको लागि मौजुदार सूचीमा दर्ता हुन निवेदन दिने हो, सो कामको लागि इजाजत पत्र आवश्यक पत्ने भएमा सो को प्रतिलिपि &nbsp;छ ☑&nbsp; छैन □
+    </td></tr>
+
+    <!-- §3 procurement type -->
+    <tr><td colspan="2" class="hdr">३. सार्वजनिक निकायबाट हुने खरिदको लागि दर्ता हुन चाहेको खरिदको प्रकृतिको विवरण:</td></tr>
+    <tr><td colspan="2" style="padding:0;">
+      <table style="width:100%;border-collapse:collapse;">
+        <tr>
+          <td class="w22" style="border:none;border-right:1px solid #666;border-bottom:1px solid #666;padding:5px 8px;">(क) मालसामान<br>आपूर्ति:</td>
+          <td class="tall" style="border:none;border-right:1px solid #666;border-bottom:1px solid #666;"></td>
+          <td class="w22" style="border:none;border-right:1px solid #666;border-bottom:1px solid #666;padding:5px 8px;">(ख) निर्माण कार्य</td>
+          <td class="tall" style="border:none;border-bottom:1px solid #666;"></td>
+        </tr>
+        <tr>
+          <td class="w22" style="border:none;border-right:1px solid #666;padding:5px 8px;">(ग) परामर्श सेवा:</td>
+          <td style="border:none;border-right:1px solid #666;padding:5px 8px;">${listName}</td>
+          <td class="w22" style="border:none;border-right:1px solid #666;padding:5px 8px;">(घ) अन्य सेवा:</td>
+          <td class="tall" style="border:none;"></td>
+        </tr>
+      </table>
+    </td></tr>
+
+    <!-- bottom: date | stamp | name+sig -->
+    <tr><td colspan="2" style="padding:0;">
+      <table style="width:100%;border-collapse:collapse;">
+        <tr>
+          <td style="border:none;border-right:1px solid #666;padding:8px 10px;width:34%;vertical-align:top;line-height:2;">
+            <div>निवेदन दिएको मिति: ${todayBSStr}</div>
+            ${fyNp ? `<div>आ.व.: ${fyNp}</div>` : ''}
+          </td>
+          <td style="border:none;border-right:1px solid #666;width:32%;text-align:center;padding:8px;vertical-align:middle;">
+            <div style="font-size:9.5pt;margin-bottom:4px;">फर्मको छाप:</div>
+            ${includeSignStamp && firmStamp
+              ? `<img src="${firmStamp}" style="max-width:80px;max-height:80px;object-fit:contain;">`
+              : '<div class="stamp-ring">फर्मको<br>छाप</div>'
+            }
+          </td>
+          <td style="border:none;padding:8px 10px;width:34%;vertical-align:top;">
+            <div>निवेदकको नाम: ${firmContact || '_______________'}</div>
+            ${includeSignStamp && firmSign
+              ? `<img src="${firmSign}" style="max-width:130px;max-height:42px;object-fit:contain;display:block;margin-top:6px;">`
+              : '<div class="sign-line">हस्ताक्षर: _______________</div>'
+            }
+          </td>
+        </tr>
+      </table>
+    </td></tr>
   </table>
-
-  ${remarks ? `<div class="remarks-block"><strong>कैफियत:</strong> ${remarks}</div>` : ''}
-
-  <div class="bottom-row">
-    <div class="bot-cell">
-      <div>पत्र दिएको मिति: ${todayBSStr}</div>
-      ${fy ? `<div>आ.व.: ${fy}</div>` : ''}
-    </div>
-    <div class="bot-stamp">
-      ${includeSignStamp && firmStamp
-        ? `<img src="${firmStamp}" style="max-width:95px;max-height:95px;object-fit:contain">`
-        : `<div class="stamp-ring">फर्मको<br>छाप</div>`
-      }
-    </div>
-    <div class="bot-cell" style="text-align:right">
-      ${includeSignStamp && firmSign ? `<img src="${firmSign}" style="max-width:150px;max-height:52px;object-fit:contain;display:block;margin-left:auto;margin-bottom:4px">` : ''}
-      <div>निवेदकको नाम: ${firmContact || '_______________'}</div>
-      <div class="sign-line">हस्ताक्षर: _______________</div>
-    </div>
-  </div>
 
 ${docPages}
 </div>
