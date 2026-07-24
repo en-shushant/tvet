@@ -105,8 +105,6 @@ function openShortlistLetter(row) {
   .sign-pos   { font-size: 10pt; color: #555; margin-top: 2px; }
   .sign-org   { font-size: 10pt; color: #333; font-weight: 600; margin-top: 2px; }
 
-  .footer-note { margin-top: 28px; border-top: 1px solid #e0e0e0; padding-top: 7px; font-size: 8.5pt; color: #999; text-align: center; }
-
   @media print {
     body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
     .no-print { display: none !important; }
@@ -179,7 +177,7 @@ function openShortlistLetter(row) {
     </div>
   </div>
 
-  <div class="footer-note">TVETtrack द्वारा उत्पन्न · ${todayBSStr} (${todayAD})</div>
+
 </div>
 <script>window.onload = function() { window.print(); };</script>
 </body>
