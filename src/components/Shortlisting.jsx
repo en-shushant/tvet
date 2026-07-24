@@ -110,17 +110,21 @@ function openShortlistLetter(row, opts = {}) {
 <style>
   @page { size: A4; margin: 0; }
   * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { background: #888; }
   body {
     font-family: 'Noto Sans Devanagari', 'Mangal', 'Arial Unicode MS', sans-serif;
     font-size: 10.5pt; color: #111; line-height: 1.65;
     -webkit-print-color-adjust: exact; print-color-adjust: exact;
-    background: #e8e8e8;
+    display: flex; justify-content: center; padding: 20px;
   }
-  @media print { body { background: none; } }
+  @media print {
+    html { background: none; }
+    body { display: block; padding: 0; }
+  }
   .page {
     width: 210mm;
     min-height: 297mm;
-    margin: 0 auto;
+    flex-shrink: 0;
     background: #fff;
     padding: ${useLhBg ? `${pageTopMargin}mm ${lhGap}mm 14mm ${lhGap}mm` : `${pageTopMargin}mm 20mm 15mm 20mm`};
     ${useLhBg ? `background-image:url('${firmLetterhead}');background-size:100% 297mm;background-repeat:no-repeat;background-position:top left;` : ''}
