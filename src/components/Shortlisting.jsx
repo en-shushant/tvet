@@ -503,8 +503,8 @@ const DOC_LABELS = {
 
 function LetterOptsModal({ row, onClose }) {
   const [inclSign, setInclSign] = useState(!!(row.institute_sign || row.institute_stamp));
-  const [pageTopMargin, setPageTopMargin] = useState(15);
-  const [lhGap, setLhGap] = useState(5);
+  const [pageTopMargin, setPageTopMargin] = useState(row.institute_letter_top_margin ?? 15);
+  const [lhGap, setLhGap] = useState(row.institute_letter_lr_padding ?? 5);
   const hasDocs = {
     ocrReg:   !!row.institute_ocr_registration,
     ocrRen:   !!row.institute_ocr_renewal,

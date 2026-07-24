@@ -156,6 +156,8 @@ async function runMigrations() {
     `ALTER TABLE institutes ADD COLUMN IF NOT EXISTS address_np TEXT`,
     `ALTER TABLE institutes ADD COLUMN IF NOT EXISTS contact_person_np TEXT`,
     `ALTER TABLE institutes ADD COLUMN IF NOT EXISTS tax_clearance_doc TEXT`,
+    `ALTER TABLE institutes ADD COLUMN IF NOT EXISTS letter_top_margin NUMERIC`,
+    `ALTER TABLE institutes ADD COLUMN IF NOT EXISTS letter_lr_padding NUMERIC`,
   ];
   for (const sql of migrations) {
     try { await pool.query(sql); }

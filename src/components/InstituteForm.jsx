@@ -34,6 +34,7 @@ function InstituteForm({institute, onSave, onClose, isSuperAdmin}) {
     isShortlistingOnly: false,
     nameNp: '', addressNp: '', contactPersonNp: '',
     letterhead: null, sign: null, stamp: null,
+    letterTopMargin: 15, letterLrPadding: 5,
   });
 
   const { handleClose, markDirty, markClean, UnsavedModal } = useUnsavedGuard(onClose);
@@ -211,6 +212,20 @@ function InstituteForm({institute, onSave, onClose, isSuperAdmin}) {
         <div className="form-row form-row-2">
           <ImgUpload label="Authorized signature" hint="Signature image used in letters." value={form.sign} onChange={v=>set('sign',v)}/>
           <ImgUpload label="Stamp / Seal" hint="Official stamp or seal image." value={form.stamp} onChange={v=>set('stamp',v)}/>
+        </div>
+        <div className="form-row form-row-2" style={{marginTop:8}}>
+          <div className="form-group">
+            <label>Text start from top (mm)</label>
+            <input type="number" min={0} max={200} value={form.letterTopMargin ?? 15}
+              onChange={e=>set('letterTopMargin', Number(e.target.value))}/>
+            <div className="input-hint">Push body text down to clear letterhead content</div>
+          </div>
+          <div className="form-group">
+            <label>Left / right padding (mm)</label>
+            <input type="number" min={0} max={60} value={form.letterLrPadding ?? 5}
+              onChange={e=>set('letterLrPadding', Number(e.target.value))}/>
+            <div className="input-hint">Horizontal margin inside the page</div>
+          </div>
         </div>
       </div>
 

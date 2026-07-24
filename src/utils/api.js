@@ -104,6 +104,8 @@ export function normInst(r) {
     addressNp: r.address_np || '',
     contactPersonNp: r.contact_person_np || '',
     taxClearanceDoc: r.tax_clearance_doc || null,
+    letterTopMargin: r.letter_top_margin != null ? Number(r.letter_top_margin) : null,
+    letterLrPadding: r.letter_lr_padding != null ? Number(r.letter_lr_padding) : null,
   };
 }
 
@@ -264,6 +266,8 @@ export function instToAPI(f) {
     address_np: f.addressNp || null,
     contact_person_np: f.contactPersonNp || null,
     tax_clearance_doc: f.taxClearanceDoc || null,
+    letter_top_margin: f.letterTopMargin != null ? f.letterTopMargin : null,
+    letter_lr_padding: f.letterLrPadding != null ? f.letterLrPadding : null,
   };
 }
 
