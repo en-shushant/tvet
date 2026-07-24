@@ -45,7 +45,7 @@ function getOccupation(id) {
 const useMemo2 = useMemo;
 
 function InstituteDetail({institute, clients, onUpdateClients, onBack, onUpdate, onRefresh, onDelete, token, isAdmin, isEditor, isSuperAdmin, jumpToTab, onBulkAdd, onAddNSTB}) {
-  const VALID_TABS = ['profile','experience','clients','nstb','tax','affiliation','infrastructure'];
+  const VALID_TABS = ['profile','experience','clients','nstb','tax','affiliation','infrastructure','documents'];
   const tabKey = `inst_tab_${institute.id}`;
   const savedTab = sessionStorage.getItem(tabKey);
   const [tab, setTab] = useState(jumpToTab || (VALID_TABS.includes(savedTab) ? savedTab : 'profile'));
@@ -87,6 +87,7 @@ function InstituteDetail({institute, clients, onUpdateClients, onBack, onUpdate,
     {id:'tax', label:`Tax Clearance (${institute.taxClearance.length})`},
     {id:'affiliation', label:`CTEVT Affiliation (${institute.affiliation.length})`},
     {id:'infrastructure', label:`Infrastructure (${(institute.infrastructure||[]).length})`},
+    {id:'documents', label:'Documents'},
   ];
 
   const [saveErr, setSaveErr] = useState('');
@@ -624,6 +625,11 @@ function InstituteDetail({institute, clients, onUpdateClients, onBack, onUpdate,
         <InfrastructureTab instituteId={institute.id} token={token} canEdit={canEdit} />
       )}
 
+      {/* Documents tab */}
+      {tab==='documents' && (
+        <DocumentsTab institute={institute} token={token} canEdit={canEdit} onUpdate={onUpdate} />
+      )}
+
       {/* Modals */}
       {modal?.type === 'editInstitute' && <InstituteForm institute={institute} onSave={saveProfile} onClose={()=>setModal(null)} isSuperAdmin={isSuperAdmin}/>}
       {modal?.type === 'deleteInstitute' && ReactDOM.createPortal(
@@ -1060,6 +1066,112 @@ function InfrastructureTab({ instituteId, token, canEdit }) {
         >
           <p style={{ margin: 0, color: 'var(--text1)' }}>{confirmModal.message}</p>
         </Modal>
+      )}
+    </div>
+  );
+}
+
+function DocImgUpload({ label, hint, value, onChange, disabled }) {
+  return (
+    <div className="form-group" style={{marginBottom:12}}>
+      <label style={{fontSize:13, fontWeight:600, color:'var(--text2)', display:'block', marginBottom:6}}>{label}</label>
+      <div style={{display:'flex', alignItems:'center', gap:12, flexWrap:'wrap'}}>
+        {value && (
+          <img src={value} alt="" style={{height:56, maxWidth:200, objectFit:'contain', border:'1px solid var(--border)', borderRadius:6, background:'#fff', padding:3}}/>
+        )}
+        {!value && (
+          <div style={{height:56, width:80, border:'1px dashed var(--border)', borderRadius:6, background:'var(--bg2)', display:'flex', alignItems:'center', justifyContent:'center'}}>
+            <span style={{fontSize:11, color:'var(--text3)'}}>No file</span>
+          </div>
+        )}
+        {!disabled && (
+          <>
+            <label style={{cursor:'pointer'}}>
+              <input type="file" accept="image/*" style={{display:'none'}} onChange={e=>{
+                const file=e.target.files[0]; if(!file) return;
+                const reader=new FileReader();
+                reader.onload=ev=>onChange(ev.target.result);
+                reader.readAsDataURL(file);
+              }}/>
+              <span className="btn btn-secondary btn-sm">{value ? 'Change' : 'Upload'}</span>
+            </label>
+            {value && <span className="btn btn-ghost btn-sm" style={{cursor:'pointer'}} onClick={()=>onChange(null)}>✕ Remove</span>}
+          </>
+        )}
+      </div>
+      {hint && <div style={{fontSize:11, color:'var(--text3)', marginTop:4}}>{hint}</div>}
+    </div>
+  );
+}
+
+function DocumentsTab({ institute, token, canEdit, onUpdate }) {
+  const [docs, setDocs] = useState({
+    ocrRegistration: institute.ocrRegistration || null,
+    ocrRenewal: institute.ocrRenewal || null,
+    vatRegistration: institute.vatRegistration || null,
+    taxClearanceDoc: institute.taxClearanceDoc || null,
+    vatExtension: institute.vatExtension || null,
+    ctevtAffiliation: institute.ctevtAffiliation || null,
+    ctevtRenewal: institute.ctevtRenewal || null,
+  });
+  const [saving, setSaving] = useState(false);
+  const [err, setErr] = useState('');
+  const [saved, setSaved] = useState(false);
+  const dirty = useRef(false);
+
+  useEffect(() => {
+    setDocs({
+      ocrRegistration: institute.ocrRegistration || null,
+      ocrRenewal: institute.ocrRenewal || null,
+      vatRegistration: institute.vatRegistration || null,
+      taxClearanceDoc: institute.taxClearanceDoc || null,
+      vatExtension: institute.vatExtension || null,
+      ctevtAffiliation: institute.ctevtAffiliation || null,
+      ctevtRenewal: institute.ctevtRenewal || null,
+    });
+    dirty.current = false;
+  }, [institute.id]);
+
+  const set = (k, v) => { dirty.current = true; setSaved(false); setDocs(d=>({...d,[k]:v})); };
+
+  const handleSave = async () => {
+    setSaving(true); setErr('');
+    try {
+      const payload = instToAPI({ ...institute, ...docs });
+      const updated = await api('PUT', `/institutes/${institute.id}`, payload, token);
+      if (onUpdate) onUpdate({ ...institute, ...docs });
+      setSaved(true);
+      dirty.current = false;
+    } catch(e) { setErr(e.message); }
+    finally { setSaving(false); }
+  };
+
+  return (
+    <div className="card" style={{maxWidth:720}}>
+      <div className="section-title" style={{marginBottom:12}}>Supporting Documents</div>
+      <div style={{fontSize:12, color:'var(--text3)', marginBottom:20}}>
+        Upload scanned images of certificates. These can be appended to generated letters.
+      </div>
+
+      <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:'0 24px'}}>
+        <DocImgUpload label="OCR दर्ता (Registration)" value={docs.ocrRegistration} onChange={v=>set('ocrRegistration',v)} disabled={!canEdit}/>
+        <DocImgUpload label="OCR नवीकरण (Renewal)" value={docs.ocrRenewal} onChange={v=>set('ocrRenewal',v)} disabled={!canEdit}/>
+        <DocImgUpload label="भ्याट दर्ता (VAT Registration)" value={docs.vatRegistration} onChange={v=>set('vatRegistration',v)} disabled={!canEdit}/>
+        <DocImgUpload label="कर चुक्ता (Tax Clearance)" value={docs.taxClearanceDoc} onChange={v=>set('taxClearanceDoc',v)} disabled={!canEdit}/>
+        <DocImgUpload label="भ्याट म्याद थप (VAT Date Extension)" value={docs.vatExtension} onChange={v=>set('vatExtension',v)} disabled={!canEdit}/>
+        <div/>{/* spacer */}
+        <DocImgUpload label="CTEVT सम्बन्धन (Affiliation)" value={docs.ctevtAffiliation} onChange={v=>set('ctevtAffiliation',v)} disabled={!canEdit}/>
+        <DocImgUpload label="CTEVT नवीकरण (Renewal)" value={docs.ctevtRenewal} onChange={v=>set('ctevtRenewal',v)} disabled={!canEdit}/>
+      </div>
+
+      {canEdit && (
+        <div style={{marginTop:16, display:'flex', alignItems:'center', gap:12}}>
+          <button className="btn btn-primary" onClick={handleSave} disabled={saving}>
+            {saving ? 'Saving…' : 'Save documents'}
+          </button>
+          {saved && <span style={{fontSize:12, color:'var(--green)'}}>Saved ✓</span>}
+          {err && <span style={{fontSize:12, color:'var(--red)'}}>{err}</span>}
+        </div>
       )}
     </div>
   );

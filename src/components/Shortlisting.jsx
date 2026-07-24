@@ -76,7 +76,8 @@ function openShortlistLetter(row, opts = {}) {
   const docDefs = [
     { key: 'ocrReg',    src: row.institute_ocr_registration,  label: 'OCR दर्ता प्रमाणपत्र' },
     { key: 'ocrRen',    src: row.institute_ocr_renewal,        label: 'OCR नवीकरण प्रमाणपत्र' },
-    { key: 'vat',       src: row.institute_vat_registration,   label: 'भ्याट दर्ता / कर चुक्ता प्रमाणपत्र' },
+    { key: 'vat',       src: row.institute_vat_registration,   label: 'भ्याट दर्ता प्रमाणपत्र' },
+    { key: 'taxClear',  src: row.institute_tax_clearance_doc,  label: 'कर चुक्ता प्रमाणपत्र' },
     { key: 'vatExt',    src: row.institute_vat_extension,      label: 'भ्याट म्याद थप प्रमाणपत्र' },
     { key: 'ctevtAff',  src: row.institute_ctevt_affiliation,  label: 'CTEVT सम्बन्धन पत्र' },
     { key: 'ctevtRen',  src: row.institute_ctevt_renewal,      label: 'CTEVT नवीकरण पत्र' },
@@ -483,7 +484,8 @@ function ShortlistForm({ initial, institutes, clients, onSave, onClose, saving }
 const DOC_LABELS = {
   ocrReg:   'OCR दर्ता प्रमाणपत्र',
   ocrRen:   'OCR नवीकरण प्रमाणपत्र',
-  vat:      'भ्याट दर्ता / कर चुक्ता प्रमाणपत्र',
+  vat:      'भ्याट दर्ता प्रमाणपत्र',
+  taxClear: 'कर चुक्ता प्रमाणपत्र',
   vatExt:   'भ्याट म्याद थप प्रमाणपत्र',
   ctevtAff: 'CTEVT सम्बन्धन पत्र',
   ctevtRen: 'CTEVT नवीकरण पत्र',
@@ -497,6 +499,7 @@ function LetterOptsModal({ row, onClose }) {
     ocrReg:   !!row.institute_ocr_registration,
     ocrRen:   !!row.institute_ocr_renewal,
     vat:      !!row.institute_vat_registration,
+    taxClear: !!row.institute_tax_clearance_doc,
     vatExt:   !!row.institute_vat_extension,
     ctevtAff: !!row.institute_ctevt_affiliation,
     ctevtRen: !!row.institute_ctevt_renewal,

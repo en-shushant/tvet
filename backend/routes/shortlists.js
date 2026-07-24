@@ -38,7 +38,8 @@ async function plugin(fastify, opts) {
         i.vat_registration  AS institute_vat_registration,
         i.vat_extension     AS institute_vat_extension,
         i.ctevt_affiliation AS institute_ctevt_affiliation,
-        i.ctevt_renewal     AS institute_ctevt_renewal
+        i.ctevt_renewal     AS institute_ctevt_renewal,
+        i.tax_clearance_doc AS institute_tax_clearance_doc
       FROM shortlists sl
       LEFT JOIN clients    c ON c.id = sl.client_id
       LEFT JOIN institutes i ON i.id = sl.institute_id

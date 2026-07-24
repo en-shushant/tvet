@@ -103,6 +103,7 @@ export function normInst(r) {
     nameNp: r.name_np || '',
     addressNp: r.address_np || '',
     contactPersonNp: r.contact_person_np || '',
+    taxClearanceDoc: r.tax_clearance_doc || null,
   };
 }
 
@@ -262,6 +263,7 @@ export function instToAPI(f) {
     name_np: f.nameNp || null,
     address_np: f.addressNp || null,
     contact_person_np: f.contactPersonNp || null,
+    tax_clearance_doc: f.taxClearanceDoc || null,
   };
 }
 

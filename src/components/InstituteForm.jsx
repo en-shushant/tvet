@@ -34,8 +34,6 @@ function InstituteForm({institute, onSave, onClose, isSuperAdmin}) {
     isShortlistingOnly: false,
     nameNp: '', addressNp: '', contactPersonNp: '',
     letterhead: null, sign: null, stamp: null,
-    ocrRegistration: null, ocrRenewal: null, vatRegistration: null, vatExtension: null,
-    ctevtAffiliation: null, ctevtRenewal: null,
   });
 
   const { handleClose, markDirty, markClean, UnsavedModal } = useUnsavedGuard(onClose);
@@ -213,24 +211,6 @@ function InstituteForm({institute, onSave, onClose, isSuperAdmin}) {
         <div className="form-row form-row-2">
           <ImgUpload label="Authorized signature" hint="Signature image used in letters." value={form.sign} onChange={v=>set('sign',v)}/>
           <ImgUpload label="Stamp / Seal" hint="Official stamp or seal image." value={form.stamp} onChange={v=>set('stamp',v)}/>
-        </div>
-      </div>
-
-      {/* ── Supporting Documents ── */}
-      <div style={{borderTop:'1px solid var(--border)', paddingTop:16, marginTop:4}}>
-        <div style={{fontWeight:700, fontSize:13, color:'var(--text2)', marginBottom:4}}>Supporting Documents</div>
-        <div style={{fontSize:12, color:'var(--text3)', marginBottom:12}}>Upload scanned images of certificates. These can be appended to generated letters.</div>
-        <div className="form-row form-row-2">
-          <ImgUpload label="OCR Registration" value={form.ocrRegistration} onChange={v=>set('ocrRegistration',v)}/>
-          <ImgUpload label="OCR Renewal" value={form.ocrRenewal} onChange={v=>set('ocrRenewal',v)}/>
-        </div>
-        <div className="form-row form-row-2">
-          <ImgUpload label="VAT Registration / Tax Clearance" value={form.vatRegistration} onChange={v=>set('vatRegistration',v)}/>
-          <ImgUpload label="VAT Date Extension (optional)" value={form.vatExtension} onChange={v=>set('vatExtension',v)}/>
-        </div>
-        <div className="form-row form-row-2">
-          <ImgUpload label="CTEVT Affiliation" value={form.ctevtAffiliation} onChange={v=>set('ctevtAffiliation',v)}/>
-          <ImgUpload label="CTEVT Renewal" value={form.ctevtRenewal} onChange={v=>set('ctevtRenewal',v)}/>
         </div>
       </div>
 
