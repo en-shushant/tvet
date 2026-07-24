@@ -333,11 +333,15 @@ function App() {
   };
 
   return (
+    <>
+    <a href="#main" className="skip-link">Skip to main content</a>
     <div className="app-shell">
       {/* Sidebar */}
       {mobileSidebarOpen && <div className="mobile-backdrop" onClick={()=>setMobileSidebarOpen(false)}/>}
       <div className={`sidebar${sidebarCollapsed?' collapsed':''}${mobileSidebarOpen?' mobile-open':''}`}>
-        <button className="sidebar-toggle" onClick={()=>setSidebarCollapsed(c=>!c)} title={sidebarCollapsed?'Expand sidebar':'Collapse sidebar'}>
+        <button className="sidebar-toggle" onClick={()=>setSidebarCollapsed(c=>!c)}
+          aria-label={sidebarCollapsed?'Expand sidebar':'Collapse sidebar'}
+          title={sidebarCollapsed?'Expand sidebar':'Collapse sidebar'}>
           <span className="material-icons-round" style={{fontSize:14}}>{sidebarCollapsed?'chevron_right':'chevron_left'}</span>
         </button>
         <div className="sidebar-logo">
@@ -455,9 +459,11 @@ function App() {
       </div>
 
       {/* Main */}
-      <div className="main">
+      <div className="main" id="main" role="main">
         <div className="topbar">
-          <button className="topbar-hamburger" onClick={()=>setMobileSidebarOpen(o=>!o)}>
+          <button className="topbar-hamburger" onClick={()=>setMobileSidebarOpen(o=>!o)}
+            aria-label={mobileSidebarOpen?'Close menu':'Open menu'}
+            aria-expanded={mobileSidebarOpen}>
             <span className="material-icons-round" style={{fontSize:22}}>menu</span>
           </button>
           <div style={{flex:1}}>
@@ -583,6 +589,7 @@ function App() {
       )}
       {showChangePwd && <ChangePasswordModal onClose={()=>setShowChangePwd(false)}/>}
     </div>
+    </>
   );
 }
 
