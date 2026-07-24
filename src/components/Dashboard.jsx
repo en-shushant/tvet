@@ -112,26 +112,27 @@ function Dashboard({ institutes, isEditor, onNavigate }) {
   const hour = new Date().getHours();
   const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
 
-  const active  = institutes.filter(i => i.status === 'Active').length;
-  const pending = institutes.filter(i => i.status === 'Pending Renewal').length;
-  const expired = institutes.filter(i => i.status === 'Expired').length;
-  const totalTrainees    = institutes.reduce((s, i) => s + (i.totalTrainees || 0), 0);
-  const totalStAppeared  = institutes.reduce((s, i) => s + (i.totalStAppeared || 0), 0);
-  const totalAffPrograms = institutes.reduce((s, i) => s + (i.totalAffPrograms || 0), 0);
-  const missingTax  = institutes.filter(i => !i.taxClearance.find(t => t.fy === '2081/82')).length;
-  const expiredAff  = institutes.filter(i => i.affiliation.some(a => a.status === 'Expired')).length;
-  const missingNSTB = institutes.filter(i => !i.nstb.find(n => n.fy === '2081/82')).length;
+  const alertable = institutes.filter(i => !i.isShortlistingOnly);
+
+  const active  = alertable.filter(i => i.status === 'Active').length;
+  const pending = alertable.filter(i => i.status === 'Pending Renewal').length;
+  const expired = alertable.filter(i => i.status === 'Expired').length;
+  const totalTrainees    = alertable.reduce((s, i) => s + (i.totalTrainees || 0), 0);
+  const totalStAppeared  = alertable.reduce((s, i) => s + (i.totalStAppeared || 0), 0);
+  const totalAffPrograms = alertable.reduce((s, i) => s + (i.totalAffPrograms || 0), 0);
+  const missingTax  = alertable.filter(i => !i.taxClearance.find(t => t.fy === '2081/82')).length;
+  const expiredAff  = alertable.filter(i => i.affiliation.some(a => a.status === 'Expired')).length;
+  const missingNSTB = alertable.filter(i => !i.nstb.find(n => n.fy === '2081/82')).length;
 
   const [activity, setActivity] = useState(null);
   useEffect(() => {
     api('GET', '/dashboard/activity', null, session?.token).then(setActivity).catch(() => {});
   }, []);
-
   const alerts = [
-    ...institutes.filter(i => i.status === 'Pending Renewal').map(i => ({ type: 'warning', msg: `${i.acronym ? '[' + i.acronym + '] ' : ''}${i.name} — Renewal due: ${i.renewalDue}`, inst: i, tab: 'profile' })),
-    ...institutes.filter(i => !i.taxClearance.find(t => t.fy === '2081/82')).map(i => ({ type: 'danger',  msg: `${i.acronym ? '[' + i.acronym + '] ' : ''}${i.name} — Tax clearance missing for FY 2081/82`, inst: i, tab: 'tax' })),
-    ...institutes.filter(i => i.affiliation.some(a => a.status === 'Expired')).map(i => ({ type: 'info',    msg: `${i.acronym ? '[' + i.acronym + '] ' : ''}${i.name} — Has expired CTEVT affiliation(s)`, inst: i, tab: 'affiliation' })),
-    ...institutes.filter(i => !i.nstb.find(n => n.fy === '2081/82')).map(i => ({ type: 'info',    msg: `${i.acronym ? '[' + i.acronym + '] ' : ''}${i.name} — NSTB data missing for FY 2081/82`, inst: i, tab: 'nstb' })),
+    ...alertable.filter(i => i.status === 'Pending Renewal').map(i => ({ type: 'warning', msg: `${i.acronym ? '[' + i.acronym + '] ' : ''}${i.name} — Renewal due: ${i.renewalDue}`, inst: i, tab: 'profile' })),
+    ...alertable.filter(i => !i.taxClearance.find(t => t.fy === '2081/82')).map(i => ({ type: 'danger',  msg: `${i.acronym ? '[' + i.acronym + '] ' : ''}${i.name} — Tax clearance missing for FY 2081/82`, inst: i, tab: 'tax' })),
+    ...alertable.filter(i => i.affiliation.some(a => a.status === 'Expired')).map(i => ({ type: 'info',    msg: `${i.acronym ? '[' + i.acronym + '] ' : ''}${i.name} — Has expired CTEVT affiliation(s)`, inst: i, tab: 'affiliation' })),
+    ...alertable.filter(i => !i.nstb.find(n => n.fy === '2081/82')).map(i => ({ type: 'info',    msg: `${i.acronym ? '[' + i.acronym + '] ' : ''}${i.name} — NSTB data missing for FY 2081/82`, inst: i, tab: 'nstb' })),
   ];
 
   const activityChips = activity ? [
