@@ -33,7 +33,7 @@ function todayBS() {
 
 // ── Letter generator — opens print-ready A4 in new window ─────────────────────
 function openShortlistLetter(row, opts = {}) {
-  const { includeSignStamp = false, docs = {}, pageTopMargin = 15, lhGap = 5 } = opts;
+  const { includeSignStamp = false, docs = {}, pageTopMargin = 15, lhGap = 5, pageBottomPadding = 15 } = opts;
   // Firm (institute) — letterhead owner
   const firmName        = row.institute_name || '';
   const firmAcronym     = row.institute_acronym || '';
@@ -126,7 +126,7 @@ function openShortlistLetter(row, opts = {}) {
     min-height: 297mm;
     flex-shrink: 0;
     background: #fff;
-    padding: ${useLhBg ? `${pageTopMargin}mm ${lhGap}mm 14mm ${lhGap}mm` : `${pageTopMargin}mm 20mm 15mm 20mm`};
+    padding: ${useLhBg ? `${pageTopMargin}mm ${lhGap}mm ${pageBottomPadding}mm ${lhGap}mm` : `${pageTopMargin}mm 20mm ${pageBottomPadding}mm 20mm`};
     ${useLhBg ? `background-image:url('${firmLetterhead}');background-size:100% 297mm;background-repeat:no-repeat;background-position:top left;` : ''}
   }
   .lh-regpan { display:flex;justify-content:space-between;font-size:9pt;font-style:italic;color:#7b1a1a;margin-bottom:5px; }
@@ -505,6 +505,7 @@ function LetterOptsModal({ row, onClose }) {
   const [inclSign, setInclSign] = useState(!!(row.institute_sign || row.institute_stamp));
   const [pageTopMargin, setPageTopMargin] = useState(row.institute_letter_top_margin ?? 15);
   const [lhGap, setLhGap] = useState(row.institute_letter_lr_padding ?? 5);
+  const [pageBottomPadding, setPageBottomPadding] = useState(row.institute_letter_bottom_padding ?? 15);
   const hasDocs = {
     ocrReg:   !!row.institute_ocr_registration,
     ocrRen:   !!row.institute_ocr_renewal,
@@ -522,7 +523,7 @@ function LetterOptsModal({ row, onClose }) {
     <Modal title="Generate Letter" onClose={onClose} footer={<>
       <button className="btn btn-secondary" onClick={onClose}>Cancel</button>
       <button className="btn btn-primary" onClick={() => {
-        openShortlistLetter(row, { includeSignStamp: inclSign, docs: inclDocs, pageTopMargin, lhGap });
+        openShortlistLetter(row, { includeSignStamp: inclSign, docs: inclDocs, pageTopMargin, lhGap, pageBottomPadding });
         onClose();
       }}>Generate &amp; Print</button>
     </>}>
@@ -540,20 +541,24 @@ function LetterOptsModal({ row, onClose }) {
         </div>
 
         {row.institute_letterhead && (
-          <div style={{display:'flex', gap:12}}>
-            <div className="form-group" style={{flex:1, margin:0}}>
-              <label style={{fontSize:12, fontWeight:600}}>Text start from top (mm)</label>
+          <div style={{display:'flex', gap:12, flexWrap:'wrap'}}>
+            <div className="form-group" style={{flex:1, margin:0, minWidth:110}}>
+              <label style={{fontSize:12, fontWeight:600}}>Top (mm)</label>
               <input type="number" min={0} max={200} value={pageTopMargin}
                 onChange={e=>setPageTopMargin(Number(e.target.value))}
                 style={{width:'100%', marginTop:4}}/>
-              <div className="input-hint">Push body text down to clear the letterhead</div>
             </div>
-            <div className="form-group" style={{flex:1, margin:0}}>
-              <label style={{fontSize:12, fontWeight:600}}>Left/right padding (mm)</label>
+            <div className="form-group" style={{flex:1, margin:0, minWidth:110}}>
+              <label style={{fontSize:12, fontWeight:600}}>Bottom (mm)</label>
+              <input type="number" min={0} max={100} value={pageBottomPadding}
+                onChange={e=>setPageBottomPadding(Number(e.target.value))}
+                style={{width:'100%', marginTop:4}}/>
+            </div>
+            <div className="form-group" style={{flex:1, margin:0, minWidth:110}}>
+              <label style={{fontSize:12, fontWeight:600}}>Left/right (mm)</label>
               <input type="number" min={0} max={60} value={lhGap}
                 onChange={e=>setLhGap(Number(e.target.value))}
                 style={{width:'100%', marginTop:4}}/>
-              <div className="input-hint">Horizontal margin inside the page</div>
             </div>
           </div>
         )}

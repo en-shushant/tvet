@@ -34,7 +34,7 @@ function InstituteForm({institute, onSave, onClose, isSuperAdmin}) {
     isShortlistingOnly: false,
     nameNp: '', addressNp: '', contactPersonNp: '',
     letterhead: null, sign: null, stamp: null,
-    letterTopMargin: 15, letterLrPadding: 5,
+    letterTopMargin: 15, letterLrPadding: 5, letterBottomPadding: 15,
   });
 
   const { handleClose, markDirty, markClean, UnsavedModal } = useUnsavedGuard(onClose);
@@ -220,6 +220,14 @@ function InstituteForm({institute, onSave, onClose, isSuperAdmin}) {
               onChange={e=>set('letterTopMargin', Number(e.target.value))}/>
             <div className="input-hint">Push body text down to clear letterhead content</div>
           </div>
+          <div className="form-group">
+            <label>Bottom padding (mm)</label>
+            <input type="number" min={0} max={100} value={form.letterBottomPadding ?? 15}
+              onChange={e=>set('letterBottomPadding', Number(e.target.value))}/>
+            <div className="input-hint">Space at the bottom of the page</div>
+          </div>
+        </div>
+        <div className="form-row form-row-2" style={{marginTop:0}}>
           <div className="form-group">
             <label>Left / right padding (mm)</label>
             <input type="number" min={0} max={60} value={form.letterLrPadding ?? 5}
