@@ -58,43 +58,48 @@ function openShortlistLetter(row) {
   const remarks      = row.remarks || '';
   const todayBSStr   = todayBS();
 
-  const orgMeta = [orgAddress, orgPhone ? `Ph: ${orgPhone}` : '', orgEmail, orgWebsite].filter(Boolean).join('  ·  ');
+  const statusNp = status === 'Active' ? 'सक्रिय' : status === 'Expired' ? 'म्याद सकिएको' : 'प्रक्रियामा';
+  const orgMeta = [orgAddress, orgPhone ? `फोन: ${orgPhone}` : '', orgEmail, orgWebsite].filter(Boolean).join('  |  ');
+  const todayAD = new Date().toLocaleDateString('en-GB', { day:'2-digit', month:'long', year:'numeric' });
 
   const html = `<!DOCTYPE html>
-<html lang="en">
+<html lang="ne">
 <head>
 <meta charset="UTF-8">
-<title>Shortlisting Letter — ${firmAcronym || firmName}</title>
+<title>छनोट पत्र — ${firmAcronym || firmName}</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Devanagari:wght@400;600;700&display=swap" rel="stylesheet">
 <style>
   @page { size: A4; margin: 18mm 20mm 20mm 25mm; }
   * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { font-family: 'Times New Roman', Georgia, serif; font-size: 12pt; color: #111; line-height: 1.65; background: #fff; }
+  body {
+    font-family: 'Noto Sans Devanagari', 'Mangal', 'Arial Unicode MS', sans-serif;
+    font-size: 12pt; color: #111; line-height: 1.8; background: #fff;
+  }
   .page { max-width: 170mm; margin: 0 auto; }
 
-  /* Org header — letterhead image if present, otherwise text */
-  .org-block  { text-align: center; border-bottom: 2.5px double #333; padding-bottom: 10px; margin-bottom: 18px; }
-  .org-lh     { max-width: 100%; max-height: 90px; object-fit: contain; margin-bottom: 6px; }
-  .org-name   { font-size: 15pt; font-weight: 700; letter-spacing: 0.4px; }
-  .org-sub    { font-size: 9.5pt; color: #555; margin-top: 4px; }
+  .org-block { text-align: center; border-bottom: 2.5px double #333; padding-bottom: 10px; margin-bottom: 16px; }
+  .org-lh    { max-width: 100%; max-height: 90px; object-fit: contain; margin-bottom: 6px; }
+  .org-name  { font-size: 15pt; font-weight: 700; }
+  .org-sub   { font-size: 9.5pt; color: #555; margin-top: 4px; }
 
-  .meta-row   { display: flex; justify-content: space-between; font-size: 10.5pt; margin-bottom: 18px; color: #333; }
+  .meta-row  { display: flex; justify-content: space-between; font-size: 10.5pt; margin-bottom: 16px; color: #333; }
 
-  .to-block   { margin-bottom: 16px; font-size: 11.5pt; }
-  .to-label   { font-weight: 700; }
+  .to-block  { margin-bottom: 14px; font-size: 11.5pt; }
 
-  .subject    { font-size: 12pt; font-weight: 700; margin-bottom: 16px; text-decoration: underline; text-underline-offset: 3px; }
-  .body-text  { margin-bottom: 12px; text-align: justify; }
+  .subject   { font-size: 12pt; font-weight: 700; margin-bottom: 14px; text-decoration: underline; text-underline-offset: 3px; }
+  .body-text { margin-bottom: 12px; text-align: justify; }
 
-  table { width: 100%; border-collapse: collapse; margin: 12px 0 16px; font-size: 11pt; }
+  table { width: 100%; border-collapse: collapse; margin: 10px 0 14px; font-size: 11pt; }
   th { background: #f2f2f2; border: 1px solid #bbb; padding: 6px 10px; text-align: left; font-weight: 700; }
   td { border: 1px solid #bbb; padding: 6px 10px; }
   td:first-child { font-weight: 600; width: 42%; color: #333; background: #fafafa; }
 
-  .remarks-block { font-style: italic; font-size: 11pt; color: #444; margin-bottom: 16px; padding: 8px 12px; border-left: 3px solid #ccc; background: #fafafa; }
+  .remarks-block { font-size: 11pt; color: #444; margin-bottom: 14px; padding: 8px 12px; border-left: 3px solid #ccc; background: #fafafa; }
 
   .sign-area  { margin-top: 48px; display: flex; justify-content: flex-end; }
-  .sign-box   { text-align: center; min-width: 200px; }
-  .sign-space { height: 54px; }
+  .sign-box   { text-align: center; min-width: 210px; }
+  .sign-space { height: 52px; }
   .sign-line  { border-top: 1px solid #444; padding-top: 6px; }
   .sign-name  { font-weight: 700; font-size: 11.5pt; }
   .sign-pos   { font-size: 10pt; color: #555; margin-top: 2px; }
@@ -111,7 +116,7 @@ function openShortlistLetter(row) {
 <body>
 <div class="page">
 
-  <!-- Organization letterhead -->
+  <!-- संस्थाको लेटरहेड -->
   <div class="org-block">
     ${orgLetterhead
       ? `<img src="${orgLetterhead}" class="org-lh" alt="${orgName}"/>`
@@ -120,61 +125,61 @@ function openShortlistLetter(row) {
     ${orgMeta ? `<div class="org-sub">${orgMeta}</div>` : ''}
   </div>
 
-  <!-- Date row -->
+  <!-- मिति -->
   <div class="meta-row">
-    <div><strong>मिति (BS):</strong> ${todayBSStr}</div>
-    <div><strong>Date (AD):</strong> ${new Date().toLocaleDateString('en-GB', { day:'2-digit', month:'long', year:'numeric' })}</div>
+    <div><strong>पत्र संख्या:</strong> _______________</div>
+    <div><strong>मिति:</strong> ${todayBSStr} (${todayAD})</div>
   </div>
 
-  <!-- To block -->
+  <!-- सेवामा -->
   <div class="to-block">
-    <div class="to-label">To,</div>
-    <div>The Director / Manager,</div>
+    <div><strong>सेवामा,</strong></div>
+    <div>महाप्रबन्धक/निर्देशक महोदय,</div>
     <div><strong>${firmName}${firmAcronym ? ` (${firmAcronym})` : ''}</strong></div>
     ${firmAddress ? `<div>${firmAddress}</div>` : ''}
-    ${firmPhone   ? `<div>Phone: ${firmPhone}</div>` : ''}
-    ${firmEmail   ? `<div>Email: ${firmEmail}</div>` : ''}
-    ${firmRegNo   ? `<div style="color:#555;font-size:10.5pt">Reg. No.: ${firmRegNo}</div>` : ''}
+    ${firmPhone   ? `<div>फोन: ${firmPhone}</div>` : ''}
+    ${firmEmail   ? `<div>इमेल: ${firmEmail}</div>` : ''}
+    ${firmRegNo   ? `<div style="color:#555;font-size:10.5pt">दर्ता नं.: ${firmRegNo}</div>` : ''}
   </div>
 
-  <!-- Subject -->
-  <div class="subject">Subject: Shortlisting Notification — ${listName}${fy ? ' (FY ' + fy + ')' : ''}</div>
+  <!-- विषय -->
+  <div class="subject">विषय: छनोट सूचना — ${listName}${fy ? ' (आ.व. ' + fy + ')' : ''}</div>
 
-  <div class="body-text">Dear Sir/Madam,</div>
+  <div class="body-text">महोदय/महोदया,</div>
   <div class="body-text">
-    We are pleased to inform you that <strong>${firmName}${firmAcronym ? ` (${firmAcronym})` : ''}</strong> has been shortlisted for the <strong>${listName}</strong>${orgName ? ' maintained by <strong>' + orgName + '</strong>' : ''}${fy ? ' for Fiscal Year <strong>' + fy + '</strong>' : ''}.
+    उपरोक्त विषयमा <strong>${firmName}${firmAcronym ? ` (${firmAcronym})` : ''}</strong> लाई ${orgName ? '<strong>' + orgName + '</strong> द्वारा सञ्चालित ' : ''}<strong>${listName}</strong>${fy ? ' आ.व. <strong>' + fy + '</strong> को लागि' : ''} छनोट (Shortlist) भएको जानकारी दिन पाउँदा हर्ष लाग्दछ।
   </div>
-  <div class="body-text">The details of the shortlisting are as follows:</div>
+  <div class="body-text">छनोटको विवरण निम्नानुसार छ:</div>
 
   <table>
-    <tr><th colspan="2">Shortlisting Details</th></tr>
-    <tr><td>Standing List Name</td><td>${listName}</td></tr>
-    ${fy        ? `<tr><td>Fiscal Year</td><td>${fy}</td></tr>` : ''}
-    <tr><td>Shortlisting Date</td><td>${dateBS ? dateBS + ' (BS)' : ''} ${dateAD !== '—' ? '/ ' + dateAD + ' (AD)' : ''}</td></tr>
-    ${validBS   ? `<tr><td>Valid Until</td><td>${validBS} (BS) / ${validAD} (AD)</td></tr>` : ''}
-    <tr><td>Status</td><td><strong>${status}</strong></td></tr>
-    ${orgName   ? `<tr><td>Organization</td><td>${orgName}</td></tr>` : ''}
+    <tr><th colspan="2">छनोटको विवरण</th></tr>
+    <tr><td>स्थायी सूचीको नाम</td><td>${listName}</td></tr>
+    ${fy      ? `<tr><td>आर्थिक वर्ष</td><td>${fy}</td></tr>` : ''}
+    <tr><td>छनोट मिति</td><td>${dateBS ? dateBS + ' (वि.सं.)' : ''} ${dateAD !== '—' ? '/ ' + dateAD + ' (ई.सं.)' : ''}</td></tr>
+    ${validBS ? `<tr><td>मान्य मिति सम्म</td><td>${validBS} (वि.सं.) / ${validAD} (ई.सं.)</td></tr>` : ''}
+    <tr><td>स्थिति</td><td><strong>${statusNp}</strong></td></tr>
+    ${orgName ? `<tr><td>संस्था</td><td>${orgName}</td></tr>` : ''}
   </table>
 
-  ${remarks ? `<div class="remarks-block"><strong>Note:</strong> ${remarks}</div>` : ''}
+  ${remarks ? `<div class="remarks-block"><strong>कैफियत:</strong> ${remarks}</div>` : ''}
 
   <div class="body-text">
-    Please ensure that all required documents and qualifications remain current and valid throughout the period of this shortlisting. We look forward to your continued engagement.
+    कृपया यस छनोट अवधिभर सबै आवश्यक कागजातहरू र योग्यताहरू अद्यावधिक तथा मान्य राख्नुहोला। तपाईंसँगको सहकार्यको अपेक्षा राख्दछौं।
   </div>
 
-  <!-- Signature block -->
+  <!-- हस्ताक्षर -->
   <div class="sign-area">
     <div class="sign-box">
       <div class="sign-space"></div>
       <div class="sign-line">
-        <div class="sign-name">${orgSignatory || 'Authorized Signatory'}</div>
+        <div class="sign-name">${orgSignatory || 'अधिकृत हस्ताक्षरकर्ता'}</div>
         ${orgSignPos ? `<div class="sign-pos">${orgSignPos}</div>` : ''}
         <div class="sign-org">${orgName}</div>
       </div>
     </div>
   </div>
 
-  <div class="footer-note">Generated by TVETtrack · ${new Date().toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'numeric' })}</div>
+  <div class="footer-note">TVETtrack द्वारा उत्पन्न · ${todayBSStr} (${todayAD})</div>
 </div>
 <script>window.onload = function() { window.print(); };</script>
 </body>
