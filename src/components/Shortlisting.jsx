@@ -522,51 +522,76 @@ function LetterOptsModal({ row, onClose }) {
         onClose();
       }}>Generate &amp; Print</Btn>
     </>}>
-      <div style={{display:'flex', flexDirection:'column', gap:14}}>
-        <div style={{display:'flex', alignItems:'center', gap:12, padding:'12px 14px', borderRadius:8, border:'1px solid var(--border)', background:'var(--bg)'}}>
+      <div style={{display:'flex', flexDirection:'column', gap:12}}>
+
+        {/* Signature toggle */}
+        <label style={{display:'flex', alignItems:'center', gap:14, padding:'12px 14px', borderRadius:10, border:'1px solid var(--border)', background:'var(--bg)', cursor:'pointer'}}>
           <MdToggle selected={inclSign} onChange={e=>setInclSign(e.target.selected)} style={{flexShrink:0}}/>
-          <div>
-            <div style={{fontWeight:600, fontSize:13}}>Include signature &amp; stamp</div>
-            <div style={{fontSize:11.5, color:'var(--text3)', marginTop:1}}>
+          <div style={{flex:1}}>
+            <div style={{fontWeight:600, fontSize:13, color:'var(--text)'}}>Include signature &amp; stamp</div>
+            <div style={{fontSize:12, color:'var(--text3)', marginTop:2, lineHeight:1.4}}>
               {row.institute_sign || row.institute_stamp
-                ? 'Signature and stamp images will appear in the letter and on each document page.'
-                : 'No signature/stamp uploaded for this firm yet — upload them in the firm profile.'}
+                ? 'Signature and stamp appear in the letter and on each attached document.'
+                : 'No signature/stamp uploaded yet — add them in the firm profile.'}
             </div>
           </div>
-        </div>
+        </label>
 
+        {/* Letterhead margin controls */}
         {row.institute_letterhead && (
-          <div style={{display:'flex', gap:12, flexWrap:'wrap'}}>
-            <div className="form-group" style={{flex:1, margin:0, minWidth:110}}>
-              <MdTextField type="number" label="Top (mm)" min={0} max={200} value={pageTopMargin}
-                onChange={e=>setPageTopMargin(Number(e.target.value))} />
+          <div style={{borderRadius:10, border:'1px solid var(--border)', background:'var(--bg)', padding:'12px 14px'}}>
+            <div style={{fontSize:11, fontWeight:700, color:'var(--text3)', textTransform:'uppercase', letterSpacing:'0.6px', marginBottom:10}}>
+              Letterhead margins
             </div>
-            <div className="form-group" style={{flex:1, margin:0, minWidth:110}}>
-              <MdTextField type="number" label="Bottom (mm)" min={0} max={100} value={pageBottomPadding}
-                onChange={e=>setPageBottomPadding(Number(e.target.value))} />
-            </div>
-            <div className="form-group" style={{flex:1, margin:0, minWidth:110}}>
-              <MdTextField type="number" label="Left/right (mm)" min={0} max={60} value={lhGap}
-                onChange={e=>setLhGap(Number(e.target.value))} />
+            <div style={{display:'flex', gap:10}}>
+              {[
+                {label:'Top (mm)', value:pageTopMargin, set:setPageTopMargin, min:0, max:200},
+                {label:'Bottom (mm)', value:pageBottomPadding, set:setPageBottomPadding, min:0, max:100},
+                {label:'Left / Right (mm)', value:lhGap, set:setLhGap, min:0, max:60},
+              ].map(({label, value, set, min, max}) => (
+                <div key={label} style={{flex:1}}>
+                  <div style={{fontSize:11, fontWeight:600, color:'var(--text2)', marginBottom:5}}>{label}</div>
+                  <input type="number" min={min} max={max} value={value}
+                    onChange={e=>set(Number(e.target.value))}
+                    style={{width:'100%', padding:'7px 10px', fontSize:14, fontWeight:500, borderRadius:6, border:'1.5px solid var(--border)', background:'var(--surface)', color:'var(--text)', boxSizing:'border-box', fontFamily:'inherit', outline:'none', transition:'border-color .15s'}}
+                    onFocus={e=>e.target.style.borderColor='var(--primary)'}
+                    onBlur={e=>e.target.style.borderColor='var(--border)'}/>
+                </div>
+              ))}
             </div>
           </div>
         )}
 
+        {/* Document attachments */}
         {anyDocs ? (
-          <div>
-            <div style={{fontWeight:600, fontSize:13, marginBottom:8, color:'var(--text2)'}}>Attach supporting documents</div>
-            <div style={{display:'flex', flexDirection:'column', gap:5}}>
-              {Object.entries(hasDocs).filter(([,v])=>v).map(([k]) => (
-                <label key={k} style={{display:'flex', alignItems:'center', gap:10, cursor:'pointer', fontSize:13, padding:'7px 12px', borderRadius:6, background:'var(--bg)', border:'1px solid var(--border)'}}>
-                  <input type="checkbox" checked={inclDocs[k]||false} onChange={()=>toggle(k)} style={{accentColor:'var(--primary)', flexShrink:0}}/>
-                  {DOC_LABELS[k]}
+          <div style={{borderRadius:10, border:'1px solid var(--border)', overflow:'hidden'}}>
+            <div style={{padding:'10px 14px', borderBottom:'1px solid var(--border)', background:'var(--bg)'}}>
+              <span style={{fontWeight:600, fontSize:12.5, color:'var(--text2)'}}>Attach supporting documents</span>
+            </div>
+            <div style={{display:'flex', flexDirection:'column'}}>
+              {Object.entries(hasDocs).filter(([,v])=>v).map(([k], i, arr) => (
+                <label key={k} style={{
+                  display:'flex', alignItems:'center', gap:10, cursor:'pointer', fontSize:13,
+                  padding:'9px 14px', background:'var(--surface)', color:'var(--text)',
+                  borderBottom: i < arr.length-1 ? '1px solid var(--border)' : 'none',
+                  transition:'background .1s',
+                }}
+                  onMouseEnter={e=>e.currentTarget.style.background='var(--bg)'}
+                  onMouseLeave={e=>e.currentTarget.style.background='var(--surface)'}
+                >
+                  <input type="checkbox" checked={inclDocs[k]||false} onChange={()=>toggle(k)}
+                    style={{accentColor:'var(--primary)', flexShrink:0, width:15, height:15}}/>
+                  <span>{DOC_LABELS[k]}</span>
                 </label>
               ))}
             </div>
           </div>
         ) : (
-          <div style={{fontSize:12, color:'var(--text3)', fontStyle:'italic', padding:'8px 0'}}>
-            No documents uploaded for this firm. Upload OCR, VAT, and CTEVT certificates in the firm profile to attach them here.
+          <div style={{display:'flex', alignItems:'center', gap:10, padding:'12px 14px', borderRadius:10, border:'1px solid var(--border)', background:'var(--bg)'}}>
+            <span style={{fontSize:18, opacity:.5}}>📄</span>
+            <div style={{fontSize:12, color:'var(--text3)', lineHeight:1.5}}>
+              No documents uploaded for this firm. Upload OCR, VAT, and CTEVT certificates in the firm profile to attach them here.
+            </div>
           </div>
         )}
       </div>
