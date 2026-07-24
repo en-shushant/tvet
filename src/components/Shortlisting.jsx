@@ -32,23 +32,27 @@ function todayBS() {
 }
 
 // ── Letter generator — opens print-ready A4 in new window ─────────────────────
-function openShortlistLetter(row) {
+function openShortlistLetter(row, opts = {}) {
+  const { includeSignStamp = false, docs = {} } = opts;
   // Firm (institute) — letterhead owner
-  const firmName    = row.institute_name || '';
-  const firmAcronym = row.institute_acronym || '';
-  const firmAddress = row.institute_address || '';
-  const firmPhone   = row.institute_phone || '';
-  const firmEmail   = row.institute_email || '';
-  const firmWebsite = row.institute_website || '';
-  const firmRegNo   = row.institute_reg_no || '';
-  const firmPan     = row.institute_pan || '';
-  const firmLogo    = row.institute_logo || null;
-  const firmContact = row.institute_contact || '';
+  const firmName        = row.institute_name || '';
+  const firmAcronym     = row.institute_acronym || '';
+  const firmAddress     = row.institute_address || '';
+  const firmPhone       = row.institute_phone || '';
+  const firmEmail       = row.institute_email || '';
+  const firmWebsite     = row.institute_website || '';
+  const firmRegNo       = row.institute_reg_no || '';
+  const firmPan         = row.institute_pan || '';
+  const firmLogo        = row.institute_logo || null;
+  const firmLetterhead  = row.institute_letterhead || null;
+  const firmSign        = row.institute_sign || null;
+  const firmStamp       = row.institute_stamp || null;
+  const firmContact     = row.institute_contact || '';
   // To — procuring entity (client)
-  const toName      = row.client_name || row.client_name_manual || '';
-  const toShort     = row.client_short || '';
-  const toAddress   = row.client_address || '';
-  const toContact   = row.client_signatory_position || '';
+  const toName          = row.client_name || row.client_name_manual || '';
+  const toShort         = row.client_short || '';
+  const toAddress       = row.client_address || '';
+  const toContact       = row.client_signatory_position || '';
   // Shortlisting details
   const listName  = row.standing_list_name || 'Standing List';
   const fy        = row.fy || '';
@@ -63,6 +67,27 @@ function openShortlistLetter(row) {
   const statusNp = status === 'Active' ? 'सक्रिय' : status === 'Expired' ? 'म्याद सकिएको' : 'प्रक्रियामा';
   const todayAD = new Date().toLocaleDateString('en-GB', { day:'2-digit', month:'long', year:'numeric' });
   const firmMeta = [firmAddress, firmPhone ? `फोन: ${firmPhone}` : '', firmEmail, firmWebsite].filter(Boolean).join('  |  ');
+
+  // Document pages
+  const docDefs = [
+    { key: 'ocrReg',    src: row.institute_ocr_registration,  label: 'OCR दर्ता प्रमाणपत्र' },
+    { key: 'ocrRen',    src: row.institute_ocr_renewal,        label: 'OCR नवीकरण प्रमाणपत्र' },
+    { key: 'vat',       src: row.institute_vat_registration,   label: 'भ्याट दर्ता / कर चुक्ता प्रमाणपत्र' },
+    { key: 'vatExt',    src: row.institute_vat_extension,      label: 'भ्याट म्याद थप प्रमाणपत्र' },
+    { key: 'ctevtAff',  src: row.institute_ctevt_affiliation,  label: 'CTEVT सम्बन्धन पत्र' },
+    { key: 'ctevtRen',  src: row.institute_ctevt_renewal,      label: 'CTEVT नवीकरण पत्र' },
+  ];
+  const sigstampBar = includeSignStamp && (firmSign || firmStamp) ? `
+    <div style="display:flex;align-items:flex-end;justify-content:flex-end;gap:12px;margin-top:10px;">
+      ${firmStamp ? `<img src="${firmStamp}" style="max-width:80px;max-height:80px;object-fit:contain">` : ''}
+      ${firmSign  ? `<img src="${firmSign}"  style="max-width:140px;max-height:52px;object-fit:contain">` : ''}
+    </div>` : '';
+  const docPages = docDefs.filter(d => docs[d.key] && d.src).map(d => `
+<div style="page-break-before:always;padding:10mm 0 0;">
+  <div style="font-family:'Noto Sans Devanagari','Mangal',sans-serif;font-size:11pt;font-weight:700;margin-bottom:10px;border-bottom:1.5px solid #bbb;padding-bottom:6px;">${d.label}</div>
+  <img src="${d.src}" style="max-width:100%;height:auto;display:block;">
+  ${sigstampBar}
+</div>`).join('');
 
   const html = `<!DOCTYPE html>
 <html lang="ne">
@@ -80,96 +105,66 @@ function openShortlistLetter(row) {
   }
   .page { max-width: 174mm; margin: 0 auto; }
 
-  /* ── Letterhead ── */
-  .lh-regpan {
-    display: flex; justify-content: space-between;
-    font-size: 9pt; font-style: italic; color: #7b1a1a; margin-bottom: 6px;
-  }
-  .lh-center { text-align: center; }
-  .lh-logo   { max-height: 80px; max-width: 80px; object-fit: contain; margin-bottom: 4px; }
-  .lh-name-np { font-size: 16pt; font-weight: 700; color: #7b1a1a; line-height: 1.3; }
-  .lh-name-en { font-size: 11pt; font-weight: 700; color: #7b1a1a; letter-spacing: 0.3px; margin-top: 2px; }
-  .lh-meta   { font-size: 9pt; color: #333; margin-top: 5px; line-height: 1.6; }
-  .lh-border { border-bottom: 3px double #7b1a1a; margin: 8px 0 14px; }
+  /* Letterhead fallback (text-based) */
+  .lh-regpan { display:flex; justify-content:space-between; font-size:9pt; font-style:italic; color:#7b1a1a; margin-bottom:6px; }
+  .lh-center { text-align:center; }
+  .lh-logo   { max-height:80px; max-width:80px; object-fit:contain; margin-bottom:4px; }
+  .lh-name   { font-size:16pt; font-weight:700; color:#7b1a1a; line-height:1.3; }
+  .lh-meta   { font-size:9pt; color:#333; margin-top:5px; line-height:1.6; }
+  .lh-border { border-bottom:3px double #7b1a1a; margin:8px 0 14px; }
 
-  /* ── Ref / Date row ── */
-  .ref-row { display: flex; justify-content: space-between; font-size: 11pt; margin-bottom: 14px; }
+  /* Letterhead image */
+  .lh-img    { width:100%; display:block; margin-bottom:14px; }
 
-  /* ── To block ── */
-  .to-block { margin-bottom: 14px; font-size: 11.5pt; line-height: 1.7; }
+  .ref-row   { display:flex; justify-content:space-between; font-size:11pt; margin-bottom:14px; }
+  .to-block  { margin-bottom:14px; font-size:11.5pt; line-height:1.7; }
+  .subject   { text-align:center; font-size:12pt; font-weight:700;
+               text-decoration:underline; text-underline-offset:3px; margin-bottom:14px; }
+  .body-text { margin-bottom:11px; text-align:justify; }
 
-  /* ── Subject ── */
-  .subject { text-align: center; font-size: 12pt; font-weight: 700;
-             text-decoration: underline; text-underline-offset: 3px; margin-bottom: 14px; }
+  .tapasil-label { font-weight:700; font-size:11.5pt; margin-bottom:4px; }
+  table { width:100%; border-collapse:collapse; margin-bottom:14px; font-size:11pt; }
+  td { border:1px solid #bbb; padding:6px 10px; }
+  td.lbl { font-weight:600; width:44%; color:#333; background:#fafafa; }
 
-  .body-text { margin-bottom: 11px; text-align: justify; }
+  .remarks-block { font-size:11pt; color:#444; margin-bottom:14px; padding:7px 12px; border-left:3px solid #ccc; background:#fafafa; }
 
-  /* ── तपशिल table ── */
-  .tapasil-label { font-weight: 700; font-size: 11.5pt; margin-bottom: 4px; }
-  table { width: 100%; border-collapse: collapse; margin-bottom: 14px; font-size: 11pt; }
-  th { background: #f0e8e8; border: 1px solid #bbb; padding: 6px 10px; text-align: left; font-weight: 700; }
-  td { border: 1px solid #bbb; padding: 6px 10px; }
-  td.label { font-weight: 600; width: 44%; color: #333; background: #fafafa; }
-
-  .remarks-block { font-size: 11pt; color: #444; margin-bottom: 14px;
-                   padding: 7px 12px; border-left: 3px solid #ccc; background: #fafafa; }
-
-  /* ── Bottom sign/stamp row ── */
-  .bottom-row {
-    margin-top: 40px;
-    display: flex; align-items: flex-end; justify-content: space-between;
-    border: 1px solid #bbb;
-  }
-  .bottom-cell { padding: 10px 14px; flex: 1; font-size: 11pt; line-height: 2; }
-  .bottom-cell.stamp {
-    flex: 0 0 130px; min-height: 110px; border-left: 1px solid #bbb; border-right: 1px solid #bbb;
-    display: flex; align-items: center; justify-content: center;
-  }
-  .stamp-circle {
-    width: 95px; height: 95px; border-radius: 50%;
-    border: 1.5px dashed #aaa; display: flex; align-items: center; justify-content: center;
-    color: #bbb; font-size: 9pt; text-align: center; line-height: 1.4;
-  }
-  .sign-line { margin-top: 6px; border-top: 1px solid #888; padding-top: 4px; }
+  .bottom-row { margin-top:36px; display:flex; align-items:flex-end; justify-content:space-between; border:1px solid #bbb; }
+  .bot-cell   { padding:10px 14px; flex:1; font-size:11pt; line-height:2; }
+  .bot-stamp  { flex:0 0 130px; min-height:110px; border-left:1px solid #bbb; border-right:1px solid #bbb; display:flex; align-items:center; justify-content:center; }
+  .stamp-ring { width:95px; height:95px; border-radius:50%; border:1.5px dashed #aaa; display:flex; align-items:center; justify-content:center; color:#bbb; font-size:9pt; text-align:center; line-height:1.4; }
+  .sign-line  { margin-top:6px; border-top:1px solid #888; padding-top:4px; }
 
   @media print {
-    body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-    .no-print { display: none !important; }
+    body { -webkit-print-color-adjust:exact; print-color-adjust:exact; }
   }
 </style>
 </head>
 <body>
 <div class="page">
 
-  <!-- Letterhead -->
-  ${firmRegNo || firmPan ? `
-  <div class="lh-regpan">
-    <span>${firmRegNo ? 'Govt. Regd.No. ' + firmRegNo : ''}</span>
-    <span>${firmPan ? 'PAN No. ' + firmPan : ''}</span>
-  </div>` : ''}
+  ${firmLetterhead
+    ? `<img src="${firmLetterhead}" class="lh-img" alt="${firmName}">`
+    : `${firmRegNo || firmPan ? `<div class="lh-regpan"><span>${firmRegNo ? 'Govt. Regd.No. ' + firmRegNo : ''}</span><span>${firmPan ? 'PAN No. ' + firmPan : ''}</span></div>` : ''}
+       <div class="lh-center">
+         ${firmLogo ? `<img src="${firmLogo}" class="lh-logo" alt="${firmName}">` : ''}
+         <div class="lh-name">${firmName}${firmAcronym && firmAcronym !== firmName ? ` (${firmAcronym})` : ''}</div>
+         ${firmMeta ? `<div class="lh-meta">${firmMeta}</div>` : ''}
+       </div>
+       <div class="lh-border"></div>`
+  }
 
-  <div class="lh-center">
-    ${firmLogo ? `<div><img src="${firmLogo}" class="lh-logo" alt="${firmName}"/></div>` : ''}
-    <div class="lh-name-np">${firmName}</div>
-    ${firmAcronym && firmAcronym !== firmName ? `<div class="lh-name-en">${firmAcronym}</div>` : ''}
-    ${firmMeta ? `<div class="lh-meta">${firmMeta}</div>` : ''}
-  </div>
-  <div class="lh-border"></div>
-
-  <!-- Ref / Date -->
   <div class="ref-row">
     <div><strong>Ref.</strong></div>
     <div><strong>मिति:</strong> ${todayBSStr}</div>
   </div>
 
-  <!-- To -->
   <div class="to-block">
     <div>श्री ${toContact || 'कार्यालय प्रमुख'} ज्यू,</div>
     <div><strong>${toName}${toShort && toShort !== toName ? ` (${toShort})` : ''}</strong></div>
     ${toAddress ? `<div>${toAddress}</div>` : ''}
   </div>
 
-  <!-- Subject -->
   <div class="subject">विषय: मौजुदा सूचीमा दर्ता भएको पुष्टि।</div>
 
   <div class="body-text">
@@ -178,35 +173,39 @@ function openShortlistLetter(row) {
 
   <div class="tapasil-label">तपशिल:</div>
   <table>
-    <tr><td class="label">फर्म/संस्थाको नाम</td><td>${firmName}${firmAcronym ? ' (' + firmAcronym + ')' : ''}</td></tr>
-    ${firmRegNo ? `<tr><td class="label">दर्ता नं.</td><td>${firmRegNo}</td></tr>` : ''}
-    ${firmPan   ? `<tr><td class="label">स्थायी लेखा नं. (PAN)</td><td>${firmPan}</td></tr>` : ''}
-    ${firmAddress ? `<tr><td class="label">ठेगाना</td><td>${firmAddress}</td></tr>` : ''}
-    <tr><td class="label">स्थायी सूचीको नाम</td><td>${listName}</td></tr>
-    ${fy        ? `<tr><td class="label">आर्थिक वर्ष</td><td>${fy}</td></tr>` : ''}
-    <tr><td class="label">छनोट मिति</td><td>${dateBS ? dateBS + ' (वि.सं.)' : ''} ${dateAD !== '—' ? '/ ' + dateAD + ' (ई.सं.)' : ''}</td></tr>
-    ${validBS   ? `<tr><td class="label">मान्य मिति सम्म</td><td>${validBS} (वि.सं.) / ${validAD} (ई.सं.)</td></tr>` : ''}
-    <tr><td class="label">स्थिति</td><td><strong>${statusNp}</strong></td></tr>
-    ${toName    ? `<tr><td class="label">खरिद गर्ने निकाय</td><td>${toName}</td></tr>` : ''}
+    <tr><td class="lbl">फर्म/संस्थाको नाम</td><td>${firmName}${firmAcronym ? ' (' + firmAcronym + ')' : ''}</td></tr>
+    ${firmRegNo  ? `<tr><td class="lbl">दर्ता नं.</td><td>${firmRegNo}</td></tr>` : ''}
+    ${firmPan    ? `<tr><td class="lbl">स्थायी लेखा नं. (PAN)</td><td>${firmPan}</td></tr>` : ''}
+    ${firmAddress? `<tr><td class="lbl">ठेगाना</td><td>${firmAddress}</td></tr>` : ''}
+    <tr><td class="lbl">स्थायी सूचीको नाम</td><td>${listName}</td></tr>
+    ${fy         ? `<tr><td class="lbl">आर्थिक वर्ष</td><td>${fy}</td></tr>` : ''}
+    <tr><td class="lbl">छनोट मिति</td><td>${dateBS ? dateBS + ' (वि.सं.)' : ''} ${dateAD !== '—' ? '/ ' + dateAD + ' (ई.सं.)' : ''}</td></tr>
+    ${validBS    ? `<tr><td class="lbl">मान्य मिति सम्म</td><td>${validBS} (वि.सं.) / ${validAD} (ई.सं.)</td></tr>` : ''}
+    <tr><td class="lbl">स्थिति</td><td><strong>${statusNp}</strong></td></tr>
+    ${toName     ? `<tr><td class="lbl">खरिद गर्ने निकाय</td><td>${toName}</td></tr>` : ''}
   </table>
 
   ${remarks ? `<div class="remarks-block"><strong>कैफियत:</strong> ${remarks}</div>` : ''}
 
-  <!-- Bottom: Date+FY | Stamp | Name+Signature -->
   <div class="bottom-row">
-    <div class="bottom-cell">
+    <div class="bot-cell">
       <div>पत्र दिएको मिति: ${todayBSStr}</div>
       ${fy ? `<div>आ.व.: ${fy}</div>` : ''}
     </div>
-    <div class="bottom-cell stamp">
-      <div class="stamp-circle">फर्मको<br>छाप</div>
+    <div class="bot-stamp">
+      ${includeSignStamp && firmStamp
+        ? `<img src="${firmStamp}" style="max-width:95px;max-height:95px;object-fit:contain">`
+        : `<div class="stamp-ring">फर्मको<br>छाप</div>`
+      }
     </div>
-    <div class="bottom-cell" style="text-align:right">
+    <div class="bot-cell" style="text-align:right">
+      ${includeSignStamp && firmSign ? `<img src="${firmSign}" style="max-width:150px;max-height:52px;object-fit:contain;display:block;margin-left:auto;margin-bottom:4px">` : ''}
       <div>निवेदकको नाम: ${firmContact || '_______________'}</div>
       <div class="sign-line">हस्ताक्षर: _______________</div>
     </div>
   </div>
 
+${docPages}
 </div>
 <script>window.onload = function() { window.print(); };</script>
 </body>
@@ -439,6 +438,73 @@ function ShortlistForm({ initial, institutes, clients, onSave, onClose, saving }
   );
 }
 
+// ── Letter Options Modal ───────────────────────────────────────────────────────
+const DOC_LABELS = {
+  ocrReg:   'OCR दर्ता प्रमाणपत्र',
+  ocrRen:   'OCR नवीकरण प्रमाणपत्र',
+  vat:      'भ्याट दर्ता / कर चुक्ता प्रमाणपत्र',
+  vatExt:   'भ्याट म्याद थप प्रमाणपत्र',
+  ctevtAff: 'CTEVT सम्बन्धन पत्र',
+  ctevtRen: 'CTEVT नवीकरण पत्र',
+};
+
+function LetterOptsModal({ row, onClose }) {
+  const [inclSign, setInclSign] = useState(!!(row.institute_sign || row.institute_stamp));
+  const hasDocs = {
+    ocrReg:   !!row.institute_ocr_registration,
+    ocrRen:   !!row.institute_ocr_renewal,
+    vat:      !!row.institute_vat_registration,
+    vatExt:   !!row.institute_vat_extension,
+    ctevtAff: !!row.institute_ctevt_affiliation,
+    ctevtRen: !!row.institute_ctevt_renewal,
+  };
+  const [inclDocs, setInclDocs] = useState({ ...hasDocs });
+  const anyDocs = Object.values(hasDocs).some(Boolean);
+  const toggle = k => setInclDocs(d => ({...d, [k]: !d[k]}));
+
+  return (
+    <Modal title="Generate Letter" onClose={onClose} footer={<>
+      <button className="btn btn-secondary" onClick={onClose}>Cancel</button>
+      <button className="btn btn-primary" onClick={() => {
+        openShortlistLetter(row, { includeSignStamp: inclSign, docs: inclDocs });
+        onClose();
+      }}>Generate &amp; Print</button>
+    </>}>
+      <div style={{display:'flex', flexDirection:'column', gap:14}}>
+        <div style={{display:'flex', alignItems:'center', gap:12, padding:'12px 14px', borderRadius:8, border:'1px solid var(--border)', background:'var(--bg)'}}>
+          <div className={`toggle${inclSign?' on':''}`} onClick={()=>setInclSign(v=>!v)} style={{flexShrink:0}}/>
+          <div>
+            <div style={{fontWeight:600, fontSize:13}}>Include signature &amp; stamp</div>
+            <div style={{fontSize:11.5, color:'var(--text3)', marginTop:1}}>
+              {row.institute_sign || row.institute_stamp
+                ? 'Signature and stamp images will appear in the letter and on each document page.'
+                : 'No signature/stamp uploaded for this firm yet — upload them in the firm profile.'}
+            </div>
+          </div>
+        </div>
+
+        {anyDocs ? (
+          <div>
+            <div style={{fontWeight:600, fontSize:13, marginBottom:8, color:'var(--text2)'}}>Attach supporting documents</div>
+            <div style={{display:'flex', flexDirection:'column', gap:5}}>
+              {Object.entries(hasDocs).filter(([,v])=>v).map(([k]) => (
+                <label key={k} style={{display:'flex', alignItems:'center', gap:10, cursor:'pointer', fontSize:13, padding:'7px 12px', borderRadius:6, background:'var(--bg)', border:'1px solid var(--border)'}}>
+                  <input type="checkbox" checked={inclDocs[k]||false} onChange={()=>toggle(k)} style={{accentColor:'var(--primary)', flexShrink:0}}/>
+                  {DOC_LABELS[k]}
+                </label>
+              ))}
+            </div>
+          </div>
+        ) : (
+          <div style={{fontSize:12, color:'var(--text3)', fontStyle:'italic', padding:'8px 0'}}>
+            No documents uploaded for this firm. Upload OCR, VAT, and CTEVT certificates in the firm profile to attach them here.
+          </div>
+        )}
+      </div>
+    </Modal>
+  );
+}
+
 // ── Delete Confirm Modal ───────────────────────────────────────────────────────
 function ConfirmModal({ message, onConfirm, onClose, saving }) {
   return (
@@ -456,6 +522,7 @@ function ShortlistRow({ row, idx, canEdit, isAdmin, onEdit, onDelete, showFY=tru
   const sc = statusColor(row.status);
   const altBg = idx % 2 === 1 ? 'var(--bg)' : 'var(--surface)';
   const hoverBg = idx % 2 === 1 ? 'var(--bg2)' : 'var(--bg)';
+  const [showLetterOpts, setShowLetterOpts] = useState(false);
   return (
     <div style={{
       display:'flex', alignItems:'center', gap:12, padding:'13px 20px',
@@ -516,7 +583,8 @@ function ShortlistRow({ row, idx, canEdit, isAdmin, onEdit, onDelete, showFY=tru
 
       {/* Actions */}
       <div style={{display:'flex', gap:2, flexShrink:0}}>
-        <button title="Generate Letter" onClick={() => openShortlistLetter(row)}
+        {showLetterOpts && <LetterOptsModal row={row} onClose={()=>setShowLetterOpts(false)}/>}
+        <button title="Generate Letter" onClick={() => setShowLetterOpts(true)}
           style={{width:30,height:30,borderRadius:50,border:'none',background:'transparent',color:'var(--text3)',cursor:'pointer',display:'inline-flex',alignItems:'center',justifyContent:'center'}}
           onMouseEnter={e=>{e.currentTarget.style.background='var(--primary-light)';e.currentTarget.style.color='var(--primary-dark)';}}
           onMouseLeave={e=>{e.currentTarget.style.background='';e.currentTarget.style.color='var(--text3)';}}

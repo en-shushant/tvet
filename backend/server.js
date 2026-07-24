@@ -142,6 +142,15 @@ async function runMigrations() {
     `ALTER TABLE clients ADD COLUMN IF NOT EXISTS signatory_name TEXT`,
     `ALTER TABLE clients ADD COLUMN IF NOT EXISTS signatory_position TEXT`,
     `ALTER TABLE clients ADD COLUMN IF NOT EXISTS letterhead TEXT`,
+    `ALTER TABLE institutes ADD COLUMN IF NOT EXISTS letterhead TEXT`,
+    `ALTER TABLE institutes ADD COLUMN IF NOT EXISTS sign TEXT`,
+    `ALTER TABLE institutes ADD COLUMN IF NOT EXISTS stamp TEXT`,
+    `ALTER TABLE institutes ADD COLUMN IF NOT EXISTS ocr_registration TEXT`,
+    `ALTER TABLE institutes ADD COLUMN IF NOT EXISTS ocr_renewal TEXT`,
+    `ALTER TABLE institutes ADD COLUMN IF NOT EXISTS vat_registration TEXT`,
+    `ALTER TABLE institutes ADD COLUMN IF NOT EXISTS vat_extension TEXT`,
+    `ALTER TABLE institutes ADD COLUMN IF NOT EXISTS ctevt_affiliation TEXT`,
+    `ALTER TABLE institutes ADD COLUMN IF NOT EXISTS ctevt_renewal TEXT`,
   ];
   for (const sql of migrations) {
     try { await pool.query(sql); }

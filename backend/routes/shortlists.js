@@ -27,7 +27,15 @@ async function plugin(fastify, opts) {
         i.email       AS institute_email,   i.website  AS institute_website,
         i.contact_person AS institute_contact,
         i.reg_no      AS institute_reg_no,  i.pan      AS institute_pan,
-        i.logo        AS institute_logo
+        i.logo        AS institute_logo,
+        i.letterhead  AS institute_letterhead,
+        i.sign        AS institute_sign,     i.stamp    AS institute_stamp,
+        i.ocr_registration  AS institute_ocr_registration,
+        i.ocr_renewal       AS institute_ocr_renewal,
+        i.vat_registration  AS institute_vat_registration,
+        i.vat_extension     AS institute_vat_extension,
+        i.ctevt_affiliation AS institute_ctevt_affiliation,
+        i.ctevt_renewal     AS institute_ctevt_renewal
       FROM shortlists sl
       LEFT JOIN clients    c ON c.id = sl.client_id
       LEFT JOIN institutes i ON i.id = sl.institute_id

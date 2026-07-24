@@ -4,12 +4,37 @@ import { ErrorBanner } from './ui/Modal.jsx';
 import { useUnsavedGuard } from './ui/UnsavedGuard.jsx';
 import { INSTITUTE_TYPES, INSTITUTE_STATUSES } from '../constants/data.js';
 
+function ImgUpload({ label, hint, value, onChange, preview = 'contain' }) {
+  return (
+    <div className="form-group">
+      <label>{label}</label>
+      <div style={{display:'flex', alignItems:'center', gap:12}}>
+        {value && <img src={value} alt="" style={{height:48, maxWidth:180, objectFit:preview, border:'1px solid var(--border)', borderRadius:6, background:'#fff', padding:3}}/>}
+        <label style={{cursor:'pointer'}}>
+          <input type="file" accept="image/*" style={{display:'none'}} onChange={e=>{
+            const file=e.target.files[0]; if(!file) return;
+            const reader=new FileReader();
+            reader.onload=ev=>onChange(ev.target.result);
+            reader.readAsDataURL(file);
+          }}/>
+          <span className="btn btn-secondary btn-sm">{value ? 'Change' : 'Upload'}</span>
+        </label>
+        {value && <span className="btn btn-ghost btn-sm" style={{cursor:'pointer'}} onClick={()=>onChange(null)}>✕ Remove</span>}
+      </div>
+      {hint && <div className="input-hint">{hint}</div>}
+    </div>
+  );
+}
+
 function InstituteForm({institute, onSave, onClose, isSuperAdmin}) {
   const [form, setForm] = useState(institute || {
     name:'', acronym:'', regNo:'', regDate:'', pan:'', permanentAccountNo:'',
     contactPerson:'', phone:'', email:'', address:'',
     type:'Private', status:'Active', renewalDue:'', remarks:'', logo:null, website:'', googleMapLink:'', latitude:'', longitude:'',
     isShortlistingOnly: false,
+    letterhead: null, sign: null, stamp: null,
+    ocrRegistration: null, ocrRenewal: null, vatRegistration: null, vatExtension: null,
+    ctevtAffiliation: null, ctevtRenewal: null,
   });
 
   const { handleClose, markDirty, markClean, UnsavedModal } = useUnsavedGuard(onClose);
@@ -156,6 +181,38 @@ function InstituteForm({institute, onSave, onClose, isSuperAdmin}) {
           </div>
         </div>
       )}
+      {/* ── Letter Generation ── */}
+      <div style={{borderTop:'1px solid var(--border)', paddingTop:16, marginTop:4}}>
+        <div style={{fontWeight:700, fontSize:13, color:'var(--text2)', marginBottom:12}}>Letter Generation</div>
+        <ImgUpload
+          label="Letterhead image"
+          hint="Full-width banner image shown at the top of generated letters. Upload a scan or exported image of your official letterhead."
+          value={form.letterhead} onChange={v=>set('letterhead',v)} preview="contain"
+        />
+        <div className="form-row form-row-2">
+          <ImgUpload label="Authorized signature" hint="Signature image used in letters." value={form.sign} onChange={v=>set('sign',v)}/>
+          <ImgUpload label="Stamp / Seal" hint="Official stamp or seal image." value={form.stamp} onChange={v=>set('stamp',v)}/>
+        </div>
+      </div>
+
+      {/* ── Supporting Documents ── */}
+      <div style={{borderTop:'1px solid var(--border)', paddingTop:16, marginTop:4}}>
+        <div style={{fontWeight:700, fontSize:13, color:'var(--text2)', marginBottom:4}}>Supporting Documents</div>
+        <div style={{fontSize:12, color:'var(--text3)', marginBottom:12}}>Upload scanned images of certificates. These can be appended to generated letters.</div>
+        <div className="form-row form-row-2">
+          <ImgUpload label="OCR Registration" value={form.ocrRegistration} onChange={v=>set('ocrRegistration',v)}/>
+          <ImgUpload label="OCR Renewal" value={form.ocrRenewal} onChange={v=>set('ocrRenewal',v)}/>
+        </div>
+        <div className="form-row form-row-2">
+          <ImgUpload label="VAT Registration / Tax Clearance" value={form.vatRegistration} onChange={v=>set('vatRegistration',v)}/>
+          <ImgUpload label="VAT Date Extension (optional)" value={form.vatExtension} onChange={v=>set('vatExtension',v)}/>
+        </div>
+        <div className="form-row form-row-2">
+          <ImgUpload label="CTEVT Affiliation" value={form.ctevtAffiliation} onChange={v=>set('ctevtAffiliation',v)}/>
+          <ImgUpload label="CTEVT Renewal" value={form.ctevtRenewal} onChange={v=>set('ctevtRenewal',v)}/>
+        </div>
+      </div>
+
       <ErrorBanner msg={err} onDismiss={()=>setErr('')}/>
     </Modal>
     </>

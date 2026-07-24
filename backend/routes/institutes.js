@@ -71,7 +71,10 @@ async function plugin(fastify, opts) {
     const { name, acronym, reg_no, reg_date, pan, permanent_account_no,
       contact_person, phone, email, address, type, status, renewal_due, remarks, logo, website,
       desc_template_id, narrative_template_id, services_template_id,
-      google_map_link, latitude, longitude, is_shortlisting_only } = request.body;
+      google_map_link, latitude, longitude, is_shortlisting_only,
+      letterhead, sign, stamp,
+      ocr_registration, ocr_renewal, vat_registration, vat_extension,
+      ctevt_affiliation, ctevt_renewal } = request.body;
     if (!name) return reply.code(400).send({ error: 'name is required' });
     if (!reg_no && !is_shortlisting_only) return reply.code(400).send({ error: 'reg_no is required' });
     if (name.length > 300) return reply.code(400).send({ error: 'name too long (max 300 chars)' });
@@ -80,12 +83,16 @@ async function plugin(fastify, opts) {
       `INSERT INTO institutes (name,acronym,reg_no,reg_date,pan,permanent_account_no,
         contact_person,phone,email,address,type,status,renewal_due,remarks,logo,website,
         desc_template_id,narrative_template_id,services_template_id,
-        google_map_link,latitude,longitude,is_shortlisting_only)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23) RETURNING *`,
+        google_map_link,latitude,longitude,is_shortlisting_only,
+        letterhead,sign,stamp,ocr_registration,ocr_renewal,vat_registration,vat_extension,ctevt_affiliation,ctevt_renewal)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27,$28,$29,$30,$31,$32) RETURNING *`,
       [name,acronym,reg_no||null,reg_date,pan,permanent_account_no,
        contact_person,phone,email,address,type,status||'Active',renewal_due,remarks,logo||null,website||null,
        desc_template_id||null,narrative_template_id||null,services_template_id||null,
-       google_map_link||null,latitude||null,longitude||null,!!is_shortlisting_only]
+       google_map_link||null,latitude||null,longitude||null,!!is_shortlisting_only,
+       letterhead||null,sign||null,stamp||null,
+       ocr_registration||null,ocr_renewal||null,vat_registration||null,vat_extension||null,
+       ctevt_affiliation||null,ctevt_renewal||null]
     );
     return reply.code(201).send(rows[0]);
   });
@@ -99,18 +106,27 @@ async function plugin(fastify, opts) {
     const { name, acronym, reg_no, reg_date, pan, permanent_account_no,
       contact_person, phone, email, address, type, status, renewal_due, remarks, logo, website,
       desc_template_id, narrative_template_id, services_template_id,
-      google_map_link, latitude, longitude, is_shortlisting_only } = request.body;
+      google_map_link, latitude, longitude, is_shortlisting_only,
+      letterhead, sign, stamp,
+      ocr_registration, ocr_renewal, vat_registration, vat_extension,
+      ctevt_affiliation, ctevt_renewal } = request.body;
     const { rows } = await pool.query(
       `UPDATE institutes SET name=$1,acronym=$2,reg_no=$3,reg_date=$4,pan=$5,
         permanent_account_no=$6,contact_person=$7,phone=$8,email=$9,address=$10,
         type=$11,status=$12,renewal_due=$13,remarks=$14,logo=$15,website=$16,
         desc_template_id=$17,narrative_template_id=$18,services_template_id=$19,
-        google_map_link=$20,latitude=$21,longitude=$22,is_shortlisting_only=$23
-       WHERE id=$24 RETURNING *`,
+        google_map_link=$20,latitude=$21,longitude=$22,is_shortlisting_only=$23,
+        letterhead=$24,sign=$25,stamp=$26,
+        ocr_registration=$27,ocr_renewal=$28,vat_registration=$29,vat_extension=$30,
+        ctevt_affiliation=$31,ctevt_renewal=$32
+       WHERE id=$33 RETURNING *`,
       [name,acronym,reg_no||null,reg_date,pan,permanent_account_no,
        contact_person,phone,email,address,type,status,renewal_due,remarks,logo||null,website||null,
        desc_template_id||null,narrative_template_id||null,services_template_id||null,
-       google_map_link||null,latitude||null,longitude||null,!!is_shortlisting_only,id]
+       google_map_link||null,latitude||null,longitude||null,!!is_shortlisting_only,
+       letterhead||null,sign||null,stamp||null,
+       ocr_registration||null,ocr_renewal||null,vat_registration||null,vat_extension||null,
+       ctevt_affiliation||null,ctevt_renewal||null,id]
     );
     if (!rows.length) return reply.code(404).send({ error: 'Not found' });
     return rows[0];
