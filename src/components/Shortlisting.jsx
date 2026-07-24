@@ -108,14 +108,14 @@ function openShortlistLetter(row, opts = {}) {
     -webkit-print-color-adjust: exact; print-color-adjust: exact;
     ${useLhBg ? `
     background-image: url('${firmLetterhead}');
-    background-size: 100% auto;
+    background-size: 100% 297mm;
     background-repeat: no-repeat;
-    background-position: top center;` : ''}
+    background-position: top left;` : ''}
   }
   /* Content sits on top of the background letterhead */
   .page {
     ${useLhBg
-      ? `padding: ${pageTopMargin}mm ${lhGap}mm 20mm ${lhGap}mm; min-height: 297mm; position: relative;`
+      ? `padding: ${pageTopMargin}mm ${lhGap}mm 20mm ${lhGap}mm; min-height: 297mm; width: 210mm; position: relative;`
       : 'max-width: 174mm; margin: 0 auto;'
     }
   }
