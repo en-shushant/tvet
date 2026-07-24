@@ -33,34 +33,36 @@ function todayBS() {
 
 // ── Letter generator — opens print-ready A4 in new window ─────────────────────
 function openShortlistLetter(row) {
-  const orgName      = row.client_name || row.client_name_manual || '';
-  const orgShort     = row.client_short || '';
-  const orgAddress   = row.client_address || '';
-  const orgPhone     = row.client_phone || '';
-  const orgEmail     = row.client_email || '';
-  const orgWebsite   = row.client_website || '';
-  const orgSignatory = row.client_signatory_name || '';
-  const orgSignPos   = row.client_signatory_position || '';
-  const orgLetterhead = row.client_letterhead || '';
-  const firmName     = row.institute_name || '';
-  const firmAcronym  = row.institute_acronym || '';
-  const firmAddress  = row.institute_address || '';
-  const firmPhone    = row.institute_phone || '';
-  const firmEmail    = row.institute_email || '';
-  const firmRegNo    = row.institute_reg_no || '';
-  const listName     = row.standing_list_name || 'Standing List';
-  const fy           = row.fy || '';
-  const dateBS       = bsDateLabel(row.shortlist_date);
-  const validBS      = bsDateLabel(row.valid_until);
-  const dateAD       = fmt(row.shortlist_date);
-  const validAD      = fmt(row.valid_until);
-  const status       = row.status || 'Active';
-  const remarks      = row.remarks || '';
-  const todayBSStr   = todayBS();
+  // Firm (institute) — letterhead owner
+  const firmName    = row.institute_name || '';
+  const firmAcronym = row.institute_acronym || '';
+  const firmAddress = row.institute_address || '';
+  const firmPhone   = row.institute_phone || '';
+  const firmEmail   = row.institute_email || '';
+  const firmWebsite = row.institute_website || '';
+  const firmRegNo   = row.institute_reg_no || '';
+  const firmPan     = row.institute_pan || '';
+  const firmLogo    = row.institute_logo || null;
+  const firmContact = row.institute_contact || '';
+  // To — procuring entity (client)
+  const toName      = row.client_name || row.client_name_manual || '';
+  const toShort     = row.client_short || '';
+  const toAddress   = row.client_address || '';
+  const toContact   = row.client_signatory_position || '';
+  // Shortlisting details
+  const listName  = row.standing_list_name || 'Standing List';
+  const fy        = row.fy || '';
+  const dateBS    = bsDateLabel(row.shortlist_date);
+  const validBS   = bsDateLabel(row.valid_until);
+  const dateAD    = fmt(row.shortlist_date);
+  const validAD   = fmt(row.valid_until);
+  const status    = row.status || 'Active';
+  const remarks   = row.remarks || '';
+  const todayBSStr = todayBS();
 
   const statusNp = status === 'Active' ? 'सक्रिय' : status === 'Expired' ? 'म्याद सकिएको' : 'प्रक्रियामा';
-  const orgMeta = [orgAddress, orgPhone ? `फोन: ${orgPhone}` : '', orgEmail, orgWebsite].filter(Boolean).join('  |  ');
   const todayAD = new Date().toLocaleDateString('en-GB', { day:'2-digit', month:'long', year:'numeric' });
+  const firmMeta = [firmAddress, firmPhone ? `फोन: ${firmPhone}` : '', firmEmail, firmWebsite].filter(Boolean).join('  |  ');
 
   const html = `<!DOCTYPE html>
 <html lang="ne">
@@ -70,40 +72,65 @@ function openShortlistLetter(row) {
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Devanagari:wght@400;600;700&display=swap" rel="stylesheet">
 <style>
-  @page { size: A4; margin: 18mm 20mm 20mm 25mm; }
+  @page { size: A4; margin: 15mm 18mm 18mm 22mm; }
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body {
     font-family: 'Noto Sans Devanagari', 'Mangal', 'Arial Unicode MS', sans-serif;
-    font-size: 12pt; color: #111; line-height: 1.8; background: #fff;
+    font-size: 11.5pt; color: #111; line-height: 1.75; background: #fff;
   }
-  .page { max-width: 170mm; margin: 0 auto; }
+  .page { max-width: 174mm; margin: 0 auto; }
 
-  .org-block { text-align: center; border-bottom: 2.5px double #333; padding-bottom: 10px; margin-bottom: 16px; }
-  .org-lh    { max-width: 100%; max-height: 90px; object-fit: contain; margin-bottom: 6px; }
-  .org-name  { font-size: 15pt; font-weight: 700; }
-  .org-sub   { font-size: 9.5pt; color: #555; margin-top: 4px; }
+  /* ── Letterhead ── */
+  .lh-regpan {
+    display: flex; justify-content: space-between;
+    font-size: 9pt; font-style: italic; color: #7b1a1a; margin-bottom: 6px;
+  }
+  .lh-center { text-align: center; }
+  .lh-logo   { max-height: 80px; max-width: 80px; object-fit: contain; margin-bottom: 4px; }
+  .lh-name-np { font-size: 16pt; font-weight: 700; color: #7b1a1a; line-height: 1.3; }
+  .lh-name-en { font-size: 11pt; font-weight: 700; color: #7b1a1a; letter-spacing: 0.3px; margin-top: 2px; }
+  .lh-meta   { font-size: 9pt; color: #333; margin-top: 5px; line-height: 1.6; }
+  .lh-border { border-bottom: 3px double #7b1a1a; margin: 8px 0 14px; }
 
-  .meta-row  { display: flex; justify-content: space-between; font-size: 10.5pt; margin-bottom: 16px; color: #333; }
+  /* ── Ref / Date row ── */
+  .ref-row { display: flex; justify-content: space-between; font-size: 11pt; margin-bottom: 14px; }
 
-  .to-block  { margin-bottom: 14px; font-size: 11.5pt; }
+  /* ── To block ── */
+  .to-block { margin-bottom: 14px; font-size: 11.5pt; line-height: 1.7; }
 
-  .subject   { font-size: 12pt; font-weight: 700; margin-bottom: 14px; text-decoration: underline; text-underline-offset: 3px; }
-  .body-text { margin-bottom: 12px; text-align: justify; }
+  /* ── Subject ── */
+  .subject { text-align: center; font-size: 12pt; font-weight: 700;
+             text-decoration: underline; text-underline-offset: 3px; margin-bottom: 14px; }
 
-  table { width: 100%; border-collapse: collapse; margin: 10px 0 14px; font-size: 11pt; }
-  th { background: #f2f2f2; border: 1px solid #bbb; padding: 6px 10px; text-align: left; font-weight: 700; }
+  .body-text { margin-bottom: 11px; text-align: justify; }
+
+  /* ── तपशिल table ── */
+  .tapasil-label { font-weight: 700; font-size: 11.5pt; margin-bottom: 4px; }
+  table { width: 100%; border-collapse: collapse; margin-bottom: 14px; font-size: 11pt; }
+  th { background: #f0e8e8; border: 1px solid #bbb; padding: 6px 10px; text-align: left; font-weight: 700; }
   td { border: 1px solid #bbb; padding: 6px 10px; }
-  td:first-child { font-weight: 600; width: 42%; color: #333; background: #fafafa; }
+  td.label { font-weight: 600; width: 44%; color: #333; background: #fafafa; }
 
-  .remarks-block { font-size: 11pt; color: #444; margin-bottom: 14px; padding: 8px 12px; border-left: 3px solid #ccc; background: #fafafa; }
+  .remarks-block { font-size: 11pt; color: #444; margin-bottom: 14px;
+                   padding: 7px 12px; border-left: 3px solid #ccc; background: #fafafa; }
 
-  .sign-area  { margin-top: 48px; display: flex; justify-content: flex-end; }
-  .sign-box   { text-align: center; min-width: 210px; }
-  .sign-space { height: 52px; }
-  .sign-line  { border-top: 1px solid #444; padding-top: 6px; }
-  .sign-name  { font-weight: 700; font-size: 11.5pt; }
-  .sign-pos   { font-size: 10pt; color: #555; margin-top: 2px; }
-  .sign-org   { font-size: 10pt; color: #333; font-weight: 600; margin-top: 2px; }
+  /* ── Bottom sign/stamp row ── */
+  .bottom-row {
+    margin-top: 40px;
+    display: flex; align-items: flex-end; justify-content: space-between;
+    border: 1px solid #bbb;
+  }
+  .bottom-cell { padding: 10px 14px; flex: 1; font-size: 11pt; line-height: 2; }
+  .bottom-cell.stamp {
+    flex: 0 0 130px; min-height: 110px; border-left: 1px solid #bbb; border-right: 1px solid #bbb;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .stamp-circle {
+    width: 95px; height: 95px; border-radius: 50%;
+    border: 1.5px dashed #aaa; display: flex; align-items: center; justify-content: center;
+    color: #bbb; font-size: 9pt; text-align: center; line-height: 1.4;
+  }
+  .sign-line { margin-top: 6px; border-top: 1px solid #888; padding-top: 4px; }
 
   @media print {
     body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
@@ -114,69 +141,71 @@ function openShortlistLetter(row) {
 <body>
 <div class="page">
 
-  <!-- संस्थाको लेटरहेड -->
-  <div class="org-block">
-    ${orgLetterhead
-      ? `<img src="${orgLetterhead}" class="org-lh" alt="${orgName}"/>`
-      : `<div class="org-name">${orgName}${orgShort && orgShort !== orgName ? ` (${orgShort})` : ''}</div>`
-    }
-    ${orgMeta ? `<div class="org-sub">${orgMeta}</div>` : ''}
+  <!-- Letterhead -->
+  ${firmRegNo || firmPan ? `
+  <div class="lh-regpan">
+    <span>${firmRegNo ? 'Govt. Regd.No. ' + firmRegNo : ''}</span>
+    <span>${firmPan ? 'PAN No. ' + firmPan : ''}</span>
+  </div>` : ''}
+
+  <div class="lh-center">
+    ${firmLogo ? `<div><img src="${firmLogo}" class="lh-logo" alt="${firmName}"/></div>` : ''}
+    <div class="lh-name-np">${firmName}</div>
+    ${firmAcronym && firmAcronym !== firmName ? `<div class="lh-name-en">${firmAcronym}</div>` : ''}
+    ${firmMeta ? `<div class="lh-meta">${firmMeta}</div>` : ''}
+  </div>
+  <div class="lh-border"></div>
+
+  <!-- Ref / Date -->
+  <div class="ref-row">
+    <div><strong>Ref.</strong></div>
+    <div><strong>मिति:</strong> ${todayBSStr}</div>
   </div>
 
-  <!-- मिति -->
-  <div class="meta-row">
-    <div><strong>पत्र संख्या:</strong> _______________</div>
-    <div><strong>मिति:</strong> ${todayBSStr} (${todayAD})</div>
-  </div>
-
-  <!-- सेवामा -->
+  <!-- To -->
   <div class="to-block">
-    <div><strong>सेवामा,</strong></div>
-    <div>महाप्रबन्धक/निर्देशक महोदय,</div>
-    <div><strong>${firmName}${firmAcronym ? ` (${firmAcronym})` : ''}</strong></div>
-    ${firmAddress ? `<div>${firmAddress}</div>` : ''}
-    ${firmPhone   ? `<div>फोन: ${firmPhone}</div>` : ''}
-    ${firmEmail   ? `<div>इमेल: ${firmEmail}</div>` : ''}
-    ${firmRegNo   ? `<div style="color:#555;font-size:10.5pt">दर्ता नं.: ${firmRegNo}</div>` : ''}
+    <div>श्री ${toContact || 'कार्यालय प्रमुख'} ज्यू,</div>
+    <div><strong>${toName}${toShort && toShort !== toName ? ` (${toShort})` : ''}</strong></div>
+    ${toAddress ? `<div>${toAddress}</div>` : ''}
   </div>
 
-  <!-- विषय -->
-  <div class="subject">विषय: छनोट सूचना — ${listName}${fy ? ' (आ.व. ' + fy + ')' : ''}</div>
+  <!-- Subject -->
+  <div class="subject">विषय: मौजुदा सूचीमा दर्ता भएको पुष्टि।</div>
 
-  <div class="body-text">महोदय/महोदया,</div>
   <div class="body-text">
-    उपरोक्त विषयमा <strong>${firmName}${firmAcronym ? ` (${firmAcronym})` : ''}</strong> लाई ${orgName ? '<strong>' + orgName + '</strong> द्वारा सञ्चालित ' : ''}<strong>${listName}</strong>${fy ? ' आ.व. <strong>' + fy + '</strong> को लागि' : ''} छनोट (Shortlist) भएको जानकारी दिन पाउँदा हर्ष लाग्दछ।
+    सार्वजनिक खरिद नियमावली बमोजिम <strong>${toName}</strong> को <strong>${listName}</strong>${fy ? ' आ.व. <strong>' + fy + '</strong> को लागि' : ''} मौजुदा सूचीमा दर्ता भएको व्यहोरा तपशिलमा उल्लेखित विवरण अनुसार पुष्टि गर्दछौं।
   </div>
-  <div class="body-text">छनोटको विवरण निम्नानुसार छ:</div>
 
+  <div class="tapasil-label">तपशिल:</div>
   <table>
-    <tr><th colspan="2">छनोटको विवरण</th></tr>
-    <tr><td>स्थायी सूचीको नाम</td><td>${listName}</td></tr>
-    ${fy      ? `<tr><td>आर्थिक वर्ष</td><td>${fy}</td></tr>` : ''}
-    <tr><td>छनोट मिति</td><td>${dateBS ? dateBS + ' (वि.सं.)' : ''} ${dateAD !== '—' ? '/ ' + dateAD + ' (ई.सं.)' : ''}</td></tr>
-    ${validBS ? `<tr><td>मान्य मिति सम्म</td><td>${validBS} (वि.सं.) / ${validAD} (ई.सं.)</td></tr>` : ''}
-    <tr><td>स्थिति</td><td><strong>${statusNp}</strong></td></tr>
-    ${orgName ? `<tr><td>संस्था</td><td>${orgName}</td></tr>` : ''}
+    <tr><td class="label">फर्म/संस्थाको नाम</td><td>${firmName}${firmAcronym ? ' (' + firmAcronym + ')' : ''}</td></tr>
+    ${firmRegNo ? `<tr><td class="label">दर्ता नं.</td><td>${firmRegNo}</td></tr>` : ''}
+    ${firmPan   ? `<tr><td class="label">स्थायी लेखा नं. (PAN)</td><td>${firmPan}</td></tr>` : ''}
+    ${firmAddress ? `<tr><td class="label">ठेगाना</td><td>${firmAddress}</td></tr>` : ''}
+    <tr><td class="label">स्थायी सूचीको नाम</td><td>${listName}</td></tr>
+    ${fy        ? `<tr><td class="label">आर्थिक वर्ष</td><td>${fy}</td></tr>` : ''}
+    <tr><td class="label">छनोट मिति</td><td>${dateBS ? dateBS + ' (वि.सं.)' : ''} ${dateAD !== '—' ? '/ ' + dateAD + ' (ई.सं.)' : ''}</td></tr>
+    ${validBS   ? `<tr><td class="label">मान्य मिति सम्म</td><td>${validBS} (वि.सं.) / ${validAD} (ई.सं.)</td></tr>` : ''}
+    <tr><td class="label">स्थिति</td><td><strong>${statusNp}</strong></td></tr>
+    ${toName    ? `<tr><td class="label">खरिद गर्ने निकाय</td><td>${toName}</td></tr>` : ''}
   </table>
 
   ${remarks ? `<div class="remarks-block"><strong>कैफियत:</strong> ${remarks}</div>` : ''}
 
-  <div class="body-text">
-    कृपया यस छनोट अवधिभर सबै आवश्यक कागजातहरू र योग्यताहरू अद्यावधिक तथा मान्य राख्नुहोला। तपाईंसँगको सहकार्यको अपेक्षा राख्दछौं।
-  </div>
-
-  <!-- हस्ताक्षर -->
-  <div class="sign-area">
-    <div class="sign-box">
-      <div class="sign-space"></div>
-      <div class="sign-line">
-        <div class="sign-name">${orgSignatory || 'अधिकृत हस्ताक्षरकर्ता'}</div>
-        ${orgSignPos ? `<div class="sign-pos">${orgSignPos}</div>` : ''}
-        <div class="sign-org">${orgName}</div>
-      </div>
+  <!-- Bottom: Date+FY | Stamp | Name+Signature -->
+  <div class="bottom-row">
+    <div class="bottom-cell">
+      <div>पत्र दिएको मिति: ${todayBSStr}</div>
+      ${fy ? `<div>आ.व.: ${fy}</div>` : ''}
+    </div>
+    <div class="bottom-cell stamp">
+      <div class="stamp-circle">फर्मको<br>छाप</div>
+    </div>
+    <div class="bottom-cell" style="text-align:right">
+      <div>निवेदकको नाम: ${firmContact || '_______________'}</div>
+      <div class="sign-line">हस्ताक्षर: _______________</div>
     </div>
   </div>
-
 
 </div>
 <script>window.onload = function() { window.print(); };</script>
