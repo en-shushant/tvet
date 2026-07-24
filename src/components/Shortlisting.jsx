@@ -89,6 +89,8 @@ function openShortlistLetter(row, opts = {}) {
   ${sigstampBar}
 </div>`).join('');
 
+  const useLhBg = !!firmLetterhead;
+
   const html = `<!DOCTYPE html>
 <html lang="ne">
 <head>
@@ -97,24 +99,34 @@ function openShortlistLetter(row, opts = {}) {
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Devanagari:wght@400;600;700&display=swap" rel="stylesheet">
 <style>
-  @page { size: A4; margin: ${pageTopMargin}mm 18mm 18mm 22mm; }
+  /* When letterhead image: no @page margin — page div carries the padding */
+  @page { size: A4; margin: ${useLhBg ? '0' : `${pageTopMargin}mm 18mm 18mm 22mm`}; }
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body {
     font-family: 'Noto Sans Devanagari', 'Mangal', 'Arial Unicode MS', sans-serif;
-    font-size: 11.5pt; color: #111; line-height: 1.75; background: #fff;
+    font-size: 11.5pt; color: #111; line-height: 1.75;
+    -webkit-print-color-adjust: exact; print-color-adjust: exact;
+    ${useLhBg ? `
+    background-image: url('${firmLetterhead}');
+    background-size: 100% auto;
+    background-repeat: no-repeat;
+    background-position: top center;` : ''}
   }
-  .page { max-width: 174mm; margin: 0 auto; }
+  /* Content sits on top of the background letterhead */
+  .page {
+    ${useLhBg
+      ? `padding: ${pageTopMargin}mm ${lhGap}mm 20mm ${lhGap}mm; min-height: 297mm; position: relative;`
+      : 'max-width: 174mm; margin: 0 auto;'
+    }
+  }
 
-  /* Letterhead fallback (text-based) */
+  /* Text-based letterhead fallback */
   .lh-regpan { display:flex; justify-content:space-between; font-size:9pt; font-style:italic; color:#7b1a1a; margin-bottom:6px; }
   .lh-center { text-align:center; }
   .lh-logo   { max-height:80px; max-width:80px; object-fit:contain; margin-bottom:4px; }
   .lh-name   { font-size:16pt; font-weight:700; color:#7b1a1a; line-height:1.3; }
   .lh-meta   { font-size:9pt; color:#333; margin-top:5px; line-height:1.6; }
-  .lh-border { border-bottom:3px double #7b1a1a; margin:8px 0 14px; }
-
-  /* Letterhead image */
-  .lh-img    { width:100%; display:block; margin-bottom:${lhGap}mm; }
+  .lh-border { border-bottom:3px double #7b1a1a; margin:8px 0 ${lhGap}mm; }
 
   .ref-row   { display:flex; justify-content:space-between; font-size:11pt; margin-bottom:14px; }
   .to-block  { margin-bottom:14px; font-size:11.5pt; line-height:1.7; }
@@ -134,24 +146,20 @@ function openShortlistLetter(row, opts = {}) {
   .bot-stamp  { flex:0 0 130px; min-height:110px; border-left:1px solid #bbb; border-right:1px solid #bbb; display:flex; align-items:center; justify-content:center; }
   .stamp-ring { width:95px; height:95px; border-radius:50%; border:1.5px dashed #aaa; display:flex; align-items:center; justify-content:center; color:#bbb; font-size:9pt; text-align:center; line-height:1.4; }
   .sign-line  { margin-top:6px; border-top:1px solid #888; padding-top:4px; }
-
-  @media print {
-    body { -webkit-print-color-adjust:exact; print-color-adjust:exact; }
-  }
 </style>
 </head>
 <body>
 <div class="page">
 
-  ${firmLetterhead
-    ? `<img src="${firmLetterhead}" class="lh-img" alt="${firmName}">`
-    : `${firmRegNo || firmPan ? `<div class="lh-regpan"><span>${firmRegNo ? 'Govt. Regd.No. ' + firmRegNo : ''}</span><span>${firmPan ? 'PAN No. ' + firmPan : ''}</span></div>` : ''}
+  ${!useLhBg
+    ? `${firmRegNo || firmPan ? `<div class="lh-regpan"><span>${firmRegNo ? 'Govt. Regd.No. ' + firmRegNo : ''}</span><span>${firmPan ? 'PAN No. ' + firmPan : ''}</span></div>` : ''}
        <div class="lh-center">
          ${firmLogo ? `<img src="${firmLogo}" class="lh-logo" alt="${firmName}">` : ''}
          <div class="lh-name">${firmName}${firmAcronym && firmAcronym !== firmName ? ` (${firmAcronym})` : ''}</div>
          ${firmMeta ? `<div class="lh-meta">${firmMeta}</div>` : ''}
        </div>
        <div class="lh-border"></div>`
+    : ''
   }
 
   <div class="ref-row">
@@ -488,18 +496,18 @@ function LetterOptsModal({ row, onClose }) {
         {row.institute_letterhead && (
           <div style={{display:'flex', gap:12}}>
             <div className="form-group" style={{flex:1, margin:0}}>
-              <label style={{fontSize:12, fontWeight:600}}>Page top margin (mm)</label>
-              <input type="number" min={0} max={60} value={pageTopMargin}
+              <label style={{fontSize:12, fontWeight:600}}>Text start from top (mm)</label>
+              <input type="number" min={0} max={200} value={pageTopMargin}
                 onChange={e=>setPageTopMargin(Number(e.target.value))}
                 style={{width:'100%', marginTop:4}}/>
-              <div className="input-hint">White space above the letterhead image</div>
+              <div className="input-hint">Push body text down to clear the letterhead</div>
             </div>
             <div className="form-group" style={{flex:1, margin:0}}>
-              <label style={{fontSize:12, fontWeight:600}}>Space after letterhead (mm)</label>
-              <input type="number" min={0} max={80} value={lhGap}
+              <label style={{fontSize:12, fontWeight:600}}>Left/right padding (mm)</label>
+              <input type="number" min={0} max={60} value={lhGap}
                 onChange={e=>setLhGap(Number(e.target.value))}
                 style={{width:'100%', marginTop:4}}/>
-              <div className="input-hint">Gap between letterhead image and body text</div>
+              <div className="input-hint">Horizontal margin inside the page</div>
             </div>
           </div>
         )}
