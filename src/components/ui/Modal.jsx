@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { MdDialogEl } from '../../md.jsx';
 import { Btn } from '../../md.jsx';
 
@@ -9,7 +10,7 @@ export default function Modal({ title, onClose, children, footer, size = '' }) {
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
-    el.showModal();
+    el.show();
     const onCancel = () => onClose();
     el.addEventListener('cancel', onCancel);
     return () => el.removeEventListener('cancel', onCancel);
@@ -20,7 +21,9 @@ export default function Modal({ title, onClose, children, footer, size = '' }) {
     onClose();
   };
 
-  return (
+  // Portal to document.body so position:fixed inside md-dialog isn't
+  // trapped by any ancestor CSS transform in the app layout.
+  return createPortal(
     <MdDialogEl ref={ref} size={size || undefined}>
       <div slot="headline" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <span style={{ fontWeight: 500 }}>{title}</span>
@@ -44,7 +47,8 @@ export default function Modal({ title, onClose, children, footer, size = '' }) {
           {footer}
         </div>
       )}
-    </MdDialogEl>
+    </MdDialogEl>,
+    document.body
   );
 }
 
