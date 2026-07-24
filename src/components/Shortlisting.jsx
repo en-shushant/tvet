@@ -84,8 +84,8 @@ function openShortlistLetter(row, opts = {}) {
   ];
   const sigstampBar = includeSignStamp && (firmSign || firmStamp) ? `
     <div style="display:flex;align-items:flex-end;justify-content:flex-end;gap:12px;margin-top:10px;">
-      ${firmStamp ? `<img src="${firmStamp}" style="max-width:80px;max-height:80px;object-fit:contain">` : ''}
-      ${firmSign  ? `<img src="${firmSign}"  style="max-width:140px;max-height:52px;object-fit:contain">` : ''}
+      ${firmStamp ? `<img src="${firmStamp}" style="height:113px;width:113px;object-fit:contain">` : ''}
+      ${firmSign  ? `<img src="${firmSign}"  style="height:83px;width:auto">` : ''}
     </div>` : '';
   const docPages = docDefs.filter(d => docs[d.key] && d.src).map(d => `
 <div style="page-break-before:always;padding:10mm 0 0;">
