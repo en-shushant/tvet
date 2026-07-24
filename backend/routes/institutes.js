@@ -76,22 +76,22 @@ async function plugin(fastify, opts) {
       ocr_registration, ocr_renewal, vat_registration, vat_extension,
       ctevt_affiliation, ctevt_renewal,
       name_np, address_np, contact_person_np,
-      tax_clearance_doc, letter_top_margin, letter_lr_padding, letter_bottom_padding } = request.body;
+      tax_clearance_doc, letter_top_margin, letter_lr_padding, letter_bottom_padding, mobile } = request.body;
     if (!name) return reply.code(400).send({ error: 'name is required' });
     if (!reg_no && !is_shortlisting_only) return reply.code(400).send({ error: 'reg_no is required' });
     if (name.length > 300) return reply.code(400).send({ error: 'name too long (max 300 chars)' });
     if (remarks && remarks.length > 2000) return reply.code(400).send({ error: 'remarks too long (max 2000 chars)' });
     const { rows } = await pool.query(
       `INSERT INTO institutes (name,acronym,reg_no,reg_date,pan,permanent_account_no,
-        contact_person,phone,email,address,type,status,renewal_due,remarks,logo,website,
+        contact_person,phone,mobile,email,address,type,status,renewal_due,remarks,logo,website,
         desc_template_id,narrative_template_id,services_template_id,
         google_map_link,latitude,longitude,is_shortlisting_only,
         letterhead,sign,stamp,ocr_registration,ocr_renewal,vat_registration,vat_extension,
         ctevt_affiliation,ctevt_renewal,name_np,address_np,contact_person_np,tax_clearance_doc,
         letter_top_margin,letter_lr_padding,letter_bottom_padding)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27,$28,$29,$30,$31,$32,$33,$34,$35,$36,$37,$38,$39) RETURNING *`,
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27,$28,$29,$30,$31,$32,$33,$34,$35,$36,$37,$38,$39,$40) RETURNING *`,
       [name,acronym,reg_no||null,reg_date,pan,permanent_account_no,
-       contact_person,phone,email,address,type,status||'Active',renewal_due,remarks,logo||null,website||null,
+       contact_person,phone,mobile||null,email,address,type,status||'Active',renewal_due,remarks,logo||null,website||null,
        desc_template_id||null,narrative_template_id||null,services_template_id||null,
        google_map_link||null,latitude||null,longitude||null,!!is_shortlisting_only,
        letterhead||null,sign||null,stamp||null,
@@ -117,21 +117,21 @@ async function plugin(fastify, opts) {
       ocr_registration, ocr_renewal, vat_registration, vat_extension,
       ctevt_affiliation, ctevt_renewal,
       name_np, address_np, contact_person_np,
-      tax_clearance_doc, letter_top_margin, letter_lr_padding, letter_bottom_padding } = request.body;
+      tax_clearance_doc, letter_top_margin, letter_lr_padding, letter_bottom_padding, mobile } = request.body;
     const { rows } = await pool.query(
       `UPDATE institutes SET name=$1,acronym=$2,reg_no=$3,reg_date=$4,pan=$5,
-        permanent_account_no=$6,contact_person=$7,phone=$8,email=$9,address=$10,
-        type=$11,status=$12,renewal_due=$13,remarks=$14,logo=$15,website=$16,
-        desc_template_id=$17,narrative_template_id=$18,services_template_id=$19,
-        google_map_link=$20,latitude=$21,longitude=$22,is_shortlisting_only=$23,
-        letterhead=$24,sign=$25,stamp=$26,
-        ocr_registration=$27,ocr_renewal=$28,vat_registration=$29,vat_extension=$30,
-        ctevt_affiliation=$31,ctevt_renewal=$32,
-        name_np=$33,address_np=$34,contact_person_np=$35,tax_clearance_doc=$36,
-        letter_top_margin=$37,letter_lr_padding=$38,letter_bottom_padding=$39
-       WHERE id=$40 RETURNING *`,
+        permanent_account_no=$6,contact_person=$7,phone=$8,mobile=$9,email=$10,address=$11,
+        type=$12,status=$13,renewal_due=$14,remarks=$15,logo=$16,website=$17,
+        desc_template_id=$18,narrative_template_id=$19,services_template_id=$20,
+        google_map_link=$21,latitude=$22,longitude=$23,is_shortlisting_only=$24,
+        letterhead=$25,sign=$26,stamp=$27,
+        ocr_registration=$28,ocr_renewal=$29,vat_registration=$30,vat_extension=$31,
+        ctevt_affiliation=$32,ctevt_renewal=$33,
+        name_np=$34,address_np=$35,contact_person_np=$36,tax_clearance_doc=$37,
+        letter_top_margin=$38,letter_lr_padding=$39,letter_bottom_padding=$40
+       WHERE id=$41 RETURNING *`,
       [name,acronym,reg_no||null,reg_date,pan,permanent_account_no,
-       contact_person,phone,email,address,type,status,renewal_due,remarks,logo||null,website||null,
+       contact_person,phone,mobile||null,email,address,type,status,renewal_due,remarks,logo||null,website||null,
        desc_template_id||null,narrative_template_id||null,services_template_id||null,
        google_map_link||null,latitude||null,longitude||null,!!is_shortlisting_only,
        letterhead||null,sign||null,stamp||null,

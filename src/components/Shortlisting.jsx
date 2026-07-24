@@ -39,6 +39,7 @@ function openShortlistLetter(row, opts = {}) {
   const firmAcronym     = row.institute_acronym || '';
   const firmAddress     = row.institute_address || '';
   const firmPhone       = row.institute_phone || '';
+  const firmMobile      = row.institute_mobile || '';
   const firmEmail       = row.institute_email || '';
   const firmWebsite     = row.institute_website || '';
   const firmRegNo       = row.institute_reg_no || '';
@@ -52,6 +53,7 @@ function openShortlistLetter(row, opts = {}) {
   const firmAddressNp   = row.institute_address_np || firmAddress;
   const firmContactNp   = row.institute_contact_np || firmContact;
   const firmPhoneNp     = firmPhone ? toNpNum(firmPhone) : '';
+  const firmMobileNp    = firmMobile ? toNpNum(firmMobile) : '';
   // To — procuring entity (client)
   const toName          = row.client_name || row.client_name_manual || '';
   const toShort         = row.client_short || '';
@@ -200,7 +202,7 @@ function openShortlistLetter(row, opts = {}) {
     </tr>
     <tr>
       <td class="half">(ड) टेलिफोन नं: ${firmPhoneNp}</td>
-      <td class="half">(च) मोबाईल नं: </td>
+      <td class="half">(च) मोबाईल नं: ${firmMobileNp}</td>
     </tr>
 
     <!-- §2 document checklist -->

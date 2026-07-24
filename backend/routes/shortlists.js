@@ -24,6 +24,7 @@ async function plugin(fastify, opts) {
         c.letterhead       AS client_letterhead,
         i.name        AS institute_name, i.acronym     AS institute_acronym,
         i.address     AS institute_address, i.phone    AS institute_phone,
+        i.mobile      AS institute_mobile,
         i.email       AS institute_email,   i.website  AS institute_website,
         i.contact_person AS institute_contact,
         i.reg_no      AS institute_reg_no,  i.pan      AS institute_pan,

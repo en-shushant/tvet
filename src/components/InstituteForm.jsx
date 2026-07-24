@@ -8,7 +8,7 @@ import { INSTITUTE_TYPES, INSTITUTE_STATUSES } from '../constants/data.js';
 function InstituteForm({institute, onSave, onClose, isSuperAdmin}) {
   const [form, setForm] = useState(institute || {
     name:'', acronym:'', regNo:'', regDate:'', pan:'', permanentAccountNo:'',
-    contactPerson:'', phone:'', email:'', address:'',
+    contactPerson:'', phone:'', mobile:'', email:'', address:'',
     type:'Private', status:'Active', renewalDue:'', remarks:'', logo:null, website:'', googleMapLink:'', latitude:'', longitude:'',
     isShortlistingOnly: false,
     nameNp: '', addressNp: '', contactPersonNp: '',
@@ -87,6 +87,10 @@ function InstituteForm({institute, onSave, onClose, isSuperAdmin}) {
         <div className="form-group">
           <label>Phone</label>
           <input value={form.phone} onChange={e=>set('phone',e.target.value)}/>
+        </div>
+        <div className="form-group">
+          <label>Mobile</label>
+          <input value={form.mobile||''} onChange={e=>set('mobile',e.target.value)}/>
         </div>
         <div className="form-group">
           <label>Email</label>

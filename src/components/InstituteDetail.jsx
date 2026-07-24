@@ -279,6 +279,7 @@ function InstituteDetail({institute, clients, onUpdateClients, onBack, onUpdate,
             {[
               ['Contact person', institute.contactPerson],
               ['Phone', institute.phone],
+              ['Mobile', institute.mobile],
               ['Email', institute.email],
               ['Website', institute.website ? <a href={institute.website} target="_blank" rel="noreferrer" style={{color:'var(--accent)'}}>{institute.website}</a> : null],
               ['Location', (institute.latitude && institute.longitude)
