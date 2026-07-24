@@ -32,6 +32,7 @@ function InstituteForm({institute, onSave, onClose, isSuperAdmin}) {
     contactPerson:'', phone:'', email:'', address:'',
     type:'Private', status:'Active', renewalDue:'', remarks:'', logo:null, website:'', googleMapLink:'', latitude:'', longitude:'',
     isShortlistingOnly: false,
+    nameNp: '', addressNp: '', contactPersonNp: '',
     letterhead: null, sign: null, stamp: null,
     ocrRegistration: null, ocrRenewal: null, vatRegistration: null, vatExtension: null,
     ctevtAffiliation: null, ctevtRenewal: null,
@@ -181,6 +182,26 @@ function InstituteForm({institute, onSave, onClose, isSuperAdmin}) {
           </div>
         </div>
       )}
+      {/* ── Nepali Letter Fields ── */}
+      <div style={{borderTop:'1px solid var(--border)', paddingTop:16, marginTop:4}}>
+        <div style={{fontWeight:700, fontSize:13, color:'var(--text2)', marginBottom:4}}>नेपाली विवरण (Nepali Fields for Letter)</div>
+        <div style={{fontSize:12, color:'var(--text3)', marginBottom:10}}>Used in the generated letter. Leave blank to fall back to English fields above.</div>
+        <div className="form-group">
+          <label>संस्थाको नाम (नेपालीमा)</label>
+          <input value={form.nameNp} onChange={e=>set('nameNp',e.target.value)} placeholder="e.g. वर्ल्ड लिङ्क टेक्निकल ट्रेनिङ् इन्स्टिच्च्यूट प्रा.लि."/>
+        </div>
+        <div className="form-row form-row-2">
+          <div className="form-group">
+            <label>ठेगाना (नेपालीमा)</label>
+            <input value={form.addressNp} onChange={e=>set('addressNp',e.target.value)} placeholder="e.g. टोखा-१०, काठमाडौं"/>
+          </div>
+          <div className="form-group">
+            <label>मुख्य व्यक्तिको नाम (नेपालीमा)</label>
+            <input value={form.contactPersonNp} onChange={e=>set('contactPersonNp',e.target.value)} placeholder="e.g. ठाकुर सुवेदी"/>
+          </div>
+        </div>
+      </div>
+
       {/* ── Letter Generation ── */}
       <div style={{borderTop:'1px solid var(--border)', paddingTop:16, marginTop:4}}>
         <div style={{fontWeight:700, fontSize:13, color:'var(--text2)', marginBottom:12}}>Letter Generation</div>

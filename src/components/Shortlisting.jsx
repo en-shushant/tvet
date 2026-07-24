@@ -48,6 +48,10 @@ function openShortlistLetter(row, opts = {}) {
   const firmSign        = row.institute_sign || null;
   const firmStamp       = row.institute_stamp || null;
   const firmContact     = row.institute_contact || '';
+  const firmNameNp      = row.institute_name_np || firmName;
+  const firmAddressNp   = row.institute_address_np || firmAddress;
+  const firmContactNp   = row.institute_contact_np || firmContact;
+  const firmPhoneNp     = firmPhone ? toNpNum(firmPhone) : '';
   // To — procuring entity (client)
   const toName          = row.client_name || row.client_name_manual || '';
   const toShort         = row.client_short || '';
@@ -91,6 +95,9 @@ function openShortlistLetter(row, opts = {}) {
 
   const useLhBg = !!firmLetterhead;
   const fyNp = fy ? toNpNum(fy) : '';
+  const serviceType = listName && listName !== 'Standing List'
+    ? listName
+    : 'सीपमूलक तथा व्यावसायिक तालिम कार्यक्रमहरु सञ्चालन';
 
   const html = `<!DOCTYPE html>
 <html lang="ne">
@@ -173,15 +180,15 @@ function openShortlistLetter(row, opts = {}) {
     <!-- §1 firm details -->
     <tr><td colspan="2" class="hdr">१. मौजुदा सूचीको लागि निवेदन दिने व्यक्ति, संस्था, आपूर्तिकर्ता, निर्माण व्यवसायी, परामर्शदाता वा सेवा प्रदायकको विवरण:</td></tr>
     <tr>
-      <td class="half">(क) नाम: ${firmName}${firmAcronym ? ' (' + firmAcronym + ')' : ''}</td>
-      <td class="half">(ख) ठेगाना: ${firmAddress}</td>
+      <td class="half">(क) नाम: ${firmNameNp}${firmAcronym ? ' (' + firmAcronym + ')' : ''}</td>
+      <td class="half">(ख) ठेगाना: ${firmAddressNp}</td>
     </tr>
     <tr>
-      <td class="half">(ग) पत्राचार गर्ने ठेगाना: ${firmAddress}</td>
-      <td class="half">(घ) मुख्य व्यक्तिको नाम: ${firmContact}</td>
+      <td class="half">(ग) पत्राचार गर्ने ठेगाना: ${firmAddressNp}</td>
+      <td class="half">(घ) मुख्य व्यक्तिको नाम: ${firmContactNp}</td>
     </tr>
     <tr>
-      <td class="half">(ड) टेलिफोन नं: ${firmPhone}</td>
+      <td class="half">(ड) टेलिफोन नं: ${firmPhoneNp}</td>
       <td class="half">(च) मोबाईल नं: </td>
     </tr>
 
@@ -207,7 +214,7 @@ function openShortlistLetter(row, opts = {}) {
         </tr>
         <tr>
           <td class="w22" style="border:none;border-right:1px solid #666;padding:5px 8px;">(ग) परामर्श सेवा:</td>
-          <td style="border:none;border-right:1px solid #666;padding:5px 8px;">${listName}</td>
+          <td style="border:none;border-right:1px solid #666;padding:5px 8px;">${serviceType}</td>
           <td class="w22" style="border:none;border-right:1px solid #666;padding:5px 8px;">(घ) अन्य सेवा:</td>
           <td class="tall" style="border:none;"></td>
         </tr>
@@ -216,28 +223,26 @@ function openShortlistLetter(row, opts = {}) {
 
     <!-- bottom: date | stamp | name+sig -->
     <tr><td colspan="2" style="padding:0;">
-      <table style="width:100%;border-collapse:collapse;">
-        <tr>
-          <td style="border:none;border-right:1px solid #666;padding:8px 10px;width:34%;vertical-align:top;line-height:2;">
-            <div>निवेदन दिएको मिति: ${todayBSStr}</div>
-            ${fyNp ? `<div>आ.व.: ${fyNp}</div>` : ''}
-          </td>
-          <td style="border:none;border-right:1px solid #666;width:32%;text-align:center;padding:8px;vertical-align:middle;">
-            <div style="font-size:9.5pt;margin-bottom:4px;">फर्मको छाप:</div>
-            ${includeSignStamp && firmStamp
-              ? `<img src="${firmStamp}" style="max-width:80px;max-height:80px;object-fit:contain;">`
-              : '<div class="stamp-ring">फर्मको<br>छाप</div>'
-            }
-          </td>
-          <td style="border:none;padding:8px 10px;width:34%;vertical-align:top;">
-            <div>निवेदकको नाम: ${firmContact || '_______________'}</div>
-            ${includeSignStamp && firmSign
-              ? `<img src="${firmSign}" style="max-width:130px;max-height:42px;object-fit:contain;display:block;margin-top:6px;">`
-              : '<div class="sign-line">हस्ताक्षर: _______________</div>'
-            }
-          </td>
-        </tr>
-      </table>
+      <div style="display:flex;min-height:100px;">
+        <div style="flex:0 0 34%;padding:8px 10px;border-right:1px solid #666;line-height:2;font-size:10pt;">
+          <div>निवेदन दिएको मिति: ${todayBSStr}</div>
+          ${fyNp ? `<div>आ.व.: ${fyNp}</div>` : ''}
+        </div>
+        <div style="flex:0 0 32%;border-right:1px solid #666;text-align:center;padding:6px 4px;">
+          <div style="font-size:9pt;margin-bottom:3px;">फर्मको छाप:</div>
+          ${includeSignStamp && firmStamp
+            ? `<img src="${firmStamp}" style="display:block;margin:0 auto;max-width:110px;height:auto;">`
+            : '<div style="width:80px;height:80px;border-radius:50%;border:1.5px dashed #aaa;display:flex;align-items:center;justify-content:center;color:#aaa;font-size:9pt;text-align:center;margin:0 auto;">फर्मको<br>छाप</div>'
+          }
+        </div>
+        <div style="flex:1;padding:8px 10px;font-size:10pt;line-height:2;">
+          <div>निवेदकको नाम: ${firmContactNp || '_______________'}</div>
+          <div style="border-top:1px solid #555;margin-top:4px;padding-top:3px;">हस्ताक्षर: ${includeSignStamp && firmSign
+            ? `<img src="${firmSign}" style="display:inline-block;vertical-align:middle;max-width:160px;height:auto;margin-left:4px;">`
+            : '_______________'
+          }</div>
+        </div>
+      </div>
     </td></tr>
   </table>
 

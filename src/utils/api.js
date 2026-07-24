@@ -100,6 +100,9 @@ export function normInst(r) {
     totalClients: parseInt(r.total_clients) || 0,
     totalAffPrograms: parseInt(r.total_aff_programs) || 0,
     isShortlistingOnly: !!r.is_shortlisting_only,
+    nameNp: r.name_np || '',
+    addressNp: r.address_np || '',
+    contactPersonNp: r.contact_person_np || '',
   };
 }
 
@@ -256,6 +259,9 @@ export function instToAPI(f) {
     latitude: f.latitude ? parseFloat(f.latitude) : null,
     longitude: f.longitude ? parseFloat(f.longitude) : null,
     is_shortlisting_only: !!f.isShortlistingOnly,
+    name_np: f.nameNp || null,
+    address_np: f.addressNp || null,
+    contact_person_np: f.contactPersonNp || null,
   };
 }
 
