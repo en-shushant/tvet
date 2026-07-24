@@ -9,7 +9,7 @@ export default function Modal({ title, onClose, children, footer, size = '' }) {
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
-    el.show();
+    el.showModal();
     const onCancel = () => onClose();
     el.addEventListener('cancel', onCancel);
     return () => el.removeEventListener('cancel', onCancel);
