@@ -136,6 +136,12 @@ async function runMigrations() {
     `ALTER TABLE institutes ADD COLUMN IF NOT EXISTS is_shortlisting_only BOOLEAN DEFAULT FALSE`,
     `ALTER TABLE shortlists ADD COLUMN IF NOT EXISTS client_name_manual TEXT`,
     `ALTER TABLE institutes ALTER COLUMN reg_no DROP NOT NULL`,
+    `ALTER TABLE clients ADD COLUMN IF NOT EXISTS phone TEXT`,
+    `ALTER TABLE clients ADD COLUMN IF NOT EXISTS email TEXT`,
+    `ALTER TABLE clients ADD COLUMN IF NOT EXISTS website TEXT`,
+    `ALTER TABLE clients ADD COLUMN IF NOT EXISTS signatory_name TEXT`,
+    `ALTER TABLE clients ADD COLUMN IF NOT EXISTS signatory_position TEXT`,
+    `ALTER TABLE clients ADD COLUMN IF NOT EXISTS letterhead TEXT`,
   ];
   for (const sql of migrations) {
     try { await pool.query(sql); }

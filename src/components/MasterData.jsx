@@ -156,7 +156,7 @@ function MasterData({clients, onUpdateClients, token, isAdmin, isEditor, isSuper
   const updateFY = (i, v) => { if (!/^\d{4}\/\d{2}$/.test(v)) return; const l=[...fiscalYears]; l[i]=v; saveFY(l.sort()); setEditFy(null); };
 
   const ClientForm = ({client, onSave, onClose}) => {
-    const [form, setForm] = useState(client || {fullName:'', shortName:'', type:'Government', address:'', remarks:''});
+    const [form, setForm] = useState(client || {fullName:'', shortName:'', type:'Government', address:'', remarks:'', phone:'', email:'', website:'', signatoryName:'', signatoryPosition:'', letterhead:null});
     const set = (k,v) => setForm(f=>({...f,[k]:v}));
     return (
       <Modal title={client ? 'Edit client' : 'Add new client'} onClose={onClose}
@@ -173,8 +173,45 @@ function MasterData({clients, onUpdateClients, token, isAdmin, isEditor, isSuper
             </select>
           </div>
         </div>
-        <div className="form-group"><label>Address</label><input value={form.address} onChange={e=>set('address',e.target.value)}/></div>
-        <div className="form-group"><label>Remarks</label><textarea value={form.remarks} onChange={e=>set('remarks',e.target.value)} rows={2}/></div>
+        <div className="form-group"><label>Address</label><input value={form.address||''} onChange={e=>set('address',e.target.value)}/></div>
+        <div className="form-row form-row-2">
+          <div className="form-group"><label>Phone</label><input value={form.phone||''} onChange={e=>set('phone',e.target.value)} placeholder="Office phone number"/></div>
+          <div className="form-group"><label>Email</label><input type="email" value={form.email||''} onChange={e=>set('email',e.target.value)} placeholder="Office email"/></div>
+        </div>
+        <div className="form-group"><label>Website <span style={{fontWeight:400,color:'var(--text3)'}}>(optional)</span></label><input value={form.website||''} onChange={e=>set('website',e.target.value)} placeholder="https://"/></div>
+
+        {/* Letter generation fields */}
+        <div style={{margin:'16px 0 10px', borderTop:'1px solid var(--border)', paddingTop:14}}>
+          <div style={{fontSize:12.5, fontWeight:600, color:'var(--text2)', marginBottom:10, letterSpacing:'0.2px'}}>
+            Letter Generation
+          </div>
+          <div style={{fontSize:11.5, color:'var(--text3)', marginBottom:12}}>
+            Used in the signature block when generating shortlisting letters for this organization.
+          </div>
+          <div className="form-row form-row-2">
+            <div className="form-group"><label>Authorized Signatory Name</label><input value={form.signatoryName||''} onChange={e=>set('signatoryName',e.target.value)} placeholder="e.g. Ram Prasad Sharma"/></div>
+            <div className="form-group"><label>Signatory Position / Designation</label><input value={form.signatoryPosition||''} onChange={e=>set('signatoryPosition',e.target.value)} placeholder="e.g. Project Director"/></div>
+          </div>
+          <div className="form-group">
+            <label>Letterhead Image <span style={{fontWeight:400,color:'var(--text3)'}}>(optional — shown at top of generated letters)</span></label>
+            <div style={{display:'flex', alignItems:'center', gap:12}}>
+              {form.letterhead && <img src={form.letterhead} alt="letterhead" style={{height:48, maxWidth:220, objectFit:'contain', border:'1px solid var(--border)', borderRadius:6, background:'#fff', padding:4}}/>}
+              <label style={{cursor:'pointer'}}>
+                <input type="file" accept="image/*" style={{display:'none'}} onChange={e=>{
+                  const file=e.target.files[0]; if(!file) return;
+                  const reader=new FileReader();
+                  reader.onload=ev=>set('letterhead',ev.target.result);
+                  reader.readAsDataURL(file);
+                }}/>
+                <span className="btn btn-secondary btn-sm">{form.letterhead ? '🔄 Change' : '📷 Upload letterhead'}</span>
+              </label>
+              {form.letterhead && <span className="btn btn-ghost btn-sm" style={{cursor:'pointer'}} onClick={()=>set('letterhead',null)}>✕ Remove</span>}
+            </div>
+            <div className="input-hint">PNG or JPG — recommended width 600–800px, height 80–120px. Max ~500 KB.</div>
+          </div>
+        </div>
+
+        <div className="form-group"><label>Remarks</label><textarea value={form.remarks||''} onChange={e=>set('remarks',e.target.value)} rows={2}/></div>
       </Modal>
     );
   };

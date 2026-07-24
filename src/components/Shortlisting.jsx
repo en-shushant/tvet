@@ -33,25 +33,32 @@ function todayBS() {
 
 // ── Letter generator — opens print-ready A4 in new window ─────────────────────
 function openShortlistLetter(row) {
-  const orgName    = row.client_name || row.client_name_manual || '';
-  const orgShort   = row.client_short || '';
-  const orgAddress = row.client_address || '';
-  const firmName   = row.institute_name || '';
-  const firmAcronym = row.institute_acronym || '';
-  const firmAddress = row.institute_address || '';
-  const firmPhone  = row.institute_phone || '';
-  const firmEmail  = row.institute_email || '';
-  const firmContact = row.institute_contact || '';
-  const firmRegNo  = row.institute_reg_no || '';
-  const listName   = row.standing_list_name || 'Standing List';
-  const fy         = row.fy || '';
-  const dateBS     = bsDateLabel(row.shortlist_date);
-  const validBS    = bsDateLabel(row.valid_until);
-  const dateAD     = fmt(row.shortlist_date);
-  const validAD    = fmt(row.valid_until);
-  const status     = row.status || 'Active';
-  const remarks    = row.remarks || '';
-  const todayBSStr = todayBS();
+  const orgName      = row.client_name || row.client_name_manual || '';
+  const orgShort     = row.client_short || '';
+  const orgAddress   = row.client_address || '';
+  const orgPhone     = row.client_phone || '';
+  const orgEmail     = row.client_email || '';
+  const orgWebsite   = row.client_website || '';
+  const orgSignatory = row.client_signatory_name || '';
+  const orgSignPos   = row.client_signatory_position || '';
+  const orgLetterhead = row.client_letterhead || '';
+  const firmName     = row.institute_name || '';
+  const firmAcronym  = row.institute_acronym || '';
+  const firmAddress  = row.institute_address || '';
+  const firmPhone    = row.institute_phone || '';
+  const firmEmail    = row.institute_email || '';
+  const firmRegNo    = row.institute_reg_no || '';
+  const listName     = row.standing_list_name || 'Standing List';
+  const fy           = row.fy || '';
+  const dateBS       = bsDateLabel(row.shortlist_date);
+  const validBS      = bsDateLabel(row.valid_until);
+  const dateAD       = fmt(row.shortlist_date);
+  const validAD      = fmt(row.valid_until);
+  const status       = row.status || 'Active';
+  const remarks      = row.remarks || '';
+  const todayBSStr   = todayBS();
+
+  const orgMeta = [orgAddress, orgPhone ? `Ph: ${orgPhone}` : '', orgEmail, orgWebsite].filter(Boolean).join('  ·  ');
 
   const html = `<!DOCTYPE html>
 <html lang="en">
@@ -59,37 +66,41 @@ function openShortlistLetter(row) {
 <meta charset="UTF-8">
 <title>Shortlisting Letter — ${firmAcronym || firmName}</title>
 <style>
-  @page { size: A4; margin: 22mm 20mm 20mm 25mm; }
+  @page { size: A4; margin: 18mm 20mm 20mm 25mm; }
   * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { font-family: 'Times New Roman', Georgia, serif; font-size: 12pt; color: #111; line-height: 1.6; background: #fff; }
+  body { font-family: 'Times New Roman', Georgia, serif; font-size: 12pt; color: #111; line-height: 1.65; background: #fff; }
   .page { max-width: 170mm; margin: 0 auto; }
 
-  .org-block { text-align: center; border-bottom: 2px solid #222; padding-bottom: 10px; margin-bottom: 20px; }
-  .org-name  { font-size: 16pt; font-weight: 700; letter-spacing: 0.5px; }
-  .org-sub   { font-size: 10pt; color: #444; margin-top: 3px; }
+  /* Org header — letterhead image if present, otherwise text */
+  .org-block  { text-align: center; border-bottom: 2.5px double #333; padding-bottom: 10px; margin-bottom: 18px; }
+  .org-lh     { max-width: 100%; max-height: 90px; object-fit: contain; margin-bottom: 6px; }
+  .org-name   { font-size: 15pt; font-weight: 700; letter-spacing: 0.4px; }
+  .org-sub    { font-size: 9.5pt; color: #555; margin-top: 4px; }
 
-  .meta-row  { display: flex; justify-content: space-between; font-size: 10.5pt; margin-bottom: 20px; }
+  .meta-row   { display: flex; justify-content: space-between; font-size: 10.5pt; margin-bottom: 18px; color: #333; }
 
-  .to-block  { margin-bottom: 18px; font-size: 11.5pt; }
-  .to-label  { font-weight: 700; }
+  .to-block   { margin-bottom: 16px; font-size: 11.5pt; }
+  .to-label   { font-weight: 700; }
 
-  .subject   { font-size: 12pt; font-weight: 700; margin-bottom: 18px; text-decoration: underline; }
-  .body-text { margin-bottom: 14px; text-align: justify; }
+  .subject    { font-size: 12pt; font-weight: 700; margin-bottom: 16px; text-decoration: underline; text-underline-offset: 3px; }
+  .body-text  { margin-bottom: 12px; text-align: justify; }
 
-  table { width: 100%; border-collapse: collapse; margin: 14px 0 18px; font-size: 11pt; }
-  th { background: #f0f0f0; border: 1px solid #bbb; padding: 6px 10px; text-align: left; font-weight: 700; }
+  table { width: 100%; border-collapse: collapse; margin: 12px 0 16px; font-size: 11pt; }
+  th { background: #f2f2f2; border: 1px solid #bbb; padding: 6px 10px; text-align: left; font-weight: 700; }
   td { border: 1px solid #bbb; padding: 6px 10px; }
-  td:first-child { font-weight: 600; width: 45%; color: #333; }
+  td:first-child { font-weight: 600; width: 42%; color: #333; background: #fafafa; }
 
-  .remarks-block { font-style: italic; font-size: 11pt; color: #444; margin-bottom: 18px; padding-left: 12px; border-left: 3px solid #ddd; }
+  .remarks-block { font-style: italic; font-size: 11pt; color: #444; margin-bottom: 16px; padding: 8px 12px; border-left: 3px solid #ccc; background: #fafafa; }
 
-  .sign-area { margin-top: 50px; display: flex; justify-content: flex-end; }
-  .sign-box  { text-align: center; width: 200px; }
-  .sign-line { border-top: 1px solid #555; padding-top: 6px; margin-top: 60px; }
-  .sign-name { font-weight: 700; font-size: 11pt; }
-  .sign-org  { font-size: 10pt; color: #444; }
+  .sign-area  { margin-top: 48px; display: flex; justify-content: flex-end; }
+  .sign-box   { text-align: center; min-width: 200px; }
+  .sign-space { height: 54px; }
+  .sign-line  { border-top: 1px solid #444; padding-top: 6px; }
+  .sign-name  { font-weight: 700; font-size: 11.5pt; }
+  .sign-pos   { font-size: 10pt; color: #555; margin-top: 2px; }
+  .sign-org   { font-size: 10pt; color: #333; font-weight: 600; margin-top: 2px; }
 
-  .footer-note { margin-top: 30px; border-top: 1px solid #ddd; padding-top: 8px; font-size: 9pt; color: #888; text-align: center; }
+  .footer-note { margin-top: 28px; border-top: 1px solid #e0e0e0; padding-top: 7px; font-size: 8.5pt; color: #999; text-align: center; }
 
   @media print {
     body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
@@ -100,16 +111,19 @@ function openShortlistLetter(row) {
 <body>
 <div class="page">
 
-  <!-- Organization header -->
+  <!-- Organization letterhead -->
   <div class="org-block">
-    <div class="org-name">${orgName}${orgShort && orgShort !== orgName ? ` (${orgShort})` : ''}</div>
-    ${orgAddress ? `<div class="org-sub">${orgAddress}</div>` : ''}
+    ${orgLetterhead
+      ? `<img src="${orgLetterhead}" class="org-lh" alt="${orgName}"/>`
+      : `<div class="org-name">${orgName}${orgShort && orgShort !== orgName ? ` (${orgShort})` : ''}</div>`
+    }
+    ${orgMeta ? `<div class="org-sub">${orgMeta}</div>` : ''}
   </div>
 
-  <!-- Date + Ref -->
+  <!-- Date row -->
   <div class="meta-row">
-    <div><strong>मिति:</strong> ${todayBSStr}</div>
-    <div><strong>Date:</strong> ${new Date().toLocaleDateString('en-GB', { day:'2-digit', month:'long', year:'numeric' })}</div>
+    <div><strong>मिति (BS):</strong> ${todayBSStr}</div>
+    <div><strong>Date (AD):</strong> ${new Date().toLocaleDateString('en-GB', { day:'2-digit', month:'long', year:'numeric' })}</div>
   </div>
 
   <!-- To block -->
@@ -120,59 +134,49 @@ function openShortlistLetter(row) {
     ${firmAddress ? `<div>${firmAddress}</div>` : ''}
     ${firmPhone   ? `<div>Phone: ${firmPhone}</div>` : ''}
     ${firmEmail   ? `<div>Email: ${firmEmail}</div>` : ''}
-    ${firmRegNo   ? `<div>Reg. No.: ${firmRegNo}</div>` : ''}
+    ${firmRegNo   ? `<div style="color:#555;font-size:10.5pt">Reg. No.: ${firmRegNo}</div>` : ''}
   </div>
 
   <!-- Subject -->
-  <div class="subject">
-    Subject: Shortlisting Notification — ${listName}${fy ? ' (FY ' + fy + ')' : ''}
-  </div>
+  <div class="subject">Subject: Shortlisting Notification — ${listName}${fy ? ' (FY ' + fy + ')' : ''}</div>
 
-  <!-- Body -->
-  <div class="body-text">
-    Dear Sir/Madam,
-  </div>
+  <div class="body-text">Dear Sir/Madam,</div>
   <div class="body-text">
     We are pleased to inform you that <strong>${firmName}${firmAcronym ? ` (${firmAcronym})` : ''}</strong> has been shortlisted for the <strong>${listName}</strong>${orgName ? ' maintained by <strong>' + orgName + '</strong>' : ''}${fy ? ' for Fiscal Year <strong>' + fy + '</strong>' : ''}.
   </div>
-  <div class="body-text">
-    The details of the shortlisting are as follows:
-  </div>
+  <div class="body-text">The details of the shortlisting are as follows:</div>
 
-  <!-- Details table -->
   <table>
     <tr><th colspan="2">Shortlisting Details</th></tr>
     <tr><td>Standing List Name</td><td>${listName}</td></tr>
-    ${fy ? `<tr><td>Fiscal Year</td><td>${fy}</td></tr>` : ''}
+    ${fy        ? `<tr><td>Fiscal Year</td><td>${fy}</td></tr>` : ''}
     <tr><td>Shortlisting Date</td><td>${dateBS ? dateBS + ' (BS)' : ''} ${dateAD !== '—' ? '/ ' + dateAD + ' (AD)' : ''}</td></tr>
-    ${validBS ? `<tr><td>Valid Until</td><td>${validBS} (BS) / ${validAD} (AD)</td></tr>` : ''}
+    ${validBS   ? `<tr><td>Valid Until</td><td>${validBS} (BS) / ${validAD} (AD)</td></tr>` : ''}
     <tr><td>Status</td><td><strong>${status}</strong></td></tr>
-    ${orgName ? `<tr><td>Organization</td><td>${orgName}</td></tr>` : ''}
+    ${orgName   ? `<tr><td>Organization</td><td>${orgName}</td></tr>` : ''}
   </table>
 
-  ${remarks ? `<div class="remarks-block">Note: ${remarks}</div>` : ''}
+  ${remarks ? `<div class="remarks-block"><strong>Note:</strong> ${remarks}</div>` : ''}
 
   <div class="body-text">
-    Please ensure that all required documents and qualifications remain current and valid throughout the period of this shortlisting. We look forward to your participation.
+    Please ensure that all required documents and qualifications remain current and valid throughout the period of this shortlisting. We look forward to your continued engagement.
   </div>
 
-  <!-- Signature -->
+  <!-- Signature block -->
   <div class="sign-area">
     <div class="sign-box">
+      <div class="sign-space"></div>
       <div class="sign-line">
-        <div class="sign-name">Authorized Signatory</div>
+        <div class="sign-name">${orgSignatory || 'Authorized Signatory'}</div>
+        ${orgSignPos ? `<div class="sign-pos">${orgSignPos}</div>` : ''}
         <div class="sign-org">${orgName}</div>
       </div>
     </div>
   </div>
 
   <div class="footer-note">Generated by TVETtrack · ${new Date().toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'numeric' })}</div>
-
 </div>
-
-<script>
-  window.onload = function() { window.print(); };
-</script>
+<script>window.onload = function() { window.print(); };</script>
 </body>
 </html>`;
 

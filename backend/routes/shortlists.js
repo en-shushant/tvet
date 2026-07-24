@@ -15,8 +15,13 @@ async function plugin(fastify, opts) {
     const where = conditions.length ? 'WHERE ' + conditions.join(' AND ') : '';
     const q = `
       SELECT sl.*,
-        c.full_name   AS client_name,   c.short_name  AS client_short,
-        c.address     AS client_address, c.type        AS client_type,
+        c.full_name        AS client_name,        c.short_name       AS client_short,
+        c.address          AS client_address,     c.type             AS client_type,
+        c.phone            AS client_phone,       c.email            AS client_email,
+        c.website          AS client_website,
+        c.signatory_name   AS client_signatory_name,
+        c.signatory_position AS client_signatory_position,
+        c.letterhead       AS client_letterhead,
         i.name        AS institute_name, i.acronym     AS institute_acronym,
         i.address     AS institute_address, i.phone    AS institute_phone,
         i.email       AS institute_email,

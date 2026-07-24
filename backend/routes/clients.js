@@ -10,20 +10,29 @@ async function plugin(fastify, opts) {
   });
 
   fastify.post('/', { preHandler: requireWriter }, async (request, reply) => {
-    const { full_name, short_name, type, address, remarks } = request.body;
+    const { full_name, short_name, type, address, remarks,
+            phone, email, website, signatory_name, signatory_position, letterhead } = request.body;
     if (!full_name || !short_name) return reply.code(400).send({ error: 'full_name and short_name required' });
     const { rows } = await pool.query(
-      'INSERT INTO clients (full_name,short_name,type,address,remarks) VALUES ($1,$2,$3,$4,$5) RETURNING *',
-      [full_name,short_name,type,address,remarks]
+      `INSERT INTO clients (full_name,short_name,type,address,remarks,
+        phone,email,website,signatory_name,signatory_position,letterhead)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING *`,
+      [full_name,short_name,type,address,remarks,
+       phone||null,email||null,website||null,signatory_name||null,signatory_position||null,letterhead||null]
     );
     return reply.code(201).send(rows[0]);
   });
 
   fastify.put('/:id', { preHandler: requireWriter }, async (request, reply) => {
-    const { full_name, short_name, type, address, remarks } = request.body;
+    const { full_name, short_name, type, address, remarks,
+            phone, email, website, signatory_name, signatory_position, letterhead } = request.body;
     const { rows } = await pool.query(
-      'UPDATE clients SET full_name=$1,short_name=$2,type=$3,address=$4,remarks=$5 WHERE id=$6 RETURNING *',
-      [full_name,short_name,type,address,remarks,request.params.id]
+      `UPDATE clients SET full_name=$1,short_name=$2,type=$3,address=$4,remarks=$5,
+        phone=$6,email=$7,website=$8,signatory_name=$9,signatory_position=$10,letterhead=$11
+       WHERE id=$12 RETURNING *`,
+      [full_name,short_name,type,address,remarks,
+       phone||null,email||null,website||null,signatory_name||null,signatory_position||null,letterhead||null,
+       request.params.id]
     );
     if (!rows.length) return reply.code(404).send({ error: 'Not found' });
     return rows[0];

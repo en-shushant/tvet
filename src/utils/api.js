@@ -209,6 +209,12 @@ export function normClient(r) {
     type: r.type || 'Government',
     address: r.address || '',
     remarks: r.remarks || '',
+    phone: r.phone || '',
+    email: r.email || '',
+    website: r.website || '',
+    signatoryName: r.signatory_name || '',
+    signatoryPosition: r.signatory_position || '',
+    letterhead: r.letterhead || null,
   };
 }
 
@@ -343,5 +349,11 @@ export function clientToAPI(f) {
     type: f.type,
     address: f.address || '',
     remarks: f.remarks || '',
+    phone: f.phone || null,
+    email: f.email || null,
+    website: f.website || null,
+    signatory_name: f.signatoryName || null,
+    signatory_position: f.signatoryPosition || null,
+    letterhead: f.letterhead || null,
   };
 }
