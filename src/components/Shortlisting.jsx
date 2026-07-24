@@ -33,7 +33,7 @@ function todayBS() {
 
 // ── Letter generator — opens print-ready A4 in new window ─────────────────────
 function openShortlistLetter(row, opts = {}) {
-  const { includeSignStamp = false, docs = {} } = opts;
+  const { includeSignStamp = false, docs = {}, pageTopMargin = 15, lhGap = 5 } = opts;
   // Firm (institute) — letterhead owner
   const firmName        = row.institute_name || '';
   const firmAcronym     = row.institute_acronym || '';
@@ -97,7 +97,7 @@ function openShortlistLetter(row, opts = {}) {
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Devanagari:wght@400;600;700&display=swap" rel="stylesheet">
 <style>
-  @page { size: A4; margin: 15mm 18mm 18mm 22mm; }
+  @page { size: A4; margin: ${pageTopMargin}mm 18mm 18mm 22mm; }
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body {
     font-family: 'Noto Sans Devanagari', 'Mangal', 'Arial Unicode MS', sans-serif;
@@ -114,7 +114,7 @@ function openShortlistLetter(row, opts = {}) {
   .lh-border { border-bottom:3px double #7b1a1a; margin:8px 0 14px; }
 
   /* Letterhead image */
-  .lh-img    { width:100%; display:block; margin-bottom:14px; }
+  .lh-img    { width:100%; display:block; margin-bottom:${lhGap}mm; }
 
   .ref-row   { display:flex; justify-content:space-between; font-size:11pt; margin-bottom:14px; }
   .to-block  { margin-bottom:14px; font-size:11.5pt; line-height:1.7; }
@@ -450,6 +450,8 @@ const DOC_LABELS = {
 
 function LetterOptsModal({ row, onClose }) {
   const [inclSign, setInclSign] = useState(!!(row.institute_sign || row.institute_stamp));
+  const [pageTopMargin, setPageTopMargin] = useState(15);
+  const [lhGap, setLhGap] = useState(5);
   const hasDocs = {
     ocrReg:   !!row.institute_ocr_registration,
     ocrRen:   !!row.institute_ocr_renewal,
@@ -466,7 +468,7 @@ function LetterOptsModal({ row, onClose }) {
     <Modal title="Generate Letter" onClose={onClose} footer={<>
       <button className="btn btn-secondary" onClick={onClose}>Cancel</button>
       <button className="btn btn-primary" onClick={() => {
-        openShortlistLetter(row, { includeSignStamp: inclSign, docs: inclDocs });
+        openShortlistLetter(row, { includeSignStamp: inclSign, docs: inclDocs, pageTopMargin, lhGap });
         onClose();
       }}>Generate &amp; Print</button>
     </>}>
@@ -482,6 +484,25 @@ function LetterOptsModal({ row, onClose }) {
             </div>
           </div>
         </div>
+
+        {row.institute_letterhead && (
+          <div style={{display:'flex', gap:12}}>
+            <div className="form-group" style={{flex:1, margin:0}}>
+              <label style={{fontSize:12, fontWeight:600}}>Page top margin (mm)</label>
+              <input type="number" min={0} max={60} value={pageTopMargin}
+                onChange={e=>setPageTopMargin(Number(e.target.value))}
+                style={{width:'100%', marginTop:4}}/>
+              <div className="input-hint">White space above the letterhead image</div>
+            </div>
+            <div className="form-group" style={{flex:1, margin:0}}>
+              <label style={{fontSize:12, fontWeight:600}}>Space after letterhead (mm)</label>
+              <input type="number" min={0} max={80} value={lhGap}
+                onChange={e=>setLhGap(Number(e.target.value))}
+                style={{width:'100%', marginTop:4}}/>
+              <div className="input-hint">Gap between letterhead image and body text</div>
+            </div>
+          </div>
+        )}
 
         {anyDocs ? (
           <div>
