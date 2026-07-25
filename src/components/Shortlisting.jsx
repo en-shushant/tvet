@@ -280,7 +280,9 @@ function ClientCombobox({ clients, value, onChange }) {
   const selected = clients.find(c => String(c.id) === String(value));
   const [query, setQuery] = useState(selected ? (selected.fullName || selected.full_name) : '');
   const [open, setOpen] = useState(false);
+  const [focused, setFocused] = useState(false);
   const ref = useRef(null);
+  const inputRef = useRef(null);
 
   const filtered = useMemo(() => {
     if (!query) return clients;
@@ -293,7 +295,7 @@ function ClientCombobox({ clients, value, onChange }) {
   }, [clients, query]);
 
   useEffect(() => {
-    const handler = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
+    const handler = (e) => { if (ref.current && !ref.current.contains(e.target)) { setOpen(false); setFocused(false); } };
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
   }, []);
@@ -302,41 +304,65 @@ function ClientCombobox({ clients, value, onChange }) {
     onChange(String(c.id));
     setQuery(c.fullName || c.full_name);
     setOpen(false);
+    setFocused(false);
   };
 
-  const clear = () => { onChange(''); setQuery(''); setOpen(true); };
+  const hasValue = query.length > 0;
+  const borderColor = focused ? 'var(--primary)' : 'var(--md-sys-color-outline, #79747e)';
+  const borderWidth = focused ? 2 : 1;
+  const labelColor = focused ? 'var(--primary)' : 'var(--md-sys-color-outline, #79747e)';
+  const labelUp = hasValue || focused;
 
   return (
     <div ref={ref} style={{ position: 'relative' }}>
-      <div style={{ position: 'relative' }}>
-        <input
-          value={query}
-          onChange={e => { setQuery(e.target.value); onChange(''); setOpen(true); }}
-          onFocus={() => setOpen(true)}
-          placeholder="Search organization…"
-          style={{
-            width: '100%', padding: '16px 36px 16px 16px', fontSize: 14,
-            border: '1px solid var(--md-sys-color-outline, #79747e)',
-            borderRadius: 4, background: 'transparent', color: 'var(--text)',
-            fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box',
-            transition: 'border-color .15s',
-          }}
-          onFocusCapture={e => e.target.style.borderColor = 'var(--primary)'}
-          onBlurCapture={e => e.target.style.borderColor = 'var(--md-sys-color-outline, #79747e)'}
-        />
-        {query && (
-          <button onClick={clear} style={{
-            position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)',
-            background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text3)',
-            fontSize: 18, lineHeight: 1, padding: '4px',
-          }}>×</button>
-        )}
+      {/* MD outlined-style container */}
+      <div
+        onClick={() => { inputRef.current?.focus(); setOpen(true); }}
+        style={{
+          position: 'relative', border: `${borderWidth}px solid ${borderColor}`,
+          borderRadius: 4, padding: '0 12px', minHeight: 56, boxSizing: 'border-box',
+          cursor: 'text', transition: 'border-color .15s, border-width .15s',
+        }}
+      >
+        {/* Floating label */}
+        <span style={{
+          position: 'absolute', left: 12, top: labelUp ? -10 : '50%',
+          transform: labelUp ? 'translateY(0) scale(0.75)' : 'translateY(-50%) scale(1)',
+          transformOrigin: 'left center',
+          fontSize: 16, color: labelColor, pointerEvents: 'none',
+          background: 'var(--surface, #fff)', padding: '0 4px',
+          transition: 'top .12s, transform .12s, color .12s, font-size .12s',
+          lineHeight: 1,
+        }}>
+          Organization (Client)
+        </span>
+        <div style={{ display: 'flex', alignItems: 'center', paddingTop: 18, paddingBottom: 6 }}>
+          <input
+            ref={inputRef}
+            value={query}
+            onChange={e => { setQuery(e.target.value); onChange(''); setOpen(true); }}
+            onFocus={() => { setFocused(true); setOpen(true); }}
+            style={{
+              flex: 1, border: 'none', outline: 'none', background: 'transparent',
+              fontSize: 16, color: 'var(--text)', fontFamily: 'inherit', minWidth: 0,
+            }}
+          />
+          {query ? (
+            <button onMouseDown={e => { e.preventDefault(); onChange(''); setQuery(''); setOpen(true); inputRef.current?.focus(); }} style={{
+              background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text3)',
+              fontSize: 18, lineHeight: 1, padding: '2px 0 2px 4px', flexShrink: 0,
+            }}>×</button>
+          ) : (
+            <span style={{ color: 'var(--text3)', fontSize: 18, lineHeight: 1, userSelect: 'none' }}>▾</span>
+          )}
+        </div>
       </div>
+      {/* Dropdown */}
       {open && (
         <div style={{
-          position: 'absolute', top: 'calc(100% + 4px)', left: 0, right: 0, zIndex: 9999,
-          background: 'var(--surface)', border: '1px solid var(--border)',
-          borderRadius: 8, boxShadow: '0 4px 20px rgba(0,0,0,.15)',
+          position: 'absolute', top: 'calc(100% + 2px)', left: 0, right: 0, zIndex: 9999,
+          background: 'var(--surface, #fff)', border: '1px solid var(--border)',
+          borderRadius: 8, boxShadow: '0 4px 24px rgba(0,0,0,.18)',
           maxHeight: 220, overflowY: 'auto',
         }}>
           {filtered.length === 0 ? (
@@ -344,17 +370,19 @@ function ClientCombobox({ clients, value, onChange }) {
           ) : filtered.map(c => {
             const name = c.fullName || c.full_name;
             const short = c.shortName || c.short_name;
+            const isSelected = String(c.id) === String(value);
             return (
               <div key={c.id} onMouseDown={() => select(c)} style={{
-                padding: '10px 16px', cursor: 'pointer', fontSize: 13,
+                padding: '10px 16px', cursor: 'pointer', fontSize: 14,
                 borderBottom: '1px solid var(--border)',
-                background: String(c.id) === String(value) ? 'var(--primary-light)' : 'transparent',
-                transition: 'background .1s',
+                background: isSelected ? 'color-mix(in srgb, var(--primary) 12%, transparent)' : 'transparent',
+                color: isSelected ? 'var(--primary)' : 'var(--text)',
+                fontWeight: isSelected ? 600 : 400,
               }}
-                onMouseEnter={e => e.currentTarget.style.background = 'var(--primary-light)'}
-                onMouseLeave={e => e.currentTarget.style.background = String(c.id) === String(value) ? 'var(--primary-light)' : 'transparent'}
+                onMouseEnter={e => { if (!isSelected) e.currentTarget.style.background = 'var(--bg)'; }}
+                onMouseLeave={e => { if (!isSelected) e.currentTarget.style.background = 'transparent'; }}
               >
-                {name}{short && short !== name ? <span style={{ color: 'var(--text3)', marginLeft: 6 }}>({short})</span> : null}
+                {name}{short && short !== name ? <span style={{ color: 'var(--text3)', marginLeft: 6, fontWeight: 400 }}>({short})</span> : null}
               </div>
             );
           })}
@@ -525,43 +553,57 @@ function ShortlistForm({ initial, institutes, clients, onSave, onClose, saving }
       {/* Multi-firm checklist */}
       {(!isEdit && multi) && (
         <div className="form-group">
-          <label>Select Firms * ({selectedFirms.length} selected)</label>
+          <div style={{fontSize:13, fontWeight:500, color:'var(--text2)', marginBottom:6}}>
+            Select Firms * <span style={{color:'var(--text3)', fontWeight:400}}>({selectedFirms.length} selected)</span>
+          </div>
           <div style={{border:'1.5px solid var(--border)', borderRadius:10, overflow:'hidden'}}>
-            <div style={{padding:'8px 12px', borderBottom:'1px solid var(--border)', background:'var(--bg)'}}>
+            {/* Search bar */}
+            <div style={{display:'flex', alignItems:'center', gap:8, padding:'10px 14px', borderBottom:'1px solid var(--border)', background:'var(--bg)'}}>
+              <span style={{color:'var(--text3)', fontSize:15, flexShrink:0}}>🔍</span>
               <input
                 placeholder="Search firms…"
                 value={firmSearch}
                 onChange={e => setFirmSearch(e.target.value)}
-                style={{border:'none', background:'transparent', outline:'none', width:'100%', fontSize:13}}
+                style={{border:'none', background:'transparent', outline:'none', width:'100%', fontSize:13, color:'var(--text)', fontFamily:'inherit'}}
               />
+              {firmSearch && (
+                <button type="button" onClick={() => setFirmSearch('')}
+                  style={{background:'none', border:'none', cursor:'pointer', color:'var(--text3)', fontSize:16, padding:0, lineHeight:1}}>×</button>
+              )}
             </div>
-            <div style={{maxHeight:220, overflowY:'auto'}}>
-              {filteredInstitutes.map(i => {
+            {/* List */}
+            <div style={{maxHeight:240, overflowY:'auto', overflowX:'hidden'}}>
+              {filteredInstitutes.length === 0 ? (
+                <div style={{padding:'16px 14px', color:'var(--text3)', fontSize:13, textAlign:'center'}}>No matches</div>
+              ) : filteredInstitutes.map(i => {
                 const checked = selectedFirms.includes(i.id);
                 return (
-                  <label key={i.id} style={{
-                    display:'flex', alignItems:'center', gap:10, padding:'8px 14px',
-                    cursor:'pointer', fontSize:13, transition:'background .1s',
-                    background: checked ? 'var(--primary-light)' : 'transparent',
-                    color: checked ? 'var(--primary-dark)' : 'var(--text)',
-                    fontWeight: checked ? 600 : 400,
+                  <label key={i.id} onClick={() => toggleFirm(i.id)} style={{
+                    display:'flex', alignItems:'center', gap:12, padding:'10px 14px',
+                    cursor:'pointer', borderBottom:'1px solid var(--border)',
+                    background: checked ? 'color-mix(in srgb, var(--primary) 10%, transparent)' : 'transparent',
+                    transition:'background .1s', boxSizing:'border-box', width:'100%',
                   }}
-                    onMouseEnter={e=>{if(!checked) e.currentTarget.style.background='var(--bg)';}}
-                    onMouseLeave={e=>{if(!checked) e.currentTarget.style.background='';}}
+                    onMouseEnter={e=>{ if(!checked) e.currentTarget.style.background='var(--bg)'; }}
+                    onMouseLeave={e=>{ if(!checked) e.currentTarget.style.background='transparent'; }}
                   >
-                    <input type="checkbox" checked={checked} onChange={() => toggleFirm(i.id)}
-                      style={{accentColor:'var(--primary)', flexShrink:0}} />
-                    {i.acronym ? <span style={{color:'var(--text3)', fontWeight:500}}>[{i.acronym}]</span> : null}
-                    {i.name}
+                    <input type="checkbox" checked={checked} onChange={() => {}} onClick={e => e.stopPropagation()}
+                      style={{accentColor:'var(--primary)', flexShrink:0, width:16, height:16}} />
+                    <span style={{flex:1, minWidth:0, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap',
+                      fontSize:13, color: checked ? 'var(--primary)' : 'var(--text)', fontWeight: checked ? 600 : 400}}>
+                      {i.acronym ? <span style={{color:'var(--text3)', marginRight:5}}>[{i.acronym}]</span> : null}
+                      {i.name}
+                    </span>
                   </label>
                 );
               })}
             </div>
+            {/* Footer */}
             {selectedFirms.length > 0 && (
-              <div style={{padding:'8px 14px', borderTop:'1px solid var(--border)', background:'var(--bg)', fontSize:12, color:'var(--text3)'}}>
-                {selectedFirms.length} firm{selectedFirms.length>1?'s':''} selected
+              <div style={{display:'flex', alignItems:'center', justifyContent:'space-between', padding:'8px 14px', borderTop:'1px solid var(--border)', background:'var(--bg)'}}>
+                <span style={{fontSize:12, color:'var(--text3)'}}>{selectedFirms.length} firm{selectedFirms.length>1?'s':''} selected</span>
                 <button type="button" onClick={() => setSelectedFirms([])}
-                  style={{marginLeft:8, background:'none', border:'none', color:'var(--primary)', cursor:'pointer', fontSize:12, padding:0}}>
+                  style={{background:'none', border:'none', color:'var(--primary)', cursor:'pointer', fontSize:12, padding:0, fontFamily:'inherit'}}>
                   Clear all
                 </button>
               </div>
