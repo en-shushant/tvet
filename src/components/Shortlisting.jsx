@@ -85,18 +85,15 @@ function openShortlistLetter(row, opts = {}) {
     { key: 'ctevtAff',  src: row.institute_ctevt_affiliation,  label: 'CTEVT सम्बन्धन पत्र' },
     { key: 'ctevtRen',  src: row.institute_ctevt_renewal,      label: 'CTEVT नवीकरण पत्र' },
   ];
-  const sigstampOverlay = includeSignStamp && (firmSign || firmStamp) ? `
-    <div style="position:absolute;bottom:16px;right:16px;display:flex;align-items:flex-end;gap:16px;">
-      ${firmStamp ? `<img src="${firmStamp}" style="width:28mm;height:28mm;object-fit:contain;">` : ''}
-      ${firmSign  ? `<img src="${firmSign}"  style="height:20mm;width:auto;">` : ''}
+  const sigstampRow = includeSignStamp && (firmSign || firmStamp) ? `
+    <div style="display:flex;align-items:flex-end;justify-content:flex-end;gap:20px;padding-top:8px;">
+      ${firmStamp ? `<img src="${firmStamp}" style="width:35mm;height:35mm;object-fit:contain;">` : ''}
+      ${firmSign  ? `<img src="${firmSign}"  style="height:24mm;width:auto;">` : ''}
     </div>` : '';
   const docPages = docDefs.filter(d => docs[d.key] && d.src).map(d => `
-<div style="page-break-before:always;padding:10mm 0 0;">
-  <div style="font-family:'Noto Sans Devanagari','Mangal',sans-serif;font-size:11pt;font-weight:700;margin-bottom:10px;border-bottom:1.5px solid #bbb;padding-bottom:6px;">${d.label}</div>
-  <div style="position:relative;display:inline-block;width:100%;">
-    <img src="${d.src}" style="max-width:100%;height:auto;display:block;">
-    ${sigstampOverlay}
-  </div>
+<div style="page-break-before:always;padding:10mm 0 0;display:flex;flex-direction:column;">
+  <img src="${d.src}" style="max-width:100%;max-height:230mm;object-fit:contain;display:block;">
+  ${sigstampRow}
 </div>`).join('');
 
   const useLhBg = !!firmLetterhead;
