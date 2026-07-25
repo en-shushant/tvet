@@ -374,8 +374,13 @@ function ShortlistForm({ initial, institutes, clients, onSave, onClose, saving }
 
       <div className="form-row form-row-2">
         <div className="form-group">
-          <MdTextField label="Standing List Name" value={form.standing_list_name} onChange={e => set('standing_list_name', e.target.value)}
-            placeholder="e.g. Roster of Firms, ADB Consultants List…" />
+          <MdSelect label="Standing List Name" value={form.standing_list_name} onChange={e => set('standing_list_name', e.target.value)}>
+            <MdOption value="">— Select or leave blank —</MdOption>
+            <MdOption value="Standing List">Standing List</MdOption>
+            <MdOption value="सीपमूलक तथा व्यावसायिक तालिम कार्यक्रमहरु सञ्चालन">सीपमूलक तथा व्यावसायिक तालिम कार्यक्रमहरु सञ्चालन</MdOption>
+            <MdOption value="Roster of Firms">Roster of Firms</MdOption>
+            <MdOption value="ADB Consultants List">ADB Consultants List</MdOption>
+          </MdSelect>
         </div>
         <div className="form-group">
           <MdTextField type="date" label="Shortlisting Date *" value={form.shortlist_date} onChange={e => set('shortlist_date', e.target.value)} />
@@ -537,30 +542,6 @@ function LetterOptsModal({ row, onClose }) {
           </div>
         </label>
 
-        {/* Letterhead margin controls */}
-        {row.institute_letterhead && (
-          <div style={{borderRadius:10, border:'1px solid var(--border)', background:'var(--bg)', padding:'12px 14px'}}>
-            <div style={{fontSize:11, fontWeight:700, color:'var(--text3)', textTransform:'uppercase', letterSpacing:'0.6px', marginBottom:10}}>
-              Letterhead margins
-            </div>
-            <div style={{display:'flex', gap:10}}>
-              {[
-                {label:'Top (mm)', value:pageTopMargin, set:setPageTopMargin, min:0, max:200},
-                {label:'Bottom (mm)', value:pageBottomPadding, set:setPageBottomPadding, min:0, max:100},
-                {label:'Left / Right (mm)', value:lhGap, set:setLhGap, min:0, max:60},
-              ].map(({label, value, set, min, max}) => (
-                <div key={label} style={{flex:1}}>
-                  <div style={{fontSize:11, fontWeight:600, color:'var(--text2)', marginBottom:5}}>{label}</div>
-                  <input type="number" min={min} max={max} value={value}
-                    onChange={e=>set(Number(e.target.value))}
-                    style={{width:'100%', padding:'7px 10px', fontSize:14, fontWeight:500, borderRadius:6, border:'1.5px solid var(--border)', background:'var(--surface)', color:'var(--text)', boxSizing:'border-box', fontFamily:'inherit', outline:'none', transition:'border-color .15s'}}
-                    onFocus={e=>e.target.style.borderColor='var(--primary)'}
-                    onBlur={e=>e.target.style.borderColor='var(--border)'}/>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
 
         {/* Document attachments */}
         {anyDocs ? (
