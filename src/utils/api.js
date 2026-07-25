@@ -108,6 +108,7 @@ export function normInst(r) {
     letterTopMargin: r.letter_top_margin != null ? Number(r.letter_top_margin) : null,
     letterLrPadding: r.letter_lr_padding != null ? Number(r.letter_lr_padding) : null,
     letterBottomPadding: r.letter_bottom_padding != null ? Number(r.letter_bottom_padding) : null,
+    serviceType: r.service_type || '',
   };
 }
 
@@ -271,6 +272,7 @@ export function instToAPI(f) {
     letter_top_margin: f.letterTopMargin != null ? f.letterTopMargin : null,
     letter_lr_padding: f.letterLrPadding != null ? f.letterLrPadding : null,
     letter_bottom_padding: f.letterBottomPadding != null ? f.letterBottomPadding : null,
+    service_type: f.serviceType || null,
   };
 }
 

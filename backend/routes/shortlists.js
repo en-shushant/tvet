@@ -43,7 +43,8 @@ async function plugin(fastify, opts) {
         i.tax_clearance_doc AS institute_tax_clearance_doc,
         i.letter_top_margin AS institute_letter_top_margin,
         i.letter_lr_padding AS institute_letter_lr_padding,
-        i.letter_bottom_padding AS institute_letter_bottom_padding
+        i.letter_bottom_padding AS institute_letter_bottom_padding,
+        i.service_type AS institute_service_type
       FROM shortlists sl
       LEFT JOIN clients    c ON c.id = sl.client_id
       LEFT JOIN institutes i ON i.id = sl.institute_id

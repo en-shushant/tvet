@@ -650,7 +650,6 @@ const SERVICE_TYPES = [
 
 function LetterOptsModal({ row, onClose }) {
   const [inclSign, setInclSign] = useState(!!(row.institute_sign || row.institute_stamp));
-  const [serviceType, setServiceType] = useState(SERVICE_TYPES[0]);
   const [pageTopMargin, setPageTopMargin] = useState(row.institute_letter_top_margin ?? 10);
   const [lhGap, setLhGap] = useState(row.institute_letter_lr_padding ?? 10);
   const [pageBottomPadding, setPageBottomPadding] = useState(row.institute_letter_bottom_padding ?? 10);
@@ -671,31 +670,11 @@ function LetterOptsModal({ row, onClose }) {
     <Modal title="Generate Letter" onClose={onClose} footer={<>
       <Btn className="btn btn-secondary" onClick={onClose}>Cancel</Btn>
       <Btn className="btn btn-primary" onClick={() => {
-        openShortlistLetter(row, { includeSignStamp: inclSign, docs: inclDocs, pageTopMargin, lhGap, pageBottomPadding, serviceType });
+        openShortlistLetter(row, { includeSignStamp: inclSign, docs: inclDocs, pageTopMargin, lhGap, pageBottomPadding, serviceType: row.institute_service_type });
         onClose();
       }}>Generate &amp; Print</Btn>
     </>}>
       <div style={{display:'flex', flexDirection:'column', gap:12}}>
-
-        {/* Service type */}
-        <div>
-          <div style={{fontSize:12, fontWeight:600, color:'var(--text3)', marginBottom:6, textTransform:'uppercase', letterSpacing:'0.5px'}}>सेवाको प्रकार</div>
-          <div style={{display:'flex', flexDirection:'column', gap:6}}>
-            {SERVICE_TYPES.map(s => (
-              <label key={s} style={{
-                display:'flex', alignItems:'center', gap:10, padding:'9px 14px',
-                borderRadius:8, border:`1.5px solid ${serviceType===s ? 'var(--primary)' : 'var(--border)'}`,
-                background: serviceType===s ? 'color-mix(in srgb, var(--primary) 8%, transparent)' : 'transparent',
-                cursor:'pointer', fontSize:13, color: serviceType===s ? 'var(--primary)' : 'var(--text)',
-                fontWeight: serviceType===s ? 600 : 400, transition:'all .15s',
-              }}>
-                <input type="radio" name="serviceType" value={s} checked={serviceType===s} onChange={()=>setServiceType(s)}
-                  style={{accentColor:'var(--primary)', flexShrink:0}} />
-                {s}
-              </label>
-            ))}
-          </div>
-        </div>
 
         {/* Signature toggle */}
         <label style={{display:'flex', alignItems:'center', gap:14, padding:'12px 14px', borderRadius:10, border:'1px solid var(--border)', background:'var(--bg)', cursor:'pointer'}}>

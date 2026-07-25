@@ -1239,6 +1239,7 @@ function DocumentsTab({ institute, token, canEdit, onUpdate }) {
     letterhead: inst.letterhead || null,
     sign: inst.sign || null,
     stamp: inst.stamp || null,
+    serviceType: inst.serviceType || 'सीपमूलक तथा व्यावसायिक तालिम कार्यक्रमहरु सञ्चालन',
     letterTopMargin: inst.letterTopMargin ?? 15,
     letterBottomPadding: inst.letterBottomPadding ?? 15,
     letterLrPadding: inst.letterLrPadding ?? 5,
@@ -1301,6 +1302,18 @@ function DocumentsTab({ institute, token, canEdit, onUpdate }) {
       <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:'0 20px'}}>
         <DocImgUpload label="Authorized Signature" value={fields.sign} onChange={v=>set('sign',v)} disabled={!canEdit} token={token}/>
         <DocImgUpload label="Stamp / Seal" value={fields.stamp} onChange={v=>set('stamp',v)} disabled={!canEdit} token={token}/>
+      </div>
+
+      {/* ── Letter Settings ── */}
+      <SectionTitle>Letter Settings</SectionTitle>
+      <div className="form-group">
+        <label style={{fontSize:12, fontWeight:600, color:'var(--text3)', display:'block', marginBottom:6}}>सेवाको प्रकार (Service Type)</label>
+        <select value={fields.serviceType} onChange={e=>set('serviceType',e.target.value)} disabled={!canEdit}
+          style={{width:'100%', padding:'10px 12px', borderRadius:8, border:'1px solid var(--border)', background:'var(--surface)', color:'var(--text)', fontSize:14}}>
+          <option value="सीपमूलक तथा व्यावसायिक तालिम कार्यक्रमहरु सञ्चालन">सीपमूलक तथा व्यावसायिक तालिम कार्यक्रमहरु सञ्चालन</option>
+          <option value="परामर्श सेवा">परामर्श सेवा</option>
+          <option value="अन्य सेवा">अन्य सेवा</option>
+        </select>
       </div>
 
       {/* ── Page Padding ── */}

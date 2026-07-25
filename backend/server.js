@@ -160,6 +160,7 @@ async function runMigrations() {
     `ALTER TABLE institutes ADD COLUMN IF NOT EXISTS letter_lr_padding NUMERIC`,
     `ALTER TABLE institutes ADD COLUMN IF NOT EXISTS letter_bottom_padding NUMERIC`,
     `ALTER TABLE institutes ADD COLUMN IF NOT EXISTS mobile TEXT`,
+    `ALTER TABLE institutes ADD COLUMN IF NOT EXISTS service_type TEXT`,
   ];
   for (const sql of migrations) {
     try { await pool.query(sql); }
