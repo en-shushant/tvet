@@ -29,12 +29,12 @@ function todayBS() {
   const ktmStr = now.toLocaleDateString('en-CA', { timeZone: 'Asia/Kathmandu' });
   const [y, m, d] = ktmStr.split('-').map(Number);
   const bs = adToBS(new Date(Date.UTC(y, m - 1, d)));
-  return `${toNpNum(bs.d)} ${BS_MONTHS[bs.m - 1]} ${toNpNum(bs.y)}`;
+  return `${bs.y}/${String(bs.m).padStart(2,'0')}/${String(bs.d).padStart(2,'0')}`;
 }
 
 // ── Letter generator — opens print-ready A4 in new window ─────────────────────
 function openShortlistLetter(row, opts = {}) {
-  const { includeSignStamp = false, docs = {}, pageTopMargin = 15, lhGap = 5, pageBottomPadding = 15 } = opts;
+  const { includeSignStamp = false, docs = {}, pageTopMargin = 15, lhGap = 5, pageBottomPadding = 15, serviceType: svcType } = opts;
   // Firm (institute) — letterhead owner
   const firmName        = row.institute_name || '';
   const firmAcronym     = row.institute_acronym || '';
@@ -99,9 +99,7 @@ function openShortlistLetter(row, opts = {}) {
 
   const useLhBg = !!firmLetterhead;
   const fyNp = fy ? toNpNum(fy) : '';
-  const serviceType = listName && listName !== 'Standing List'
-    ? listName
-    : 'सीपमूलक तथा व्यावसायिक तालिम कार्यक्रमहरु सञ्चालन';
+  const serviceType = svcType || 'सीपमूलक तथा व्यावसायिक तालिम कार्यक्रमहरु सञ्चालन';
 
   const html = `<!DOCTYPE html>
 <html lang="ne">
@@ -377,7 +375,6 @@ function ShortlistForm({ initial, institutes, clients, onSave, onClose, saving }
           <MdSelect label="Standing List Name" value={form.standing_list_name} onChange={e => set('standing_list_name', e.target.value)}>
             <MdOption value="">— Select or leave blank —</MdOption>
             <MdOption value="Standing List">Standing List</MdOption>
-            <MdOption value="सीपमूलक तथा व्यावसायिक तालिम कार्यक्रमहरु सञ्चालन">सीपमूलक तथा व्यावसायिक तालिम कार्यक्रमहरु सञ्चालन</MdOption>
             <MdOption value="Roster of Firms">Roster of Firms</MdOption>
             <MdOption value="ADB Consultants List">ADB Consultants List</MdOption>
           </MdSelect>
@@ -501,8 +498,15 @@ const DOC_LABELS = {
   ctevtRen: 'CTEVT नवीकरण पत्र',
 };
 
+const SERVICE_TYPES = [
+  'सीपमूलक तथा व्यावसायिक तालिम कार्यक्रमहरु सञ्चालन',
+  'परामर्श सेवा',
+  'अन्य सेवा',
+];
+
 function LetterOptsModal({ row, onClose }) {
   const [inclSign, setInclSign] = useState(!!(row.institute_sign || row.institute_stamp));
+  const [serviceType, setServiceType] = useState(SERVICE_TYPES[0]);
   const [pageTopMargin, setPageTopMargin] = useState(row.institute_letter_top_margin ?? 15);
   const [lhGap, setLhGap] = useState(row.institute_letter_lr_padding ?? 5);
   const [pageBottomPadding, setPageBottomPadding] = useState(row.institute_letter_bottom_padding ?? 15);
@@ -523,11 +527,16 @@ function LetterOptsModal({ row, onClose }) {
     <Modal title="Generate Letter" onClose={onClose} footer={<>
       <Btn className="btn btn-secondary" onClick={onClose}>Cancel</Btn>
       <Btn className="btn btn-primary" onClick={() => {
-        openShortlistLetter(row, { includeSignStamp: inclSign, docs: inclDocs, pageTopMargin, lhGap, pageBottomPadding });
+        openShortlistLetter(row, { includeSignStamp: inclSign, docs: inclDocs, pageTopMargin, lhGap, pageBottomPadding, serviceType });
         onClose();
       }}>Generate &amp; Print</Btn>
     </>}>
       <div style={{display:'flex', flexDirection:'column', gap:12}}>
+
+        {/* Service type */}
+        <MdSelect label="सेवाको प्रकार (Service Type)" value={serviceType} onChange={e => setServiceType(e.target.value)}>
+          {SERVICE_TYPES.map(s => <MdOption key={s} value={s}>{s}</MdOption>)}
+        </MdSelect>
 
         {/* Signature toggle */}
         <label style={{display:'flex', alignItems:'center', gap:14, padding:'12px 14px', borderRadius:10, border:'1px solid var(--border)', background:'var(--bg)', cursor:'pointer'}}>
