@@ -85,15 +85,15 @@ function openShortlistLetter(row, opts = {}) {
     { key: 'ctevtAff',  src: row.institute_ctevt_affiliation,  label: 'CTEVT सम्बन्धन पत्र' },
     { key: 'ctevtRen',  src: row.institute_ctevt_renewal,      label: 'CTEVT नवीकरण पत्र' },
   ];
-  const sigstampRow = includeSignStamp && (firmSign || firmStamp) ? `
-    <div style="display:flex;align-items:flex-end;justify-content:flex-end;gap:20px;padding-top:8px;">
+  const sigstampOverlay = includeSignStamp && (firmSign || firmStamp) ? `
+    <div style="position:absolute;bottom:12mm;right:12mm;display:flex;align-items:flex-end;gap:16px;z-index:2;">
       ${firmStamp ? `<img src="${firmStamp}" style="width:35mm;height:35mm;object-fit:contain;">` : ''}
       ${firmSign  ? `<img src="${firmSign}"  style="height:24mm;width:auto;">` : ''}
     </div>` : '';
   const docPages = docDefs.filter(d => docs[d.key] && d.src).map(d => `
-<div style="page-break-before:always;padding:10mm 0 0;display:flex;flex-direction:column;">
-  <img src="${d.src}" style="max-width:100%;max-height:230mm;object-fit:contain;display:block;">
-  ${sigstampRow}
+<div style="page-break-before:always;position:relative;">
+  <img src="${d.src}" style="width:100%;height:auto;display:block;">
+  ${sigstampOverlay}
 </div>`).join('');
 
   const useLhBg = !!firmLetterhead;
