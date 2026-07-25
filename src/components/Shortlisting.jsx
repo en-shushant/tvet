@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import Modal from './ui/Modal.jsx';
 import { Btn, MdTextField, MdSelect, MdOption, MdToggle } from '../md.jsx';
 import { api } from '../utils/api.js';
@@ -275,6 +275,95 @@ function statusColor(s) {
   return { bg: 'var(--bg2)', color: 'var(--text3)' };
 }
 
+// ── Searchable client combobox ──────────────────────────────────────────────
+function ClientCombobox({ clients, value, onChange }) {
+  const selected = clients.find(c => String(c.id) === String(value));
+  const [query, setQuery] = useState(selected ? (selected.fullName || selected.full_name) : '');
+  const [open, setOpen] = useState(false);
+  const ref = useRef(null);
+
+  const filtered = useMemo(() => {
+    if (!query) return clients;
+    const q = query.toLowerCase();
+    return clients.filter(c => {
+      const name = (c.fullName || c.full_name || '').toLowerCase();
+      const short = (c.shortName || c.short_name || '').toLowerCase();
+      return name.includes(q) || short.includes(q);
+    });
+  }, [clients, query]);
+
+  useEffect(() => {
+    const handler = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+
+  const select = (c) => {
+    onChange(String(c.id));
+    setQuery(c.fullName || c.full_name);
+    setOpen(false);
+  };
+
+  const clear = () => { onChange(''); setQuery(''); setOpen(true); };
+
+  return (
+    <div ref={ref} style={{ position: 'relative' }}>
+      <div style={{ position: 'relative' }}>
+        <input
+          value={query}
+          onChange={e => { setQuery(e.target.value); onChange(''); setOpen(true); }}
+          onFocus={() => setOpen(true)}
+          placeholder="Search organization…"
+          style={{
+            width: '100%', padding: '16px 36px 16px 16px', fontSize: 14,
+            border: '1px solid var(--md-sys-color-outline, #79747e)',
+            borderRadius: 4, background: 'transparent', color: 'var(--text)',
+            fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box',
+            transition: 'border-color .15s',
+          }}
+          onFocusCapture={e => e.target.style.borderColor = 'var(--primary)'}
+          onBlurCapture={e => e.target.style.borderColor = 'var(--md-sys-color-outline, #79747e)'}
+        />
+        {query && (
+          <button onClick={clear} style={{
+            position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)',
+            background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text3)',
+            fontSize: 18, lineHeight: 1, padding: '4px',
+          }}>×</button>
+        )}
+      </div>
+      {open && (
+        <div style={{
+          position: 'absolute', top: 'calc(100% + 4px)', left: 0, right: 0, zIndex: 9999,
+          background: 'var(--surface)', border: '1px solid var(--border)',
+          borderRadius: 8, boxShadow: '0 4px 20px rgba(0,0,0,.15)',
+          maxHeight: 220, overflowY: 'auto',
+        }}>
+          {filtered.length === 0 ? (
+            <div style={{ padding: '12px 16px', color: 'var(--text3)', fontSize: 13 }}>No matches</div>
+          ) : filtered.map(c => {
+            const name = c.fullName || c.full_name;
+            const short = c.shortName || c.short_name;
+            return (
+              <div key={c.id} onMouseDown={() => select(c)} style={{
+                padding: '10px 16px', cursor: 'pointer', fontSize: 13,
+                borderBottom: '1px solid var(--border)',
+                background: String(c.id) === String(value) ? 'var(--primary-light)' : 'transparent',
+                transition: 'background .1s',
+              }}
+                onMouseEnter={e => e.currentTarget.style.background = 'var(--primary-light)'}
+                onMouseLeave={e => e.currentTarget.style.background = String(c.id) === String(value) ? 'var(--primary-light)' : 'transparent'}
+              >
+                {name}{short && short !== name ? <span style={{ color: 'var(--text3)', marginLeft: 6 }}>({short})</span> : null}
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Add/Edit Modal ─────────────────────────────────────────────────────────────
 function ShortlistForm({ initial, institutes, clients, onSave, onClose, saving }) {
   const isEdit = !!initial?.id;
@@ -356,10 +445,7 @@ function ShortlistForm({ initial, institutes, clients, onSave, onClose, saving }
             <MdTextField label="Organization name" value={form.client_name_manual} onChange={e => set('client_name_manual', e.target.value)}
               placeholder="Organization name…" />
           ) : (
-            <MdSelect label="Organization (Client)" value={form.client_id} onChange={e => set('client_id', e.target.value)}>
-              <MdOption value="">— Select organization —</MdOption>
-              {clients.map(c => <MdOption key={c.id} value={String(c.id)}>{c.fullName || c.full_name}{c.shortName || c.short_name ? ` (${c.shortName || c.short_name})` : ''}</MdOption>)}
-            </MdSelect>
+            <ClientCombobox clients={clients} value={form.client_id} onChange={v => set('client_id', v)} />
           )}
         </div>
         <div className="form-group">
