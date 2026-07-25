@@ -1096,32 +1096,103 @@ function InfrastructureTab({ instituteId, token, canEdit }) {
   );
 }
 
+const ACCEPT = 'image/*,application/pdf';
+
+function parseFiles(val) {
+  if (!val) return [];
+  try { const p = JSON.parse(val); return Array.isArray(p) ? p : [val]; }
+  catch { return [val]; }
+}
+function filesToStore(arr) {
+  if (!arr.length) return null;
+  return arr.length === 1 ? arr[0] : JSON.stringify(arr);
+}
+
+function FileThumb({ src, onRemove }) {
+  const isPdf = src.startsWith('data:application/pdf');
+  return (
+    <div style={{position:'relative', display:'inline-flex', flexDirection:'column', alignItems:'center'}}>
+      {isPdf ? (
+        <div style={{height:56, width:56, border:'1px solid var(--border)', borderRadius:6, background:'#fff8f0',
+          display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:2}}>
+          <span style={{fontSize:20}}>📄</span>
+          <span style={{fontSize:9, color:'var(--text3)', fontWeight:600}}>PDF</span>
+        </div>
+      ) : (
+        <img src={src} alt="" style={{height:56, maxWidth:80, objectFit:'contain', border:'1px solid var(--border)', borderRadius:6, background:'#fff', padding:2}}/>
+      )}
+      {onRemove && (
+        <button onClick={onRemove} style={{position:'absolute', top:-6, right:-6, width:18, height:18, borderRadius:'50%',
+          background:'#e53935', color:'#fff', border:'none', cursor:'pointer', fontSize:11, lineHeight:1,
+          display:'flex', alignItems:'center', justifyContent:'center', padding:0}}>✕</button>
+      )}
+    </div>
+  );
+}
+
 function DocImgUpload({ label, hint, value, onChange, disabled }) {
+  const isPdf = value?.startsWith('data:application/pdf');
   return (
     <div className="form-group" style={{marginBottom:12}}>
       <label style={{fontSize:13, fontWeight:600, color:'var(--text2)', display:'block', marginBottom:6}}>{label}</label>
       <div style={{display:'flex', alignItems:'center', gap:12, flexWrap:'wrap'}}>
-        {value && (
-          <img src={value} alt="" style={{height:56, maxWidth:200, objectFit:'contain', border:'1px solid var(--border)', borderRadius:6, background:'#fff', padding:3}}/>
-        )}
-        {!value && (
-          <div style={{height:56, width:80, border:'1px dashed var(--border)', borderRadius:6, background:'var(--bg2)', display:'flex', alignItems:'center', justifyContent:'center'}}>
-            <span style={{fontSize:11, color:'var(--text3)'}}>No file</span>
+        {value ? (
+          <FileThumb src={value} onRemove={!disabled ? () => onChange(null) : null}/>
+        ) : (
+          <div style={{height:56, width:56, border:'1px dashed var(--border)', borderRadius:6, background:'var(--bg2)',
+            display:'flex', alignItems:'center', justifyContent:'center'}}>
+            <span style={{fontSize:11, color:'var(--text3)'}}>None</span>
           </div>
         )}
         {!disabled && (
-          <>
-            <label style={{cursor:'pointer'}}>
-              <input type="file" accept="image/*" style={{display:'none'}} onChange={e=>{
-                const file=e.target.files[0]; if(!file) return;
-                const reader=new FileReader();
-                reader.onload=ev=>onChange(ev.target.result);
-                reader.readAsDataURL(file);
-              }}/>
-              <span className="btn btn-secondary btn-sm">{value ? 'Change' : 'Upload'}</span>
-            </label>
-            {value && <span className="btn btn-ghost btn-sm" style={{cursor:'pointer'}} onClick={()=>onChange(null)}>✕ Remove</span>}
-          </>
+          <label style={{cursor:'pointer'}}>
+            <input type="file" accept={ACCEPT} style={{display:'none'}} onChange={e=>{
+              const file=e.target.files[0]; if(!file) return;
+              const reader=new FileReader();
+              reader.onload=ev=>onChange(ev.target.result);
+              reader.readAsDataURL(file);
+            }}/>
+            <span className="btn btn-secondary btn-sm">{value ? 'Change' : 'Upload'}</span>
+          </label>
+        )}
+      </div>
+      {hint && <div style={{fontSize:11, color:'var(--text3)', marginTop:4}}>{hint}</div>}
+    </div>
+  );
+}
+
+function DocMultiUpload({ label, hint, value, onChange, disabled }) {
+  const files = parseFiles(value);
+  const addFiles = e => {
+    const picked = Array.from(e.target.files);
+    e.target.value = '';
+    Promise.all(picked.map(f => new Promise(res => {
+      const r = new FileReader(); r.onload = ev => res(ev.target.result); r.readAsDataURL(f);
+    }))).then(urls => onChange(filesToStore([...files, ...urls])));
+  };
+  const remove = idx => onChange(filesToStore(files.filter((_, i) => i !== idx)));
+  return (
+    <div className="form-group" style={{marginBottom:12}}>
+      <label style={{fontSize:13, fontWeight:600, color:'var(--text2)', display:'block', marginBottom:6}}>{label}</label>
+      <div style={{display:'flex', alignItems:'center', gap:10, flexWrap:'wrap'}}>
+        {files.map((src, i) => (
+          <FileThumb key={i} src={src} onRemove={!disabled ? () => remove(i) : null}/>
+        ))}
+        {!disabled && (
+          <label style={{cursor:'pointer'}}>
+            <input type="file" accept={ACCEPT} multiple style={{display:'none'}} onChange={addFiles}/>
+            <div style={{height:56, width:56, border:'1.5px dashed var(--primary)', borderRadius:6,
+              display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center',
+              color:'var(--primary)', fontSize:22, fontWeight:300, background:'color-mix(in srgb,var(--primary) 6%,transparent)'}}>
+              +
+            </div>
+          </label>
+        )}
+        {!files.length && disabled && (
+          <div style={{height:56, width:56, border:'1px dashed var(--border)', borderRadius:6, background:'var(--bg2)',
+            display:'flex', alignItems:'center', justifyContent:'center'}}>
+            <span style={{fontSize:11, color:'var(--text3)'}}>None</span>
+          </div>
         )}
       </div>
       {hint && <div style={{fontSize:11, color:'var(--text3)', marginTop:4}}>{hint}</div>}
@@ -1218,16 +1289,16 @@ function DocumentsTab({ institute, token, canEdit, onUpdate }) {
 
       {/* ── Supporting Documents ── */}
       <SectionTitle>Supporting Documents</SectionTitle>
-      <div style={{fontSize:12, color:'var(--text3)', marginBottom:14}}>Upload scanned images of certificates. These can be appended to generated letters.</div>
+      <div style={{fontSize:12, color:'var(--text3)', marginBottom:14}}>Upload scanned images or PDFs of certificates. These can be appended to generated letters.</div>
       <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:'0 24px'}}>
-        <DocImgUpload label="OCR दर्ता (Registration)" value={fields.ocrRegistration} onChange={v=>set('ocrRegistration',v)} disabled={!canEdit}/>
+        <DocMultiUpload label="OCR दर्ता (Registration)" value={fields.ocrRegistration} onChange={v=>set('ocrRegistration',v)} disabled={!canEdit}/>
         <DocImgUpload label="OCR नवीकरण (Renewal)" value={fields.ocrRenewal} onChange={v=>set('ocrRenewal',v)} disabled={!canEdit}/>
         <DocImgUpload label="भ्याट दर्ता (VAT Registration)" value={fields.vatRegistration} onChange={v=>set('vatRegistration',v)} disabled={!canEdit}/>
         <DocImgUpload label="कर चुक्ता (Tax Clearance)" value={fields.taxClearanceDoc} onChange={v=>set('taxClearanceDoc',v)} disabled={!canEdit}/>
         <DocImgUpload label="भ्याट म्याद थप (VAT Date Extension)" value={fields.vatExtension} onChange={v=>set('vatExtension',v)} disabled={!canEdit}/>
         <div/>
-        <DocImgUpload label="CTEVT सम्बन्धन (Affiliation)" value={fields.ctevtAffiliation} onChange={v=>set('ctevtAffiliation',v)} disabled={!canEdit}/>
-        <DocImgUpload label="CTEVT नवीकरण (Renewal)" value={fields.ctevtRenewal} onChange={v=>set('ctevtRenewal',v)} disabled={!canEdit}/>
+        <DocMultiUpload label="CTEVT सम्बन्धन (Affiliation)" value={fields.ctevtAffiliation} onChange={v=>set('ctevtAffiliation',v)} disabled={!canEdit}/>
+        <DocMultiUpload label="CTEVT नवीकरण (Renewal)" value={fields.ctevtRenewal} onChange={v=>set('ctevtRenewal',v)} disabled={!canEdit}/>
       </div>
 
       {canEdit && (

@@ -90,11 +90,28 @@ function openShortlistLetter(row, opts = {}) {
       ${firmStamp ? `<img src="${firmStamp}" style="width:35mm;height:35mm;object-fit:contain;">` : ''}
       ${firmSign  ? `<img src="${firmSign}"  style="height:24mm;width:auto;">` : ''}
     </div>` : '';
-  const docPages = docDefs.filter(d => docs[d.key] && d.src).map(d => `
+
+  const parseDocFiles = (src) => {
+    if (!src) return [];
+    try { const p = JSON.parse(src); return Array.isArray(p) ? p : [src]; }
+    catch { return [src]; }
+  };
+
+  const docPages = docDefs.filter(d => docs[d.key] && d.src).flatMap(d => {
+    const files = parseDocFiles(d.src);
+    return files.map((src, i) => {
+      const isPdf = src.startsWith('data:application/pdf');
+      const isLast = i === files.length - 1;
+      const content = isPdf
+        ? `<embed src="${src}" style="width:100%;height:250mm;display:block;" type="application/pdf">`
+        : `<img src="${src}" style="width:100%;height:auto;display:block;">`;
+      return `
 <div style="page-break-before:always;position:relative;padding:10mm 10mm 10mm 15mm;box-sizing:border-box;min-height:297mm;">
-  <img src="${d.src}" style="width:100%;height:auto;display:block;">
-  ${sigstampOverlay}
-</div>`).join('');
+  ${content}
+  ${isLast ? sigstampOverlay : ''}
+</div>`;
+    });
+  }).join('');
 
   const useLhBg = !!firmLetterhead;
   const fyNp = fy ? toNpNum(fy) : '';
