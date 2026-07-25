@@ -91,7 +91,7 @@ function openShortlistLetter(row, opts = {}) {
       ${firmSign  ? `<img src="${firmSign}"  style="height:24mm;width:auto;">` : ''}
     </div>` : '';
   const docPages = docDefs.filter(d => docs[d.key] && d.src).map(d => `
-<div style="page-break-before:always;position:relative;">
+<div style="page-break-before:always;position:relative;padding:10mm 10mm 10mm 15mm;box-sizing:border-box;min-height:297mm;">
   <img src="${d.src}" style="width:100%;height:auto;display:block;">
   ${sigstampOverlay}
 </div>`).join('');
@@ -126,7 +126,7 @@ function openShortlistLetter(row, opts = {}) {
     min-height: 297mm;
     flex-shrink: 0;
     background: #fff;
-    padding: ${useLhBg ? `${pageTopMargin}mm ${lhGap}mm ${pageBottomPadding}mm ${lhGap}mm` : `${pageTopMargin}mm 20mm ${pageBottomPadding}mm 20mm`};
+    padding: ${pageTopMargin}mm 10mm ${pageBottomPadding}mm 15mm;
     ${useLhBg ? `background-image:url('${firmLetterhead}');background-size:100% 297mm;background-repeat:no-repeat;background-position:top left;` : ''}
   }
   .lh-regpan { display:flex;justify-content:space-between;font-size:9pt;font-style:italic;color:#7b1a1a;margin-bottom:5px; }
@@ -634,9 +634,9 @@ const SERVICE_TYPES = [
 function LetterOptsModal({ row, onClose }) {
   const [inclSign, setInclSign] = useState(!!(row.institute_sign || row.institute_stamp));
   const [serviceType, setServiceType] = useState(SERVICE_TYPES[0]);
-  const [pageTopMargin, setPageTopMargin] = useState(row.institute_letter_top_margin ?? 15);
-  const [lhGap, setLhGap] = useState(row.institute_letter_lr_padding ?? 5);
-  const [pageBottomPadding, setPageBottomPadding] = useState(row.institute_letter_bottom_padding ?? 15);
+  const [pageTopMargin, setPageTopMargin] = useState(row.institute_letter_top_margin ?? 10);
+  const [lhGap, setLhGap] = useState(row.institute_letter_lr_padding ?? 10);
+  const [pageBottomPadding, setPageBottomPadding] = useState(row.institute_letter_bottom_padding ?? 10);
   const hasDocs = {
     ocrReg:   !!row.institute_ocr_registration,
     ocrRen:   !!row.institute_ocr_renewal,
@@ -661,9 +661,24 @@ function LetterOptsModal({ row, onClose }) {
       <div style={{display:'flex', flexDirection:'column', gap:12}}>
 
         {/* Service type */}
-        <MdSelect label="सेवाको प्रकार (Service Type)" value={serviceType} onChange={e => setServiceType(e.target.value)}>
-          {SERVICE_TYPES.map(s => <MdOption key={s} value={s}>{s}</MdOption>)}
-        </MdSelect>
+        <div>
+          <div style={{fontSize:12, fontWeight:600, color:'var(--text3)', marginBottom:6, textTransform:'uppercase', letterSpacing:'0.5px'}}>सेवाको प्रकार</div>
+          <div style={{display:'flex', flexDirection:'column', gap:6}}>
+            {SERVICE_TYPES.map(s => (
+              <label key={s} style={{
+                display:'flex', alignItems:'center', gap:10, padding:'9px 14px',
+                borderRadius:8, border:`1.5px solid ${serviceType===s ? 'var(--primary)' : 'var(--border)'}`,
+                background: serviceType===s ? 'color-mix(in srgb, var(--primary) 8%, transparent)' : 'transparent',
+                cursor:'pointer', fontSize:13, color: serviceType===s ? 'var(--primary)' : 'var(--text)',
+                fontWeight: serviceType===s ? 600 : 400, transition:'all .15s',
+              }}>
+                <input type="radio" name="serviceType" value={s} checked={serviceType===s} onChange={()=>setServiceType(s)}
+                  style={{accentColor:'var(--primary)', flexShrink:0}} />
+                {s}
+              </label>
+            ))}
+          </div>
+        </div>
 
         {/* Signature toggle */}
         <label style={{display:'flex', alignItems:'center', gap:14, padding:'12px 14px', borderRadius:10, border:'1px solid var(--border)', background:'var(--bg)', cursor:'pointer'}}>
