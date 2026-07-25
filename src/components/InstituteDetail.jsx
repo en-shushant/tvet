@@ -1118,7 +1118,8 @@ async function uploadToR2(file, token) {
   });
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
-    throw new Error(err.error || 'Upload failed');
+    if (err.error === 'blank_page') throw new Error('Blank page detected — skipped.');
+    throw new Error(err.message || err.error || 'Upload failed');
   }
   const { url } = await res.json();
   return url;
