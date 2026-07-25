@@ -62,6 +62,10 @@ md-filled-button, md-filled-tonal-button, md-text-button, md-outlined-button {
   --md-outlined-button-label-text-font:     var(--font);
   font-family: var(--font);
 }
+/* The * { padding:0 } reset overrides shadow-DOM :host padding (light-DOM wins in cascade).
+   Tag selectors (0-0-1) beat * (0-0-0), so this restores the MD button's natural side inset. */
+md-filled-button, md-filled-tonal-button, md-outlined-button { padding-inline: 24px; }
+md-text-button { padding-inline: 12px; }
 
 /* sm variant */
 md-filled-button.sm, md-filled-tonal-button.sm, md-text-button.sm, md-outlined-button.sm {
