@@ -232,6 +232,7 @@ fastify.register(require('./routes/occupation-tools'), { prefix: '/api/occupatio
 fastify.register(require('./routes/infrastructure'),   { prefix: '/api/infrastructure' });
 fastify.register(require('./routes/dashboard'),        { prefix: '/api/dashboard' });
 fastify.register(require('./routes/shortlists'),       { prefix: '/api/shortlists' });
+fastify.register(require('./routes/upload'),           { prefix: '/api/upload' });
 
 // ─── SPA FALLBACK ─────────────────────────────────────────────────────────────
 fastify.setNotFoundHandler((request, reply) => {

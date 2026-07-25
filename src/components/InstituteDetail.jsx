@@ -1108,6 +1108,22 @@ function filesToStore(arr) {
   return arr.length === 1 ? arr[0] : JSON.stringify(arr);
 }
 
+async function uploadToR2(file, token) {
+  const fd = new FormData();
+  fd.append('file', file);
+  const res = await fetch('/api/upload', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+    body: fd,
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || 'Upload failed');
+  }
+  const { url } = await res.json();
+  return url;
+}
+
 function FileThumb({ src, onRemove }) {
   const isPdf = src.startsWith('data:application/pdf');
   return (
@@ -1130,8 +1146,17 @@ function FileThumb({ src, onRemove }) {
   );
 }
 
-function DocImgUpload({ label, hint, value, onChange, disabled }) {
-  const isPdf = value?.startsWith('data:application/pdf');
+function DocImgUpload({ label, hint, value, onChange, disabled, token }) {
+  const [uploading, setUploading] = useState(false);
+  const [err, setErr] = useState('');
+  const handleFile = async e => {
+    const file = e.target.files[0]; if (!file) return;
+    e.target.value = '';
+    setErr(''); setUploading(true);
+    try { onChange(await uploadToR2(file, token)); }
+    catch (ex) { setErr(ex.message); }
+    finally { setUploading(false); }
+  };
   return (
     <div className="form-group" style={{marginBottom:12}}>
       <label style={{fontSize:13, fontWeight:600, color:'var(--text2)', display:'block', marginBottom:6}}>{label}</label>
@@ -1145,32 +1170,36 @@ function DocImgUpload({ label, hint, value, onChange, disabled }) {
           </div>
         )}
         {!disabled && (
-          <label style={{cursor:'pointer'}}>
-            <input type="file" accept={ACCEPT} style={{display:'none'}} onChange={e=>{
-              const file=e.target.files[0]; if(!file) return;
-              const reader=new FileReader();
-              reader.onload=ev=>onChange(ev.target.result);
-              reader.readAsDataURL(file);
-            }}/>
-            <span className="btn btn-secondary btn-sm">{value ? 'Change' : 'Upload'}</span>
+          <label style={{cursor: uploading ? 'wait' : 'pointer'}}>
+            <input type="file" accept={ACCEPT} style={{display:'none'}} onChange={handleFile} disabled={uploading}/>
+            <span className="btn btn-secondary btn-sm">{uploading ? 'Uploading…' : value ? 'Change' : 'Upload'}</span>
           </label>
         )}
+        {value && !disabled && <span className="btn btn-ghost btn-sm" style={{cursor:'pointer'}} onClick={()=>onChange(null)}>✕ Remove</span>}
       </div>
+      {err && <div style={{fontSize:11, color:'#c0391e', marginTop:4}}>{err}</div>}
       {hint && <div style={{fontSize:11, color:'var(--text3)', marginTop:4}}>{hint}</div>}
     </div>
   );
 }
 
-function DocMultiUpload({ label, hint, value, onChange, disabled }) {
+function DocMultiUpload({ label, hint, value, onChange, disabled, token }) {
+  const [uploading, setUploading] = useState(false);
+  const [err, setErr] = useState('');
   const files = parseFiles(value);
-  const addFiles = e => {
-    const picked = Array.from(e.target.files);
-    e.target.value = '';
-    Promise.all(picked.map(f => new Promise(res => {
-      const r = new FileReader(); r.onload = ev => res(ev.target.result); r.readAsDataURL(f);
-    }))).then(urls => onChange(filesToStore([...files, ...urls])));
+
+  const addFiles = async e => {
+    const picked = Array.from(e.target.files); e.target.value = '';
+    if (!picked.length) return;
+    setErr(''); setUploading(true);
+    try {
+      const urls = await Promise.all(picked.map(f => uploadToR2(f, token)));
+      onChange(filesToStore([...files, ...urls]));
+    } catch (ex) { setErr(ex.message); }
+    finally { setUploading(false); }
   };
   const remove = idx => onChange(filesToStore(files.filter((_, i) => i !== idx)));
+
   return (
     <div className="form-group" style={{marginBottom:12}}>
       <label style={{fontSize:13, fontWeight:600, color:'var(--text2)', display:'block', marginBottom:6}}>{label}</label>
@@ -1179,12 +1208,13 @@ function DocMultiUpload({ label, hint, value, onChange, disabled }) {
           <FileThumb key={i} src={src} onRemove={!disabled ? () => remove(i) : null}/>
         ))}
         {!disabled && (
-          <label style={{cursor:'pointer'}}>
-            <input type="file" accept={ACCEPT} multiple style={{display:'none'}} onChange={addFiles}/>
+          <label style={{cursor: uploading ? 'wait' : 'pointer'}}>
+            <input type="file" accept={ACCEPT} multiple style={{display:'none'}} onChange={addFiles} disabled={uploading}/>
             <div style={{height:56, width:56, border:'1.5px dashed var(--primary)', borderRadius:6,
               display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center',
-              color:'var(--primary)', fontSize:22, fontWeight:300, background:'color-mix(in srgb,var(--primary) 6%,transparent)'}}>
-              +
+              color:'var(--primary)', fontSize: uploading ? 13 : 22, fontWeight:300,
+              background:'color-mix(in srgb,var(--primary) 6%,transparent)'}}>
+              {uploading ? '…' : '+'}
             </div>
           </label>
         )}
@@ -1195,6 +1225,7 @@ function DocMultiUpload({ label, hint, value, onChange, disabled }) {
           </div>
         )}
       </div>
+      {err && <div style={{fontSize:11, color:'#c0391e', marginTop:4}}>{err}</div>}
       {hint && <div style={{fontSize:11, color:'var(--text3)', marginTop:4}}>{hint}</div>}
     </div>
   );
@@ -1266,10 +1297,10 @@ function DocumentsTab({ institute, token, canEdit, onUpdate }) {
 
       {/* ── Letter Images ── */}
       <SectionTitle>Letter Images</SectionTitle>
-      <DocImgUpload label="Letterhead" hint="Full-width banner shown at the top of generated letters." value={fields.letterhead} onChange={v=>set('letterhead',v)} disabled={!canEdit}/>
+      <DocImgUpload label="Letterhead" hint="Full-width banner shown at the top of generated letters." value={fields.letterhead} onChange={v=>set('letterhead',v)} disabled={!canEdit} token={token}/>
       <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:'0 20px'}}>
-        <DocImgUpload label="Authorized Signature" value={fields.sign} onChange={v=>set('sign',v)} disabled={!canEdit}/>
-        <DocImgUpload label="Stamp / Seal" value={fields.stamp} onChange={v=>set('stamp',v)} disabled={!canEdit}/>
+        <DocImgUpload label="Authorized Signature" value={fields.sign} onChange={v=>set('sign',v)} disabled={!canEdit} token={token}/>
+        <DocImgUpload label="Stamp / Seal" value={fields.stamp} onChange={v=>set('stamp',v)} disabled={!canEdit} token={token}/>
       </div>
 
       {/* ── Page Padding ── */}
@@ -1291,14 +1322,14 @@ function DocumentsTab({ institute, token, canEdit, onUpdate }) {
       <SectionTitle>Supporting Documents</SectionTitle>
       <div style={{fontSize:12, color:'var(--text3)', marginBottom:14}}>Upload scanned images or PDFs of certificates. These can be appended to generated letters.</div>
       <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:'0 24px'}}>
-        <DocMultiUpload label="OCR दर्ता (Registration)" value={fields.ocrRegistration} onChange={v=>set('ocrRegistration',v)} disabled={!canEdit}/>
-        <DocImgUpload label="OCR नवीकरण (Renewal)" value={fields.ocrRenewal} onChange={v=>set('ocrRenewal',v)} disabled={!canEdit}/>
-        <DocImgUpload label="भ्याट दर्ता (VAT Registration)" value={fields.vatRegistration} onChange={v=>set('vatRegistration',v)} disabled={!canEdit}/>
-        <DocImgUpload label="कर चुक्ता (Tax Clearance)" value={fields.taxClearanceDoc} onChange={v=>set('taxClearanceDoc',v)} disabled={!canEdit}/>
-        <DocImgUpload label="भ्याट म्याद थप (VAT Date Extension)" value={fields.vatExtension} onChange={v=>set('vatExtension',v)} disabled={!canEdit}/>
+        <DocMultiUpload label="OCR दर्ता (Registration)" value={fields.ocrRegistration} onChange={v=>set('ocrRegistration',v)} disabled={!canEdit} token={token}/>
+        <DocImgUpload label="OCR नवीकरण (Renewal)" value={fields.ocrRenewal} onChange={v=>set('ocrRenewal',v)} disabled={!canEdit} token={token}/>
+        <DocImgUpload label="भ्याट दर्ता (VAT Registration)" value={fields.vatRegistration} onChange={v=>set('vatRegistration',v)} disabled={!canEdit} token={token}/>
+        <DocImgUpload label="कर चुक्ता (Tax Clearance)" value={fields.taxClearanceDoc} onChange={v=>set('taxClearanceDoc',v)} disabled={!canEdit} token={token}/>
+        <DocImgUpload label="भ्याट म्याद थप (VAT Date Extension)" value={fields.vatExtension} onChange={v=>set('vatExtension',v)} disabled={!canEdit} token={token}/>
         <div/>
-        <DocMultiUpload label="CTEVT सम्बन्धन (Affiliation)" value={fields.ctevtAffiliation} onChange={v=>set('ctevtAffiliation',v)} disabled={!canEdit}/>
-        <DocMultiUpload label="CTEVT नवीकरण (Renewal)" value={fields.ctevtRenewal} onChange={v=>set('ctevtRenewal',v)} disabled={!canEdit}/>
+        <DocMultiUpload label="CTEVT सम्बन्धन (Affiliation)" value={fields.ctevtAffiliation} onChange={v=>set('ctevtAffiliation',v)} disabled={!canEdit} token={token}/>
+        <DocMultiUpload label="CTEVT नवीकरण (Renewal)" value={fields.ctevtRenewal} onChange={v=>set('ctevtRenewal',v)} disabled={!canEdit} token={token}/>
       </div>
 
       {canEdit && (
