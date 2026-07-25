@@ -100,13 +100,14 @@ function openShortlistLetter(row, opts = {}) {
   const docPages = docDefs.filter(d => docs[d.key] && d.src).flatMap(d => {
     const files = parseDocFiles(d.src);
     return files.map((src, i) => {
-      const isPdf = src.startsWith('data:application/pdf');
+      const isPdf = !src.startsWith('data:') ? src.toLowerCase().endsWith('.pdf') : src.startsWith('data:application/pdf');
       const isLast = i === files.length - 1;
+      // PDF: fill page with embed; Image: center + scale to 92% of printable area, preserving aspect ratio
       const content = isPdf
-        ? `<embed src="${src}" style="width:100%;height:250mm;display:block;" type="application/pdf">`
-        : `<img src="${src}" style="width:100%;height:auto;display:block;">`;
+        ? `<embed src="${src}" style="display:block;width:190mm;height:267mm;margin:0 auto;" type="application/pdf">`
+        : `<img src="${src}" style="display:block;max-width:190mm;max-height:267mm;width:auto;height:auto;margin:0 auto;object-fit:contain;">`;
       return `
-<div style="page-break-before:always;position:relative;padding:10mm 10mm 10mm 15mm;box-sizing:border-box;min-height:297mm;">
+<div data-doc="1" style="page-break-before:always;page-break-after:always;break-before:page;break-after:page;position:relative;width:210mm;height:297mm;box-sizing:border-box;padding:15mm 10mm 15mm 10mm;background:#fff;box-shadow:0 2px 12px rgba(0,0,0,.18);display:flex;flex-direction:column;align-items:center;justify-content:center;overflow:hidden;">
   ${content}
   ${isLast ? sigstampOverlay : ''}
 </div>`;
@@ -125,18 +126,24 @@ function openShortlistLetter(row, opts = {}) {
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Devanagari:wght@400;600;700&display=swap" rel="stylesheet">
 <style>
-  @page { size: A4; margin: 0; }
+  @page { size: A4 portrait; margin: 0; }
   * { box-sizing: border-box; margin: 0; padding: 0; }
   html { background: #888; }
   body {
     font-family: 'Noto Sans Devanagari', 'Mangal', 'Arial Unicode MS', sans-serif;
     font-size: 10.5pt; color: #111; line-height: 1.65;
     -webkit-print-color-adjust: exact; print-color-adjust: exact;
-    display: flex; justify-content: center; padding: 20px;
+    display: flex; flex-direction: column; align-items: center; padding: 20px; gap: 20px;
   }
   @media print {
     html { background: none; }
-    body { display: block; padding: 0; }
+    body { display: block; padding: 0; gap: 0; }
+    /* Force every doc page to be exactly one A4 sheet */
+    body > div[data-doc] {
+      page-break-before: always;
+      page-break-after: always;
+      page-break-inside: avoid;
+    }
   }
   .page {
     width: 210mm;
