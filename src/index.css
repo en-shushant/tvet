@@ -818,21 +818,24 @@ textarea { resize: vertical; min-height: 80px; }
   box-shadow: 0 1px 3px rgba(0,0,0,.2);
 }
 
-/* M3 text-style secondary button in modal footer — targets both native <button> and md-* host */
-.modal-footer .btn-secondary {
-  border-radius: 100px;
-  padding: 10px 24px;
-  font-weight: 500; font-size: 14px; letter-spacing: 0.1px;
-  background: transparent; border-color: transparent;
-  color: var(--primary); box-shadow: none;
-  /* Override md-filled-tonal-button shadow-DOM tokens via CSS custom property inheritance */
+/* M3 Cancel-style: tonal buttons in modal footer rendered as text buttons via MD CSS tokens.
+   Btn strips btn-* classes before passing to md-* elements, so we target by tag name. */
+.modal-footer md-filled-tonal-button:not(.danger) {
   --md-filled-tonal-button-container-color: transparent;
+  --md-filled-tonal-button-container-elevation: 0;
+  --md-filled-tonal-button-container-shadow-color: transparent;
   --md-filled-tonal-button-label-text-color: var(--primary);
+  --md-filled-tonal-button-hover-label-text-color: var(--primary);
+  --md-filled-tonal-button-focus-label-text-color: var(--primary);
+  --md-filled-tonal-button-pressed-label-text-color: var(--primary);
   --md-filled-tonal-button-hover-state-layer-color: var(--primary);
   --md-filled-tonal-button-pressed-state-layer-color: var(--primary);
-  --md-filled-tonal-button-focus-state-layer-color: var(--primary);
-  --md-filled-tonal-button-container-shadow-color: transparent;
-  --md-filled-tonal-button-container-elevation: 0;
+}
+/* Fallback for any native <button class="btn btn-secondary"> in modal footers */
+.modal-footer .btn-secondary {
+  border-radius: 100px; padding: 10px 24px;
+  font-weight: 500; font-size: 14px; letter-spacing: 0.1px;
+  background: transparent; border-color: transparent; color: var(--primary); box-shadow: none;
 }
 .modal-footer .btn-secondary:hover { background: var(--primary-light); }
 
