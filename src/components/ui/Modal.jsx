@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { createPortal } from 'react-dom';
 
-export default function Modal({ title, onClose, children, footer, size = '' }) {
+export default function Modal({ title, onClose, children, footer, size = '', compact = false }) {
   useEffect(() => {
     const onKey = (e) => { if (e.key === 'Escape') onClose(); };
     document.addEventListener('keydown', onKey);
@@ -15,7 +15,7 @@ export default function Modal({ title, onClose, children, footer, size = '' }) {
       className="modal-overlay"
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
-      <div className={`modal ${sizeClass}`} role="dialog" aria-modal="true">
+      <div className={`modal ${sizeClass}${compact ? ' modal-compact' : ''}`} role="dialog" aria-modal="true">
         <div className="modal-header">
           <span className="modal-title">{title}</span>
           <button className="modal-close" onClick={onClose} aria-label="Close">

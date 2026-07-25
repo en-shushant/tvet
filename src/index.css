@@ -761,6 +761,17 @@ textarea { resize: vertical; min-height: 80px; }
 .modal-lg { max-width: 900px; }
 .modal-xl { max-width: 1120px; }
 
+/* Compact modal variant — tighter spacing + smaller MD components */
+.modal-compact .modal-header { padding: 16px 20px 12px; }
+.modal-compact .modal-title { font-size: 16px; font-weight: 600; }
+.modal-compact .modal-body { padding: 0 20px 4px; font-size: 13px; }
+.modal-compact .modal-footer { padding: 12px 20px 16px; }
+.modal-compact .form-group { margin-bottom: 10px; }
+.modal-compact .form-row { gap: 10px; margin-bottom: 10px; }
+.modal-compact md-outlined-text-field,
+.modal-compact md-outlined-select { --md-outlined-field-top-space: 10px; --md-outlined-field-bottom-space: 10px; font-size: 13px; }
+.modal-compact input, .modal-compact select, .modal-compact textarea { padding: 7px 11px; font-size: 13px; }
+
 .modal-header {
   display: flex; align-items: center; justify-content: space-between;
   padding: 24px 24px 20px;

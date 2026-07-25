@@ -465,6 +465,7 @@ function ShortlistForm({ initial, institutes, clients, onSave, onClose, saving }
     <Modal
       title={isEdit ? 'Edit Shortlist Entry' : 'Add Shortlist Entry'}
       onClose={onClose}
+      compact
       footer={<>
         <Btn className="btn btn-secondary" onClick={onClose}>Cancel</Btn>
         <Btn className="btn btn-primary" onClick={handleSave} disabled={saving}>
