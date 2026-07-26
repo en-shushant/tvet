@@ -8,7 +8,7 @@ import { adToBS, BS_MONTHS, toNpNum } from '../constants/nepali.js';
 
 const FYS = [...FISCAL_YEARS].reverse(); // newest first
 
-const ACCEPT = 'image/*,application/pdf';
+const ACCEPT = 'image/*';
 async function uploadToR2(file, token) {
   const fd = new FormData();
   fd.append('file', file);
@@ -161,12 +161,12 @@ function openShortlistLetter(row, opts = {}) {
     return files.map((src, i) => {
       const isPdf = !src.startsWith('data:') ? src.toLowerCase().endsWith('.pdf') : src.startsWith('data:application/pdf');
       const isLast = i === files.length - 1;
-      // PDF: fill page with embed; Image: center + scale to 92% of printable area, preserving aspect ratio
+      // PDF: fill printable area; Image: stretch to fill printable area, preserving aspect ratio
       const content = isPdf
-        ? `<embed src="${src}" style="display:block;width:190mm;height:267mm;margin:0 auto;" type="application/pdf">`
-        : `<img src="${src}" style="display:block;max-width:190mm;max-height:267mm;width:auto;height:auto;margin:0 auto;object-fit:contain;">`;
+        ? `<embed src="${src}" style="display:block;width:190mm;height:267mm;" type="application/pdf">`
+        : `<img src="${src}" style="display:block;width:190mm;height:267mm;object-fit:contain;object-position:center;">`;
       return `
-<div data-doc="1" style="page-break-before:always;page-break-after:always;break-before:page;break-after:page;position:relative;width:210mm;height:297mm;box-sizing:border-box;padding:15mm 10mm 15mm 10mm;background:#fff;box-shadow:0 2px 12px rgba(0,0,0,.18);display:flex;flex-direction:column;align-items:center;justify-content:center;overflow:hidden;">
+<div data-doc="1" style="page-break-before:always;page-break-after:always;break-before:page;break-after:page;position:relative;width:210mm;height:297mm;box-sizing:border-box;padding:15mm 10mm 15mm 10mm;background:#fff;box-shadow:0 2px 12px rgba(0,0,0,.18);overflow:hidden;">
   ${content}
   ${isLast ? sigstampOverlay : ''}
 </div>`;

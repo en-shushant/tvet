@@ -1097,7 +1097,7 @@ function InfrastructureTab({ instituteId, token, canEdit }) {
   );
 }
 
-const ACCEPT = 'image/*,application/pdf';
+const ACCEPT = 'image/*';
 
 function parseFiles(val) {
   if (!val) return [];
@@ -1127,18 +1127,9 @@ async function uploadToR2(file, token) {
 }
 
 function FileThumb({ src, onRemove }) {
-  const isPdf = src.startsWith('data:application/pdf');
   return (
     <div style={{position:'relative', display:'inline-flex', flexDirection:'column', alignItems:'center'}}>
-      {isPdf ? (
-        <div style={{height:56, width:56, border:'1px solid var(--border)', borderRadius:6, background:'#fff8f0',
-          display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:2}}>
-          <span style={{fontSize:20}}>📄</span>
-          <span style={{fontSize:9, color:'var(--text3)', fontWeight:600}}>PDF</span>
-        </div>
-      ) : (
-        <img src={src} alt="" style={{height:56, maxWidth:80, objectFit:'contain', border:'1px solid var(--border)', borderRadius:6, background:'#fff', padding:2}}/>
-      )}
+      <img src={src} alt="" style={{height:64, width:64, objectFit:'cover', border:'1px solid var(--border)', borderRadius:8, background:'#fff'}}/>
       {onRemove && (
         <button onClick={onRemove} style={{position:'absolute', top:-6, right:-6, width:18, height:18, borderRadius:'50%',
           background:'#e53935', color:'#fff', border:'none', cursor:'pointer', fontSize:11, lineHeight:1,
@@ -1280,15 +1271,15 @@ function DocumentsTab({ institute, token, canEdit, onUpdate, isShortlistOnly }) 
   );
 
   const DOC_ROWS = [
-    { label: 'OCR दर्ता', sub: 'Registration', key: 'ocrRegistration',        multi: true  },
-    { label: 'OCR नवीकरण', sub: 'Renewal',     key: 'ocrRenewal',              multi: false },
-    { label: 'स्थानीय तह दर्ता', sub: 'Local Level Reg.', key: 'localLevelRegistration', multi: true  },
-    { label: 'स्थानीय तह नवीकरण', sub: 'Local Level Renewal', key: 'localLevelRenewal',  multi: false },
-    { label: 'भ्याट दर्ता', sub: 'VAT Registration', key: 'vatRegistration',   multi: false },
-    { label: 'कर चुक्ता', sub: 'Tax Clearance',     key: 'taxClearanceDoc',    multi: false },
-    { label: 'भ्याट म्याद थप', sub: 'VAT Date Extension', key: 'vatExtension', multi: false },
-    { label: 'CTEVT सम्बन्धन', sub: 'Affiliation', key: 'ctevtAffiliation',    multi: true  },
-    { label: 'CTEVT नवीकरण', sub: 'Renewal',       key: 'ctevtRenewal',        multi: true  },
+    { label: 'OCR दर्ता', sub: 'Registration', key: 'ocrRegistration' },
+    { label: 'OCR नवीकरण', sub: 'Renewal', key: 'ocrRenewal' },
+    { label: 'स्थानीय तह दर्ता', sub: 'Local Level Reg.', key: 'localLevelRegistration' },
+    { label: 'स्थानीय तह नवीकरण', sub: 'Local Level Renewal', key: 'localLevelRenewal' },
+    { label: 'भ्याट दर्ता', sub: 'VAT Registration', key: 'vatRegistration' },
+    { label: 'कर चुक्ता', sub: 'Tax Clearance', key: 'taxClearanceDoc' },
+    { label: 'भ्याट म्याद थप', sub: 'VAT Date Extension', key: 'vatExtension' },
+    { label: 'CTEVT सम्बन्धन', sub: 'Affiliation', key: 'ctevtAffiliation' },
+    { label: 'CTEVT नवीकरण', sub: 'Renewal', key: 'ctevtRenewal' },
   ];
 
   return (
@@ -1367,8 +1358,7 @@ function DocumentsTab({ institute, token, canEdit, onUpdate, isShortlistOnly }) 
               const filled = DOC_ROWS.filter(d => {
                 const v = fields[d.key];
                 if (!v) return false;
-                if (d.multi) { try { const p = JSON.parse(v); return Array.isArray(p) ? p.length > 0 : !!v; } catch { return !!v; } }
-                return true;
+                try { const p = JSON.parse(v); return Array.isArray(p) ? p.length > 0 : !!v; } catch { return !!v; }
               }).length;
               return (
                 <span style={{fontSize:12, fontWeight:600, padding:'4px 12px', borderRadius:100,
@@ -1384,9 +1374,7 @@ function DocumentsTab({ institute, token, canEdit, onUpdate, isShortlistOnly }) 
         {/* Doc rows */}
         {DOC_ROWS.map((doc, i) => {
           const v = fields[doc.key];
-          const hasFile = doc.multi
-            ? (() => { try { const p = JSON.parse(v); return Array.isArray(p) ? p.length > 0 : !!v; } catch { return !!v; } })()
-            : !!v;
+          const hasFile = (() => { if (!v) return false; try { const p = JSON.parse(v); return Array.isArray(p) ? p.length > 0 : !!v; } catch { return !!v; } })();
           return (
             <div key={doc.key} style={{
               display:'flex', alignItems:'center', gap:16, padding:'14px 24px',
@@ -1405,10 +1393,7 @@ function DocumentsTab({ institute, token, canEdit, onUpdate, isShortlistOnly }) 
               </div>
               {/* Upload widget */}
               <div style={{flex:1, minWidth:0}}>
-                {doc.multi
-                  ? <DocMultiUpload label="" value={fields[doc.key]} onChange={v=>set(doc.key,v)} disabled={!canEdit} token={token}/>
-                  : <DocImgUpload   label="" value={fields[doc.key]} onChange={v=>set(doc.key,v)} disabled={!canEdit} token={token}/>
-                }
+                <DocMultiUpload label="" value={fields[doc.key]} onChange={v=>set(doc.key,v)} disabled={!canEdit} token={token}/>
               </div>
             </div>
           );
