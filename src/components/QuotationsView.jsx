@@ -2,7 +2,7 @@
  * QuotationsView — sidebar screen for managing shortlisting and contracts
  * Two tabs: Shortlisting (table of all entries) + Contracts (all contracts + quotations)
  */
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import Modal from './ui/Modal.jsx';
 import { Btn, MdTextField, MdSelect, MdOption } from '../md.jsx';
 import { api } from '../utils/api.js';
