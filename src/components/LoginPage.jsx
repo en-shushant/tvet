@@ -38,11 +38,11 @@ function LoginPage({ onLogin }) {
         'error-callback': () => setCapToken(''),
       });
     };
-    if (window.turnstile) {
+    if (window.__turnstileReady) {
       render();
     } else {
-      const prev = window.onloadTurnstileCallback;
-      window.onloadTurnstileCallback = () => { render(); if (prev) prev(); };
+      window.__turnstileCallbacks = window.__turnstileCallbacks || [];
+      window.__turnstileCallbacks.push(render);
     }
     return () => {
       if (turnstileIdRef.current !== undefined && window.turnstile) {
