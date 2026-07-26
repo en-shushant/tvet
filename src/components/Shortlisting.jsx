@@ -891,19 +891,19 @@ function BillModal({ row, token, onSave, onClose, saving }) {
 
         {/* Cost section */}
         <div style={{borderTop:'1px solid var(--border)', paddingTop:16}}>
-          <div style={{fontSize:13, fontWeight:600, color:'var(--text2)', marginBottom:10}}>Shortlisting Cost</div>
+          <div style={{fontSize:13, fontWeight:600, color:'var(--text2)', marginBottom:10}}>Shortlisting Charge</div>
 
           {/* Free toggle */}
           <label style={{display:'flex', alignItems:'center', gap:10, cursor:'pointer', marginBottom:12}}>
             <input type="checkbox" checked={isFree} onChange={e => { setIsFree(e.target.checked); if (e.target.checked) setAmount(''); }}
               style={{accentColor:'var(--primary)', width:16, height:16}}/>
-            <span style={{fontSize:13.5, color:'var(--text)'}}>Free / No cost</span>
+            <span style={{fontSize:13.5, color:'var(--text)'}}>Free / No charge</span>
           </label>
 
           {!isFree && (
             <MdTextField
               type="number"
-              label="Contract Amount (NPR)"
+              label="Shortlisting Charge (NPR)"
               value={amount}
               onChange={e => setAmount(e.target.value)}
               placeholder="e.g. 150000"
