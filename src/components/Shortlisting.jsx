@@ -428,7 +428,7 @@ function ShortlistForm({ initial, institutes, clients, onSave, onClose, saving }
 
   const empty = {
     client_id: '', client_name_manual: '', institute_id: '', standing_list_name: '', fy: '',
-    shortlist_date: '', valid_until: '', status: 'Active', remarks: '',
+    shortlist_date: '', valid_until: '', status: 'Active', remarks: '', contract_amount: '',
   };
   const [form, setForm] = useState(initial ? {
     client_id:          initial.client_id    ?? '',
@@ -440,6 +440,7 @@ function ShortlistForm({ initial, institutes, clients, onSave, onClose, saving }
     valid_until:        initial.valid_until   ? initial.valid_until.slice(0,10)     : '',
     status:             initial.status        ?? 'Active',
     remarks:            initial.remarks       ?? '',
+    contract_amount:    initial.contract_amount != null ? String(initial.contract_amount) : '',
   } : empty);
 
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
@@ -535,6 +536,10 @@ function ShortlistForm({ initial, institutes, clients, onSave, onClose, saving }
             <MdOption value="Pending">Pending</MdOption>
           </MdSelect>
         </div>
+      </div>
+
+      <div className="form-group">
+        <MdTextField type="number" label="Contract Amount (NPR)" value={form.contract_amount} onChange={e => set('contract_amount', e.target.value)} placeholder="Optional" />
       </div>
 
       <div className="form-group">

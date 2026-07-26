@@ -1,6 +1,8 @@
-import { useMemo } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { getSession } from '../utils/auth.js';
 import { getNepaliDate } from '../constants/nepali.js';
+import { api } from '../utils/api.js';
+import { getCurrentFY } from '../constants/data.js';
 
 const DOC_KEYS = [
   { key: 'ocrRegistration',        label: 'OCR दर्ता' },
@@ -20,7 +22,15 @@ function docStatus(inst) {
   return { uploaded: uploaded.length, missing: missing.length, total: DOC_KEYS.length, missingLabels: missing.map(d => d.label) };
 }
 
-function KpiCard({ icon, iconBg, iconColor, label, value, valueColor, sub }) {
+const fmtNPR = (n) => {
+  if (!n) return '—';
+  const num = Number(n);
+  if (num >= 10_000_000) return `रू ${(num / 10_000_000).toFixed(2)} Cr`;
+  if (num >= 100_000)    return `रू ${(num / 100_000).toFixed(2)} L`;
+  return `रू ${num.toLocaleString('en-IN')}`;
+};
+
+function KpiCard({ icon, iconBg, iconColor, label, value, valueColor, sub, small }) {
   return (
     <div style={{
       background: 'var(--surface)', borderRadius: 20,
@@ -37,7 +47,11 @@ function KpiCard({ icon, iconBg, iconColor, label, value, valueColor, sub }) {
         <span className="material-icons-round" style={{ fontSize: 22, color: iconColor }}>{icon}</span>
       </div>
       <div style={{ fontSize: 12, fontWeight: 500, letterSpacing: 0.3, color: 'var(--text3)', marginBottom: 4 }}>{label}</div>
-      <div style={{ fontSize: 36, fontWeight: 400, lineHeight: 1.1, color: valueColor || 'var(--text)', letterSpacing: -0.5, fontVariantNumeric: 'tabular-nums', marginBottom: 6 }}>{value}</div>
+      <div style={{
+        fontSize: small ? 24 : 36, fontWeight: 400, lineHeight: 1.1,
+        color: valueColor || 'var(--text)', letterSpacing: -0.5,
+        fontVariantNumeric: 'tabular-nums', marginBottom: 6,
+      }}>{value}</div>
       <div style={{ fontSize: 11, color: 'var(--text3)', lineHeight: 1.45 }}>{sub}</div>
     </div>
   );
@@ -64,6 +78,29 @@ export default function ShortlistDashboard({ institutes, onNavigate }) {
   const hour = new Date().getHours();
   const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
 
+  const currentFY = useMemo(() => getCurrentFY() || '', []);
+
+  const [shortlists, setShortlists] = useState([]);
+  useEffect(() => {
+    api('GET', '/shortlists', null, session?.token).then(setShortlists).catch(() => {});
+  }, []);
+
+  const fyShortlists = useMemo(() =>
+    currentFY ? shortlists.filter(s => s.fy === currentFY) : shortlists,
+  [shortlists, currentFY]);
+
+  const fyTotalShortlists = fyShortlists.length;
+  const fyTotalCost = fyShortlists.reduce((sum, s) => sum + (Number(s.contract_amount) || 0), 0);
+  const fyClients = useMemo(() => {
+    const names = new Set();
+    fyShortlists.forEach(s => {
+      const name = s.client_name || s.client_name_manual;
+      if (name) names.add(name);
+    });
+    return names.size;
+  }, [fyShortlists]);
+  const fyFirms = useMemo(() => new Set(fyShortlists.map(s => s.institute_id)).size, [fyShortlists]);
+
   const SectionHead = ({ children }) => (
     <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text2)', letterSpacing: 0.1, margin: '4px 0 10px 2px' }}>{children}</div>
   );
@@ -73,7 +110,11 @@ export default function ShortlistDashboard({ institutes, onNavigate }) {
   const incomplete = statuses.filter(s => s.missing > 0).length;
   const totalDocs  = statuses.reduce((sum, s) => sum + s.uploaded, 0);
 
-  const sorted = [...statuses].sort((a, b) => a.missing - b.missing === 0 ? a.inst.name.localeCompare(b.inst.name) : b.missing - a.missing);
+  const sorted = [...statuses].sort((a, b) =>
+    b.missing - a.missing || a.inst.name.localeCompare(b.inst.name)
+  );
+
+  const fyLabel = currentFY ? `FY ${currentFY}` : 'All time';
 
   return (
     <div className="fade-in" style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
@@ -88,7 +129,7 @@ export default function ShortlistDashboard({ institutes, onNavigate }) {
           <div style={{ fontSize: 24, fontWeight: 600, color: 'var(--text)', letterSpacing: -0.3, marginBottom: 4 }}>
             {greeting}, {session?.fullName?.split(' ')[0] || 'there'} 👋
           </div>
-          <div style={{ fontSize: 13, color: 'var(--text3)' }}>Here's your shortlisting document status</div>
+          <div style={{ fontSize: 13, color: 'var(--text3)' }}>Here's your shortlisting overview</div>
         </div>
         <div style={{ textAlign: 'right' }}>
           <div style={{ fontSize: 16, fontWeight: 600, color: 'var(--primary)', letterSpacing: 0.1 }}>{nd.npDay}, {nd.npDate}</div>
@@ -96,14 +137,43 @@ export default function ShortlistDashboard({ institutes, onNavigate }) {
         </div>
       </div>
 
-      {/* KPI row */}
+      {/* Shortlisting KPIs */}
       <div>
-        <SectionHead>Overview</SectionHead>
+        <SectionHead>{fyLabel} — Shortlisting Activity</SectionHead>
         <div className="grid-4">
           <KpiCard
-            icon="business" iconBg="var(--primary-light)" iconColor="var(--primary)"
+            icon="playlist_add_check" iconBg="var(--primary-light)" iconColor="var(--primary)"
+            label={`Total Shortlists (${fyLabel})`} value={fyTotalShortlists}
+            sub="Shortlist entries recorded this FY"
+          />
+          <KpiCard
+            icon="payments" iconBg="var(--teal-light)" iconColor="var(--teal)"
+            label={`Shortlist Cost (${fyLabel})`}
+            value={fyTotalCost > 0 ? fmtNPR(fyTotalCost) : '—'}
+            small={fyTotalCost > 0}
+            sub="Total contract amount across entries"
+          />
+          <KpiCard
+            icon="corporate_fare" iconBg="var(--purple-light)" iconColor="var(--purple)"
+            label={`Clients (${fyLabel})`} value={fyClients}
+            sub="Distinct clients in shortlist entries"
+          />
+          <KpiCard
+            icon="business" iconBg="var(--warning-light)" iconColor="var(--warning)"
+            label={`Firms Shortlisted (${fyLabel})`} value={fyFirms}
+            sub="Distinct firms in shortlist entries"
+          />
+        </div>
+      </div>
+
+      {/* Document status KPIs */}
+      <div>
+        <SectionHead>Document Status</SectionHead>
+        <div className="grid-4">
+          <KpiCard
+            icon="domain" iconBg="var(--secondary-light)" iconColor="var(--secondary)"
             label="Total Firms" value={institutes.length}
-            sub="Firms assigned to you"
+            sub="Firms visible to you"
           />
           <KpiCard
             icon="task_alt" iconBg="var(--teal-light)" iconColor="var(--teal)"
@@ -118,7 +188,7 @@ export default function ShortlistDashboard({ institutes, onNavigate }) {
             sub="Firms with missing documents"
           />
           <KpiCard
-            icon="upload_file" iconBg="var(--secondary-light)" iconColor="var(--secondary)"
+            icon="upload_file" iconBg="var(--primary-light)" iconColor="var(--primary)"
             label="Documents Uploaded" value={totalDocs}
             sub={`Out of ${institutes.length * DOC_KEYS.length} total slots`}
           />
@@ -139,14 +209,10 @@ export default function ShortlistDashboard({ institutes, onNavigate }) {
                 key={inst.id}
                 onClick={() => onNavigate(inst)}
                 style={{
-                  display: 'grid',
-                  gridTemplateColumns: '1fr 200px',
-                  alignItems: 'center',
-                  gap: 20,
-                  padding: '14px 20px',
+                  display: 'grid', gridTemplateColumns: '1fr 200px', alignItems: 'center',
+                  gap: 20, padding: '14px 20px',
                   borderBottom: idx < sorted.length - 1 ? '1px solid var(--border)' : 'none',
-                  cursor: 'pointer',
-                  transition: 'background .15s',
+                  cursor: 'pointer', transition: 'background .15s',
                 }}
                 onMouseEnter={e => e.currentTarget.style.background = 'var(--bg)'}
                 onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
