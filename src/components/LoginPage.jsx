@@ -341,8 +341,8 @@ function UserManagement({institutes, isSuperAdmin}) {
   const [userInstitutes, setUserInstitutes] = useState({});
 
   const loadUserInstitutes = (userList) => {
-    const editors = userList.filter(u => u.role === 'editor');
-    editors.forEach(u => {
+    const assignable = userList.filter(u => u.role === 'editor' || u.role === 'shortlist');
+    assignable.forEach(u => {
       api('GET', `/users/${u.id}/institutes`, null, token)
         .then(ids => setUserInstitutes(prev => ({ ...prev, [u.id]: ids.map(id => parseInt(id)) })))
         .catch(() => {});
@@ -411,7 +411,7 @@ function UserManagement({institutes, isSuperAdmin}) {
               {loading
                 ? <tr><td colSpan="7" style={{textAlign:'center',padding:20,color:'var(--text3)'}}>Loading…</td></tr>
                 : filtered.map(u => {
-                const assignedInsts = u.role === 'editor'
+                const assignedInsts = (u.role === 'editor' || u.role === 'shortlist')
                   ? (userInstitutes[u.id] || []).map(id => institutes.find(i => i.id === id)).filter(Boolean)
                   : [];
                 return (
@@ -428,7 +428,7 @@ function UserManagement({institutes, isSuperAdmin}) {
                   <td style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--text2)' }}>{u.email}</td>
                   <td>{roleBadge(u.role)}</td>
                   <td>
-                    {u.role === 'editor' ? (
+                    {(u.role === 'editor' || u.role === 'shortlist') ? (
                       <div style={{display:'flex',flexWrap:'wrap',gap:4,alignItems:'center'}}>
                         {assignedInsts.length === 0
                           ? <span style={{fontSize:12,color:'var(--text3)'}}>None</span>
@@ -447,7 +447,7 @@ function UserManagement({institutes, isSuperAdmin}) {
                   <td style={{ color: 'var(--text3)', fontSize: 12 }}>{u.created_at?.slice(0,10)}</td>
                   <td>
                     <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
-                      {u.role === 'editor' && (
+                      {(u.role === 'editor' || u.role === 'shortlist') && (
                         <Btn className="btn btn-secondary btn-sm" onClick={() => setAssignModal(u)}>
                           <span className="material-icons-round" style={{fontSize:13,verticalAlign:'middle',marginRight:3}}>business</span>
                           Assign Firms
