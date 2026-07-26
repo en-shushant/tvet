@@ -163,6 +163,7 @@ async function runMigrations() {
     `ALTER TABLE institutes ADD COLUMN IF NOT EXISTS service_type TEXT`,
     `ALTER TABLE institutes ADD COLUMN IF NOT EXISTS local_level_registration TEXT`,
     `ALTER TABLE institutes ADD COLUMN IF NOT EXISTS local_level_renewal TEXT`,
+    `ALTER TABLE institutes ADD COLUMN IF NOT EXISTS created_by UUID REFERENCES users(id) ON DELETE SET NULL`,
   ];
   for (const sql of migrations) {
     try { await pool.query(sql); }
