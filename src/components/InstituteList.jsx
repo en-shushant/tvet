@@ -5,7 +5,7 @@ import { Btn } from '../md.jsx';
 import { usePagination } from '../utils/hooks.js';
 import { INSTITUTE_TYPES, INSTITUTE_STATUSES } from '../constants/data.js';
 
-function InstituteList({institutes, onSelect, onAdd, initialSearch=''}) {
+function InstituteList({institutes, onSelect, onAdd, initialSearch='', isShortlistOnly=false}) {
   const [search, setSearch] = useState(initialSearch);
   const [statusFilter, setStatusFilter] = useState('All');
 
@@ -89,7 +89,7 @@ function InstituteList({institutes, onSelect, onAdd, initialSearch=''}) {
               <span style={{overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap'}}>{inst.address}</span>
             </div>
             {/* Stats row */}
-            <div style={{display:'flex', gap:0, borderTop:'1px solid var(--border)', paddingTop:8}}>
+            {!isShortlistOnly && <div style={{display:'flex', gap:0, borderTop:'1px solid var(--border)', paddingTop:8}}>
               {[
                 {label:'Trainees', value:inst.totalTrainees.toLocaleString(), color:'var(--primary)'},
                 {label:'ST Appeared', value:inst.totalStAppeared.toLocaleString(), color:'var(--success)'},
@@ -101,7 +101,7 @@ function InstituteList({institutes, onSelect, onAdd, initialSearch=''}) {
                   <div style={{fontSize:10, color:'var(--text2)', textTransform:'uppercase', letterSpacing:'0.4px', marginTop:1, fontWeight:600}}>{m.label}</div>
                 </div>
               ))}
-            </div>
+            </div>}
           </div>
         ))}
       </div>
