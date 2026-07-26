@@ -64,9 +64,7 @@ function openShortlistLetter(row, opts = {}) {
   const listName  = row.standing_list_name || 'Standing List';
   const fy        = row.fy || '';
   const dateBS    = bsDateLabel(row.shortlist_date);
-  const validBS   = bsDateLabel(row.valid_until);
   const dateAD    = fmt(row.shortlist_date);
-  const validAD   = fmt(row.valid_until);
   const status    = row.status || 'Active';
   const remarks   = row.remarks || '';
   const todayBSStr = todayBS();
@@ -428,7 +426,7 @@ function ShortlistForm({ initial, institutes, clients, onSave, onClose, saving }
 
   const empty = {
     client_id: '', client_name_manual: '', institute_id: '', standing_list_name: '', fy: '',
-    shortlist_date: '', valid_until: '', status: 'Active', remarks: '', contract_amount: '',
+    shortlist_date: '', status: 'Active', remarks: '', contract_amount: '',
   };
   const [form, setForm] = useState(initial ? {
     client_id:          initial.client_id    ?? '',
@@ -437,7 +435,7 @@ function ShortlistForm({ initial, institutes, clients, onSave, onClose, saving }
     standing_list_name: initial.standing_list_name ?? '',
     fy:                 initial.fy           ?? '',
     shortlist_date:     initial.shortlist_date ? initial.shortlist_date.slice(0,10) : '',
-    valid_until:        initial.valid_until   ? initial.valid_until.slice(0,10)     : '',
+
     status:             initial.status        ?? 'Active',
     remarks:            initial.remarks       ?? '',
     contract_amount:    initial.contract_amount != null ? String(initial.contract_amount) : '',
@@ -526,9 +524,6 @@ function ShortlistForm({ initial, institutes, clients, onSave, onClose, saving }
       </div>
 
       <div className="form-row form-row-2">
-        <div className="form-group">
-          <MdTextField type="date" label="Valid Until" value={form.valid_until} onChange={e => set('valid_until', e.target.value)} />
-        </div>
         <div className="form-group">
           <MdSelect label="Status" value={form.status} onChange={e => set('status', e.target.value)}>
             <MdOption value="Active">Active</MdOption>
@@ -807,7 +802,6 @@ function ShortlistRow({ row, idx, canEdit, isAdmin, onEdit, onDelete, showFY=tru
       {/* Date */}
       <div style={{width:110, fontSize:12.5, color:'var(--text3)', flexShrink:0}}>
         {fmt(row.shortlist_date)}
-        {row.valid_until && <div style={{fontSize:11, marginTop:2}}>→ {fmt(row.valid_until)}</div>}
       </div>
 
       {/* Status */}
