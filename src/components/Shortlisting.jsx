@@ -93,7 +93,7 @@ function todayBS() {
 
 // ── Letter generator — opens print-ready A4 in new window ─────────────────────
 function openShortlistLetter(row, opts = {}) {
-  const { includeSignStamp = false, docs = {}, pageTopMargin = 15, lhGap = 5, pageBottomPadding = 15, serviceType: svcType } = opts;
+  const { includeSign = false, includeStamp = false, docs = {}, pageTopMargin = 15, lhGap = 5, pageBottomPadding = 15, serviceType: svcType } = opts;
   // Firm (institute) — letterhead owner
   const firmName        = row.institute_name || '';
   const firmAcronym     = row.institute_acronym || '';
@@ -144,10 +144,10 @@ function openShortlistLetter(row, opts = {}) {
     { key: 'ctevtAff',  src: row.institute_ctevt_affiliation,  label: 'CTEVT सम्बन्धन पत्र' },
     { key: 'ctevtRen',  src: row.institute_ctevt_renewal,      label: 'CTEVT नवीकरण पत्र' },
   ];
-  const sigstampOverlay = includeSignStamp && (firmSign || firmStamp) ? `
+  const sigstampOverlay = (includeSign && firmSign) || (includeStamp && firmStamp) ? `
     <div style="position:absolute;bottom:12mm;right:12mm;display:flex;align-items:flex-end;gap:16px;z-index:2;">
-      ${firmStamp ? `<img src="${firmStamp}" style="width:35mm;height:35mm;object-fit:contain;">` : ''}
-      ${firmSign  ? `<img src="${firmSign}"  style="height:24mm;width:auto;">` : ''}
+      ${includeStamp && firmStamp ? `<img src="${firmStamp}" style="width:35mm;height:35mm;object-fit:contain;">` : ''}
+      ${includeSign  && firmSign  ? `<img src="${firmSign}"  style="height:24mm;width:auto;">` : ''}
     </div>` : '';
 
   const parseDocFiles = (src) => {
@@ -324,14 +324,14 @@ function openShortlistLetter(row, opts = {}) {
         </div>
         <div style="flex:0 0 32%;border-right:1px solid #666;text-align:center;padding:6px 4px;">
           <div style="font-size:9pt;margin-bottom:3px;">फर्मको छाप:</div>
-          ${includeSignStamp && firmStamp
+          ${includeStamp && firmStamp
             ? `<img src="${firmStamp}" style="display:block;margin:0 auto;width:30mm;height:30mm;object-fit:contain;">`
             : '<div style="width:30mm;height:30mm;border-radius:50%;border:1.5px dashed #aaa;display:flex;align-items:center;justify-content:center;color:#aaa;font-size:9pt;text-align:center;margin:0 auto;">फर्मको<br>छाप</div>'
           }
         </div>
         <div style="flex:1;padding:8px 10px;font-size:10pt;line-height:2;">
           <div>निवेदकको नाम: ${firmContactNp || '_______________'}</div>
-          <div style="margin-top:4px;">हस्ताक्षर: ${includeSignStamp && firmSign
+          <div style="margin-top:4px;">हस्ताक्षर: ${includeSign && firmSign
             ? `<img src="${firmSign}" style="display:inline-block;vertical-align:middle;margin-left:4px;height:20mm;width:auto;">`
             : '_______________'
           }</div>
@@ -723,7 +723,8 @@ const SERVICE_TYPES = [
 ];
 
 function LetterOptsModal({ row, onClose }) {
-  const [inclSign, setInclSign] = useState(!!(row.institute_sign || row.institute_stamp));
+  const [inclSign, setInclSign] = useState(!!row.institute_sign);
+  const [inclStamp, setInclStamp] = useState(!!row.institute_stamp);
   const [pageTopMargin, setPageTopMargin] = useState(row.institute_letter_top_margin ?? 10);
   const [lhGap, setLhGap] = useState(row.institute_letter_lr_padding ?? 10);
   const [pageBottomPadding, setPageBottomPadding] = useState(row.institute_letter_bottom_padding ?? 10);
@@ -746,7 +747,7 @@ function LetterOptsModal({ row, onClose }) {
     <Modal title="Generate Letter" onClose={onClose} footer={<>
       <Btn className="btn btn-secondary" onClick={onClose}>Cancel</Btn>
       <Btn className="btn btn-primary" onClick={() => {
-        openShortlistLetter(row, { includeSignStamp: inclSign, docs: inclDocs, pageTopMargin, lhGap, pageBottomPadding, serviceType: row.institute_service_type });
+        openShortlistLetter(row, { includeSign: inclSign, includeStamp: inclStamp, docs: inclDocs, pageTopMargin, lhGap, pageBottomPadding, serviceType: row.institute_service_type });
         onClose();
       }}>Generate &amp; Print</Btn>
     </>}>
@@ -756,11 +757,20 @@ function LetterOptsModal({ row, onClose }) {
         <label style={{display:'flex', alignItems:'center', gap:14, padding:'12px 14px', borderRadius:10, border:'1px solid var(--border)', background:'var(--bg)', cursor:'pointer'}}>
           <MdToggle selected={inclSign} onChange={e=>setInclSign(e.target.selected)} style={{flexShrink:0}}/>
           <div style={{flex:1}}>
-            <div style={{fontWeight:600, fontSize:13, color:'var(--text)'}}>Include signature &amp; stamp</div>
+            <div style={{fontWeight:600, fontSize:13, color:'var(--text)'}}>Include signature</div>
             <div style={{fontSize:12, color:'var(--text3)', marginTop:2, lineHeight:1.4}}>
-              {row.institute_sign || row.institute_stamp
-                ? 'Signature and stamp appear in the letter and on each attached document.'
-                : 'No signature/stamp uploaded yet — add them in the firm profile.'}
+              {row.institute_sign ? 'Signature appears in the letter and on each attached document.' : 'No signature uploaded yet — add it in the firm profile.'}
+            </div>
+          </div>
+        </label>
+
+        {/* Stamp toggle */}
+        <label style={{display:'flex', alignItems:'center', gap:14, padding:'12px 14px', borderRadius:10, border:'1px solid var(--border)', background:'var(--bg)', cursor:'pointer'}}>
+          <MdToggle selected={inclStamp} onChange={e=>setInclStamp(e.target.selected)} style={{flexShrink:0}}/>
+          <div style={{flex:1}}>
+            <div style={{fontWeight:600, fontSize:13, color:'var(--text)'}}>Include stamp</div>
+            <div style={{fontSize:12, color:'var(--text3)', marginTop:2, lineHeight:1.4}}>
+              {row.institute_stamp ? 'Stamp appears in the letter and on each attached document.' : 'No stamp uploaded yet — add it in the firm profile.'}
             </div>
           </div>
         </label>
