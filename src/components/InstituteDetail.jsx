@@ -630,7 +630,7 @@ function InstituteDetail({institute, clients, onUpdateClients, onBack, onUpdate,
 
       {/* Documents tab */}
       {tab==='documents' && (
-        <DocumentsTab institute={institute} token={token} canEdit={canEdit} onUpdate={onUpdate} />
+        <DocumentsTab institute={institute} token={token} canEdit={canEdit} onUpdate={onUpdate} isShortlistOnly={isShortlistOnly} />
       )}
 
       {/* Modals */}
@@ -1233,7 +1233,7 @@ function DocMultiUpload({ label, hint, value, onChange, disabled, token }) {
   );
 }
 
-function DocumentsTab({ institute, token, canEdit, onUpdate }) {
+function DocumentsTab({ institute, token, canEdit, onUpdate, isShortlistOnly }) {
   const fromInst = (inst) => ({
     nameNp: inst.nameNp || '',
     addressNp: inst.addressNp || '',
