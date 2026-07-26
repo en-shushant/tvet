@@ -91,6 +91,7 @@ async function plugin(fastify, opts) {
     if (name.length > 300) return reply.code(400).send({ error: 'name too long (max 300 chars)' });
     if (remarks && remarks.length > 2000) return reply.code(400).send({ error: 'remarks too long (max 2000 chars)' });
     const createdBy = role === 'shortlist' ? request.user.id : null;
+    const isShortlistingOnly = role === 'shortlist' ? true : !!is_shortlisting_only;
     const { rows } = await pool.query(
       `INSERT INTO institutes (name,acronym,reg_no,reg_date,pan,permanent_account_no,
         contact_person,phone,mobile,email,address,type,status,renewal_due,remarks,logo,website,
@@ -104,7 +105,7 @@ async function plugin(fastify, opts) {
       [name,acronym,reg_no||null,reg_date,pan,permanent_account_no,
        contact_person,phone,mobile||null,email,address,type,status||'Active',renewal_due,remarks,logo||null,website||null,
        desc_template_id||null,narrative_template_id||null,services_template_id||null,
-       google_map_link||null,latitude||null,longitude||null,!!is_shortlisting_only,
+       google_map_link||null,latitude||null,longitude||null,isShortlistingOnly,
        letterhead||null,sign||null,stamp||null,
        ocr_registration||null,ocr_renewal||null,vat_registration||null,vat_extension||null,
        ctevt_affiliation||null,ctevt_renewal||null,
