@@ -265,7 +265,7 @@ function ShortlistTab({ institutes, clients, isAdmin, canEdit, token }) {
 }
 
 // ── Contracts tab ─────────────────────────────────────────────────────────────
-function ContractsTab({ isAdmin, canEdit, token, clients }) {
+function ContractsTab({ isAdmin, canEdit, token }) {
   const [contracts, setContracts] = useState([]);
   const [quotations, setQuotations] = useState({}); // keyed by contract_id
   const [shortlists, setShortlists] = useState([]);  // all shortlist rows for dropdown
@@ -302,6 +302,20 @@ function ContractsTab({ isAdmin, canEdit, token, clients }) {
     setExpanded(e => ({ ...e, [id]: opening }));
     if (opening && !quotations[id]) await loadQ(id);
   };
+
+  const shortlistedOrgs = useMemo(() => {
+    const seen = new Map();
+    shortlists.forEach(sl => {
+      if (sl.client_id && !seen.has(String(sl.client_id))) {
+        seen.set(String(sl.client_id), {
+          id: sl.client_id,
+          full_name: sl.client_name || '',
+          short_name: sl.client_short || '',
+        });
+      }
+    });
+    return [...seen.values()].sort((a, b) => a.full_name.localeCompare(b.full_name));
+  }, [shortlists]);
 
   const filtered = useMemo(() => contracts.filter(c => {
     if (filterFY && c.fy !== filterFY) return false;
@@ -494,7 +508,7 @@ function ContractsTab({ isAdmin, canEdit, token, clients }) {
 
       {/* Contract modals */}
       {(cModal?.type==='add'||cModal?.type==='edit') && (
-        <ContractFormModal initial={cModal.data} clients={clients} onSave={handleContractSave} onClose={()=>setCModal(null)} saving={saving}/>
+        <ContractFormModal initial={cModal.data} clients={shortlistedOrgs} onSave={handleContractSave} onClose={()=>setCModal(null)} saving={saving}/>
       )}
       {cModal?.type==='delete' && (
         <ConfirmModal message={`Delete contract "${cModal.data.title}"? All its quotations will be removed.`} onConfirm={handleContractDelete} onClose={()=>setCModal(null)} saving={saving}/>
@@ -751,7 +765,7 @@ export default function QuotationsView({ institutes, clients, isAdmin, isEditor,
         />
       )}
       {tab === 'contracts' && (
-        <ContractsTab isAdmin={isAdmin} canEdit={canEdit} token={token} clients={clients}/>
+        <ContractsTab isAdmin={isAdmin} canEdit={canEdit} token={token}/>
       )}
     </div>
   );
