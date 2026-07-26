@@ -815,12 +815,121 @@ function ConfirmModal({ message, onConfirm, onClose, saving }) {
   );
 }
 
+// ── Bill Upload Modal ──────────────────────────────────────────────────────────
+function BillModal({ row, token, onSave, onClose, saving }) {
+  const [doc, setDoc] = useState(row.shortlist_doc ?? null);
+  const [amount, setAmount] = useState(row.contract_amount != null ? String(row.contract_amount) : '');
+  const [isFree, setIsFree] = useState(row.contract_amount === 0);
+  const [uploading, setUploading] = useState(false);
+  const [err, setErr] = useState('');
+
+  const isPdf = doc && (doc.toLowerCase().endsWith('.pdf') || doc.startsWith('data:application/pdf'));
+
+  const handleFile = async e => {
+    const file = e.target.files[0]; if (!file) return;
+    e.target.value = ''; setErr(''); setUploading(true);
+    try { setDoc(await uploadToR2(file, token)); }
+    catch (ex) { setErr(ex.message); }
+    finally { setUploading(false); }
+  };
+
+  const handleSave = () => {
+    onSave({
+      shortlist_doc: doc,
+      contract_amount: isFree ? 0 : (amount !== '' ? Number(amount) : null),
+    });
+  };
+
+  return (
+    <Modal
+      title="Bill / Certificate & Cost"
+      onClose={onClose}
+      compact
+      footer={<>
+        <Btn className="btn btn-secondary" onClick={onClose}>Cancel</Btn>
+        <Btn className="btn btn-primary" onClick={handleSave} disabled={saving || uploading}>
+          {saving ? 'Saving…' : 'Save'}
+        </Btn>
+      </>}
+    >
+      <div style={{display:'flex', flexDirection:'column', gap:18}}>
+
+        {/* Doc upload */}
+        <div>
+          <div style={{fontSize:13, fontWeight:600, color:'var(--text2)', marginBottom:8}}>
+            Shortlist Certificate / Bill
+            <span style={{fontWeight:400, color:'var(--text3)', marginLeft:6}}>(optional)</span>
+          </div>
+          <div style={{display:'flex', alignItems:'center', gap:12, flexWrap:'wrap'}}>
+            {doc ? (
+              <div style={{position:'relative', display:'inline-flex', flexDirection:'column', alignItems:'center'}}>
+                {isPdf ? (
+                  <a href={doc} target="_blank" rel="noreferrer" style={{height:64, width:64, border:'1px solid var(--border)', borderRadius:8, background:'#fff8f0', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:2, textDecoration:'none'}}>
+                    <span style={{fontSize:24}}>📄</span>
+                    <span style={{fontSize:9, color:'var(--text3)', fontWeight:600}}>PDF</span>
+                  </a>
+                ) : (
+                  <a href={doc} target="_blank" rel="noreferrer">
+                    <img src={doc} alt="" style={{height:64, maxWidth:90, objectFit:'contain', border:'1px solid var(--border)', borderRadius:8, background:'#fff', padding:3}}/>
+                  </a>
+                )}
+                <button onClick={() => setDoc(null)} style={{position:'absolute', top:-6, right:-6, width:18, height:18, borderRadius:'50%', background:'#e53935', color:'#fff', border:'none', cursor:'pointer', fontSize:11, display:'flex', alignItems:'center', justifyContent:'center', padding:0}}>✕</button>
+              </div>
+            ) : (
+              <div style={{height:64, width:64, border:'1px dashed var(--border)', borderRadius:8, background:'var(--bg2)', display:'flex', alignItems:'center', justifyContent:'center'}}>
+                <span style={{fontSize:11, color:'var(--text3)'}}>None</span>
+              </div>
+            )}
+            <label style={{cursor: uploading ? 'wait' : 'pointer'}}>
+              <input type="file" accept={ACCEPT} style={{display:'none'}} onChange={handleFile} disabled={uploading}/>
+              <span className="btn btn-secondary btn-sm">{uploading ? 'Uploading…' : doc ? 'Replace' : 'Upload'}</span>
+            </label>
+            {doc && <span className="btn btn-ghost btn-sm" style={{cursor:'pointer'}} onClick={() => setDoc(null)}>✕ Remove</span>}
+          </div>
+          {err && <div style={{fontSize:11, color:'#c0391e', marginTop:4}}>{err}</div>}
+        </div>
+
+        {/* Cost section */}
+        <div style={{borderTop:'1px solid var(--border)', paddingTop:16}}>
+          <div style={{fontSize:13, fontWeight:600, color:'var(--text2)', marginBottom:10}}>Shortlisting Cost</div>
+
+          {/* Free toggle */}
+          <label style={{display:'flex', alignItems:'center', gap:10, cursor:'pointer', marginBottom:12}}>
+            <input type="checkbox" checked={isFree} onChange={e => { setIsFree(e.target.checked); if (e.target.checked) setAmount(''); }}
+              style={{accentColor:'var(--primary)', width:16, height:16}}/>
+            <span style={{fontSize:13.5, color:'var(--text)'}}>Free / No cost</span>
+          </label>
+
+          {!isFree && (
+            <MdTextField
+              type="number"
+              label="Contract Amount (NPR)"
+              value={amount}
+              onChange={e => setAmount(e.target.value)}
+              placeholder="e.g. 150000"
+            />
+          )}
+
+          {isFree && (
+            <div style={{fontSize:12, color:'var(--success)', background:'var(--success-light)', borderRadius:8, padding:'8px 12px'}}>
+              This entry is marked as free / no cost.
+            </div>
+          )}
+        </div>
+
+      </div>
+    </Modal>
+  );
+}
+
 // ── Row ────────────────────────────────────────────────────────────────────────
-function ShortlistRow({ row, idx, canEdit, isAdmin, onEdit, onDelete, showFY=true }) {
+function ShortlistRow({ row, idx, canEdit, isAdmin, onEdit, onDelete, onBillSave, saving, token, showFY=true }) {
   const sc = statusColor(row.status);
   const altBg = idx % 2 === 1 ? 'var(--bg)' : 'var(--surface)';
   const hoverBg = idx % 2 === 1 ? 'var(--bg2)' : 'var(--bg)';
   const [showLetterOpts, setShowLetterOpts] = useState(false);
+  const [showBill, setShowBill] = useState(false);
+  const hasBill = !!(row.shortlist_doc);
   return (
     <div style={{
       display:'flex', alignItems:'center', gap:12, padding:'13px 20px',
@@ -881,6 +990,14 @@ function ShortlistRow({ row, idx, canEdit, isAdmin, onEdit, onDelete, showFY=tru
       {/* Actions */}
       <div style={{display:'flex', gap:2, flexShrink:0}}>
         {showLetterOpts && <LetterOptsModal row={row} onClose={()=>setShowLetterOpts(false)}/>}
+        {showBill && <BillModal row={row} token={token} saving={saving} onClose={()=>setShowBill(false)} onSave={async (patch) => { await onBillSave(row.id, patch); setShowBill(false); }}/>}
+        {canEdit && (
+          <button title={hasBill ? 'Bill uploaded — click to update' : 'Upload bill / certificate'} onClick={() => setShowBill(true)}
+            style={{width:30,height:30,borderRadius:50,border:'none',background: hasBill ? 'var(--success-light)' : 'transparent',color: hasBill ? 'var(--success)' : 'var(--text3)',cursor:'pointer',display:'inline-flex',alignItems:'center',justifyContent:'center'}}
+            onMouseEnter={e=>{e.currentTarget.style.background='var(--success-light)';e.currentTarget.style.color='#0b9b85';}}
+            onMouseLeave={e=>{e.currentTarget.style.background= hasBill ? 'var(--success-light)' : '';e.currentTarget.style.color= hasBill ? 'var(--success)' : 'var(--text3)';}}
+          ><span className="material-icons-round" style={{fontSize:15}}>receipt</span></button>
+        )}
         <button title="Generate Letter" onClick={() => setShowLetterOpts(true)}
           style={{width:30,height:30,borderRadius:50,border:'none',background:'transparent',color:'var(--text3)',cursor:'pointer',display:'inline-flex',alignItems:'center',justifyContent:'center'}}
           onMouseEnter={e=>{e.currentTarget.style.background='var(--primary-light)';e.currentTarget.style.color='var(--primary-dark)';}}
@@ -964,7 +1081,7 @@ export default function Shortlisting({ institutes, clients, isAdmin, isEditor, i
   const [saving, setSaving] = useState(false);
   const [modal, setModal] = useState(null); // {type:'add'|'edit'|'delete', data?}
   const [expanded, setExpanded] = useState({});
-  const [groupBy, setGroupBy] = useState('fy'); // 'fy' | 'org' | 'firm'
+  const [groupBy, setGroupBy] = useState('org'); // 'fy' | 'org' | 'firm'
   const [filterOrg, setFilterOrg] = useState('');
   const [filterFirm, setFilterFirm] = useState('');
   const [filterStatus, setFilterStatus] = useState('');
@@ -1038,6 +1155,16 @@ export default function Shortlisting({ institutes, clients, isAdmin, isEditor, i
       }
       await load();
       setModal(null);
+    } catch(e) { alert(e.message || 'Save failed'); }
+    finally { setSaving(false); }
+  };
+
+  const handleBillSave = async (id, patch) => {
+    setSaving(true);
+    try {
+      const existing = rows.find(r => r.id === id);
+      await api('PUT', `/shortlists/${id}`, { ...existing, ...patch }, token);
+      await load();
     } catch(e) { alert(e.message || 'Save failed'); }
     finally { setSaving(false); }
   };
@@ -1173,6 +1300,9 @@ export default function Shortlisting({ institutes, clients, isAdmin, isEditor, i
                         showFY={groupBy !== 'fy'}
                         onEdit={(r) => setModal({ type:'edit', data:r })}
                         onDelete={(r) => setModal({ type:'delete', data:r })}
+                        onBillSave={handleBillSave}
+                        saving={saving}
+                        token={token}
                       />
                     ))}
                   </>
