@@ -1279,89 +1279,152 @@ function DocumentsTab({ institute, token, canEdit, onUpdate, isShortlistOnly }) 
     <div style={{fontWeight:700, fontSize:13, color:'var(--text2)', marginBottom:12, marginTop:20, paddingTop:16, borderTop:'1px solid var(--border)'}}>{children}</div>
   );
 
+  const DOC_ROWS = [
+    { label: 'OCR दर्ता', sub: 'Registration', key: 'ocrRegistration',        multi: true  },
+    { label: 'OCR नवीकरण', sub: 'Renewal',     key: 'ocrRenewal',              multi: false },
+    { label: 'स्थानीय तह दर्ता', sub: 'Local Level Reg.', key: 'localLevelRegistration', multi: true  },
+    { label: 'स्थानीय तह नवीकरण', sub: 'Local Level Renewal', key: 'localLevelRenewal',  multi: false },
+    { label: 'भ्याट दर्ता', sub: 'VAT Registration', key: 'vatRegistration',   multi: false },
+    { label: 'कर चुक्ता', sub: 'Tax Clearance',     key: 'taxClearanceDoc',    multi: false },
+    { label: 'भ्याट म्याद थप', sub: 'VAT Date Extension', key: 'vatExtension', multi: false },
+    { label: 'CTEVT सम्बन्धन', sub: 'Affiliation', key: 'ctevtAffiliation',    multi: true  },
+    { label: 'CTEVT नवीकरण', sub: 'Renewal',       key: 'ctevtRenewal',        multi: true  },
+  ];
+
   return (
-    <div className="card" style={{maxWidth:760}}>
+    <div style={{display:'flex', flexDirection:'column', gap:16}}>
 
-      {/* ── Nepali Fields ── */}
+      {/* ── Nepali Fields + Letter Images + Settings ── */}
       {!isShortlistOnly && <>
-        <div className="section-title" style={{marginBottom:12}}>नेपाली विवरण (Nepali Fields for Letter)</div>
-        <div style={{fontSize:12, color:'var(--text3)', marginBottom:14}}>Used in the generated letter. Leave blank to fall back to English fields.</div>
-        <div className="form-group">
-          <MdTextField label="संस्थाको नाम (नेपालीमा)" value={fields.nameNp} disabled={!canEdit}
-            onChange={e=>set('nameNp',e.target.value)} placeholder="e.g. वर्ल्ड लिङ्क टेक्निकल ट्रेनिङ् इन्स्टिच्च्यूट प्रा.लि." style={{width:'100%'}}/>
-        </div>
-        <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:'0 20px'}}>
+        <div className="card">
+          <div className="section-title" style={{marginBottom:4}}>नेपाली विवरण</div>
+          <div style={{fontSize:12, color:'var(--text3)', marginBottom:16}}>Used in the generated letter. Leave blank to fall back to English fields.</div>
           <div className="form-group">
-            <MdTextField label="ठेगाना (नेपालीमा)" value={fields.addressNp} disabled={!canEdit}
-              onChange={e=>set('addressNp',e.target.value)} placeholder="e.g. टोखा-१०, काठमाडौं" style={{width:'100%'}}/>
+            <MdTextField label="संस्थाको नाम (नेपालीमा)" value={fields.nameNp} disabled={!canEdit}
+              onChange={e=>set('nameNp',e.target.value)} placeholder="e.g. वर्ल्ड लिङ्क टेक्निकल ट्रेनिङ् इन्स्टिच्च्यूट प्रा.लि." style={{width:'100%'}}/>
           </div>
-          <div className="form-group">
-            <MdTextField label="मुख्य व्यक्तिको नाम (नेपालीमा)" value={fields.contactPersonNp} disabled={!canEdit}
-              onChange={e=>set('contactPersonNp',e.target.value)} placeholder="e.g. ठाकुर सुवेदी" style={{width:'100%'}}/>
-          </div>
-        </div>
-
-        {/* ── Letter Images ── */}
-        <SectionTitle>Letter Images</SectionTitle>
-        <DocImgUpload label="Letterhead" hint="Full-width banner shown at the top of generated letters." value={fields.letterhead} onChange={v=>set('letterhead',v)} disabled={!canEdit} token={token}/>
-        <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:'0 20px'}}>
-          <DocImgUpload label="Authorized Signature" value={fields.sign} onChange={v=>set('sign',v)} disabled={!canEdit} token={token}/>
-          <DocImgUpload label="Stamp / Seal" value={fields.stamp} onChange={v=>set('stamp',v)} disabled={!canEdit} token={token}/>
-        </div>
-
-        {/* ── Letter Settings ── */}
-        <SectionTitle>Letter Settings</SectionTitle>
-        <div className="form-group">
-          <label style={{fontSize:12, fontWeight:600, color:'var(--text3)', display:'block', marginBottom:6}}>सेवाको प्रकार (Service Type)</label>
-          <select value={fields.serviceType} onChange={e=>set('serviceType',e.target.value)} disabled={!canEdit}
-            style={{width:'100%', padding:'10px 12px', borderRadius:8, border:'1px solid var(--border)', background:'var(--surface)', color:'var(--text)', fontSize:14}}>
-            <option value="सीपमूलक तथा व्यावसायिक तालिम कार्यक्रमहरु सञ्चालन">सीपमूलक तथा व्यावसायिक तालिम कार्यक्रमहरु सञ्चालन</option>
-            <option value="परामर्श सेवा">परामर्श सेवा</option>
-            <option value="अन्य सेवा">अन्य सेवा</option>
-          </select>
-        </div>
-
-        {/* ── Page Padding ── */}
-        <SectionTitle>Page Padding (mm)</SectionTitle>
-        <div style={{display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:'0 20px'}}>
-          {[
-            ['Top', 'letterTopMargin', 0, 200, 'Push text below the letterhead'],
-            ['Bottom', 'letterBottomPadding', 0, 100, 'Space at the bottom of the page'],
-            ['Left / Right', 'letterLrPadding', 0, 60, 'Horizontal margin inside the page'],
-          ].map(([label, key, min, max, hint]) => (
-            <div key={key} className="form-group">
-              <MdTextField type="number" label={label} value={fields[key]} disabled={!canEdit}
-                onChange={e=>set(key, Number(e.target.value))} supporting-text={hint} style={{width:'100%'}}/>
+          <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:'0 20px'}}>
+            <div className="form-group">
+              <MdTextField label="ठेगाना (नेपालीमा)" value={fields.addressNp} disabled={!canEdit}
+                onChange={e=>set('addressNp',e.target.value)} placeholder="e.g. टोखा-१०, काठमाडौं" style={{width:'100%'}}/>
             </div>
-          ))}
+            <div className="form-group">
+              <MdTextField label="मुख्य व्यक्तिको नाम (नेपालीमा)" value={fields.contactPersonNp} disabled={!canEdit}
+                onChange={e=>set('contactPersonNp',e.target.value)} placeholder="e.g. ठाकुर सुवेदी" style={{width:'100%'}}/>
+            </div>
+          </div>
+        </div>
+
+        <div className="card">
+          <div className="section-title" style={{marginBottom:4}}>Letter Images</div>
+          <div style={{fontSize:12, color:'var(--text3)', marginBottom:16}}>Signature and stamp are shown individually — toggle each in the Generate Letter dialog.</div>
+          <DocImgUpload label="Letterhead" hint="Full-width banner shown at the top of generated letters." value={fields.letterhead} onChange={v=>set('letterhead',v)} disabled={!canEdit} token={token}/>
+          <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:'0 20px'}}>
+            <DocImgUpload label="Authorized Signature" value={fields.sign} onChange={v=>set('sign',v)} disabled={!canEdit} token={token}/>
+            <DocImgUpload label="Stamp / Seal" value={fields.stamp} onChange={v=>set('stamp',v)} disabled={!canEdit} token={token}/>
+          </div>
+        </div>
+
+        <div className="card">
+          <div className="section-title" style={{marginBottom:4}}>Letter Settings</div>
+          <div style={{fontSize:12, color:'var(--text3)', marginBottom:16}}>Controls the layout of the generated letter.</div>
+          <div className="form-group">
+            <label style={{fontSize:12, fontWeight:600, color:'var(--text3)', display:'block', marginBottom:6}}>सेवाको प्रकार (Service Type)</label>
+            <select value={fields.serviceType} onChange={e=>set('serviceType',e.target.value)} disabled={!canEdit}
+              style={{width:'100%', padding:'10px 12px', borderRadius:8, border:'1px solid var(--border)', background:'var(--surface)', color:'var(--text)', fontSize:14}}>
+              <option value="सीपमूलक तथा व्यावसायिक तालिम कार्यक्रमहरु सञ्चालन">सीपमूलक तथा व्यावसायिक तालिम कार्यक्रमहरु सञ्चालन</option>
+              <option value="परामर्श सेवा">परामर्श सेवा</option>
+              <option value="अन्य सेवा">अन्य सेवा</option>
+            </select>
+          </div>
+          <div style={{display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:'0 20px'}}>
+            {[
+              ['Top', 'letterTopMargin', 'Push text below the letterhead'],
+              ['Bottom', 'letterBottomPadding', 'Space at the bottom of the page'],
+              ['Left / Right', 'letterLrPadding', 'Horizontal margin inside the page'],
+            ].map(([label, key, hint]) => (
+              <div key={key} className="form-group">
+                <MdTextField type="number" label={`${label} padding (mm)`} value={fields[key]} disabled={!canEdit}
+                  onChange={e=>set(key, Number(e.target.value))} supporting-text={hint} style={{width:'100%'}}/>
+              </div>
+            ))}
+          </div>
         </div>
       </>}
 
       {/* ── Supporting Documents ── */}
-      <SectionTitle>Supporting Documents</SectionTitle>
-      <div style={{fontSize:12, color:'var(--text3)', marginBottom:14}}>Upload scanned images or PDFs of certificates.{!isShortlistOnly && ' These can be appended to generated letters.'}</div>
-      <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:'0 24px'}}>
-        <DocMultiUpload label="OCR दर्ता (Registration)" value={fields.ocrRegistration} onChange={v=>set('ocrRegistration',v)} disabled={!canEdit} token={token}/>
-        <DocImgUpload label="OCR नवीकरण (Renewal)" value={fields.ocrRenewal} onChange={v=>set('ocrRenewal',v)} disabled={!canEdit} token={token}/>
-        <DocMultiUpload label="स्थानीय तह दर्ता (Local Level Reg.)" value={fields.localLevelRegistration} onChange={v=>set('localLevelRegistration',v)} disabled={!canEdit} token={token}/>
-        <DocImgUpload label="स्थानीय तह नवीकरण (Local Level Renewal)" value={fields.localLevelRenewal} onChange={v=>set('localLevelRenewal',v)} disabled={!canEdit} token={token}/>
-        <DocImgUpload label="भ्याट दर्ता (VAT Registration)" value={fields.vatRegistration} onChange={v=>set('vatRegistration',v)} disabled={!canEdit} token={token}/>
-        <DocImgUpload label="कर चुक्ता (Tax Clearance)" value={fields.taxClearanceDoc} onChange={v=>set('taxClearanceDoc',v)} disabled={!canEdit} token={token}/>
-        <DocImgUpload label="भ्याट म्याद थप (VAT Date Extension)" value={fields.vatExtension} onChange={v=>set('vatExtension',v)} disabled={!canEdit} token={token}/>
-        <div/>
-        <DocMultiUpload label="CTEVT सम्बन्धन (Affiliation)" value={fields.ctevtAffiliation} onChange={v=>set('ctevtAffiliation',v)} disabled={!canEdit} token={token}/>
-        <DocMultiUpload label="CTEVT नवीकरण (Renewal)" value={fields.ctevtRenewal} onChange={v=>set('ctevtRenewal',v)} disabled={!canEdit} token={token}/>
-      </div>
-
-      {canEdit && (
-        <div style={{marginTop:20, display:'flex', alignItems:'center', gap:12}}>
-          <Btn className="btn btn-primary" onClick={handleSave} disabled={saving}>
-            {saving ? 'Saving…' : 'Save documents'}
-          </Btn>
-          {saved && <span style={{fontSize:12, color:'var(--green)'}}>Saved ✓</span>}
-          {err && <span style={{fontSize:12, color:'var(--red)'}}>{err}</span>}
+      <div className="card" style={{padding:0, overflow:'hidden'}}>
+        {/* Header */}
+        <div style={{padding:'18px 24px', borderBottom:'1px solid var(--border)', display:'flex', alignItems:'center', justifyContent:'space-between', flexWrap:'wrap', gap:12}}>
+          <div>
+            <div style={{fontWeight:700, fontSize:15, color:'var(--text)'}}>Supporting Documents</div>
+            <div style={{fontSize:12, color:'var(--text3)', marginTop:2}}>
+              Upload scanned images or PDFs of certificates{!isShortlistOnly && ' — attach to generated letters'}.
+            </div>
+          </div>
+          <div style={{display:'flex', gap:6, alignItems:'center'}}>
+            {(() => {
+              const filled = DOC_ROWS.filter(d => {
+                const v = fields[d.key];
+                if (!v) return false;
+                if (d.multi) { try { const p = JSON.parse(v); return Array.isArray(p) ? p.length > 0 : !!v; } catch { return !!v; } }
+                return true;
+              }).length;
+              return (
+                <span style={{fontSize:12, fontWeight:600, padding:'4px 12px', borderRadius:100,
+                  background: filled === DOC_ROWS.length ? 'var(--success-light)' : 'var(--primary-light)',
+                  color: filled === DOC_ROWS.length ? '#0b9b85' : 'var(--primary-dark)'}}>
+                  {filled} / {DOC_ROWS.length} uploaded
+                </span>
+              );
+            })()}
+          </div>
         </div>
-      )}
+
+        {/* Doc rows */}
+        {DOC_ROWS.map((doc, i) => {
+          const v = fields[doc.key];
+          const hasFile = doc.multi
+            ? (() => { try { const p = JSON.parse(v); return Array.isArray(p) ? p.length > 0 : !!v; } catch { return !!v; } })()
+            : !!v;
+          return (
+            <div key={doc.key} style={{
+              display:'flex', alignItems:'center', gap:16, padding:'14px 24px',
+              borderBottom: i < DOC_ROWS.length - 1 ? '1px solid var(--border)' : 'none',
+              background: i % 2 === 1 ? 'var(--bg)' : 'var(--surface)',
+            }}>
+              {/* Status dot */}
+              <div style={{
+                width:8, height:8, borderRadius:'50%', flexShrink:0,
+                background: hasFile ? 'var(--success)' : 'var(--border2)',
+              }}/>
+              {/* Label */}
+              <div style={{flex:'0 0 260px', minWidth:0}}>
+                <div style={{fontWeight:600, fontSize:13.5, color:'var(--text)'}}>{doc.label}</div>
+                <div style={{fontSize:11.5, color:'var(--text3)', marginTop:1}}>{doc.sub}</div>
+              </div>
+              {/* Upload widget */}
+              <div style={{flex:1, minWidth:0}}>
+                {doc.multi
+                  ? <DocMultiUpload label="" value={fields[doc.key]} onChange={v=>set(doc.key,v)} disabled={!canEdit} token={token}/>
+                  : <DocImgUpload   label="" value={fields[doc.key]} onChange={v=>set(doc.key,v)} disabled={!canEdit} token={token}/>
+                }
+              </div>
+            </div>
+          );
+        })}
+
+        {/* Save footer */}
+        {canEdit && (
+          <div style={{padding:'16px 24px', borderTop:'1px solid var(--border)', background:'var(--bg)', display:'flex', alignItems:'center', gap:12}}>
+            <Btn className="btn btn-primary" onClick={handleSave} disabled={saving}>
+              {saving ? 'Saving…' : 'Save documents'}
+            </Btn>
+            {saved && <span style={{fontSize:12, color:'var(--success)', fontWeight:500}}>✓ Saved</span>}
+            {err  && <span style={{fontSize:12, color:'var(--error)'}}>{err}</span>}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
