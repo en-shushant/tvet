@@ -52,8 +52,8 @@ function App() {
   };
   const [screen, setScreen] = useState(() => {
     const s = parseHash().screen;
-    // shortlist role: allow dashboard and shortlisting, default to dashboard
-    if (session?.role === 'shortlist' && s !== 'shortlisting' && s !== 'dashboard') return 'dashboard';
+    // shortlist role: allow dashboard, institutes, detail, shortlisting; default to dashboard
+    if (session?.role === 'shortlist' && !['dashboard','institutes','detail','shortlisting'].includes(s)) return 'dashboard';
     return s;
   });
   const [selectedInstitute, setSelectedInstitute] = useState(null);
@@ -243,7 +243,7 @@ function App() {
   };
 
   const handleNavigate = (id) => {
-    if (isShortlistOnly && id !== 'shortlisting' && id !== 'dashboard') return;
+    if (isShortlistOnly && id !== 'shortlisting' && id !== 'dashboard' && id !== 'institutes' && id !== 'detail') return;
     if (id === 'master' && !isAdmin && !isEditor) return;
     if (id === 'users' && !isAdmin) return;
     if ((id === 'summary' || id === 'comparison' || id === 'compliance') && isEditor) return;
@@ -255,7 +255,7 @@ function App() {
 
   const navItems = [
     {id:'dashboard', icon:'dashboard', label:'Dashboard'},
-    {id:'institutes', icon:'account_balance', label:'Institutes', shortlistHidden: true},
+    {id:'institutes', icon:'account_balance', label:'Institutes'},
     {id:'summary', icon:'bar_chart', label:'Summary View', editorHidden: true, shortlistHidden: true},
     {id:'comparison', icon:'compare_arrows', label:'Comparison', editorHidden: true, shortlistHidden: true},
     {id:'compliance', icon:'fact_check', label:'Project Compliance', editorHidden: true, shortlistHidden: true},
@@ -484,7 +484,7 @@ function App() {
               </div>
             )}
           </div>
-          {((screen === 'dashboard' || screen === 'institutes') && isAdmin || ((screen === 'shortlisting' || screen === 'dashboard') && isShortlistOnly)) && (
+          {((screen === 'dashboard' || screen === 'institutes') && isAdmin || ((screen === 'shortlisting' || screen === 'dashboard' || screen === 'institutes') && isShortlistOnly)) && (
             <button className="btn btn-primary btn-sm" onClick={()=>setShowAddInstitute(true)}>
               <span className="material-icons-round" style={{fontSize:15}}>add</span>
               Add Institute
@@ -508,7 +508,7 @@ function App() {
         <div className="page-content">
           {screen === 'dashboard' && !isShortlistOnly && <Dashboard institutes={institutes} isEditor={isEditor} onNavigate={(s, inst, tab)=>{ if(inst) handleSelectInstitute(inst).then(()=>{ if(tab) setJumpToTab(tab); }); else setScreen(s); }}/>}
           {screen === 'dashboard' && isShortlistOnly && <ShortlistDashboard institutes={institutes} onNavigate={(inst) => { handleSelectInstitute(inst); }}/>}
-          {screen === 'institutes' && <InstituteList institutes={isSuperAdmin ? institutes : institutes.filter(i => !i.isShortlistingOnly)} onSelect={handleSelectInstitute} onAdd={isAdmin ? ()=>setShowAddInstitute(true) : null} initialSearch={globalSearch}/>}
+          {screen === 'institutes' && <InstituteList institutes={isShortlistOnly ? institutes : isSuperAdmin ? institutes : institutes.filter(i => !i.isShortlistingOnly)} onSelect={handleSelectInstitute} onAdd={(isAdmin || isShortlistOnly) ? ()=>setShowAddInstitute(true) : null} initialSearch={globalSearch}/>}
           {screen === 'detail' && selectedInstitute && (
             <InstituteDetail
               institute={selectedInstitute}
