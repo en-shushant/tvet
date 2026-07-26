@@ -300,6 +300,7 @@ function UserModal({ user, institutes, isSuperAdmin, onSave, onClose }) {
                 {isSuperAdmin && <MdOption value="admin">Admin</MdOption>}
                 <MdOption value="editor">Editor</MdOption>
                 <MdOption value="viewer">Viewer</MdOption>
+                <MdOption value="shortlist">Shortlist</MdOption>
               </MdSelect>
             </div>
           </div>
@@ -360,6 +361,7 @@ function UserManagement({institutes, isSuperAdmin}) {
     if (role === 'superadmin') return <span className="badge badge-purple">⭐ Superadmin</span>;
     if (role === 'admin') return <span className="badge badge-purple" style={{opacity:0.8}}>👑 Admin</span>;
     if (role === 'editor') return <span className="badge badge-active">✏ Editor</span>;
+    if (role === 'shortlist') return <span className="badge badge-warning">📋 Shortlist</span>;
     return <span className="badge badge-info">👁 Viewer</span>;
   };
 

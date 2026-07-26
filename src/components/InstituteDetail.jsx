@@ -45,16 +45,17 @@ function getOccupation(id) {
 
 const useMemo2 = useMemo;
 
-function InstituteDetail({institute, clients, onUpdateClients, onBack, onUpdate, onRefresh, onDelete, token, isAdmin, isEditor, isSuperAdmin, jumpToTab, onBulkAdd, onAddNSTB}) {
+function InstituteDetail({institute, clients, onUpdateClients, onBack, onUpdate, onRefresh, onDelete, token, isAdmin, isEditor, isSuperAdmin, isShortlistOnly, jumpToTab, onBulkAdd, onAddNSTB}) {
   const VALID_TABS = ['profile','experience','clients','nstb','tax','affiliation','infrastructure','documents'];
   const tabKey = `inst_tab_${institute.id}`;
   const savedTab = sessionStorage.getItem(tabKey);
-  const [tab, setTab] = useState(jumpToTab || (VALID_TABS.includes(savedTab) ? savedTab : 'profile'));
+  const defaultTab = isShortlistOnly ? 'documents' : (jumpToTab || (VALID_TABS.includes(savedTab) ? savedTab : 'profile'));
+  const [tab, setTab] = useState(defaultTab);
   const [modal, setModal] = useState(null);
   const [saving, setSaving] = useState(false);
   const [confirmModal, setConfirmModal] = useState(null); // {message, onConfirm}
-  // Writers (admin + editor) can add/edit; viewers are read-only.
-  const canEdit = !!(isAdmin || isEditor);
+  // Writers (admin + editor + shortlist) can edit documents; viewers are read-only.
+  const canEdit = !!(isAdmin || isEditor || isShortlistOnly);
 
   const switchTab = (t) => { setTab(t); sessionStorage.setItem(tabKey, t); };
 
@@ -81,15 +82,15 @@ function InstituteDetail({institute, clients, onUpdateClients, onBack, onUpdate,
   }, [institute.experience, clients]);
 
   const tabs = [
-    {id:'profile', label:'Profile'},
-    {id:'experience', label:`Experience (${institute.experience.length})`},
-    {id:'clients', label:`Clients (${instituteClients.length})`},
-    {id:'nstb', label:`NSTB (${institute.nstb.length})`},
-    {id:'tax', label:`Tax Clearance (${institute.taxClearance.length})`},
-    {id:'affiliation', label:`CTEVT Affiliation (${institute.affiliation.length})`},
-    {id:'infrastructure', label:`Infrastructure (${(institute.infrastructure||[]).length})`},
-    {id:'documents', label:'Letter Generation'},
-  ];
+    {id:'profile', label:'Profile', shortlistHidden: true},
+    {id:'experience', label:`Experience (${institute.experience.length})`, shortlistHidden: true},
+    {id:'clients', label:`Clients (${instituteClients.length})`, shortlistHidden: true},
+    {id:'nstb', label:`NSTB (${institute.nstb.length})`, shortlistHidden: true},
+    {id:'tax', label:`Tax Clearance (${institute.taxClearance.length})`, shortlistHidden: true},
+    {id:'affiliation', label:`CTEVT Affiliation (${institute.affiliation.length})`, shortlistHidden: true},
+    {id:'infrastructure', label:`Infrastructure (${(institute.infrastructure||[]).length})`, shortlistHidden: true},
+    {id:'documents', label:'Documents'},
+  ].filter(t => !isShortlistOnly || !t.shortlistHidden);
 
   const [saveErr, setSaveErr] = useState('');
   const withSave = (fn) => async (...args) => {
@@ -244,7 +245,7 @@ function InstituteDetail({institute, clients, onUpdateClients, onBack, onUpdate,
             Reg: {institute.regNo} &nbsp;·&nbsp; PAN: {institute.pan}
           </div>
         </div>
-        {canEdit && <Btn className="btn btn-secondary btn-sm" onClick={()=>setModal({type:'editInstitute'})}>✏ Edit profile</Btn>}
+        {canEdit && !isShortlistOnly && <Btn className="btn btn-secondary btn-sm" onClick={()=>setModal({type:'editInstitute'})}>✏ Edit profile</Btn>}
         {isAdmin && <Btn className="btn btn-danger btn-sm" onClick={()=>setModal({type:'deleteInstitute'})}>🗑 Delete</Btn>}
       </div>
 

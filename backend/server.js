@@ -83,7 +83,7 @@ async function runMigrations() {
     `ALTER TABLE assignments ADD COLUMN IF NOT EXISTS narrative_description TEXT`,
     `ALTER TABLE assignments ADD COLUMN IF NOT EXISTS actual_services_description TEXT`,
     `ALTER TABLE users DROP CONSTRAINT IF EXISTS users_role_check`,
-    `ALTER TABLE users ADD CONSTRAINT users_role_check CHECK (role IN ('admin','user','editor','viewer','superadmin'))`,
+    `ALTER TABLE users ADD CONSTRAINT users_role_check CHECK (role IN ('admin','user','editor','viewer','superadmin','shortlist'))`,
     `ALTER TABLE occupations ADD COLUMN IF NOT EXISTS level TEXT`,
     `DELETE FROM occupations WHERE is_custom = FALSE AND NOT EXISTS (SELECT 1 FROM assignment_occupations ao WHERE ao.ctevt_occupation_id = occupations.id)`,
     `ALTER TABLE assignment_occupations ADD COLUMN IF NOT EXISTS level TEXT`,

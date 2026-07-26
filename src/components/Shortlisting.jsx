@@ -893,10 +893,10 @@ function TableHead({ groupBy }) {
 }
 
 // ── Main component ─────────────────────────────────────────────────────────────
-export default function Shortlisting({ institutes, clients, isAdmin, isEditor }) {
+export default function Shortlisting({ institutes, clients, isAdmin, isEditor, isShortlistOnly }) {
   const session = getSession();
   const token = session?.token;
-  const canEdit = !!(isAdmin || isEditor);
+  const canEdit = !!(isAdmin || isEditor || isShortlistOnly);
 
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);

@@ -49,7 +49,12 @@ function App() {
     const parts = h.split('/');
     return { screen: parts[0] || 'dashboard', instId: parts[1] || null };
   };
-  const [screen, setScreen] = useState(() => parseHash().screen);
+  const [screen, setScreen] = useState(() => {
+    const s = parseHash().screen;
+    // shortlist role always starts on shortlisting
+    if (session?.role === 'shortlist' && s !== 'shortlisting') return 'shortlisting';
+    return s;
+  });
   const [selectedInstitute, setSelectedInstitute] = useState(null);
   const [bulkAddInstitute, setBulkAddInstitute] = useState(null);
   const [nstbAddInstitute, setNstbAddInstitute] = useState(null);
@@ -69,6 +74,7 @@ function App() {
   const isSuperAdmin = session?.role === 'superadmin';
   const isAdmin = session?.role === 'admin' || isSuperAdmin;
   const isEditor = session?.role === 'editor';
+  const isShortlistOnly = session?.role === 'shortlist';
 
   const token = session?.token;
 
@@ -236,6 +242,7 @@ function App() {
   };
 
   const handleNavigate = (id) => {
+    if (isShortlistOnly && id !== 'shortlisting') return;
     if (id === 'master' && !isAdmin && !isEditor) return;
     if (id === 'users' && !isAdmin) return;
     if ((id === 'summary' || id === 'comparison' || id === 'compliance') && isEditor) return;
@@ -246,15 +253,15 @@ function App() {
   };
 
   const navItems = [
-    {id:'dashboard', icon:'dashboard', label:'Dashboard'},
-    {id:'institutes', icon:'account_balance', label:'Institutes'},
-    {id:'summary', icon:'bar_chart', label:'Summary View', editorHidden: true},
-    {id:'comparison', icon:'compare_arrows', label:'Comparison', editorHidden: true},
-    {id:'compliance', icon:'fact_check', label:'Project Compliance', editorHidden: true},
+    {id:'dashboard', icon:'dashboard', label:'Dashboard', shortlistHidden: true},
+    {id:'institutes', icon:'account_balance', label:'Institutes', shortlistHidden: true},
+    {id:'summary', icon:'bar_chart', label:'Summary View', editorHidden: true, shortlistHidden: true},
+    {id:'comparison', icon:'compare_arrows', label:'Comparison', editorHidden: true, shortlistHidden: true},
+    {id:'compliance', icon:'fact_check', label:'Project Compliance', editorHidden: true, shortlistHidden: true},
     {id:'shortlisting', icon:'playlist_add_check', label:'Shortlisting'},
-    {id:'reports', icon:'description', label:'Reports'},
-    {id:'master', icon:'category', label:'Master Data', adminOnly: false, editorHidden: false},
-    {id:'users', icon:'manage_accounts', label:'User Management', adminOnly: true},
+    {id:'reports', icon:'description', label:'Reports', shortlistHidden: true},
+    {id:'master', icon:'category', label:'Master Data', adminOnly: false, editorHidden: false, shortlistHidden: true},
+    {id:'users', icon:'manage_accounts', label:'User Management', adminOnly: true, shortlistHidden: true},
   ];
 
   const handleSelectInstitute = async (inst) => {
@@ -355,7 +362,7 @@ function App() {
         </div>
         <nav className="sidebar-nav">
           <div className="nav-section-label">Main Menu</div>
-          {navItems.filter(item => (!item.adminOnly || isAdmin) && (!item.editorHidden || !isEditor)).map(item => (
+          {navItems.filter(item => (!item.adminOnly || isAdmin) && (!item.editorHidden || !isEditor) && (!item.shortlistHidden || !isShortlistOnly)).map(item => (
             <button
               key={item.id}
               className={`nav-item ${screen===item.id || (screen==='detail' && item.id==='institutes')?'active':''}`}
@@ -513,6 +520,7 @@ function App() {
               isAdmin={isAdmin}
               isEditor={isEditor}
               isSuperAdmin={isSuperAdmin}
+              isShortlistOnly={isShortlistOnly}
               jumpToTab={jumpToTab}
               onBulkAdd={()=>{ setBulkAddInstitute(selectedInstitute); window.location.hash=`bulkAdd/${selectedInstitute.id}`; setScreen('bulkAdd'); }}
               onAddNSTB={()=>{ setNstbAddInstitute(selectedInstitute); window.location.hash=`nstbAdd/${selectedInstitute.id}`; setScreen('nstbAdd'); }}
@@ -562,7 +570,7 @@ function App() {
           {screen === 'summary' && <SummaryView institutes={institutes} clients={clients}/>}
           {screen === 'comparison' && <ComparisonView institutes={institutes} clients={clients}/>}
           {screen === 'compliance' && <ProjectCompliance institutes={institutes} clients={clients}/>}
-          {screen === 'shortlisting' && <Suspense fallback={<div style={{padding:40,textAlign:'center',color:'var(--text3)'}}>Loading…</div>}><Shortlisting institutes={institutes} clients={clients} isAdmin={isAdmin} isEditor={isEditor} token={token}/></Suspense>}
+          {screen === 'shortlisting' && <Suspense fallback={<div style={{padding:40,textAlign:'center',color:'var(--text3)'}}>Loading…</div>}><Shortlisting institutes={institutes} clients={clients} isAdmin={isAdmin} isEditor={isEditor} isShortlistOnly={isShortlistOnly} token={token}/></Suspense>}
           {screen === 'reports' && <Suspense fallback={<div style={{padding:40,textAlign:'center',color:'var(--text3)'}}>Loading reports…</div>}><ReportsView institutes={institutes} clients={clients}/></Suspense>}
           {screen === 'master' && (isAdmin || isEditor) && <MasterData clients={clients} onUpdateClients={handleUpdateClients} token={token} isAdmin={isAdmin} isEditor={isEditor} isSuperAdmin={isSuperAdmin}/>}
           {screen === 'master' && !isAdmin && !isEditor && (
