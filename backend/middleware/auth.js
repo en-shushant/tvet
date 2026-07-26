@@ -27,7 +27,7 @@ async function requireSuperAdmin(request, reply) {
 
 async function requireWriter(request, reply) {
   const r = request.user?.role;
-  if (!r || (r !== 'admin' && r !== 'editor' && r !== 'superadmin')) {
+  if (!r || (r !== 'admin' && r !== 'editor' && r !== 'superadmin' && r !== 'shortlist')) {
     return reply.code(403).send({ error: 'Write access required. Contact your administrator.' });
   }
 }
