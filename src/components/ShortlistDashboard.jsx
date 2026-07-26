@@ -101,6 +101,15 @@ export default function ShortlistDashboard({ institutes, onNavigate }) {
   }, [fyShortlists]);
   const fyFirms = useMemo(() => new Set(fyShortlists.map(s => s.institute_id)).size, [fyShortlists]);
 
+  // cost per institute_id for the current FY
+  const costByFirm = useMemo(() => {
+    const map = {};
+    fyShortlists.forEach(s => {
+      if (s.contract_amount) map[s.institute_id] = (map[s.institute_id] || 0) + Number(s.contract_amount);
+    });
+    return map;
+  }, [fyShortlists]);
+
   const SectionHead = ({ children }) => (
     <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text2)', letterSpacing: 0.1, margin: '4px 0 10px 2px' }}>{children}</div>
   );
@@ -209,8 +218,8 @@ export default function ShortlistDashboard({ institutes, onNavigate }) {
                 key={inst.id}
                 onClick={() => onNavigate(inst)}
                 style={{
-                  display: 'grid', gridTemplateColumns: '1fr 200px', alignItems: 'center',
-                  gap: 20, padding: '14px 20px',
+                  display: 'grid', gridTemplateColumns: '1fr 120px 180px', alignItems: 'center',
+                  gap: 16, padding: '14px 20px',
                   borderBottom: idx < sorted.length - 1 ? '1px solid var(--border)' : 'none',
                   cursor: 'pointer', transition: 'background .15s',
                 }}
@@ -232,6 +241,13 @@ export default function ShortlistDashboard({ institutes, onNavigate }) {
                       Missing: {missingLabels.slice(0, 4).join(', ')}{missingLabels.length > 4 ? ` +${missingLabels.length - 4} more` : ''}
                     </div>
                   )}
+                </div>
+                <div style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
+                  {costByFirm[inst.id]
+                    ? <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--teal)' }}>{fmtNPR(costByFirm[inst.id])}</span>
+                    : <span style={{ fontSize: 11, color: 'var(--text3)' }}>—</span>
+                  }
+                  {currentFY && <div style={{ fontSize: 10, color: 'var(--text3)', marginTop: 1 }}>FY {currentFY}</div>}
                 </div>
                 <DocBar uploaded={uploaded} total={total} />
               </div>

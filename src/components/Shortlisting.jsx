@@ -8,6 +8,65 @@ import { adToBS, BS_MONTHS, toNpNum } from '../constants/nepali.js';
 
 const FYS = [...FISCAL_YEARS].reverse(); // newest first
 
+const ACCEPT = 'image/*,application/pdf';
+async function uploadToR2(file, token) {
+  const fd = new FormData();
+  fd.append('file', file);
+  const res = await fetch('/api/upload', { method: 'POST', headers: { Authorization: `Bearer ${token}` }, body: fd });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    if (err.error === 'blank_page') throw new Error('Blank page detected — skipped.');
+    throw new Error(err.message || err.error || 'Upload failed');
+  }
+  return (await res.json()).url;
+}
+function ShortlistDocUpload({ value, onChange, token }) {
+  const [uploading, setUploading] = useState(false);
+  const [err, setErr] = useState('');
+  const isPdf = value && (value.toLowerCase().endsWith('.pdf') || value.startsWith('data:application/pdf'));
+  const handleFile = async e => {
+    const file = e.target.files[0]; if (!file) return;
+    e.target.value = ''; setErr(''); setUploading(true);
+    try { onChange(await uploadToR2(file, token)); }
+    catch (ex) { setErr(ex.message); }
+    finally { setUploading(false); }
+  };
+  return (
+    <div className="form-group">
+      <label style={{ fontSize: 13, fontWeight: 600, color: 'var(--text2)', display: 'block', marginBottom: 6 }}>
+        Shortlist Certificate / Bill <span style={{ fontWeight: 400, color: 'var(--text3)' }}>(optional)</span>
+      </label>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+        {value ? (
+          <div style={{ position: 'relative', display: 'inline-flex', flexDirection: 'column', alignItems: 'center' }}>
+            {isPdf ? (
+              <a href={value} target="_blank" rel="noreferrer" style={{ height: 56, width: 56, border: '1px solid var(--border)', borderRadius: 6, background: '#fff8f0', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 2, textDecoration: 'none' }}>
+                <span style={{ fontSize: 20 }}>📄</span>
+                <span style={{ fontSize: 9, color: 'var(--text3)', fontWeight: 600 }}>PDF</span>
+              </a>
+            ) : (
+              <a href={value} target="_blank" rel="noreferrer">
+                <img src={value} alt="" style={{ height: 56, maxWidth: 80, objectFit: 'contain', border: '1px solid var(--border)', borderRadius: 6, background: '#fff', padding: 2 }}/>
+              </a>
+            )}
+            <button onClick={() => onChange(null)} style={{ position: 'absolute', top: -6, right: -6, width: 18, height: 18, borderRadius: '50%', background: '#e53935', color: '#fff', border: 'none', cursor: 'pointer', fontSize: 11, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}>✕</button>
+          </div>
+        ) : (
+          <div style={{ height: 56, width: 56, border: '1px dashed var(--border)', borderRadius: 6, background: 'var(--bg2)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <span style={{ fontSize: 11, color: 'var(--text3)' }}>None</span>
+          </div>
+        )}
+        <label style={{ cursor: uploading ? 'wait' : 'pointer' }}>
+          <input type="file" accept={ACCEPT} style={{ display: 'none' }} onChange={handleFile} disabled={uploading}/>
+          <span className="btn btn-secondary btn-sm">{uploading ? 'Uploading…' : value ? 'Change' : 'Upload'}</span>
+        </label>
+        {value && <span className="btn btn-ghost btn-sm" style={{ cursor: 'pointer' }} onClick={() => onChange(null)}>✕ Remove</span>}
+      </div>
+      {err && <div style={{ fontSize: 11, color: '#c0391e', marginTop: 4 }}>{err}</div>}
+    </div>
+  );
+}
+
 const fmt = (d) => d ? new Date(d + 'T00:00:00').toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'numeric' }) : '—';
 
 function adDateToBS(adStr) {
@@ -416,7 +475,7 @@ function ClientCombobox({ clients, value, onChange }) {
 }
 
 // ── Add/Edit Modal ─────────────────────────────────────────────────────────────
-function ShortlistForm({ initial, institutes, clients, onSave, onClose, saving }) {
+function ShortlistForm({ initial, institutes, clients, onSave, onClose, saving, token }) {
   const isEdit = !!initial?.id;
   const [multi, setMulti] = useState(false); // multi-firm mode (add only)
   const [selectedFirms, setSelectedFirms] = useState([]); // for multi mode
@@ -426,7 +485,7 @@ function ShortlistForm({ initial, institutes, clients, onSave, onClose, saving }
 
   const empty = {
     client_id: '', client_name_manual: '', institute_id: '', standing_list_name: '', fy: '',
-    shortlist_date: '', status: 'Active', remarks: '', contract_amount: '',
+    shortlist_date: '', status: 'Active', remarks: '', contract_amount: '', shortlist_doc: null,
   };
   const [form, setForm] = useState(initial ? {
     client_id:          initial.client_id    ?? '',
@@ -439,6 +498,7 @@ function ShortlistForm({ initial, institutes, clients, onSave, onClose, saving }
     status:             initial.status        ?? 'Active',
     remarks:            initial.remarks       ?? '',
     contract_amount:    initial.contract_amount != null ? String(initial.contract_amount) : '',
+    shortlist_doc:      initial.shortlist_doc ?? null,
   } : empty);
 
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
@@ -540,6 +600,8 @@ function ShortlistForm({ initial, institutes, clients, onSave, onClose, saving }
       <div className="form-group">
         <MdTextField label="Remarks" value={form.remarks} onChange={e => set('remarks', e.target.value)} placeholder="Optional notes" />
       </div>
+
+      <ShortlistDocUpload value={form.shortlist_doc} onChange={v => set('shortlist_doc', v)} token={token}/>
 
       {/* Firm selection */}
       {!isEdit && (
@@ -1130,6 +1192,7 @@ export default function Shortlisting({ institutes, clients, isAdmin, isEditor, i
           onSave={handleSave}
           onClose={() => setModal(null)}
           saving={saving}
+          token={token}
         />
       )}
       {modal?.type === 'delete' && (

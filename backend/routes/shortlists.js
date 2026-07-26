@@ -58,29 +58,29 @@ async function plugin(fastify, opts) {
 
   fastify.post('/', { preHandler: requireWriter }, async (request, reply) => {
     const { client_id, client_name_manual, institute_id, standing_list_name, fy,
-            shortlist_date, valid_until, status, remarks, contract_amount } = request.body;
+            shortlist_date, valid_until, status, remarks, contract_amount, shortlist_doc } = request.body;
     if (!institute_id || !shortlist_date)
       return reply.code(400).send({ error: 'institute_id and shortlist_date are required' });
     const { rows: [row] } = await pool.query(
       `INSERT INTO shortlists
-        (client_id, client_name_manual, institute_id, standing_list_name, fy, shortlist_date, valid_until, status, remarks, contract_amount)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING *`,
+        (client_id, client_name_manual, institute_id, standing_list_name, fy, shortlist_date, valid_until, status, remarks, contract_amount, shortlist_doc)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING *`,
       [client_id||null, client_name_manual||null, institute_id, standing_list_name||null, fy||null, shortlist_date,
-       valid_until||null, status||'Active', remarks||null, contract_amount||null]
+       valid_until||null, status||'Active', remarks||null, contract_amount||null, shortlist_doc||null]
     );
     return reply.code(201).send(row);
   });
 
   fastify.put('/:id', { preHandler: requireWriter }, async (request, reply) => {
     const { client_id, client_name_manual, institute_id, standing_list_name, fy,
-            shortlist_date, valid_until, status, remarks, contract_amount } = request.body;
+            shortlist_date, valid_until, status, remarks, contract_amount, shortlist_doc } = request.body;
     const { rows } = await pool.query(
       `UPDATE shortlists SET client_id=$1, client_name_manual=$2, institute_id=$3, standing_list_name=$4,
         fy=$5, shortlist_date=$6, valid_until=$7, status=$8, remarks=$9,
-        contract_amount=$10, updated_at=NOW()
-       WHERE id=$11 RETURNING *`,
+        contract_amount=$10, shortlist_doc=$11, updated_at=NOW()
+       WHERE id=$12 RETURNING *`,
       [client_id||null, client_name_manual||null, institute_id, standing_list_name||null, fy||null, shortlist_date,
-       valid_until||null, status||'Active', remarks||null, contract_amount||null, request.params.id]
+       valid_until||null, status||'Active', remarks||null, contract_amount||null, shortlist_doc||null, request.params.id]
     );
     if (!rows.length) return reply.code(404).send({ error: 'Not found' });
     return rows[0];
