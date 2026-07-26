@@ -1246,6 +1246,8 @@ function DocumentsTab({ institute, token, canEdit, onUpdate }) {
     letterLrPadding: inst.letterLrPadding ?? 5,
     ocrRegistration: inst.ocrRegistration || null,
     ocrRenewal: inst.ocrRenewal || null,
+    localLevelRegistration: inst.localLevelRegistration || null,
+    localLevelRenewal: inst.localLevelRenewal || null,
     vatRegistration: inst.vatRegistration || null,
     taxClearanceDoc: inst.taxClearanceDoc || null,
     vatExtension: inst.vatExtension || null,
@@ -1338,6 +1340,8 @@ function DocumentsTab({ institute, token, canEdit, onUpdate }) {
       <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:'0 24px'}}>
         <DocMultiUpload label="OCR दर्ता (Registration)" value={fields.ocrRegistration} onChange={v=>set('ocrRegistration',v)} disabled={!canEdit} token={token}/>
         <DocImgUpload label="OCR नवीकरण (Renewal)" value={fields.ocrRenewal} onChange={v=>set('ocrRenewal',v)} disabled={!canEdit} token={token}/>
+        <DocMultiUpload label="स्थानीय तह दर्ता (Local Level Reg.)" value={fields.localLevelRegistration} onChange={v=>set('localLevelRegistration',v)} disabled={!canEdit} token={token}/>
+        <DocImgUpload label="स्थानीय तह नवीकरण (Local Level Renewal)" value={fields.localLevelRenewal} onChange={v=>set('localLevelRenewal',v)} disabled={!canEdit} token={token}/>
         <DocImgUpload label="भ्याट दर्ता (VAT Registration)" value={fields.vatRegistration} onChange={v=>set('vatRegistration',v)} disabled={!canEdit} token={token}/>
         <DocImgUpload label="कर चुक्ता (Tax Clearance)" value={fields.taxClearanceDoc} onChange={v=>set('taxClearanceDoc',v)} disabled={!canEdit} token={token}/>
         <DocImgUpload label="भ्याट म्याद थप (VAT Date Extension)" value={fields.vatExtension} onChange={v=>set('vatExtension',v)} disabled={!canEdit} token={token}/>

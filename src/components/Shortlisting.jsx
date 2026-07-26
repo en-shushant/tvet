@@ -77,8 +77,10 @@ function openShortlistLetter(row, opts = {}) {
 
   // Document pages
   const docDefs = [
-    { key: 'ocrReg',    src: row.institute_ocr_registration,  label: 'OCR दर्ता प्रमाणपत्र' },
-    { key: 'ocrRen',    src: row.institute_ocr_renewal,        label: 'OCR नवीकरण प्रमाणपत्र' },
+    { key: 'ocrReg',    src: row.institute_ocr_registration,         label: 'OCR दर्ता प्रमाणपत्र' },
+    { key: 'ocrRen',   src: row.institute_ocr_renewal,              label: 'OCR नवीकरण प्रमाणपत्र' },
+    { key: 'llReg',    src: row.institute_local_level_registration,  label: 'स्थानीय तह दर्ता प्रमाणपत्र' },
+    { key: 'llRen',    src: row.institute_local_level_renewal,       label: 'स्थानीय तह नवीकरण प्रमाणपत्र' },
     { key: 'vat',       src: row.institute_vat_registration,   label: 'भ्याट दर्ता प्रमाणपत्र' },
     { key: 'taxClear',  src: row.institute_tax_clearance_doc,  label: 'कर चुक्ता प्रमाणपत्र' },
     { key: 'vatExt',    src: row.institute_vat_extension,      label: 'भ्याट म्याद थप प्रमाणपत्र' },
@@ -643,6 +645,8 @@ function ShortlistForm({ initial, institutes, clients, onSave, onClose, saving }
 const DOC_LABELS = {
   ocrReg:   'OCR दर्ता प्रमाणपत्र',
   ocrRen:   'OCR नवीकरण प्रमाणपत्र',
+  llReg:    'स्थानीय तह दर्ता प्रमाणपत्र',
+  llRen:    'स्थानीय तह नवीकरण प्रमाणपत्र',
   vat:      'भ्याट दर्ता प्रमाणपत्र',
   taxClear: 'कर चुक्ता प्रमाणपत्र',
   vatExt:   'भ्याट म्याद थप प्रमाणपत्र',
@@ -664,6 +668,8 @@ function LetterOptsModal({ row, onClose }) {
   const hasDocs = {
     ocrReg:   !!row.institute_ocr_registration,
     ocrRen:   !!row.institute_ocr_renewal,
+    llReg:    !!row.institute_local_level_registration,
+    llRen:    !!row.institute_local_level_renewal,
     vat:      !!row.institute_vat_registration,
     taxClear: !!row.institute_tax_clearance_doc,
     vatExt:   !!row.institute_vat_extension,
