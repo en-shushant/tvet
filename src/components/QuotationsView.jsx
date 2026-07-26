@@ -265,7 +265,7 @@ function ShortlistTab({ institutes, clients, isAdmin, canEdit, token }) {
 }
 
 // ── Contracts tab ─────────────────────────────────────────────────────────────
-function ContractsTab({ isAdmin, canEdit, token }) {
+function ContractsTab({ isAdmin, canEdit, token, clients }) {
   const [contracts, setContracts] = useState([]);
   const [quotations, setQuotations] = useState({}); // keyed by contract_id
   const [shortlists, setShortlists] = useState([]);  // all shortlist rows for dropdown
@@ -494,7 +494,7 @@ function ContractsTab({ isAdmin, canEdit, token }) {
 
       {/* Contract modals */}
       {(cModal?.type==='add'||cModal?.type==='edit') && (
-        <ContractFormModal initial={cModal.data} onSave={handleContractSave} onClose={()=>setCModal(null)} saving={saving}/>
+        <ContractFormModal initial={cModal.data} clients={clients} onSave={handleContractSave} onClose={()=>setCModal(null)} saving={saving}/>
       )}
       {cModal?.type==='delete' && (
         <ConfirmModal message={`Delete contract "${cModal.data.title}"? All its quotations will be removed.`} onConfirm={handleContractDelete} onClose={()=>setCModal(null)} saving={saving}/>
@@ -530,10 +530,87 @@ function IcoBtn({ icon, title, onClick, onHoverBg, hoverColor }) {
   );
 }
 
+// ── Client combobox ───────────────────────────────────────────────────────────
+function ClientCombobox({ clients, value, onChange }) {
+  const selected = clients.find(c => String(c.id) === String(value));
+  const [query, setQuery] = useState(selected ? (selected.full_name || selected.fullName || '') : '');
+  const [open, setOpen] = useState(false);
+  const [focused, setFocused] = useState(false);
+  const ref = useRef(null);
+  const inputRef = useRef(null);
+
+  const filtered = useMemo(() => {
+    if (!query) return clients;
+    const q = query.toLowerCase();
+    return clients.filter(c => {
+      const name = (c.full_name || c.fullName || '').toLowerCase();
+      const short = (c.short_name || c.shortName || '').toLowerCase();
+      return name.includes(q) || short.includes(q);
+    });
+  }, [clients, query]);
+
+  useEffect(() => {
+    const h = e => { if (ref.current && !ref.current.contains(e.target)) { setOpen(false); setFocused(false); } };
+    document.addEventListener('mousedown', h);
+    return () => document.removeEventListener('mousedown', h);
+  }, []);
+
+  const select = c => { onChange(String(c.id)); setQuery(c.full_name || c.fullName || ''); setOpen(false); setFocused(false); };
+  const clear = e => { e.preventDefault(); onChange(''); setQuery(''); setOpen(true); inputRef.current?.focus(); };
+
+  const up = query.length > 0 || focused;
+  const bc = focused ? 'var(--primary)' : 'var(--md-sys-color-outline,#79747e)';
+  const bw = focused ? 2 : 1;
+
+  return (
+    <div ref={ref} style={{ position:'relative' }}>
+      <div onClick={() => { inputRef.current?.focus(); setOpen(true); }}
+        style={{ position:'relative', border:`${bw}px solid ${bc}`, borderRadius:4, padding:'0 12px', minHeight:56, boxSizing:'border-box', cursor:'text' }}>
+        <span style={{ position:'absolute', left:12, top: up?-10:'50%', transform: up?'translateY(0) scale(0.75)':'translateY(-50%) scale(1)',
+          transformOrigin:'left center', fontSize:16, color: focused?'var(--primary)':'var(--md-sys-color-outline,#79747e)',
+          pointerEvents:'none', background:'var(--surface,#fff)', padding:'0 4px', transition:'top .12s,transform .12s,color .12s', lineHeight:1 }}>
+          Organization (Client)
+        </span>
+        <div style={{ display:'flex', alignItems:'center', paddingTop:18, paddingBottom:6 }}>
+          <input ref={inputRef} value={query}
+            onChange={e => { setQuery(e.target.value); onChange(''); setOpen(true); }}
+            onFocus={() => { setFocused(true); setOpen(true); }}
+            style={{ flex:1, border:'none', outline:'none', background:'transparent', fontSize:16, color:'var(--text)', fontFamily:'inherit', minWidth:0 }}/>
+          {query
+            ? <button onMouseDown={clear} style={{ background:'none', border:'none', cursor:'pointer', color:'var(--text3)', fontSize:18, lineHeight:1, padding:'2px 0 2px 4px' }}>×</button>
+            : <span style={{ color:'var(--text3)', fontSize:18, lineHeight:1, userSelect:'none' }}>▾</span>}
+        </div>
+      </div>
+      {open && (
+        <div style={{ position:'absolute', top:'calc(100% + 2px)', left:0, right:0, zIndex:9999,
+          background:'var(--surface,#fff)', border:'1px solid var(--border)', borderRadius:8,
+          boxShadow:'0 4px 24px rgba(0,0,0,.18)', maxHeight:220, overflowY:'auto' }}>
+          {filtered.length === 0
+            ? <div style={{ padding:'12px 16px', color:'var(--text3)', fontSize:13 }}>No matches</div>
+            : filtered.map(c => {
+                const name = c.full_name || c.fullName || '';
+                const short = c.short_name || c.shortName || '';
+                return (
+                  <div key={c.id} onMouseDown={() => select(c)}
+                    style={{ padding:'10px 16px', cursor:'pointer', fontSize:13,
+                      background: String(c.id)===String(value)?'var(--primary-light)':'transparent' }}
+                    onMouseEnter={e=>e.currentTarget.style.background='var(--bg)'}
+                    onMouseLeave={e=>e.currentTarget.style.background=String(c.id)===String(value)?'var(--primary-light)':'transparent'}>
+                    {short && <span style={{ fontWeight:600, marginRight:6 }}>{short}</span>}
+                    {name}
+                  </div>
+                );
+              })}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Contract form modal ───────────────────────────────────────────────────────
-function ContractFormModal({ initial, onSave, onClose, saving }) {
+function ContractFormModal({ initial, clients, onSave, onClose, saving }) {
   const [form, setForm] = useState({
-    client_id: initial?.client_id || '',
+    client_id: initial?.client_id ? String(initial.client_id) : '',
     client_name_manual: initial?.client_name_manual || '',
     fy: initial?.fy || '',
     title: initial?.title || '',
@@ -553,7 +630,7 @@ function ContractFormModal({ initial, onSave, onClose, saving }) {
           {FYS.map(fy=><MdOption key={fy} value={fy}>{fy}</MdOption>)}
         </MdSelect>
         <MdTextField label="Contract Title *" value={form.title} onChange={e=>set('title',e.target.value)} placeholder="e.g. Barista Training"/>
-        <MdTextField label="Organization (if not linked to shortlist)" value={form.client_name_manual} onChange={e=>set('client_name_manual',e.target.value)} placeholder="Optional"/>
+        <ClientCombobox clients={clients} value={form.client_id} onChange={v => { set('client_id', v); set('client_name_manual', ''); }}/>
         <MdTextField label="Description" value={form.description} onChange={e=>set('description',e.target.value)} placeholder="Optional"/>
       </div>
     </Modal>
@@ -674,7 +751,7 @@ export default function QuotationsView({ institutes, clients, isAdmin, isEditor,
         />
       )}
       {tab === 'contracts' && (
-        <ContractsTab isAdmin={isAdmin} canEdit={canEdit} token={token}/>
+        <ContractsTab isAdmin={isAdmin} canEdit={canEdit} token={token} clients={clients}/>
       )}
     </div>
   );
