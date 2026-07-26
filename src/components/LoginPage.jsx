@@ -140,10 +140,7 @@ function LoginPage({ onLogin }) {
                   placeholder="Enter your password" required style={{width:'100%'}}/>
               </div>
               <div style={{marginBottom:20}}>
-                <div ref={turnstileRef} className="cf-turnstile"
-                  data-sitekey="0x4AAAAAAD-IUm1QHVVxIjkr"
-                  data-action="turnstile-spin-v2"
-                />
+                <div ref={turnstileRef} />
               </div>
               {error && (
                 <div style={{background:'var(--error-light)',color:'var(--error)',border:'1px solid rgba(250,137,107,0.3)',borderRadius:10,padding:'11px 15px',fontSize:13,marginBottom:20,display:'flex',alignItems:'center',gap:8}}>
