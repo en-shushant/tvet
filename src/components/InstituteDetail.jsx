@@ -1358,7 +1358,7 @@ function DocumentsTab({ institute, token, canEdit, onUpdate, isShortlistOnly }) 
           <div>
             <div style={{fontWeight:700, fontSize:15, color:'var(--text)'}}>Supporting Documents</div>
             <div style={{fontSize:12, color:'var(--text3)', marginTop:2}}>
-              Upload scanned images or PDFs of certificates{!isShortlistOnly && ' — attach to generated letters'}.
+              Upload scanned images of certificates{!isShortlistOnly && ' — attach to generated letters'}.
             </div>
           </div>
           <div style={{display:'flex', gap:6, alignItems:'center'}}>
