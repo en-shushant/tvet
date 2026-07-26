@@ -1126,52 +1126,29 @@ async function uploadToR2(file, token) {
   return url;
 }
 
-function FileThumb({ src, onRemove }) {
-  return (
-    <div style={{position:'relative', display:'inline-flex', flexDirection:'column', alignItems:'center'}}>
-      <img src={src} alt="" style={{height:64, width:64, objectFit:'cover', border:'1px solid var(--border)', borderRadius:8, background:'#fff'}}/>
-      {onRemove && (
-        <button onClick={onRemove} style={{position:'absolute', top:-6, right:-6, width:18, height:18, borderRadius:'50%',
-          background:'#e53935', color:'#fff', border:'none', cursor:'pointer', fontSize:11, lineHeight:1,
-          display:'flex', alignItems:'center', justifyContent:'center', padding:0}}>✕</button>
-      )}
-    </div>
-  );
-}
+const THUMB_SIZE = 80;
 
-function DocImgUpload({ label, hint, value, onChange, disabled, token }) {
-  const [uploading, setUploading] = useState(false);
-  const [err, setErr] = useState('');
-  const handleFile = async e => {
-    const file = e.target.files[0]; if (!file) return;
-    e.target.value = '';
-    setErr(''); setUploading(true);
-    try { onChange(await uploadToR2(file, token)); }
-    catch (ex) { setErr(ex.message); }
-    finally { setUploading(false); }
-  };
+function FileThumb({ src, onRemove }) {
+  const [hover, setHover] = useState(false);
   return (
-    <div className="form-group" style={{marginBottom:12}}>
-      <label style={{fontSize:13, fontWeight:600, color:'var(--text2)', display:'block', marginBottom:6}}>{label}</label>
-      <div style={{display:'flex', alignItems:'center', gap:12, flexWrap:'wrap'}}>
-        {value ? (
-          <FileThumb src={value} onRemove={!disabled ? () => onChange(null) : null}/>
-        ) : (
-          <div style={{height:56, width:56, border:'1px dashed var(--border)', borderRadius:6, background:'var(--bg2)',
-            display:'flex', alignItems:'center', justifyContent:'center'}}>
-            <span style={{fontSize:11, color:'var(--text3)'}}>None</span>
-          </div>
-        )}
-        {!disabled && (
-          <label style={{cursor: uploading ? 'wait' : 'pointer'}}>
-            <input type="file" accept={ACCEPT} style={{display:'none'}} onChange={handleFile} disabled={uploading}/>
-            <span className="btn btn-secondary btn-sm">{uploading ? 'Uploading…' : value ? 'Change' : 'Upload'}</span>
-          </label>
-        )}
-        {value && !disabled && <span className="btn btn-ghost btn-sm" style={{cursor:'pointer'}} onClick={()=>onChange(null)}>✕ Remove</span>}
-      </div>
-      {err && <div style={{fontSize:11, color:'#c0391e', marginTop:4}}>{err}</div>}
-      {hint && <div style={{fontSize:11, color:'var(--text3)', marginTop:4}}>{hint}</div>}
+    <div
+      onMouseEnter={() => setHover(true)}
+      onMouseLeave={() => setHover(false)}
+      style={{position:'relative', flexShrink:0, width:THUMB_SIZE, height:THUMB_SIZE, borderRadius:10,
+        overflow:'hidden', border:'1.5px solid var(--border)', background:'var(--bg)', cursor: onRemove ? 'pointer' : 'default',
+        boxShadow: hover ? '0 2px 8px rgba(0,0,0,.14)' : '0 1px 3px rgba(0,0,0,.07)',
+        transition:'box-shadow .15s',
+      }}
+    >
+      <a href={src} target="_blank" rel="noreferrer" style={{display:'block', width:'100%', height:'100%'}}>
+        <img src={src} alt="" style={{width:'100%', height:'100%', objectFit:'cover', display:'block'}}/>
+      </a>
+      {onRemove && hover && (
+        <button onClick={e=>{e.preventDefault();onRemove();}}
+          style={{position:'absolute', inset:0, width:'100%', height:'100%', background:'rgba(229,57,53,.72)',
+            color:'#fff', border:'none', cursor:'pointer', fontSize:18, display:'flex', alignItems:'center',
+            justifyContent:'center', backdropFilter:'blur(2px)'}}>✕</button>
+      )}
     </div>
   );
 }
@@ -1194,33 +1171,64 @@ function DocMultiUpload({ label, hint, value, onChange, disabled, token }) {
   const remove = idx => onChange(filesToStore(files.filter((_, i) => i !== idx)));
 
   return (
-    <div className="form-group" style={{marginBottom:12}}>
-      <label style={{fontSize:13, fontWeight:600, color:'var(--text2)', display:'block', marginBottom:6}}>{label}</label>
-      <div style={{display:'flex', alignItems:'center', gap:10, flexWrap:'wrap'}}>
+    <div>
+      {label && <label style={{fontSize:13, fontWeight:600, color:'var(--text2)', display:'block', marginBottom:8}}>{label}</label>}
+      <div style={{display:'flex', alignItems:'center', gap:8, flexWrap:'wrap'}}>
         {files.map((src, i) => (
           <FileThumb key={i} src={src} onRemove={!disabled ? () => remove(i) : null}/>
         ))}
         {!disabled && (
-          <label style={{cursor: uploading ? 'wait' : 'pointer'}}>
+          <label style={{cursor: uploading ? 'wait' : 'pointer', flexShrink:0}}>
             <input type="file" accept={ACCEPT} multiple style={{display:'none'}} onChange={addFiles} disabled={uploading}/>
-            <div style={{height:56, width:56, border:'1.5px dashed var(--primary)', borderRadius:6,
-              display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center',
-              color:'var(--primary)', fontSize: uploading ? 13 : 22, fontWeight:300,
-              background:'color-mix(in srgb,var(--primary) 6%,transparent)'}}>
-              {uploading ? '…' : '+'}
+            <div style={{
+              width: THUMB_SIZE, height: THUMB_SIZE,
+              border:'2px dashed var(--primary)', borderRadius:10,
+              display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:4,
+              color:'var(--primary)', background:'color-mix(in srgb,var(--primary) 5%,transparent)',
+              transition:'background .15s',
+            }}
+              onMouseEnter={e=>e.currentTarget.style.background='color-mix(in srgb,var(--primary) 12%,transparent)'}
+              onMouseLeave={e=>e.currentTarget.style.background='color-mix(in srgb,var(--primary) 5%,transparent)'}
+            >
+              {uploading
+                ? <span style={{fontSize:11, fontWeight:600}}>Uploading…</span>
+                : <>
+                    <span className="material-icons-round" style={{fontSize:22}}>add_photo_alternate</span>
+                    <span style={{fontSize:10, fontWeight:600, lineHeight:1}}>Add</span>
+                  </>
+              }
             </div>
           </label>
         )}
         {!files.length && disabled && (
-          <div style={{height:56, width:56, border:'1px dashed var(--border)', borderRadius:6, background:'var(--bg2)',
-            display:'flex', alignItems:'center', justifyContent:'center'}}>
-            <span style={{fontSize:11, color:'var(--text3)'}}>None</span>
+          <div style={{width:THUMB_SIZE, height:THUMB_SIZE, border:'1px dashed var(--border)', borderRadius:10,
+            background:'var(--bg)', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:3}}>
+            <span className="material-icons-round" style={{fontSize:20, color:'var(--text3)', opacity:.4}}>image_not_supported</span>
+            <span style={{fontSize:10, color:'var(--text3)'}}>None</span>
           </div>
         )}
       </div>
       {err && <div style={{fontSize:11, color:'#c0391e', marginTop:4}}>{err}</div>}
       {hint && <div style={{fontSize:11, color:'var(--text3)', marginTop:4}}>{hint}</div>}
     </div>
+  );
+}
+
+function DocImgUpload({ label, hint, value, onChange, disabled, token }) {
+  const files = value ? [value] : [];
+  const handleChange = (newFiles) => {
+    const stored = filesToStore(newFiles);
+    onChange(newFiles.length ? newFiles[newFiles.length - 1] : null);
+  };
+  return (
+    <DocMultiUpload
+      label={label} hint={hint} token={token} disabled={disabled}
+      value={value ? JSON.stringify([value]) : null}
+      onChange={v => {
+        const arr = parseFiles(v);
+        onChange(arr.length ? arr[arr.length - 1] : null);
+      }}
+    />
   );
 }
 
