@@ -483,7 +483,7 @@ function App() {
               </div>
             )}
           </div>
-          {(screen === 'dashboard' || screen === 'institutes') && isAdmin && (
+          {((screen === 'dashboard' || screen === 'institutes') && isAdmin || (screen === 'shortlisting' && isShortlistOnly)) && (
             <button className="btn btn-primary btn-sm" onClick={()=>setShowAddInstitute(true)}>
               <span className="material-icons-round" style={{fontSize:15}}>add</span>
               Add Institute
