@@ -1035,21 +1035,20 @@ function ShortlistRow({ row, idx, canEdit, isAdmin, onEdit, onDelete, onBillSave
         </div>
       )}
 
-      {/* Date */}
-      <div style={{width:110, fontSize:12.5, color:'var(--text3)', flexShrink:0}}>
-        {fmt(row.shortlist_date)}
-      </div>
-
-      {/* Status */}
-      <div style={{width:80, flexShrink:0}}>
-        <span style={{ fontSize:11, fontWeight:600, padding:'3px 10px', borderRadius:100, ...sc }}>
-          {row.status}
-        </span>
-      </div>
-
-      {/* Remarks */}
-      <div style={{flex:1, fontSize:12, color:'var(--text3)', minWidth:0, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap'}}>
-        {row.remarks || ''}
+      {/* Contract / Bill */}
+      <div style={{flex:1, minWidth:0}}>
+        {row.contract_amount === 0
+          ? <span style={{fontSize:12, color:'var(--success)', fontWeight:600}}>Free</span>
+          : row.contract_amount != null
+            ? <span style={{fontSize:13, fontWeight:700, color:'var(--text)'}}>NPR {Number(row.contract_amount).toLocaleString()}</span>
+            : <span style={{fontSize:12, color:'var(--text3)', fontStyle:'italic'}}>—</span>
+        }
+        {hasBill && row.shortlist_doc && (
+          <a href={typeof row.shortlist_doc === 'string' ? row.shortlist_doc : JSON.parse(row.shortlist_doc)[0]} target="_blank" rel="noreferrer"
+            style={{display:'block', fontSize:11, color:'var(--primary)', marginTop:2}}>
+            <span className="material-icons-round" style={{fontSize:12, verticalAlign:'middle'}}>receipt</span> View Receipt
+          </a>
+        )}
       </div>
 
       {/* Actions */}
@@ -1127,10 +1126,8 @@ function TableHead({ groupBy }) {
       <div style={{flex:2, ...col}}>Firm</div>
       <div style={{flex:2, ...col}}>Organization</div>
       {groupBy !== 'fy' && <div style={{width:80, ...col, flexShrink:0}}>FY</div>}
-      <div style={{width:110, ...col, flexShrink:0}}>Date / Validity</div>
-      <div style={{width:80, ...col, flexShrink:0}}>Status</div>
-      <div style={{flex:1, ...col}}>Remarks</div>
-      <div style={{width:100, flexShrink:0}}></div>
+      <div style={{flex:1, ...col}}>Contract</div>
+      <div style={{width:90, flexShrink:0}}></div>
     </div>
   );
 }
