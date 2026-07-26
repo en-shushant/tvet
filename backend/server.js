@@ -166,6 +166,29 @@ async function runMigrations() {
     `ALTER TABLE institutes ADD COLUMN IF NOT EXISTS created_by UUID REFERENCES users(id) ON DELETE SET NULL`,
     `ALTER TABLE shortlists ADD COLUMN IF NOT EXISTS contract_amount BIGINT`,
     `ALTER TABLE shortlists ADD COLUMN IF NOT EXISTS shortlist_doc TEXT`,
+    `CREATE TABLE IF NOT EXISTS contracts (
+      id                SERIAL PRIMARY KEY,
+      client_id         INTEGER REFERENCES clients(id) ON DELETE SET NULL,
+      client_name_manual TEXT,
+      fy                TEXT NOT NULL,
+      title             TEXT NOT NULL,
+      description       TEXT,
+      created_at        TIMESTAMPTZ DEFAULT NOW(),
+      updated_at        TIMESTAMPTZ DEFAULT NOW()
+    )`,
+    `CREATE TABLE IF NOT EXISTS quotations (
+      id               SERIAL PRIMARY KEY,
+      contract_id      INTEGER NOT NULL REFERENCES contracts(id) ON DELETE CASCADE,
+      shortlist_id     INTEGER NOT NULL REFERENCES shortlists(id) ON DELETE CASCADE,
+      quotation_date   DATE,
+      quoted_amount    BIGINT,
+      status           TEXT NOT NULL DEFAULT 'Quoted',
+      contract_amount  BIGINT,
+      agreement_doc    TEXT,
+      remarks          TEXT,
+      created_at       TIMESTAMPTZ DEFAULT NOW(),
+      updated_at       TIMESTAMPTZ DEFAULT NOW()
+    )`,
   ];
   for (const sql of migrations) {
     try { await pool.query(sql); }
@@ -238,6 +261,8 @@ fastify.register(require('./routes/occupation-tools'), { prefix: '/api/occupatio
 fastify.register(require('./routes/infrastructure'),   { prefix: '/api/infrastructure' });
 fastify.register(require('./routes/dashboard'),        { prefix: '/api/dashboard' });
 fastify.register(require('./routes/shortlists'),       { prefix: '/api/shortlists' });
+fastify.register(require('./routes/contracts'),        { prefix: '/api/contracts' });
+fastify.register(require('./routes/quotations'),       { prefix: '/api/quotations' });
 fastify.register(require('./routes/upload'),           { prefix: '/api/upload' });
 
 // ─── SPA FALLBACK ─────────────────────────────────────────────────────────────
