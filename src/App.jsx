@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useMemo, lazy, Suspense } from 'react';
 import LoginPage from './components/LoginPage.jsx';
 import Dashboard from './components/Dashboard.jsx';
 import ShortlistDashboard from './components/ShortlistDashboard.jsx';
+import QuotationsView from './components/QuotationsView.jsx';
 import InstituteList from './components/InstituteList.jsx';
 import InstituteDetail from './components/InstituteDetail.jsx';
 import InstituteForm from './components/InstituteForm.jsx';
@@ -53,7 +54,7 @@ function App() {
   const [screen, setScreen] = useState(() => {
     const s = parseHash().screen;
     // shortlist role: allow dashboard, institutes, detail, shortlisting; default to dashboard
-    if (session?.role === 'shortlist' && !['dashboard','institutes','detail','shortlisting'].includes(s)) return 'dashboard';
+    if (session?.role === 'shortlist' && !['dashboard','institutes','detail','shortlisting','quotations'].includes(s)) return 'dashboard';
     return s;
   });
   const [selectedInstitute, setSelectedInstitute] = useState(null);
@@ -243,7 +244,7 @@ function App() {
   };
 
   const handleNavigate = (id) => {
-    if (isShortlistOnly && id !== 'shortlisting' && id !== 'dashboard' && id !== 'institutes' && id !== 'detail') return;
+    if (isShortlistOnly && id !== 'shortlisting' && id !== 'quotations' && id !== 'dashboard' && id !== 'institutes' && id !== 'detail') return;
     if (id === 'master' && !isAdmin && !isEditor) return;
     if (id === 'users' && !isAdmin) return;
     if ((id === 'summary' || id === 'comparison' || id === 'compliance') && isEditor) return;
@@ -260,6 +261,7 @@ function App() {
     {id:'comparison', icon:'compare_arrows', label:'Comparison', editorHidden: true, shortlistHidden: true},
     {id:'compliance', icon:'fact_check', label:'Project Compliance', editorHidden: true, shortlistHidden: true},
     {id:'shortlisting', icon:'playlist_add_check', label:'Shortlisting'},
+    {id:'quotations', icon:'gavel', label:'Quotations'},
     {id:'reports', icon:'description', label:'Reports', shortlistHidden: true},
     {id:'master', icon:'category', label:'Master Data', adminOnly: false, editorHidden: false, shortlistHidden: true},
     {id:'users', icon:'manage_accounts', label:'User Management', adminOnly: true, shortlistHidden: true},
@@ -335,6 +337,7 @@ function App() {
     summary: 'Summary view',
     comparison: 'Comparison view',
     shortlisting: 'Shortlisting',
+    quotations: 'Quotations',
     reports: 'Reports',
     master: 'Master data',
     users: 'User management',
@@ -573,6 +576,7 @@ function App() {
           {screen === 'comparison' && <ComparisonView institutes={institutes} clients={clients}/>}
           {screen === 'compliance' && <ProjectCompliance institutes={institutes} clients={clients}/>}
           {screen === 'shortlisting' && <Suspense fallback={<div style={{padding:40,textAlign:'center',color:'var(--text3)'}}>Loading…</div>}><Shortlisting institutes={institutes} clients={clients} isAdmin={isAdmin} isEditor={isEditor} isShortlistOnly={isShortlistOnly} token={token}/></Suspense>}
+          {screen === 'quotations' && <QuotationsView institutes={institutes} clients={clients} isAdmin={isAdmin} isEditor={isEditor} isShortlistOnly={isShortlistOnly}/>}
           {screen === 'reports' && <Suspense fallback={<div style={{padding:40,textAlign:'center',color:'var(--text3)'}}>Loading reports…</div>}><ReportsView institutes={institutes} clients={clients}/></Suspense>}
           {screen === 'master' && (isAdmin || isEditor) && <MasterData clients={clients} onUpdateClients={handleUpdateClients} token={token} isAdmin={isAdmin} isEditor={isEditor} isSuperAdmin={isSuperAdmin}/>}
           {screen === 'master' && !isAdmin && !isEditor && (
