@@ -4,7 +4,7 @@ import { Btn, MdTextField, MdSelect, MdOption, MdToggle } from '../md.jsx';
 import { api } from '../utils/api.js';
 import { getSession } from '../utils/auth.js';
 import { FISCAL_YEARS, getCurrentFY } from '../constants/data.js';
-import { adToBS, BS_MONTHS, toNpNum } from '../constants/nepali.js';
+import { adToBS, bsToAD, BS_MONTHS, BS_DATA, toNpNum } from '../constants/nepali.js';
 
 const FYS = [...FISCAL_YEARS].reverse(); // newest first
 
@@ -88,12 +88,12 @@ function todayBS() {
   const ktmStr = now.toLocaleDateString('en-CA', { timeZone: 'Asia/Kathmandu' });
   const [y, m, d] = ktmStr.split('-').map(Number);
   const bs = adToBS(new Date(Date.UTC(y, m - 1, d)));
-  return `${bs.y}/${String(bs.m).padStart(2,'0')}/${String(bs.d).padStart(2,'0')}`;
+  return `${toNpNum(String(bs.y))}/${toNpNum(String(bs.m).padStart(2,'0'))}/${toNpNum(String(bs.d).padStart(2,'0'))}`;
 }
 
 // ── Letter generator — opens print-ready A4 in new window ─────────────────────
 function openShortlistLetter(row, opts = {}) {
-  const { includeSign = false, includeStamp = false, docs = {}, pageTopMargin = 15, lhGap = 5, pageBottomPadding = 15, serviceType: svcType } = opts;
+  const { includeSign = false, includeStamp = false, docs = {}, pageTopMargin = 15, lrPadding = 10, pageBottomPadding = 15, serviceType: svcType } = opts;
   // Firm (institute) — letterhead owner
   const firmName        = row.institute_name || '';
   const firmAcronym     = row.institute_acronym || '';
@@ -209,7 +209,7 @@ function openShortlistLetter(row, opts = {}) {
     min-height: 297mm;
     flex-shrink: 0;
     background: #fff;
-    padding: ${pageTopMargin}mm 10mm ${pageBottomPadding}mm 15mm;
+    padding: ${pageTopMargin}mm ${lrPadding}mm ${pageBottomPadding}mm ${lrPadding}mm;
     ${useLhBg ? `background-image:url('${firmLetterhead}');background-size:100% 297mm;background-repeat:no-repeat;background-position:top left;` : ''}
   }
   .lh-regpan { display:flex;justify-content:space-between;font-size:9pt;font-style:italic;color:#7b1a1a;margin-bottom:5px; }
@@ -217,7 +217,7 @@ function openShortlistLetter(row, opts = {}) {
   .lh-logo   { max-height:75px;max-width:75px;object-fit:contain;margin-bottom:3px; }
   .lh-name   { font-size:15pt;font-weight:700;color:#7b1a1a;line-height:1.3; }
   .lh-meta   { font-size:9pt;color:#444;margin-top:4px;line-height:1.6; }
-  .lh-border { border-bottom:3px double #7b1a1a;margin:7px 0 ${lhGap}mm; }
+  .lh-border { border-bottom:3px double #7b1a1a;margin:7px 0 5mm; }
 
   .ref-row  { display:flex;justify-content:space-between;align-items:baseline;margin-bottom:10px;font-size:11pt; }
   .ref-bold { font-weight:700;font-size:13pt; }
@@ -474,6 +474,63 @@ function ClientCombobox({ clients, value, onChange }) {
   );
 }
 
+// ── Nepali Date Picker ─────────────────────────────────────────────────────────
+const BS_YEARS = Object.keys(BS_DATA).map(Number).sort((a,b)=>a-b);
+
+function NepaliDatePicker({ label, value, onChange, required }) {
+  // value is AD ISO string (YYYY-MM-DD) or ''
+  const toBS = (adStr) => {
+    if (!adStr) return { y: '', m: '', d: '' };
+    const [y, m, d] = adStr.slice(0, 10).split('-').map(Number);
+    const bs = adToBS(new Date(Date.UTC(y, m - 1, d)));
+    return { y: bs.y, m: bs.m, d: bs.d };
+  };
+
+  const [bs, setBs] = useState(() => toBS(value));
+  useEffect(() => { setBs(toBS(value)); }, [value]);
+
+  const maxDays = (bs.y && bs.m && BS_DATA[bs.y]) ? BS_DATA[bs.y][bs.m - 1] : 32;
+
+  const handleChange = (field, val) => {
+    const next = { ...bs, [field]: val ? Number(val) : '' };
+    setBs(next);
+    if (next.y && next.m && next.d) {
+      const clampedD = Math.min(next.d, BS_DATA[next.y]?.[next.m - 1] || next.d);
+      onChange(bsToAD(next.y, next.m, clampedD));
+    } else {
+      onChange('');
+    }
+  };
+
+  const sel = (val, opts, placeholder) => (
+    <select value={val || ''} onChange={e => handleChange(opts === 'year' ? 'y' : opts === 'month' ? 'm' : 'd', e.target.value)}
+      style={{ flex: 1, padding: '14px 8px 14px 12px', border: '1px solid var(--md-sys-color-outline,#79747e)', borderRadius: 4, background: 'var(--surface)', color: val ? 'var(--text)' : 'var(--text3)', fontSize: 15, fontFamily: 'inherit', appearance: 'none', cursor: 'pointer' }}>
+      <option value="">{placeholder}</option>
+      {opts === 'year'  && BS_YEARS.map(y => <option key={y} value={y}>{toNpNum(y)}</option>)}
+      {opts === 'month' && BS_MONTHS.map((mn, i) => <option key={i+1} value={i+1}>{mn}</option>)}
+      {opts === 'day'   && Array.from({length: maxDays}, (_,i) => i+1).map(d => <option key={d} value={d}>{toNpNum(d)}</option>)}
+    </select>
+  );
+
+  return (
+    <div className="form-group">
+      <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text3)', display: 'block', marginBottom: 6 }}>
+        {label}{required && <span style={{ color: 'var(--error)' }}> *</span>}
+      </label>
+      <div style={{ display: 'flex', gap: 6 }}>
+        {sel(bs.y, 'year',  'वर्ष')}
+        {sel(bs.m, 'month', 'महिना')}
+        {sel(bs.d, 'day',   'गते')}
+      </div>
+      {bs.y && bs.m && bs.d && (
+        <div style={{ fontSize: 11.5, color: 'var(--text3)', marginTop: 4 }}>
+          {toNpNum(bs.d)} {BS_MONTHS[bs.m - 1]} {toNpNum(bs.y)}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Add/Edit Modal ─────────────────────────────────────────────────────────────
 function ShortlistForm({ initial, institutes, clients, onSave, onClose, saving, token }) {
   const isEdit = !!initial?.id;
@@ -578,9 +635,7 @@ function ShortlistForm({ initial, institutes, clients, onSave, onClose, saving, 
             <MdOption value="ADB Consultants List">ADB Consultants List</MdOption>
           </MdSelect>
         </div>
-        <div className="form-group">
-          <MdTextField type="date" label="Shortlisting Date *" value={form.shortlist_date} onChange={e => set('shortlist_date', e.target.value)} />
-        </div>
+        <NepaliDatePicker label="Shortlisting Date" value={form.shortlist_date} onChange={v => set('shortlist_date', v)} required />
       </div>
 
       <div className="form-row form-row-2">
@@ -725,9 +780,9 @@ const SERVICE_TYPES = [
 function LetterOptsModal({ row, onClose }) {
   const [inclSign, setInclSign] = useState(!!row.institute_sign);
   const [inclStamp, setInclStamp] = useState(!!row.institute_stamp);
-  const [pageTopMargin, setPageTopMargin] = useState(row.institute_letter_top_margin ?? 10);
-  const [lhGap, setLhGap] = useState(row.institute_letter_lr_padding ?? 10);
-  const [pageBottomPadding, setPageBottomPadding] = useState(row.institute_letter_bottom_padding ?? 10);
+  const [pageTopMargin, setPageTopMargin] = useState(row.institute_letter_top_margin ?? 15);
+  const [lrPadding, setLrPadding] = useState(row.institute_letter_lr_padding ?? 10);
+  const [pageBottomPadding, setPageBottomPadding] = useState(row.institute_letter_bottom_padding ?? 15);
   const hasDocs = {
     ocrReg:   !!row.institute_ocr_registration,
     ocrRen:   !!row.institute_ocr_renewal,
@@ -747,7 +802,7 @@ function LetterOptsModal({ row, onClose }) {
     <Modal title="Generate Letter" onClose={onClose} footer={<>
       <Btn className="btn btn-secondary" onClick={onClose}>Cancel</Btn>
       <Btn className="btn btn-primary" onClick={() => {
-        openShortlistLetter(row, { includeSign: inclSign, includeStamp: inclStamp, docs: inclDocs, pageTopMargin, lhGap, pageBottomPadding, serviceType: row.institute_service_type });
+        openShortlistLetter(row, { includeSign: inclSign, includeStamp: inclStamp, docs: inclDocs, pageTopMargin, lrPadding, pageBottomPadding, serviceType: row.institute_service_type });
         onClose();
       }}>Generate &amp; Print</Btn>
     </>}>

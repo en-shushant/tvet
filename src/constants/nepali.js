@@ -50,6 +50,43 @@ export function adToBS(adUtcDate) {
   return {y,m,d};
 }
 
+export function bsToAD(y, m, d) {
+  // count days from BS_REF (2083/01/01) to target
+  let days = 0;
+  if (y > BS_REF.bs.y || (y === BS_REF.bs.y && m > 1) || (y === BS_REF.bs.y && m === 1 && d >= 1)) {
+    // count forward
+    let cy = BS_REF.bs.y, cm = 1, cd = 1;
+    while (cy < y || cm < m || cd < d) {
+      const months = BS_DATA[cy];
+      if (!months) break;
+      const maxD = months[cm - 1];
+      if (cy === y && cm === m && cd === d) break;
+      cd++;
+      days++;
+      if (cd > maxD) { cd = 1; cm++; }
+      if (cm > 12) { cm = 1; cy++; }
+    }
+  } else {
+    // count backward from ref
+    let cy = BS_REF.bs.y, cm = 1, cd = 1;
+    while (cy > y || cm > m || cd > d) {
+      cd--;
+      days--;
+      if (cd < 1) {
+        cm--;
+        if (cm < 1) { cm = 12; cy--; }
+        const months = BS_DATA[cy];
+        cd = months ? months[cm - 1] : 30;
+      }
+    }
+  }
+  const adDate = new Date(BS_REF.ad.getTime() + days * 86400000);
+  const yy = adDate.getUTCFullYear();
+  const mm = String(adDate.getUTCMonth() + 1).padStart(2, '0');
+  const dd = String(adDate.getUTCDate()).padStart(2, '0');
+  return `${yy}-${mm}-${dd}`;
+}
+
 export function getNepaliDate() {
   const now = new Date();
   // Get today's date in Kathmandu timezone as a clean UTC midnight
