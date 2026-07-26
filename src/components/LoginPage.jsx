@@ -16,18 +16,39 @@ function LoginPage({ onLogin }) {
   const [loading, setLoading] = useState(false);
   const [capToken, setCapToken] = useState('');
   const [widgetKey, setWidgetKey] = useState(0);
-  const capRef = useRef(null);
+  const turnstileRef = useRef(null);
+  const turnstileIdRef = useRef(undefined);
   const [showSettings, setShowSettings] = useState(false);
   const [apiUrl, setApiUrl] = useState(() => {
     try { return localStorage.getItem(API_URL_KEY) || ''; } catch { return ''; }
   });
 
   useEffect(() => {
-    const el = capRef.current;
-    if (!el) return;
-    const handler = (e) => setCapToken(e.detail.token);
-    el.addEventListener('solve', handler);
-    return () => el.removeEventListener('solve', handler);
+    if (turnstileIdRef.current !== undefined && window.turnstile) {
+      try { window.turnstile.remove(turnstileIdRef.current); } catch {}
+      turnstileIdRef.current = undefined;
+    }
+    const render = () => {
+      if (!window.turnstile || !turnstileRef.current) return;
+      turnstileIdRef.current = window.turnstile.render(turnstileRef.current, {
+        sitekey: '0x4AAAAAAD-IUm1QHVVxIjkr',
+        action: 'turnstile-spin-v2',
+        callback: (token) => setCapToken(token),
+        'expired-callback': () => setCapToken(''),
+        'error-callback': () => setCapToken(''),
+      });
+    };
+    if (window.turnstile) {
+      render();
+    } else {
+      const prev = window.onloadTurnstileCallback;
+      window.onloadTurnstileCallback = () => { render(); if (prev) prev(); };
+    }
+    return () => {
+      if (turnstileIdRef.current !== undefined && window.turnstile) {
+        try { window.turnstile.remove(turnstileIdRef.current); } catch {}
+      }
+    };
   }, [widgetKey]);
 
   const handleSubmit = async (e) => {
@@ -36,7 +57,7 @@ function LoginPage({ onLogin }) {
     setError('');
     setLoading(true);
     try {
-      const data = await api('POST', '/auth/login', { email, password, 'cap-token': capToken });
+      const data = await api('POST', '/auth/login', { email, password, 'cf-turnstile-response': capToken });
       const session = {
         id: data.user.id,
         fullName: data.user.name,
@@ -119,11 +140,9 @@ function LoginPage({ onLogin }) {
                   placeholder="Enter your password" required style={{width:'100%'}}/>
               </div>
               <div style={{marginBottom:20}}>
-                <cap-widget
-                  key={widgetKey}
-                  ref={capRef}
-                  data-cap-api-endpoint="/cap-api/355cfb251c/"
-                  style={{'--cap-background':'var(--surface)','--cap-border-color':'var(--border)','--cap-border-radius':'10px','--cap-color':'var(--text)','--cap-font':'var(--font)'}}
+                <div ref={turnstileRef} className="cf-turnstile"
+                  data-sitekey="0x4AAAAAAD-IUm1QHVVxIjkr"
+                  data-action="turnstile-spin-v2"
                 />
               </div>
               {error && (

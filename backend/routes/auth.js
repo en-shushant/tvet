@@ -3,27 +3,28 @@ const bcrypt = require('bcrypt');
 const { pool } = require('../db/pool');
 const { signToken, authenticate } = require('../middleware/auth');
 
-const CAP_SECRET = process.env.CAP_SECRET_KEY;
-const CAP_SITEVERIFY = 'http://185.199.53.214:32769/355cfb251c/siteverify';
-
-async function verifyCapToken(token) {
-  if (!token) return { ok: false, reason: 'Please complete the CAPTCHA' };
-  if (!CAP_SECRET) {
-    console.warn('CAP_SECRET_KEY not set — skipping CAPTCHA verification');
+async function verifyTurnstileToken(token, remoteip) {
+  if (!token) return { ok: false, reason: 'Please complete the CAPTCHA verification.' };
+  if (!process.env.TURNSTILE_SECRET) {
+    console.warn('TURNSTILE_SECRET not set — skipping Turnstile verification');
     return { ok: true };
   }
   try {
-    const res = await fetch(CAP_SITEVERIFY, {
+    const r = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ secret: CAP_SECRET, response: token }),
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        secret: process.env.TURNSTILE_SECRET,
+        response: token,
+        remoteip: remoteip || '',
+      }),
       signal: AbortSignal.timeout(5000),
     });
-    if (!res.ok) return { ok: false, reason: 'CAPTCHA verification failed' };
-    const data = await res.json();
-    return data.success ? { ok: true } : { ok: false, reason: 'CAPTCHA verification failed' };
+    if (!r.ok) return { ok: false, reason: 'CAPTCHA verification failed' };
+    const result = await r.json();
+    return result.success ? { ok: true } : { ok: false, reason: 'CAPTCHA verification failed' };
   } catch (e) {
-    console.error('Cap server unreachable:', e.message);
+    console.error('Turnstile siteverify unreachable:', e.message);
     return { ok: true };
   }
 }
@@ -48,7 +49,8 @@ async function plugin(fastify, opts) {
   fastify.post('/login', { config: { rateLimit: { max: 10, timeWindow: '1 minute' } } }, async (request, reply) => {
     const { email, password } = request.body;
     if (!email || !password) return reply.code(400).send({ error: 'email and password required' });
-    const capResult = await verifyCapToken(request.body['cap-token']);
+    const remoteip = request.headers['x-forwarded-for']?.split(',')[0].trim() || request.ip;
+    const capResult = await verifyTurnstileToken(request.body['cf-turnstile-response'], remoteip);
     if (!capResult.ok) return reply.code(400).send({ error: capResult.reason });
     const { rows } = await pool.query('SELECT * FROM users WHERE email = $1', [email]);
     if (!rows.length) return reply.code(401).send({ error: 'Invalid credentials' });
