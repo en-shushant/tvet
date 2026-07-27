@@ -93,7 +93,10 @@ function todayBS() {
 
 // ── Letter generator — opens print-ready A4 in new window ─────────────────────
 function openShortlistLetter(row, opts = {}) {
-  const { includeSign = false, includeStamp = false, docs = {}, pageTopMargin = 15, lrPadding = 10, pageBottomPadding = 15, serviceType: svcType } = opts;
+  const { includeSign = false, includeStamp = false, docs = {}, serviceType: svcType } = opts;
+  const pageTopMargin    = row.institute_letter_top_margin    ?? 15;
+  const lrPadding        = row.institute_letter_lr_padding    ?? 10;
+  const pageBottomPadding = row.institute_letter_bottom_padding ?? 15;
   // Firm (institute) — letterhead owner
   const firmName        = row.institute_name || '';
   const firmAcronym     = row.institute_acronym || '';
@@ -209,8 +212,12 @@ function openShortlistLetter(row, opts = {}) {
     min-height: 297mm;
     flex-shrink: 0;
     background: #fff;
-    padding: ${pageTopMargin}mm ${lrPadding}mm ${pageBottomPadding}mm ${lrPadding}mm;
-    ${useLhBg ? `background-image:url('${firmLetterhead}');background-size:100% 297mm;background-repeat:no-repeat;background-position:top left;` : ''}
+    ${useLhBg
+      ? `position:relative;padding:0;background-image:url('${firmLetterhead}');background-size:100% 100%;background-repeat:no-repeat;background-position:top left;`
+      : `padding:${pageTopMargin}mm ${lrPadding}mm ${pageBottomPadding}mm ${lrPadding}mm;`}
+  }
+  .page-inner {
+    ${useLhBg ? `padding:${pageTopMargin}mm ${lrPadding}mm ${pageBottomPadding}mm ${lrPadding}mm;` : ''}
   }
   .lh-regpan { display:flex;justify-content:space-between;font-size:9pt;font-style:italic;color:#7b1a1a;margin-bottom:5px; }
   .lh-center { text-align:center; }
@@ -241,7 +248,7 @@ function openShortlistLetter(row, opts = {}) {
 </style>
 </head>
 <body>
-<div class="page">
+<div class="page"><div class="page-inner">
 
   ${!useLhBg ? `
   ${firmRegNo || firmPan ? `<div class="lh-regpan"><span>${firmRegNo ? 'Govt. Regd.No. ' + firmRegNo : ''}</span><span>${firmPan ? 'PAN No. ' + firmPan : ''}</span></div>` : ''}
@@ -340,8 +347,8 @@ function openShortlistLetter(row, opts = {}) {
     </td></tr>
   </table>
 
+</div></div>
 ${docPages}
-</div>
 <script>window.onload = function() { window.print(); };</script>
 </body>
 </html>`;
@@ -780,9 +787,6 @@ const SERVICE_TYPES = [
 function LetterOptsModal({ row, onClose }) {
   const [inclSign, setInclSign] = useState(!!row.institute_sign);
   const [inclStamp, setInclStamp] = useState(!!row.institute_stamp);
-  const [pageTopMargin, setPageTopMargin] = useState(row.institute_letter_top_margin ?? 15);
-  const [lrPadding, setLrPadding] = useState(row.institute_letter_lr_padding ?? 10);
-  const [pageBottomPadding, setPageBottomPadding] = useState(row.institute_letter_bottom_padding ?? 15);
   const hasDocs = {
     ocrReg:   !!row.institute_ocr_registration,
     ocrRen:   !!row.institute_ocr_renewal,
@@ -802,7 +806,7 @@ function LetterOptsModal({ row, onClose }) {
     <Modal title="Generate Letter" onClose={onClose} footer={<>
       <Btn className="btn btn-secondary" onClick={onClose}>Cancel</Btn>
       <Btn className="btn btn-primary" onClick={() => {
-        openShortlistLetter(row, { includeSign: inclSign, includeStamp: inclStamp, docs: inclDocs, pageTopMargin, lrPadding, pageBottomPadding, serviceType: row.institute_service_type });
+        openShortlistLetter(row, { includeSign: inclSign, includeStamp: inclStamp, docs: inclDocs, serviceType: row.institute_service_type });
         onClose();
       }}>Generate &amp; Print</Btn>
     </>}>
@@ -863,33 +867,6 @@ function LetterOptsModal({ row, onClose }) {
             </div>
           </div>
         )}
-
-        {/* Page margin controls */}
-        <div style={{borderRadius:10, border:'1px solid var(--border)', overflow:'hidden'}}>
-          <div style={{padding:'10px 14px', borderBottom:'1px solid var(--border)', background:'var(--bg)'}}>
-            <span style={{fontWeight:600, fontSize:12.5, color:'var(--text2)'}}>Page margins (mm)</span>
-          </div>
-          <div style={{display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:12, padding:'12px 14px', background:'var(--surface)'}}>
-            {[
-              { label: 'Top', value: pageTopMargin, set: setPageTopMargin },
-              { label: 'Left / Right', value: lrPadding, set: setLrPadding },
-              { label: 'Bottom', value: pageBottomPadding, set: setPageBottomPadding },
-            ].map(({ label, value, set }) => (
-              <label key={label} style={{display:'flex', flexDirection:'column', gap:4}}>
-                <span style={{fontSize:11, color:'var(--text3)', fontWeight:500}}>{label}</span>
-                <input
-                  type="number" min={0} max={50} step={1} value={value}
-                  onChange={e => set(Number(e.target.value))}
-                  style={{
-                    width:'100%', padding:'6px 8px', borderRadius:6,
-                    border:'1px solid var(--border)', background:'var(--bg)',
-                    color:'var(--text)', fontSize:13, textAlign:'center',
-                  }}
-                />
-              </label>
-            ))}
-          </div>
-        </div>
 
       </div>
     </Modal>
