@@ -863,6 +863,34 @@ function LetterOptsModal({ row, onClose }) {
             </div>
           </div>
         )}
+
+        {/* Page margin controls */}
+        <div style={{borderRadius:10, border:'1px solid var(--border)', overflow:'hidden'}}>
+          <div style={{padding:'10px 14px', borderBottom:'1px solid var(--border)', background:'var(--bg)'}}>
+            <span style={{fontWeight:600, fontSize:12.5, color:'var(--text2)'}}>Page margins (mm)</span>
+          </div>
+          <div style={{display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:12, padding:'12px 14px', background:'var(--surface)'}}>
+            {[
+              { label: 'Top', value: pageTopMargin, set: setPageTopMargin },
+              { label: 'Left / Right', value: lrPadding, set: setLrPadding },
+              { label: 'Bottom', value: pageBottomPadding, set: setPageBottomPadding },
+            ].map(({ label, value, set }) => (
+              <label key={label} style={{display:'flex', flexDirection:'column', gap:4}}>
+                <span style={{fontSize:11, color:'var(--text3)', fontWeight:500}}>{label}</span>
+                <input
+                  type="number" min={0} max={50} step={1} value={value}
+                  onChange={e => set(Number(e.target.value))}
+                  style={{
+                    width:'100%', padding:'6px 8px', borderRadius:6,
+                    border:'1px solid var(--border)', background:'var(--bg)',
+                    color:'var(--text)', fontSize:13, textAlign:'center',
+                  }}
+                />
+              </label>
+            ))}
+          </div>
+        </div>
+
       </div>
     </Modal>
   );
