@@ -782,9 +782,25 @@ const SERVICE_TYPES = [
   'अन्य सेवा',
 ];
 
-function LetterOptsModal({ row, onClose }) {
+function LetterOptsModal({ row, token, onClose }) {
   const [inclSign, setInclSign] = useState(!!row.institute_sign);
   const [inclStamp, setInclStamp] = useState(!!row.institute_stamp);
+  // Always fetch fresh institute data so latest margin settings are used
+  const [freshRow, setFreshRow] = useState(row);
+  useEffect(() => {
+    if (!row.institute_id && !row.id) return;
+    const instId = row.institute_id;
+    api('GET', `/institutes/${instId}`, null, token)
+      .then(inst => {
+        setFreshRow(r => ({
+          ...r,
+          institute_letter_top_margin: inst.letterTopMargin,
+          institute_letter_lr_padding: inst.letterLrPadding,
+          institute_letter_bottom_padding: inst.letterBottomPadding,
+        }));
+      })
+      .catch(() => {}); // silently fall back to row values
+  }, [row.institute_id, token]);
   const hasDocs = {
     ocrReg:   !!row.institute_ocr_registration,
     ocrRen:   !!row.institute_ocr_renewal,
@@ -804,7 +820,7 @@ function LetterOptsModal({ row, onClose }) {
     <Modal title="Generate Letter" onClose={onClose} footer={<>
       <Btn className="btn btn-secondary" onClick={onClose}>Cancel</Btn>
       <Btn className="btn btn-primary" onClick={() => {
-        openShortlistLetter(row, { includeSign: inclSign, includeStamp: inclStamp, docs: inclDocs, serviceType: row.institute_service_type });
+        openShortlistLetter(freshRow, { includeSign: inclSign, includeStamp: inclStamp, docs: inclDocs, serviceType: freshRow.institute_service_type });
         onClose();
       }}>Generate &amp; Print</Btn>
     </>}>
@@ -1464,7 +1480,7 @@ function ShortlistRow({ row, idx, canEdit, isAdmin, onEdit, onDelete, onBillSave
 
       {/* Actions */}
       <div style={{display:'flex', gap:2, flexShrink:0}}>
-        {showLetterOpts && <LetterOptsModal row={row} onClose={()=>setShowLetterOpts(false)}/>}
+        {showLetterOpts && <LetterOptsModal row={row} token={token} onClose={()=>setShowLetterOpts(false)}/>}
         {showBill && <BillModal row={row} token={token} saving={saving} onClose={()=>setShowBill(false)} onSave={async (patch) => { await onBillSave(row.id, patch); setShowBill(false); }}/>}
         {canEdit && (
           <button title={hasBill ? 'Bill uploaded — click to update' : 'Upload bill / certificate'} onClick={() => setShowBill(true)}
