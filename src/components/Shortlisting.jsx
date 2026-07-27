@@ -210,12 +210,12 @@ function openShortlistLetter(row, opts = {}) {
     min-height: 297mm;
     flex-shrink: 0;
     background: #fff;
-    ${useLhBg
-      ? `position:relative;padding:0;background-image:url('${firmLetterhead}');background-size:100% 100%;background-repeat:no-repeat;background-position:top left;`
-      : `padding:${pageTopMargin}mm ${lrPadding}mm ${pageBottomPadding}mm ${lrPadding}mm;`}
+    position: relative;
+    padding: 0;
+    ${useLhBg ? `background-image:url('${firmLetterhead}');background-size:100% 100%;background-repeat:no-repeat;background-position:top left;` : ''}
   }
   .page-inner {
-    ${useLhBg ? `padding:${pageTopMargin}mm ${lrPadding}mm ${pageBottomPadding}mm ${lrPadding}mm;` : ''}
+    padding: ${pageTopMargin}mm ${lrPadding}mm ${pageBottomPadding}mm ${lrPadding}mm;
   }
   .lh-regpan { display:flex;justify-content:space-between;font-size:9pt;font-style:italic;color:#7b1a1a;margin-bottom:5px; }
   .lh-center { text-align:center; }
