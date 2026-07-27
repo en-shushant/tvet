@@ -1109,6 +1109,50 @@ function filesToStore(arr) {
   return arr.length === 1 ? arr[0] : JSON.stringify(arr);
 }
 
+// Remove white/near-white background from an image file, returns a new PNG File
+async function removeImageBackground(file) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      canvas.width = img.naturalWidth;
+      canvas.height = img.naturalHeight;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0);
+      URL.revokeObjectURL(url);
+      const data = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      const d = data.data;
+      // Sample corner pixels to estimate background color
+      const corners = [
+        [d[0], d[1], d[2]],
+        [d[(canvas.width - 1) * 4], d[(canvas.width - 1) * 4 + 1], d[(canvas.width - 1) * 4 + 2]],
+        [d[(canvas.height - 1) * canvas.width * 4], d[(canvas.height - 1) * canvas.width * 4 + 1], d[(canvas.height - 1) * canvas.width * 4 + 2]],
+        [d[((canvas.height - 1) * canvas.width + canvas.width - 1) * 4], d[((canvas.height - 1) * canvas.width + canvas.width - 1) * 4 + 1], d[((canvas.height - 1) * canvas.width + canvas.width - 1) * 4 + 2]],
+      ];
+      const bgR = Math.round(corners.reduce((s, c) => s + c[0], 0) / 4);
+      const bgG = Math.round(corners.reduce((s, c) => s + c[1], 0) / 4);
+      const bgB = Math.round(corners.reduce((s, c) => s + c[2], 0) / 4);
+      const threshold = 40;
+      for (let i = 0; i < d.length; i += 4) {
+        const dr = Math.abs(d[i] - bgR);
+        const dg = Math.abs(d[i + 1] - bgG);
+        const db = Math.abs(d[i + 2] - bgB);
+        if (dr < threshold && dg < threshold && db < threshold) {
+          d[i + 3] = 0; // transparent
+        }
+      }
+      ctx.putImageData(data, 0, 0);
+      canvas.toBlob(blob => {
+        if (!blob) return reject(new Error('Canvas conversion failed'));
+        resolve(new File([blob], file.name.replace(/\.[^.]+$/, '') + '.png', { type: 'image/png' }));
+      }, 'image/png');
+    };
+    img.onerror = reject;
+    img.src = url;
+  });
+}
+
 async function uploadToR2(file, token) {
   const fd = new FormData();
   fd.append('file', file);
@@ -1153,7 +1197,7 @@ function FileThumb({ src, onRemove }) {
   );
 }
 
-function DocMultiUpload({ label, hint, value, onChange, disabled, token }) {
+function DocMultiUpload({ label, hint, value, onChange, disabled, token, processFile }) {
   const [uploading, setUploading] = useState(false);
   const [err, setErr] = useState('');
   const files = parseFiles(value);
@@ -1163,7 +1207,8 @@ function DocMultiUpload({ label, hint, value, onChange, disabled, token }) {
     if (!picked.length) return;
     setErr(''); setUploading(true);
     try {
-      const urls = await Promise.all(picked.map(f => uploadToR2(f, token)));
+      const processed = processFile ? await Promise.all(picked.map(f => processFile(f))) : picked;
+      const urls = await Promise.all(processed.map(f => uploadToR2(f, token)));
       onChange(filesToStore([...files, ...urls]));
     } catch (ex) { setErr(ex.message); }
     finally { setUploading(false); }
@@ -1214,15 +1259,11 @@ function DocMultiUpload({ label, hint, value, onChange, disabled, token }) {
   );
 }
 
-function DocImgUpload({ label, hint, value, onChange, disabled, token }) {
-  const files = value ? [value] : [];
-  const handleChange = (newFiles) => {
-    const stored = filesToStore(newFiles);
-    onChange(newFiles.length ? newFiles[newFiles.length - 1] : null);
-  };
+function DocImgUpload({ label, hint, value, onChange, disabled, token, processFile }) {
   return (
     <DocMultiUpload
       label={label} hint={hint} token={token} disabled={disabled}
+      processFile={processFile}
       value={value ? JSON.stringify([value]) : null}
       onChange={v => {
         const arr = parseFiles(v);
@@ -1319,8 +1360,8 @@ function DocumentsTab({ institute, token, canEdit, onUpdate, isShortlistOnly }) 
           <div style={{fontSize:12, color:'var(--text3)', marginBottom:16}}>Signature and stamp are shown individually — toggle each in the Generate Letter dialog.</div>
           <DocImgUpload label="Letterhead" hint="Full-width banner shown at the top of generated letters." value={fields.letterhead} onChange={v=>set('letterhead',v)} disabled={!canEdit} token={token}/>
           <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:'0 20px'}}>
-            <DocImgUpload label="Authorized Signature" value={fields.sign} onChange={v=>set('sign',v)} disabled={!canEdit} token={token}/>
-            <DocImgUpload label="Stamp / Seal" value={fields.stamp} onChange={v=>set('stamp',v)} disabled={!canEdit} token={token}/>
+            <DocImgUpload label="Authorized Signature" value={fields.sign} onChange={v=>set('sign',v)} disabled={!canEdit} token={token} processFile={removeImageBackground}/>
+            <DocImgUpload label="Stamp / Seal" value={fields.stamp} onChange={v=>set('stamp',v)} disabled={!canEdit} token={token} processFile={removeImageBackground}/>
           </div>
         </div>
 
