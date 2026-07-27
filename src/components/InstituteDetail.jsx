@@ -1109,7 +1109,8 @@ function filesToStore(arr) {
   return arr.length === 1 ? arr[0] : JSON.stringify(arr);
 }
 
-// Remove white/near-white background from an image file, returns a new PNG File
+// Remove white/near-white background from an image file, returns a new PNG File.
+// Skips processing if the image already has transparency or has a dark background.
 async function removeImageBackground(file) {
   return new Promise((resolve, reject) => {
     const img = new Image();
@@ -1123,24 +1124,26 @@ async function removeImageBackground(file) {
       URL.revokeObjectURL(url);
       const data = ctx.getImageData(0, 0, canvas.width, canvas.height);
       const d = data.data;
-      // Sample corner pixels to estimate background color
-      const corners = [
-        [d[0], d[1], d[2]],
-        [d[(canvas.width - 1) * 4], d[(canvas.width - 1) * 4 + 1], d[(canvas.width - 1) * 4 + 2]],
-        [d[(canvas.height - 1) * canvas.width * 4], d[(canvas.height - 1) * canvas.width * 4 + 1], d[(canvas.height - 1) * canvas.width * 4 + 2]],
-        [d[((canvas.height - 1) * canvas.width + canvas.width - 1) * 4], d[((canvas.height - 1) * canvas.width + canvas.width - 1) * 4 + 1], d[((canvas.height - 1) * canvas.width + canvas.width - 1) * 4 + 2]],
-      ];
+      const w = canvas.width, h = canvas.height;
+      // Sample corner pixel indices
+      const cornerIdxs = [0, (w - 1) * 4, (h - 1) * w * 4, ((h - 1) * w + w - 1) * 4];
+      // If any corner is already transparent, image already has no background — skip
+      const anyTransparent = cornerIdxs.some(i => d[i + 3] < 128);
+      if (anyTransparent) { URL.revokeObjectURL(url); return resolve(file); }
+      const corners = cornerIdxs.map(i => [d[i], d[i + 1], d[i + 2]]);
       const bgR = Math.round(corners.reduce((s, c) => s + c[0], 0) / 4);
       const bgG = Math.round(corners.reduce((s, c) => s + c[1], 0) / 4);
       const bgB = Math.round(corners.reduce((s, c) => s + c[2], 0) / 4);
+      // Only remove light backgrounds (luminance > 160) — skip dark/coloured backgrounds
+      const bgLuma = 0.299 * bgR + 0.587 * bgG + 0.114 * bgB;
+      if (bgLuma < 160) { return resolve(file); }
       const threshold = 40;
       for (let i = 0; i < d.length; i += 4) {
+        if (d[i + 3] === 0) continue;
         const dr = Math.abs(d[i] - bgR);
         const dg = Math.abs(d[i + 1] - bgG);
         const db = Math.abs(d[i + 2] - bgB);
-        if (dr < threshold && dg < threshold && db < threshold) {
-          d[i + 3] = 0; // transparent
-        }
+        if (dr < threshold && dg < threshold && db < threshold) d[i + 3] = 0;
       }
       ctx.putImageData(data, 0, 0);
       canvas.toBlob(blob => {
