@@ -212,7 +212,7 @@ function openShortlistLetter(row, opts = {}) {
     background: #fff;
     position: relative;
     padding: 0;
-    ${useLhBg ? `background-image:url('${firmLetterhead}');background-size:100% 100%;background-repeat:no-repeat;background-position:top left;` : ''}
+    ${useLhBg ? `background-image:url('${firmLetterhead}');background-size:100% auto;background-repeat:no-repeat;background-position:top left;` : ''}
   }
   .page-inner {
     padding: ${pageTopMargin}mm ${lrPadding}mm ${pageBottomPadding}mm ${lrPadding}mm;
