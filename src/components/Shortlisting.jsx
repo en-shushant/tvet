@@ -161,17 +161,15 @@ function openShortlistLetter(row, opts = {}) {
 
   const docPages = docDefs.filter(d => docs[d.key] && d.src).flatMap(d => {
     const files = parseDocFiles(d.src);
-    return files.map((src, i) => {
+    return files.map((src) => {
       const isPdf = !src.startsWith('data:') ? src.toLowerCase().endsWith('.pdf') : src.startsWith('data:application/pdf');
-      const isLast = i === files.length - 1;
-      // PDF: fill printable area; Image: stretch to fill printable area, preserving aspect ratio
       const content = isPdf
         ? `<embed src="${src}" style="display:block;width:210mm;height:297mm;" type="application/pdf">`
         : `<img src="${src}" style="display:block;width:210mm;height:297mm;object-fit:fill;">`;
       return `
 <div data-doc="1" style="page-break-before:always;page-break-after:always;break-before:page;break-after:page;position:relative;width:210mm;height:297mm;box-sizing:border-box;padding:0;background:#fff;box-shadow:0 2px 12px rgba(0,0,0,.18);overflow:hidden;">
   ${content}
-  ${isLast ? sigstampOverlay : ''}
+  ${sigstampOverlay}
 </div>`;
     });
   }).join('');
