@@ -7,10 +7,10 @@ import { FISCAL_YEARS, getCurrentFY } from '../constants/data.js';
 import { adToBS, bsToAD, BS_MONTHS, BS_DATA, toNpNum } from '../constants/nepali.js';
 
 const LetterBuilderLazy = lazy(() => import('./LetterBuilder.jsx'));
-function LetterBuilderWrapper({ row, onClose }) {
+function LetterBuilderWrapper({ row, onClose, allRows }) {
   return (
     <Suspense fallback={null}>
-      <LetterBuilderLazy row={row} token={getSession()?.token} onClose={onClose}/>
+      <LetterBuilderLazy row={row} token={getSession()?.token} onClose={onClose} allRows={allRows}/>
     </Suspense>
   );
 }
@@ -1651,13 +1651,6 @@ function ShortlistRow({ row, idx, canEdit, isAdmin, isSuperAdmin, onEdit, onDele
           onMouseEnter={e=>{e.currentTarget.style.background='var(--primary-light)';e.currentTarget.style.color='var(--primary-dark)';}}
           onMouseLeave={e=>{e.currentTarget.style.background='';e.currentTarget.style.color='var(--text3)';}}
         ><span className="material-icons-round" style={{fontSize:15}}>description</span></button>
-        {isSuperAdmin && (
-          <button title="Letter Builder" onClick={() => setShowBuilder(true)}
-            style={{width:30,height:30,borderRadius:50,border:'none',background:'transparent',color:'var(--text3)',cursor:'pointer',display:'inline-flex',alignItems:'center',justifyContent:'center'}}
-            onMouseEnter={e=>{e.currentTarget.style.background='var(--primary-light)';e.currentTarget.style.color='var(--primary-dark)';}}
-            onMouseLeave={e=>{e.currentTarget.style.background='';e.currentTarget.style.color='var(--text3)';}}
-          ><span className="material-icons-round" style={{fontSize:15}}>edit_note</span></button>
-        )}
         {canEdit && (
           <button title="Edit" onClick={() => onEdit(row)}
             style={{width:30,height:30,borderRadius:50,border:'none',background:'transparent',color:'var(--text3)',cursor:'pointer',display:'inline-flex',alignItems:'center',justifyContent:'center'}}
@@ -1733,6 +1726,7 @@ export default function Shortlisting({ institutes, clients, isAdmin, isEditor, i
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [modal, setModal] = useState(null); // {type:'add'|'edit'|'delete', data?}
+  const [showPageBuilder, setShowPageBuilder] = useState(false);
   const [expanded, setExpanded] = useState({});
   const [groupBy, setGroupBy] = useState('org'); // 'fy' | 'org' | 'firm'
   const [filterOrg, setFilterOrg] = useState('');
@@ -1840,6 +1834,7 @@ export default function Shortlisting({ institutes, clients, isAdmin, isEditor, i
 
   return (
     <div className="fade-in" style={{display:'flex', flexDirection:'column', gap:20}}>
+      {showPageBuilder && <LetterBuilderWrapper row={rows[0] || {}} onClose={() => setShowPageBuilder(false)} allRows={rows}/>}
 
       {/* ── Header ── */}
       <div style={{display:'flex', alignItems:'flex-start', justifyContent:'space-between', gap:16, flexWrap:'wrap'}}>
@@ -1849,12 +1844,20 @@ export default function Shortlisting({ institutes, clients, isAdmin, isEditor, i
             Track firms shortlisted for standing lists across organizations
           </div>
         </div>
-        {canEdit && (
-          <Btn className="btn btn-primary" onClick={() => setModal({ type:'add' })}>
-            <span className="material-icons-round" style={{fontSize:16}}>add</span>
-            Add Entry
-          </Btn>
-        )}
+        <div style={{display:'flex', gap:8, alignItems:'center'}}>
+          {isSuperAdmin && (
+            <Btn className="btn btn-secondary" onClick={() => setShowPageBuilder(true)}>
+              <span className="material-icons-round" style={{fontSize:16}}>edit_note</span>
+              Letter Builder
+            </Btn>
+          )}
+          {canEdit && (
+            <Btn className="btn btn-primary" onClick={() => setModal({ type:'add' })}>
+              <span className="material-icons-round" style={{fontSize:16}}>add</span>
+              Add Entry
+            </Btn>
+          )}
+        </div>
       </div>
 
       {/* ── Controls bar ── */}

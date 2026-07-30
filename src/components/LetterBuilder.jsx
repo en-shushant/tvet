@@ -299,7 +299,11 @@ const BUILDERS = {
 };
 
 // ─── Main component ───────────────────────────────────────────────────────────
-export default function LetterBuilder({ row, token, onClose }) {
+export default function LetterBuilder({ row: initialRow, token, onClose, allRows }) {
+  const [selectedRowId, setSelectedRowId] = useState(initialRow?.id ?? null);
+  const row = (allRows && selectedRowId)
+    ? (allRows.find(r => r.id === selectedRowId) || initialRow)
+    : initialRow;
   const [templateKey, setTemplateKey] = useState('registration');
   const [fields, setFields] = useState(() => {
     const tpl = TEMPLATES.registration;
@@ -322,9 +326,14 @@ export default function LetterBuilder({ row, token, onClose }) {
     if (row.client_signatory_position) {
       setFields(f => ({ ...f, toTitle: row.client_signatory_position }));
     }
-  }, []);
+  }, [row?.id]);
 
-  // Pre-fetch all images once
+  // Pre-fetch all images when row changes
+  useEffect(() => {
+    setInclSign(!!row?.institute_sign);
+    setInclStamp(!!row?.institute_stamp);
+  }, [row?.id]);
+
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -359,7 +368,7 @@ export default function LetterBuilder({ row, token, onClose }) {
       if (!cancelled) { setMargins(m); setLoading(false); }
     })();
     return () => { cancelled = true; };
-  }, []);
+  }, [row?.id]);
 
   const buildHtml = useCallback(() => {
     if (!imgs) return '';
@@ -428,7 +437,21 @@ export default function LetterBuilder({ row, token, onClose }) {
     <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,.55)', zIndex:1200, display:'flex', flexDirection:'column' }}>
       {/* Header */}
       <div style={{ display:'flex', alignItems:'center', gap:12, padding:'10px 20px', background:'var(--surface)', borderBottom:'1px solid var(--border)', flexShrink:0 }}>
-        <div style={{ fontWeight:700, fontSize:16, color:'var(--text)', flex:1 }}>Letter Builder</div>
+        <div style={{ fontWeight:700, fontSize:16, color:'var(--text)' }}>Letter Builder</div>
+
+        {/* Firm picker — only shown when opened standalone with allRows */}
+        {allRows && allRows.length > 0 && (
+          <select value={selectedRowId ?? ''} onChange={e => setSelectedRowId(Number(e.target.value))}
+            style={{ padding:'6px 10px', borderRadius:8, border:'1px solid var(--border)', background:'var(--surface)',
+              color:'var(--text)', fontSize:13, fontFamily:'inherit', flex:1, maxWidth:280, cursor:'pointer' }}>
+            <option value="">— Select firm —</option>
+            {allRows.map(r => (
+              <option key={r.id} value={r.id}>
+                {r.institute_name}{r.client_short ? ` → ${r.client_short}` : ''}
+              </option>
+            ))}
+          </select>
+        )}
 
         {/* Template selector */}
         <div style={{ display:'flex', gap:6 }}>
