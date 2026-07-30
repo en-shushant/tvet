@@ -92,7 +92,23 @@ function todayBS() {
 }
 
 // ── Letter generator — opens print-ready A4 in new window ─────────────────────
-function openShortlistLetter(row, opts = {}) {
+async function urlToDataUrl(url) {
+  if (!url) return null;
+  if (url.startsWith('data:')) return url;
+  try {
+    const resp = await fetch(url);
+    if (!resp.ok) return url;
+    const blob = await resp.blob();
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = () => resolve(url);
+      reader.readAsDataURL(blob);
+    });
+  } catch { return url; }
+}
+
+async function openShortlistLetter(row, opts = {}) {
   const { includeSign = false, includeStamp = false, docs = {}, serviceType: svcType } = opts;
   const pageTopMargin    = row.institute_letter_top_margin    ?? 15;
   const lrPadding        = row.institute_letter_lr_padding    ?? 10;
@@ -107,10 +123,13 @@ function openShortlistLetter(row, opts = {}) {
   const firmWebsite     = row.institute_website || '';
   const firmRegNo       = row.institute_reg_no || '';
   const firmPan         = row.institute_pan || '';
-  const firmLogo        = row.institute_logo || null;
-  const firmLetterhead  = row.institute_letterhead || null;
-  const firmSign        = row.institute_sign || null;
-  const firmStamp       = row.institute_stamp || null;
+  // Pre-fetch all images as data URLs so the popup never needs cross-origin requests
+  const [firmLogo, firmLetterhead, firmSign, firmStamp] = await Promise.all([
+    urlToDataUrl(row.institute_logo || null),
+    urlToDataUrl(row.institute_letterhead || null),
+    urlToDataUrl(row.institute_sign || null),
+    urlToDataUrl(row.institute_stamp || null),
+  ]);
   const firmContact     = row.institute_contact || '';
   const firmNameNp      = row.institute_name_np || firmName;
   const firmAddressNp   = row.institute_address_np || firmAddress;
@@ -159,13 +178,23 @@ function openShortlistLetter(row, opts = {}) {
     catch { return [src]; }
   };
 
-  const docPages = docDefs.filter(d => docs[d.key] && d.src).flatMap(d => {
+  // Pre-fetch all doc attachment images (skip PDFs — can't embed as data URL)
+  const activeDocs = docDefs.filter(d => docs[d.key] && d.src);
+  const docSrcMap = new Map();
+  await Promise.all(activeDocs.flatMap(d => parseDocFiles(d.src).map(async (src) => {
+    if (!src.toLowerCase().endsWith('.pdf') && !src.startsWith('data:application/pdf')) {
+      docSrcMap.set(src, await urlToDataUrl(src));
+    }
+  })));
+
+  const docPages = activeDocs.flatMap(d => {
     const files = parseDocFiles(d.src);
     return files.map((src) => {
       const isPdf = !src.startsWith('data:') ? src.toLowerCase().endsWith('.pdf') : src.startsWith('data:application/pdf');
+      const resolvedSrc = docSrcMap.get(src) || src;
       const content = isPdf
         ? `<embed src="${src}" style="display:block;width:210mm;height:297mm;" type="application/pdf">`
-        : `<img src="${src}" style="display:block;width:210mm;height:297mm;object-fit:fill;">`;
+        : `<img src="${resolvedSrc}" style="display:block;width:210mm;height:297mm;object-fit:fill;">`;
       return `
 <div data-doc="1" style="page-break-before:always;page-break-after:always;break-before:page;break-after:page;position:relative;width:210mm;height:297mm;box-sizing:border-box;padding:0;background:#fff;box-shadow:0 2px 12px rgba(0,0,0,.18);overflow:hidden;">
   ${content}
@@ -821,9 +850,9 @@ function LetterOptsModal({ row, token, onClose }) {
   return (
     <Modal title="Generate Letter" onClose={onClose} footer={<>
       <Btn className="btn btn-secondary" onClick={onClose}>Cancel</Btn>
-      <Btn className="btn btn-primary" onClick={() => {
-        openShortlistLetter(freshRow, { includeSign: inclSign, includeStamp: inclStamp, docs: inclDocs, serviceType: freshRow.institute_service_type });
+      <Btn className="btn btn-primary" onClick={async () => {
         onClose();
+        await openShortlistLetter(freshRow, { includeSign: inclSign, includeStamp: inclStamp, docs: inclDocs, serviceType: freshRow.institute_service_type });
       }}>Generate &amp; Print</Btn>
     </>}>
       <div style={{display:'flex', flexDirection:'column', gap:12}}>
