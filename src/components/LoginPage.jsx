@@ -16,6 +16,8 @@ function LoginPage({ onLogin }) {
   const [loading, setLoading] = useState(false);
   const [capToken, setCapToken] = useState('');
   const [widgetKey, setWidgetKey] = useState(0);
+  const emailRef = useRef(null);
+  const passwordRef = useRef(null);
   const turnstileRef = useRef(null);
   const turnstileIdRef = useRef(undefined);
   const [showSettings, setShowSettings] = useState(false);
@@ -53,12 +55,14 @@ function LoginPage({ onLogin }) {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!email.trim() || !password.trim()) { setError('Email and password are required.'); return; }
+    const emailVal = email.trim() || emailRef.current?.value?.trim() || '';
+    const passwordVal = password || passwordRef.current?.value || '';
+    if (!emailVal || !passwordVal) { setError('Email and password are required.'); return; }
     if (!capToken) { setError('Please complete the CAPTCHA verification.'); return; }
     setError('');
     setLoading(true);
     try {
-      const data = await api('POST', '/auth/login', { email, password, 'cf-turnstile-response': capToken });
+      const data = await api('POST', '/auth/login', { email: emailVal, password: passwordVal, 'cf-turnstile-response': capToken });
       const session = {
         id: data.user.id,
         fullName: data.user.name,
@@ -131,12 +135,12 @@ function LoginPage({ onLogin }) {
           <div style={{background:'var(--surface)',borderRadius:16,padding:'36px 40px',boxShadow:'var(--shadow-md)',border:'1px solid var(--border)'}}>
             <form onSubmit={handleSubmit}>
               <div style={{marginBottom:20}}>
-                <MdTextField type="email" label="Email address" value={email}
+                <MdTextField ref={emailRef} type="email" label="Email address" value={email}
                   onChange={e=>setEmail(e.target.value)}
                   placeholder="you@organization.com" autoFocus required style={{width:'100%'}}/>
               </div>
               <div style={{marginBottom:20}}>
-                <MdTextField type="password" label="Password" value={password}
+                <MdTextField ref={passwordRef} type="password" label="Password" value={password}
                   onChange={e=>setPassword(e.target.value)}
                   placeholder="Enter your password" required style={{width:'100%'}}/>
               </div>
