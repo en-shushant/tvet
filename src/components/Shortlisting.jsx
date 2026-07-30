@@ -205,15 +205,18 @@ function openShortlistLetter(row, opts = {}) {
   }
   .page {
     width: 210mm;
-    min-height: 297mm;
+    height: 297mm;
     flex-shrink: 0;
     background: #fff;
     position: relative;
     padding: 0;
+    overflow: hidden;
   }
-  .lh-img { display:block; width:210mm; height:auto; }
+  .lh-img { position:absolute;top:0;left:0;width:100%;height:100%;object-fit:fill;z-index:0; }
   .page-inner {
-    padding: ${useLhBg ? `0` : `${pageTopMargin}mm`} ${lrPadding}mm ${pageBottomPadding}mm ${lrPadding}mm;
+    position: relative;
+    z-index: 1;
+    padding: ${pageTopMargin}mm ${lrPadding}mm ${pageBottomPadding}mm ${lrPadding}mm;
   }
   .lh-regpan { display:flex;justify-content:space-between;font-size:9pt;font-style:italic;color:#7b1a1a;margin-bottom:5px; }
   .lh-center { text-align:center; }
