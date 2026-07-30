@@ -164,8 +164,7 @@ async function urlToDataUrl(url) {
 
 async function openShortlistLetter(row, opts = {}) {
   const { includeSign = false, includeStamp = false, docs = {}, serviceType: svcType, letterType = 'registration' } = opts;
-  const lrPadding        = row.institute_letter_lr_padding    ?? 10;
-  const pageBottomPadding = row.institute_letter_bottom_padding ?? 15;
+  const lrPadding = row.institute_letter_lr_padding ?? 10;
   // Firm (institute) — letterhead owner
   const firmName        = row.institute_name || '';
   const firmAcronym     = row.institute_acronym || '';
