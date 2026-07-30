@@ -149,8 +149,8 @@ function openShortlistLetter(row, opts = {}) {
   ];
   const sigstampOverlay = (includeSign && firmSign) || (includeStamp && firmStamp) ? `
     <div style="position:absolute;bottom:12mm;right:12mm;display:flex;align-items:flex-end;gap:16px;z-index:2;">
-      ${includeStamp && firmStamp ? `<img src="${firmStamp}" style="width:35mm;height:35mm;object-fit:contain;">` : ''}
-      ${includeSign  && firmSign  ? `<img src="${firmSign}"  style="height:24mm;width:auto;">` : ''}
+      ${includeStamp && firmStamp ? `<img src="${firmStamp}" style="width:38mm;height:38mm;object-fit:contain;mix-blend-mode:multiply;">` : ''}
+      ${includeSign  && firmSign  ? `<img src="${firmSign}"  style="height:32mm;width:auto;mix-blend-mode:multiply;">` : ''}
     </div>` : '';
 
   const parseDocFiles = (src) => {
@@ -183,14 +183,12 @@ function openShortlistLetter(row, opts = {}) {
 <head>
 <meta charset="UTF-8">
 <title>मौजुदा सूची — ${firmAcronym || firmName}</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Devanagari:wght@400;600;700&display=swap" rel="stylesheet">
 <style>
   @page { size: A4 portrait; margin: 0; }
   * { box-sizing: border-box; margin: 0; padding: 0; }
   html { background: #888; }
   body {
-    font-family: 'Noto Sans Devanagari', 'Mangal', 'Arial Unicode MS', sans-serif;
+    font-family: 'Kalimati', 'Noto Sans Devanagari', 'Mangal', 'Arial Unicode MS', sans-serif;
     font-size: 10.5pt; color: #111; line-height: 1.65;
     -webkit-print-color-adjust: exact; print-color-adjust: exact;
     display: flex; flex-direction: column; align-items: center; padding: 20px; gap: 20px;
@@ -337,7 +335,7 @@ function openShortlistLetter(row, opts = {}) {
         <div style="flex:1;padding:8px 10px;font-size:10pt;line-height:2;">
           <div>निवेदकको नाम: ${firmContactNp || '_______________'}</div>
           <div style="margin-top:4px;">हस्ताक्षर: ${includeSign && firmSign
-            ? `<img src="${firmSign}" style="display:inline-block;vertical-align:middle;margin-left:4px;height:20mm;width:auto;">`
+            ? `<img src="${firmSign}" style="display:inline-block;vertical-align:middle;margin-left:4px;height:28mm;width:auto;mix-blend-mode:multiply;">`
             : '_______________'
           }</div>
         </div>

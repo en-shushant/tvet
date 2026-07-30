@@ -1134,9 +1134,7 @@ async function removeImageBackground(file) {
       const bgR = Math.round(corners.reduce((s, c) => s + c[0], 0) / 4);
       const bgG = Math.round(corners.reduce((s, c) => s + c[1], 0) / 4);
       const bgB = Math.round(corners.reduce((s, c) => s + c[2], 0) / 4);
-      // Only remove light backgrounds (luminance > 160) — skip dark/coloured backgrounds
       const bgLuma = 0.299 * bgR + 0.587 * bgG + 0.114 * bgB;
-      if (bgLuma < 160) { return resolve(file); }
       const threshold = 40;
       for (let i = 0; i < d.length; i += 4) {
         if (d[i + 3] === 0) continue;
