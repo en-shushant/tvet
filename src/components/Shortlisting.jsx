@@ -1,10 +1,19 @@
-import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef, lazy, Suspense } from 'react';
 import Modal from './ui/Modal.jsx';
 import { Btn, MdTextField, MdSelect, MdOption, MdToggle } from '../md.jsx';
 import { api } from '../utils/api.js';
 import { getSession } from '../utils/auth.js';
 import { FISCAL_YEARS, getCurrentFY } from '../constants/data.js';
 import { adToBS, bsToAD, BS_MONTHS, BS_DATA, toNpNum } from '../constants/nepali.js';
+
+const LetterBuilderLazy = lazy(() => import('./LetterBuilder.jsx'));
+function LetterBuilderWrapper({ row, onClose }) {
+  return (
+    <Suspense fallback={null}>
+      <LetterBuilderLazy row={row} token={getSession()?.token} onClose={onClose}/>
+    </Suspense>
+  );
+}
 
 const FYS = [...FISCAL_YEARS].reverse(); // newest first
 
@@ -154,7 +163,7 @@ async function urlToDataUrl(url) {
 }
 
 async function openShortlistLetter(row, opts = {}) {
-  const { includeSign = false, includeStamp = false, docs = {}, serviceType: svcType } = opts;
+  const { includeSign = false, includeStamp = false, docs = {}, serviceType: svcType, letterType = 'registration' } = opts;
   const lrPadding        = row.institute_letter_lr_padding    ?? 10;
   const pageBottomPadding = row.institute_letter_bottom_padding ?? 15;
   // Firm (institute) — letterhead owner
@@ -905,7 +914,14 @@ const SERVICE_TYPES = [
   'अन्य सेवा',
 ];
 
-function LetterOptsModal({ row, token, onClose }) {
+const LETTER_TYPES = [
+  { key: 'registration',     label: 'मौजुदा सूची दर्ता पत्र' },
+  { key: 'shortlist_notice', label: 'छनोट सूचना पत्र' },
+  { key: 'cover_letter',     label: 'Cover Letter' },
+];
+
+function LetterOptsModal({ row, token, onClose, onOpenBuilder }) {
+  const [letterType, setLetterType] = useState('registration');
   const [inclSign, setInclSign] = useState(!!row.institute_sign);
   const [inclStamp, setInclStamp] = useState(!!row.institute_stamp);
   // Always fetch fresh institute data so latest margin settings are used
@@ -942,12 +958,29 @@ function LetterOptsModal({ row, token, onClose }) {
   return (
     <Modal title="Generate Letter" onClose={onClose} footer={<>
       <Btn className="btn btn-secondary" onClick={onClose}>Cancel</Btn>
+      {onOpenBuilder && <Btn className="btn btn-secondary" onClick={() => { onClose(); onOpenBuilder(); }}>✏ Builder</Btn>}
       <Btn className="btn btn-primary" onClick={async () => {
         onClose();
-        await openShortlistLetter(freshRow, { includeSign: inclSign, includeStamp: inclStamp, docs: inclDocs, serviceType: freshRow.institute_service_type });
-      }}>Generate &amp; Print</Btn>
+        await openShortlistLetter(freshRow, { includeSign: inclSign, includeStamp: inclStamp, docs: inclDocs, serviceType: freshRow.institute_service_type, letterType });
+      }}>Generate &amp; Download</Btn>
     </>}>
       <div style={{display:'flex', flexDirection:'column', gap:12}}>
+
+        {/* Letter type selector */}
+        <div>
+          <div style={{fontSize:12, fontWeight:600, color:'var(--text3)', marginBottom:6}}>LETTER TYPE</div>
+          <div style={{display:'flex', flexWrap:'wrap', gap:6}}>
+            {LETTER_TYPES.map(t => (
+              <button key={t.key} onClick={() => setLetterType(t.key)}
+                style={{padding:'5px 12px', borderRadius:20, border:`1.5px solid ${t.key===letterType ? 'var(--primary)' : 'var(--border)'}`,
+                  background: t.key===letterType ? 'var(--primary)' : 'var(--bg)',
+                  color: t.key===letterType ? '#fff' : 'var(--text)',
+                  cursor:'pointer', fontSize:12, fontWeight:600, fontFamily:'inherit'}}>
+                {t.label}
+              </button>
+            ))}
+          </div>
+        </div>
 
         {/* Signature toggle */}
         <label style={{display:'flex', alignItems:'center', gap:14, padding:'12px 14px', borderRadius:10, border:'1px solid var(--border)', background:'var(--bg)', cursor:'pointer'}}>
@@ -1538,11 +1571,12 @@ function BillModal({ row, token, onSave, onClose, saving }) {
 }
 
 // ── Row ────────────────────────────────────────────────────────────────────────
-function ShortlistRow({ row, idx, canEdit, isAdmin, onEdit, onDelete, onBillSave, saving, token, showFY=true }) {
+function ShortlistRow({ row, idx, canEdit, isAdmin, isSuperAdmin, onEdit, onDelete, onBillSave, saving, token, showFY=true }) {
   const sc = statusColor(row.status);
   const altBg = idx % 2 === 1 ? 'var(--bg)' : 'var(--surface)';
   const hoverBg = idx % 2 === 1 ? 'var(--bg2)' : 'var(--bg)';
   const [showLetterOpts, setShowLetterOpts] = useState(false);
+  const [showBuilder, setShowBuilder] = useState(false);
   const [showBill, setShowBill] = useState(false);
   const hasBill = !!(row.shortlist_doc);
   return (
@@ -1603,7 +1637,8 @@ function ShortlistRow({ row, idx, canEdit, isAdmin, onEdit, onDelete, onBillSave
 
       {/* Actions */}
       <div style={{display:'flex', gap:2, flexShrink:0}}>
-        {showLetterOpts && <LetterOptsModal row={row} token={token} onClose={()=>setShowLetterOpts(false)}/>}
+        {showLetterOpts && <LetterOptsModal row={row} token={token} onClose={()=>setShowLetterOpts(false)} onOpenBuilder={isSuperAdmin ? ()=>setShowBuilder(true) : null}/>}
+        {showBuilder && <LetterBuilderWrapper row={row} onClose={()=>setShowBuilder(false)}/>}
         {showBill && <BillModal row={row} token={token} saving={saving} onClose={()=>setShowBill(false)} onSave={async (patch) => { await onBillSave(row.id, patch); setShowBill(false); }}/>}
         {canEdit && (
           <button title={hasBill ? 'Bill uploaded — click to update' : 'Upload bill / certificate'} onClick={() => setShowBill(true)}
@@ -1683,7 +1718,7 @@ function TableHead({ groupBy }) {
 }
 
 // ── Main component ─────────────────────────────────────────────────────────────
-export default function Shortlisting({ institutes, clients, isAdmin, isEditor, isShortlistOnly }) {
+export default function Shortlisting({ institutes, clients, isAdmin, isEditor, isShortlistOnly, isSuperAdmin }) {
   const session = getSession();
   const token = session?.token;
   const canEdit = !!(isAdmin || isEditor || isShortlistOnly);
@@ -1913,7 +1948,7 @@ export default function Shortlisting({ institutes, clients, isAdmin, isEditor, i
                     {group.rows.map((row, i) => (
                       <ShortlistRow
                         key={row.id} row={row} idx={i}
-                        canEdit={canEdit} isAdmin={isAdmin}
+                        canEdit={canEdit} isAdmin={isAdmin} isSuperAdmin={isSuperAdmin}
                         showFY={groupBy !== 'fy'}
                         onEdit={(r) => setModal({ type:'edit', data:r })}
                         onDelete={(r) => setModal({ type:'delete', data:r })}
