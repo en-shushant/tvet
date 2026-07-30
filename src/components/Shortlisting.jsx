@@ -343,7 +343,7 @@ async function openShortlistLetter(row, opts = {}) {
   <div class="lh-border"></div>` : ''}
 
   <div class="ref-row">
-    <span class="ref-bold">Ref.</span>
+    <span class="ref-bold"></span>
     <span>मिति: ${todayBSStr}</span>
   </div>
 
