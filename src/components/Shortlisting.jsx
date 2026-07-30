@@ -420,13 +420,50 @@ async function openShortlistLetter(row, opts = {}) {
 
   </div></div>
 ${docPages}
-<script>window.onload = function() { window.print(); };</script>
 </body>
 </html>`;
 
-  const w = window.open('', '_blank', 'width=900,height=700');
-  w.document.write(html);
-  w.document.close();
+  // Render into a hidden iframe on the same page so fonts + images resolve correctly
+  const iframe = document.createElement('iframe');
+  iframe.style.cssText = 'position:fixed;left:-9999px;top:0;width:210mm;height:297mm;border:none;visibility:hidden;';
+  document.body.appendChild(iframe);
+
+  await new Promise(resolve => {
+    iframe.onload = resolve;
+    iframe.srcdoc = html;
+  });
+
+  // Wait for images inside the iframe to finish loading
+  const iframeDoc = iframe.contentDocument;
+  await Promise.all([...iframeDoc.querySelectorAll('img')].map(img =>
+    img.complete ? Promise.resolve() : new Promise(r => { img.onload = r; img.onerror = r; })
+  ));
+
+  const { default: html2canvas } = await import('html2canvas');
+  const { jsPDF } = await import('jspdf');
+
+  const pdf = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait' });
+  const pages = iframeDoc.querySelectorAll('.page, [data-doc="1"]');
+
+  for (let i = 0; i < pages.length; i++) {
+    const page = pages[i];
+    const canvas = await html2canvas(page, {
+      scale: 2,
+      useCORS: true,
+      allowTaint: true,
+      backgroundColor: '#ffffff',
+      width: page.scrollWidth,
+      height: page.scrollHeight,
+      windowWidth: page.scrollWidth,
+      windowHeight: page.scrollHeight,
+    });
+    const imgData = canvas.toDataURL('image/jpeg', 0.95);
+    if (i > 0) pdf.addPage();
+    pdf.addImage(imgData, 'JPEG', 0, 0, 210, 297);
+  }
+
+  document.body.removeChild(iframe);
+  pdf.save('shortlist-letter.pdf');
 }
 
 function statusColor(s) {

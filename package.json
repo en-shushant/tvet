@@ -12,11 +12,17 @@
     "@material/web": "^2.5.0",
     "docx": "^9.7.1",
     "file-saver": "^2.0.5",
+    "html2canvas": "^1.4.1",
+    "jspdf": "^4.2.1",
     "react": "^18.3.1",
     "react-dom": "^18.3.1"
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^4.3.1",
     "vite": "^5.4.2"
+  },
+  "allowScripts": {
+    "html2canvas@1.4.1": true,
+    "jspdf@4.2.1": true
   }
 }
