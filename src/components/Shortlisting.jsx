@@ -437,7 +437,7 @@ ${docPages}
 
   // Render into a hidden iframe on the same page so fonts + images resolve correctly
   const iframe = document.createElement('iframe');
-  iframe.style.cssText = 'position:fixed;left:-9999px;top:0;width:210mm;height:297mm;border:none;visibility:hidden;';
+  iframe.style.cssText = `position:fixed;left:-9999px;top:0;width:${A4_W}px;height:${A4_H}px;border:none;visibility:hidden;`;
   document.body.appendChild(iframe);
 
   await new Promise(resolve => {
