@@ -84,6 +84,7 @@ const TEMPLATES = {
     fields: {
       date:          { label: 'मिति (BS Date)', value: '' },
       ref:           { label: 'संख्या / Ref. No.', value: '' },
+      lrPadding:     { label: 'Left / Right Margin (mm)', value: '20' },
       toName:        { label: 'To: Name (प्रापक नाम)', value: '', multiline: false },
       toShort:       { label: 'To: Short Name', value: '' },
       toAddress:     { label: 'To: Address (ठेगाना)', value: '' },
@@ -131,6 +132,7 @@ const TEMPLATES = {
     fields: {
       date:          { label: 'मिति (BS Date)', value: '' },
       ref:           { label: 'संख्या / Ref. No.', value: '' },
+      lrPadding:     { label: 'Left / Right Margin (mm)', value: '20' },
       toName:        { label: 'To: Name (प्रापक नाम)', value: '' },
       toShort:       { label: 'To: Short Name', value: '' },
       toAddress:     { label: 'To: Address (ठेगाना)', value: '' },
@@ -148,6 +150,7 @@ const TEMPLATES = {
     fields: {
       date:          { label: 'मिति (BS Date)', value: '' },
       ref:           { label: 'संख्या / Ref. No.', value: '' },
+      lrPadding:     { label: 'Left / Right Margin (mm)', value: '20' },
       toName:        { label: 'To: Name', value: '' },
       toShort:       { label: 'To: Short Name', value: '' },
       toAddress:     { label: 'To: Address', value: '' },
@@ -203,11 +206,11 @@ function buildRegistrationHtml({ fields, row, imgs, topMm, bottomMm, lrMm, inclS
   * { margin:0; padding:0; box-sizing:border-box; }
   body { background:#fff; }
   .page { width:794px; height:1123px; background:#fff; position:relative; padding:0; overflow:hidden; font-family:'Kalimati','Noto Sans Devanagari','Arial Unicode MS',sans-serif; font-size:13px; }
-  .lh-img { display:block;position:absolute;top:0;left:0;width:100%;height:100%;object-fit:fill;z-index:0; }
+  .lh-img { display:block;position:absolute;top:0;left:0;width:794px;height:1123px;z-index:0; }
   .page-inner { position:relative;z-index:1;padding:${topMm}mm ${lrMm}mm ${bottomMm}mm ${lrMm}mm; }
   .lh-regpan { display:flex;justify-content:space-between;font-size:9pt;font-style:italic;color:#7b1a1a;margin-bottom:5px; }
   .lh-center { text-align:center; }
-  .lh-logo { max-height:75px;max-width:75px;object-fit:contain;margin-bottom:3px; }
+  .lh-logo { max-height:75px;max-width:75px;object-fit:contain;margin-bottom:3px;mix-blend-mode:multiply; }
   .lh-name { font-size:15pt;font-weight:700;color:#7b1a1a;line-height:1.3; }
   .lh-meta { font-size:9pt;color:#444;margin-top:4px;line-height:1.6; }
   .lh-border { border-bottom:3px double #7b1a1a;margin:7px 0 5mm; }
@@ -327,11 +330,11 @@ function buildGenericHtml({ fields, row, imgs, topMm, bottomMm, lrMm, inclSign, 
   * { margin:0; padding:0; box-sizing:border-box; }
   body { background:#fff; }
   .page { width:794px; height:1123px; background:#fff; position:relative; padding:0; overflow:hidden; font-family:'Kalimati','Noto Sans Devanagari','Arial Unicode MS',sans-serif; font-size:13px; }
-  .lh-img { display:block;position:absolute;top:0;left:0;width:100%;height:100%;object-fit:fill;z-index:0; }
+  .lh-img { display:block;position:absolute;top:0;left:0;width:794px;height:1123px;z-index:0; }
   .page-inner { position:relative;z-index:1;padding:${topMm}mm ${lrMm}mm ${bottomMm}mm ${lrMm}mm; }
   .lh-regpan { display:flex;justify-content:space-between;font-size:9pt;font-style:italic;color:#7b1a1a;margin-bottom:5px; }
   .lh-center { text-align:center; }
-  .lh-logo { max-height:75px;max-width:75px;object-fit:contain;margin-bottom:3px; }
+  .lh-logo { max-height:75px;max-width:75px;object-fit:contain;margin-bottom:3px;mix-blend-mode:multiply; }
   .lh-name { font-size:15pt;font-weight:700;color:#7b1a1a;line-height:1.3; }
   .lh-meta { font-size:9pt;color:#444;margin-top:4px;line-height:1.6; }
   .lh-border { border-bottom:3px double #7b1a1a;margin:7px 0 5mm; }
@@ -412,6 +415,7 @@ export default function LetterBuilder({ row: initialRow, token, onClose, allRows
     setFields(f => ({
       ...f,
       date:          f.date || todayBS(),
+      lrPadding:     String(row?.institute_letter_lr_padding ?? 20),
       toName:        row?.client_name        || row?.client_name_manual || f.toName   || '',
       toShort:       row?.client_short       || f.toShort  || '',
       toAddress:     row?.client_address     || f.toAddress || '',
@@ -473,7 +477,7 @@ export default function LetterBuilder({ row: initialRow, token, onClose, allRows
 
   const buildHtml = useCallback(() => {
     if (!imgs) return '';
-    const lrMm     = row?.institute_letter_lr_padding    ?? 10;
+    const lrMm     = parseFloat(fields.lrPadding) || row?.institute_letter_lr_padding || 20;
     const cfgTop   = row?.institute_letter_top_margin    ?? 15;
     const cfgBot   = row?.institute_letter_bottom_padding ?? 15;
     const topMm    = margins.top    && margins.top    > cfgTop ? margins.top    : cfgTop;
@@ -537,14 +541,14 @@ export default function LetterBuilder({ row: initialRow, token, onClose, allRows
 
   // Field ordering: group logically for the editor panel
   const FIELD_ORDER = {
-    registration:    ['date','ref','toTitle','toName','toShort','toAddress','subject','body','tapasil',
+    registration:    ['date','ref','lrPadding','toTitle','toName','toShort','toAddress','subject','body','tapasil',
       'firmNameNp','firmAcronym','firmAddressNp','firmContact','firmPhone','mobileNo','fy','applicantName',
       'sec1Header','sec2Header','sec2Items','sec3Header',
       'supplyLabel','supplyValue','constructionLabel','constructionValue',
       'consultingLabel','serviceType','otherServiceLabel','otherServiceValue',
       'dateLabel','fyLabel','stampLabel','applicantLabel','signLabel'],
-    shortlist_notice:['date','ref','toTitle','toName','toShort','toAddress','subject','body','closing','signatoryName','signatoryOrg'],
-    cover_letter:    ['date','ref','toTitle','toName','toShort','toAddress','subject','body','closing','signatoryName','signatoryOrg'],
+    shortlist_notice:['date','ref','lrPadding','toTitle','toName','toShort','toAddress','subject','body','closing','signatoryName','signatoryOrg'],
+    cover_letter:    ['date','ref','lrPadding','toTitle','toName','toShort','toAddress','subject','body','closing','signatoryName','signatoryOrg'],
   };
   const orderedFields = (FIELD_ORDER[templateKey] || Object.keys(tplDef.fields))
     .filter(k => tplDef.fields[k]);

@@ -164,7 +164,7 @@ async function urlToDataUrl(url) {
 
 async function openShortlistLetter(row, opts = {}) {
   const { includeSign = false, includeStamp = false, docs = {}, serviceType: svcType, letterType = 'registration' } = opts;
-  const lrPadding = row.institute_letter_lr_padding ?? 10;
+  const lrPadding = row.institute_letter_lr_padding ?? 20;
   // Firm (institute) — letterhead owner
   const firmName        = row.institute_name || '';
   const firmAcronym     = row.institute_acronym || '';
@@ -302,7 +302,7 @@ async function openShortlistLetter(row, opts = {}) {
     padding: 0;
     overflow: hidden;
   }
-  .lh-img { display:block;position:absolute;top:0;left:0;width:100%;height:100%;object-fit:fill;z-index:0; }
+  .lh-img { display:block;position:absolute;top:0;left:0;width:794px;height:1123px;z-index:0; }
   .page-inner {
     position: relative;
     z-index: 1;
@@ -310,7 +310,7 @@ async function openShortlistLetter(row, opts = {}) {
   }
   .lh-regpan { display:flex;justify-content:space-between;font-size:9pt;font-style:italic;color:#7b1a1a;margin-bottom:5px; }
   .lh-center { text-align:center; }
-  .lh-logo   { max-height:75px;max-width:75px;object-fit:contain;margin-bottom:3px; }
+  .lh-logo   { max-height:75px;max-width:75px;object-fit:contain;margin-bottom:3px;mix-blend-mode:multiply; }
   .lh-name   { font-size:15pt;font-weight:700;color:#7b1a1a;line-height:1.3; }
   .lh-meta   { font-size:9pt;color:#444;margin-top:4px;line-height:1.6; }
   .lh-border { border-bottom:3px double #7b1a1a;margin:7px 0 5mm; }
