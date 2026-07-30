@@ -162,6 +162,34 @@ const TEMPLATES = {
       signatoryOrg:  { label: 'Signatory Org', value: '' },
     },
   },
+  nea_shortlisting: {
+    label: 'NEA Shortlisting',
+    fields: {
+      date:            { label: 'मिति (BS Date)', value: '' },
+      ref:             { label: 'संख्या / Ref. No.', value: '' },
+      lrPadding:       { label: 'Left / Right Margin (mm)', value: '20' },
+      neaRef:          { label: 'NEA Ref. No. (NEA को पत्र संख्या)', value: '' },
+      neaDate:         { label: 'NEA Letter Date (NEA को मिति)', value: '' },
+      toTitle:         { label: 'To Title (पद)', value: 'महाप्रबन्धक' },
+      toName:          { label: 'To: Name (प्रापक नाम)', value: 'नेपाल विद्युत प्राधिकरण' },
+      toShort:         { label: 'To: Short Name', value: 'NEA' },
+      toAddress:       { label: 'To: Address (ठेगाना)', value: 'काठमाडौँ' },
+      subject:         { label: 'Subject (विषय)', multiline: true,
+        value: 'NEA को मौजुदा सूचीमा दर्ता गरी पाऊँ।' },
+      body1:           { label: 'Opening Paragraph', multiline: true,
+        value: 'उपर्युक्त विषयमा, नेपाल विद्युत प्राधिकरणको मिति ${neaDate} को पत्र संख्या ${neaRef} बमोजिम मौजुदा सूचीमा दर्ता हुनको लागि यो निवेदन पेश गर्दछु।' },
+      body2:           { label: 'Body Paragraph 2', multiline: true,
+        value: 'हाम्रो संस्थाले विद्युत सम्बन्धी प्राविधिक तालिम तथा जनशक्ति विकास कार्यक्रमहरू सञ्चालन गर्दै आएको छ। उक्त सेवा प्रदान गर्न सक्षम भएको हुँदा मौजुदा सूचीमा दर्ता गरी सेवा प्रदान गर्ने अवसर प्रदान गरिदिनु हुन विनम्र अनुरोध गर्दछु।' },
+      tradeTypes:      { label: 'Trade / Service Types (व्यापार/सेवा प्रकार)', multiline: true,
+        value: 'विद्युत सम्बन्धी प्राविधिक तालिम, जनशक्ति विकास तालिम' },
+      attachments:     { label: 'Attachments / संलग्न कागजातहरू', multiline: true,
+        value: '१. संस्था दर्ता प्रमाणपत्र प्रतिलिपि\n२. नवीकरण प्रमाणपत्र प्रतिलिपि\n३. स्थायी लेखा नम्बर (PAN) प्रमाणपत्र\n४. कर चुक्ता प्रमाणपत्र\n५. CTEVT सम्बन्धन पत्र प्रतिलिपि' },
+      closing:         { label: 'Closing', value: 'धन्यवाद।' },
+      applicantName:   { label: 'Applicant Name (निवेदकको नाम)', value: '' },
+      applicantTitle:  { label: 'Applicant Title (पद)', value: 'कार्यकारी निर्देशक' },
+      signatoryOrg:    { label: 'Organisation Name (संस्थाको नाम)', value: '' },
+    },
+  },
 };
 
 // ─── HTML builders ────────────────────────────────────────────────────────────
@@ -376,10 +404,106 @@ function buildGenericHtml({ fields, row, imgs, topMm, bottomMm, lrMm, inclSign, 
 </body></html>`;
 }
 
+function buildNeaShortlistingHtml({ fields, row, imgs, topMm, bottomMm, lrMm, inclSign, inclStamp, todayBSStr }) {
+  const { firmLogo, firmLetterhead, firmSign, firmStamp,
+          firmRegNo, firmPan, firmMeta, firmName, firmNameNp, firmAcronym } = imgs;
+  const useLhBg = !!firmLetterhead;
+
+  const date           = fields.date           || todayBSStr;
+  const ref            = fields.ref            || '';
+  const neaRef         = fields.neaRef         || '';
+  const neaDate        = fields.neaDate        || '';
+  const toName         = fields.toName         || row.toName    || 'नेपाल विद्युत प्राधिकरण';
+  const toShort        = fields.toShort        || row.toShort   || 'NEA';
+  const toAddress      = fields.toAddress      || row.toAddress || 'काठमाडौँ';
+  const applicantName  = fields.applicantName  || imgs.firmContactNp || '';
+  const applicantTitle = fields.applicantTitle || 'कार्यकारी निर्देशक';
+  const signatoryOrg   = fields.signatoryOrg   || firmNameNp    || firmName || '';
+  const sigAcronym     = firmAcronym || '';
+
+  const body1 = (fields.body1 || '')
+    .replace(/\${neaDate}/g, neaDate || '............')
+    .replace(/\${neaRef}/g,  neaRef  || '............');
+  const body2       = fields.body2       || '';
+  const tradeTypes  = fields.tradeTypes  || '';
+  const attachments = (fields.attachments || '').split('\n').filter(Boolean);
+
+  return `<!DOCTYPE html><html lang="ne"><head><meta charset="UTF-8">
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { background:#fff; }
+  .page { width:794px; height:1123px; background:#fff ${useLhBg ? `url("${firmLetterhead}") no-repeat 0 0 / 794px 1123px` : ''}; position:relative; padding:0; overflow:hidden; font-family:'Kalimati','Noto Sans Devanagari','Arial Unicode MS',sans-serif; font-size:13px; }
+  .page-inner { position:relative;z-index:1;padding:${topMm}mm ${lrMm}mm ${bottomMm}mm ${lrMm}mm; }
+  .lh-regpan { display:flex;justify-content:space-between;font-size:9pt;font-style:italic;color:#7b1a1a;margin-bottom:5px; }
+  .lh-center { text-align:center; }
+  .lh-logo { max-height:75px;max-width:75px;object-fit:contain;margin-bottom:3px;mix-blend-mode:multiply; }
+  .lh-name { font-size:15pt;font-weight:700;color:#7b1a1a;line-height:1.3; }
+  .lh-meta { font-size:9pt;color:#444;margin-top:4px;line-height:1.6; }
+  .lh-border { border-bottom:3px double #7b1a1a;margin:7px 0 5mm; }
+  .ref-row { display:flex;justify-content:space-between;align-items:baseline;margin-bottom:12px;font-size:11pt; }
+  .to-block { margin-bottom:12px;font-size:10.5pt;line-height:1.75; }
+  .subject { text-align:center;font-size:11pt;font-weight:700;text-decoration:underline;text-underline-offset:3px;margin-bottom:12px; }
+  .body-txt { font-size:10.5pt;text-align:justify;line-height:1.8;margin-bottom:10px; }
+  .section-label { font-weight:700;font-size:10.5pt;margin:10px 0 4px; }
+  .trade-box { border:1px solid #888;padding:7px 10px;font-size:10pt;line-height:1.8;margin-bottom:10px;border-radius:2px; }
+  .attach-list { font-size:10pt;line-height:2;margin-left:4px; }
+  .closing { font-size:10.5pt;margin-top:18px; }
+  .sign-block { margin-top:40px;font-size:10.5pt;line-height:1.9; }
+</style></head><body>
+<div class="page">
+  <div class="page-inner">
+  ${!useLhBg ? `
+  ${firmRegNo || firmPan ? `<div class="lh-regpan"><span>${firmRegNo ? 'Govt. Regd.No. '+firmRegNo : ''}</span><span>${firmPan ? 'PAN No. '+firmPan : ''}</span></div>` : ''}
+  <div class="lh-center">
+    ${firmLogo ? `<img src="${firmLogo}" class="lh-logo" alt="">` : ''}
+    <div class="lh-name">${firmNameNp || firmName}${sigAcronym && sigAcronym !== (firmNameNp||firmName) ? ` (${sigAcronym})` : ''}</div>
+    ${firmMeta ? `<div class="lh-meta">${firmMeta}</div>` : ''}
+  </div>
+  <div class="lh-border"></div>` : ''}
+
+  <div class="ref-row">
+    ${ref ? `<span>संख्या: ${ref}</span>` : '<span></span>'}
+    <span>मिति: ${date}</span>
+  </div>
+
+  <div class="to-block">
+    <div>श्री ${fields.toTitle} ज्यू,</div>
+    <div>${toName}${toShort && toShort !== toName ? ` (${toShort})` : ','}</div>
+    ${toAddress ? `<div>${toAddress}</div>` : ''}
+  </div>
+
+  <div class="subject">विषय: ${fields.subject}</div>
+
+  ${body1 ? `<div class="body-txt">${body1.replace(/\n/g,'<br>')}</div>` : ''}
+  ${body2 ? `<div class="body-txt">${body2.replace(/\n/g,'<br>')}</div>` : ''}
+
+  ${tradeTypes ? `
+  <div class="section-label">सञ्चालन गर्ने सेवा/व्यापारको प्रकार:</div>
+  <div class="trade-box">${tradeTypes.replace(/\n/g,'<br>')}</div>` : ''}
+
+  ${attachments.length ? `
+  <div class="section-label">संलग्न कागजातहरू:</div>
+  <div class="attach-list">${attachments.map(a => `<div>${a}</div>`).join('')}</div>` : ''}
+
+  ${fields.closing ? `<div class="closing">${fields.closing}</div>` : ''}
+
+  <div class="sign-block">
+    ${inclStamp && firmStamp ? `<img src="${firmStamp}" style="width:28mm;height:28mm;object-fit:contain;mix-blend-mode:multiply;display:inline-block;margin-right:12mm;vertical-align:bottom;">` : ''}
+    ${inclSign  && firmSign  ? `<img src="${firmSign}"  style="height:22mm;width:auto;mix-blend-mode:multiply;display:inline-block;vertical-align:bottom;">` : ''}
+    <div>${applicantName}</div>
+    <div>${applicantTitle}</div>
+    <div>${signatoryOrg}${sigAcronym && sigAcronym !== signatoryOrg ? ` (${sigAcronym})` : ''}</div>
+  </div>
+  </div>
+</div>
+</body></html>`;
+}
+
 const BUILDERS = {
-  registration:    buildRegistrationHtml,
+  registration:     buildRegistrationHtml,
   shortlist_notice: buildGenericHtml,
-  cover_letter:    buildGenericHtml,
+  cover_letter:     buildGenericHtml,
+  nea_shortlisting: buildNeaShortlistingHtml,
 };
 
 // ─── Main component ───────────────────────────────────────────────────────────
@@ -543,8 +667,9 @@ export default function LetterBuilder({ row: initialRow, token, onClose, allRows
       'supplyLabel','supplyValue','constructionLabel','constructionValue',
       'consultingLabel','serviceType','otherServiceLabel','otherServiceValue',
       'dateLabel','fyLabel','stampLabel','applicantLabel','signLabel'],
-    shortlist_notice:['date','ref','lrPadding','toTitle','toName','toShort','toAddress','subject','body','closing','signatoryName','signatoryOrg'],
-    cover_letter:    ['date','ref','lrPadding','toTitle','toName','toShort','toAddress','subject','body','closing','signatoryName','signatoryOrg'],
+    shortlist_notice: ['date','ref','lrPadding','toTitle','toName','toShort','toAddress','subject','body','closing','signatoryName','signatoryOrg'],
+    cover_letter:     ['date','ref','lrPadding','toTitle','toName','toShort','toAddress','subject','body','closing','signatoryName','signatoryOrg'],
+    nea_shortlisting: ['date','ref','lrPadding','neaRef','neaDate','toTitle','toName','toShort','toAddress','subject','body1','body2','tradeTypes','attachments','closing','applicantName','applicantTitle','signatoryOrg'],
   };
   const orderedFields = (FIELD_ORDER[templateKey] || Object.keys(tplDef.fields))
     .filter(k => tplDef.fields[k]);

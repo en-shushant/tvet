@@ -914,6 +914,7 @@ const LETTER_TYPES = [
   { key: 'registration',     label: 'मौजुदा सूची दर्ता पत्र' },
   { key: 'shortlist_notice', label: 'छनोट सूचना पत्र' },
   { key: 'cover_letter',     label: 'Cover Letter' },
+  { key: 'nea_shortlisting', label: 'NEA Shortlisting' },
 ];
 
 function LetterOptsModal({ row, token, onClose, onOpenBuilder }) {
