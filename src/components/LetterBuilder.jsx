@@ -98,8 +98,32 @@ const TEMPLATES = {
       firmAddressNp: { label: 'Firm Address (Nepali)', value: '' },
       firmContact:   { label: 'Contact Person (Nepali)', value: '' },
       firmPhone:     { label: 'Phone / टेलिफोन', value: '' },
+      mobileNo:      { label: 'Mobile No. (मोबाईल)', value: '' },
       fy:            { label: 'आ.व. (Fiscal Year)', value: '' },
       applicantName: { label: 'Applicant Name (निवेदकको नाम)', value: '' },
+      // Table section headers
+      sec1Header:    { label: 'Section १ Header', multiline: true,
+        value: 'मौजुदा सूचीको लागि निवेदन दिने व्यक्ति, संस्था, आपूर्तिकर्ता, निर्माण व्यवसायी, परामर्शदाता वा सेवा प्रदायकको विवरण:' },
+      sec2Header:    { label: 'Section २ Header', multiline: true,
+        value: 'मौजुदा सूचीमा दर्ता हुनको लागि निम्न बमोजिमको प्रमाणपत्र संलग्न गर्नुहोला।' },
+      sec2Items:     { label: 'Section २ Checklist (one per line)', multiline: true,
+        value: '(क) संस्था वा फर्म दर्ताको प्रमाणपत्र  छ ☑  छैन □\n(ख) नविकरण गरिएको  छ ☑  छैन □\n(ग) मूल्य अभिवृद्धि कर वा स्थायी लेखा नम्बर दर्ताको प्रमाणपत्र  छ ☑  छैन □\n(घ) कर चुक्ताको प्रमाणपत्र  छ ☑  छैन □\n(ड) कुन खरिदको लागि मौजुदार सूचीमा दर्ता हुन निवेदन दिने हो, सो कामको लागि इजाजत पत्र आवश्यक पत्ने भएमा सो को प्रतिलिपि  छ ☑  छैन □' },
+      sec3Header:    { label: 'Section ३ Header', multiline: true,
+        value: 'सार्वजनिक निकायबाट हुने खरिदको लागि दर्ता हुन चाहेको खरिदको प्रकृतिको विवरण:' },
+      // Section 3 sub-labels and values
+      supplyLabel:        { label: '(क) Supply Label', value: '(क) मालसामान आपूर्ति:' },
+      supplyValue:        { label: '(क) Supply Value', value: '', multiline: true },
+      constructionLabel:  { label: '(ख) Construction Label', value: '(ख) निर्माण कार्य' },
+      constructionValue:  { label: '(ख) Construction Value', value: '', multiline: true },
+      consultingLabel:    { label: '(ग) Consulting Label', value: '(ग) परामर्श सेवा:' },
+      otherServiceLabel:  { label: '(घ) Other Service Label', value: '(घ) अन्य सेवा:' },
+      otherServiceValue:  { label: '(घ) Other Service Value', value: '', multiline: true },
+      // Bottom row labels
+      dateLabel:      { label: 'Date Label (bottom)', value: 'निवेदन दिएको मिति:' },
+      fyLabel:        { label: 'FY Label (bottom)', value: 'आ.व.:' },
+      stampLabel:     { label: 'Stamp Label', value: 'फर्मको छाप:' },
+      applicantLabel: { label: 'Applicant Label', value: 'निवेदकको नाम:' },
+      signLabel:      { label: 'Signature Label', value: 'हस्ताक्षर:' },
     },
   },
   shortlist_notice: {
@@ -153,8 +177,26 @@ function buildRegistrationHtml({ fields, row, imgs, topMm, bottomMm, lrMm, inclS
   const firmAddressNp = fields.firmAddressNp || imgs.firmAddressNp || '';
   const firmContact   = fields.firmContact   || imgs.firmContactNp || '';
   const firmPhone     = fields.firmPhone     || row.firmPhone     || '';
+  const mobileNo      = fields.mobileNo      || '';
   const fy            = fields.fy            || row.fyNp          || '';
   const applicantName = fields.applicantName || firmContact       || '';
+  // table texts
+  const sec1Header   = fields.sec1Header   || '१. मौजुदा सूचीको लागि निवेदन दिने व्यक्ति, संस्था, आपूर्तिकर्ता, निर्माण व्यवसायी, परामर्शदाता वा सेवा प्रदायकको विवरण:';
+  const sec2Header   = fields.sec2Header   || '२. मौजुदा सूचीमा दर्ता हुनको लागि निम्न बमोजिमको प्रमाणपत्र संलग्न गर्नुहोला।';
+  const sec2Items    = (fields.sec2Items   || '').split('\n').filter(Boolean);
+  const sec3Header   = fields.sec3Header   || '३. सार्वजनिक निकायबाट हुने खरिदको लागि दर्ता हुन चाहेको खरिदको प्रकृतिको विवरण:';
+  const supplyLabel       = fields.supplyLabel       || '(क) मालसामान आपूर्ति:';
+  const supplyValue       = fields.supplyValue       || '';
+  const constructionLabel = fields.constructionLabel || '(ख) निर्माण कार्य';
+  const constructionValue = fields.constructionValue || '';
+  const consultingLabel   = fields.consultingLabel   || '(ग) परामर्श सेवा:';
+  const otherServiceLabel = fields.otherServiceLabel || '(घ) अन्य सेवा:';
+  const otherServiceValue = fields.otherServiceValue || '';
+  const dateLabel      = fields.dateLabel      || 'निवेदन दिएको मिति:';
+  const fyLabel        = fields.fyLabel        || 'आ.व.:';
+  const stampLabel     = fields.stampLabel     || 'फर्मको छाप:';
+  const applicantLabel = fields.applicantLabel || 'निवेदकको नाम:';
+  const signLabel      = fields.signLabel      || 'हस्ताक्षर:';
 
   return `<!DOCTYPE html><html lang="ne"><head><meta charset="UTF-8">
 <style>
@@ -207,7 +249,7 @@ function buildRegistrationHtml({ fields, row, imgs, topMm, bottomMm, lrMm, inclS
   <div class="tapasil">${fields.tapasil}</div>
 
   <table>
-    <tr><td colspan="2" class="hdr">१. मौजुदा सूचीको लागि निवेदन दिने व्यक्ति, संस्था, आपूर्तिकर्ता, निर्माण व्यवसायी, परामर्शदाता वा सेवा प्रदायकको विवरण:</td></tr>
+    <tr><td colspan="2" class="hdr">१. ${sec1Header}</td></tr>
     <tr>
       <td class="half">(क) नाम: ${firmNameNp}${firmAcronym ? ' ('+firmAcronym+')' : ''}</td>
       <td class="half">(ख) ठेगाना: ${firmAddressNp}</td>
@@ -218,48 +260,44 @@ function buildRegistrationHtml({ fields, row, imgs, topMm, bottomMm, lrMm, inclS
     </tr>
     <tr>
       <td class="half">(ड) टेलिफोन नं: ${firmPhone ? toNpNum(firmPhone) : ''}</td>
-      <td class="half">(च) मोबाईल नं:</td>
+      <td class="half">(च) मोबाईल नं: ${mobileNo}</td>
     </tr>
-    <tr><td colspan="2" class="hdr">२. मौजुदा सूचीमा दर्ता हुनको लागि निम्न बमोजिमको प्रमाणपत्र संलग्न गर्नुहोला।</td></tr>
+    <tr><td colspan="2" class="hdr">२. ${sec2Header}</td></tr>
     <tr><td colspan="2" style="padding:6px 10px;line-height:1.95;">
-      (क) संस्था वा फर्म दर्ताको प्रमाणपत्र &nbsp;छ ☑&nbsp; छैन □<br>
-      (ख) नविकरण गरिएको &nbsp;छ ☑&nbsp; छैन □<br>
-      (ग) मूल्य अभिवृद्धि कर वा स्थायी लेखा नम्बर दर्ताको प्रमाणपत्र &nbsp;छ ☑&nbsp; छैन □<br>
-      (घ) कर चुक्ताको प्रमाणपत्र &nbsp;छ ☑&nbsp; छैन □<br>
-      (ड) कुन खरिदको लागि मौजुदार सूचीमा दर्ता हुन निवेदन दिने हो, सो कामको लागि इजाजत पत्र आवश्यक पत्ने भएमा सो को प्रतिलिपि &nbsp;छ ☑&nbsp; छैन □
+      ${sec2Items.length ? sec2Items.join('<br>') : ''}
     </td></tr>
-    <tr><td colspan="2" class="hdr">३. सार्वजनिक निकायबाट हुने खरिदको लागि दर्ता हुन चाहेको खरिदको प्रकृतिको विवरण:</td></tr>
+    <tr><td colspan="2" class="hdr">३. ${sec3Header}</td></tr>
     <tr><td colspan="2" style="padding:0;">
       <table style="width:100%;border-collapse:collapse;">
         <tr>
-          <td class="w22" style="border:none;border-right:1px solid #666;border-bottom:1px solid #666;padding:5px 8px;">(क) मालसामान<br>आपूर्ति:</td>
-          <td class="tall" style="border:none;border-right:1px solid #666;border-bottom:1px solid #666;"></td>
-          <td class="w22" style="border:none;border-right:1px solid #666;border-bottom:1px solid #666;padding:5px 8px;">(ख) निर्माण कार्य</td>
-          <td class="tall" style="border:none;border-bottom:1px solid #666;"></td>
+          <td class="w22" style="border:none;border-right:1px solid #666;border-bottom:1px solid #666;padding:5px 8px;">${supplyLabel}</td>
+          <td class="tall" style="border:none;border-right:1px solid #666;border-bottom:1px solid #666;padding:5px 8px;">${supplyValue}</td>
+          <td class="w22" style="border:none;border-right:1px solid #666;border-bottom:1px solid #666;padding:5px 8px;">${constructionLabel}</td>
+          <td class="tall" style="border:none;border-bottom:1px solid #666;padding:5px 8px;">${constructionValue}</td>
         </tr>
         <tr>
-          <td class="w22" style="border:none;border-right:1px solid #666;padding:5px 8px;">(ग) परामर्श सेवा:</td>
+          <td class="w22" style="border:none;border-right:1px solid #666;padding:5px 8px;">${consultingLabel}</td>
           <td style="border:none;border-right:1px solid #666;padding:5px 8px;">${fields.serviceType}</td>
-          <td class="w22" style="border:none;border-right:1px solid #666;padding:5px 8px;">(घ) अन्य सेवा:</td>
-          <td class="tall" style="border:none;"></td>
+          <td class="w22" style="border:none;border-right:1px solid #666;padding:5px 8px;">${otherServiceLabel}</td>
+          <td class="tall" style="border:none;padding:5px 8px;">${otherServiceValue}</td>
         </tr>
       </table>
     </td></tr>
     <tr><td colspan="2" style="padding:0;">
       <div style="display:flex;min-height:100px;">
         <div style="flex:0 0 34%;padding:8px 10px;border-right:1px solid #666;line-height:2;font-size:10pt;">
-          <div>निवेदन दिएको मिति: ${date}</div>
-          ${fy ? `<div>आ.व.: ${fy}</div>` : ''}
+          <div>${dateLabel} ${date}</div>
+          ${fy ? `<div>${fyLabel} ${fy}</div>` : ''}
         </div>
         <div style="flex:0 0 32%;border-right:1px solid #666;text-align:center;padding:6px 4px;">
           ${inclStamp && firmStamp
-            ? `<div style="font-size:9pt;margin-bottom:3px;">फर्मको छाप:</div><img src="${firmStamp}" style="display:block;margin:0 auto;width:30mm;height:30mm;object-fit:contain;background:#fff;">`
+            ? `<div style="font-size:9pt;margin-bottom:3px;">${stampLabel}</div><img src="${firmStamp}" style="display:block;margin:0 auto;width:30mm;height:30mm;object-fit:contain;background:#fff;">`
             : ''}
         </div>
         <div style="flex:1;padding:8px 10px;font-size:10pt;line-height:2;">
-          <div>निवेदकको नाम: ${applicantName}</div>
+          <div>${applicantLabel} ${applicantName}</div>
           ${inclSign && firmSign
-            ? `<div style="margin-top:4px;">हस्ताक्षर: <img src="${firmSign}" style="display:inline-block;vertical-align:middle;margin-left:4px;height:28mm;width:auto;background:#fff;"></div>`
+            ? `<div style="margin-top:4px;">${signLabel} <img src="${firmSign}" style="display:inline-block;vertical-align:middle;margin-left:4px;height:28mm;width:auto;background:#fff;"></div>`
             : ''}
         </div>
       </div>
@@ -388,6 +426,12 @@ export default function LetterBuilder({ row: initialRow, token, onClose, allRows
       applicantName: row?.institute_contact_np || row?.institute_contact || f.applicantName || '',
       signatoryName: row?.institute_contact_np || row?.institute_contact || f.signatoryName || '',
       signatoryOrg:  row?.institute_name_np  || row?.institute_name  || f.signatoryOrg || '',
+      // initialise table text fields from TEMPLATES defaults if not yet set
+      ...Object.fromEntries(
+        Object.entries(TEMPLATES.registration.fields)
+          .filter(([k, v]) => v.value && !f[k])
+          .map(([k, v]) => [k, v.value])
+      ),
     }));
   }, [row?.id]);
 
@@ -493,7 +537,12 @@ export default function LetterBuilder({ row: initialRow, token, onClose, allRows
 
   // Field ordering: group logically for the editor panel
   const FIELD_ORDER = {
-    registration:    ['date','ref','toTitle','toName','toShort','toAddress','subject','body','tapasil','serviceType','firmNameNp','firmAcronym','firmAddressNp','firmContact','firmPhone','fy','applicantName'],
+    registration:    ['date','ref','toTitle','toName','toShort','toAddress','subject','body','tapasil',
+      'firmNameNp','firmAcronym','firmAddressNp','firmContact','firmPhone','mobileNo','fy','applicantName',
+      'sec1Header','sec2Header','sec2Items','sec3Header',
+      'supplyLabel','supplyValue','constructionLabel','constructionValue',
+      'consultingLabel','serviceType','otherServiceLabel','otherServiceValue',
+      'dateLabel','fyLabel','stampLabel','applicantLabel','signLabel'],
     shortlist_notice:['date','ref','toTitle','toName','toShort','toAddress','subject','body','closing','signatoryName','signatoryOrg'],
     cover_letter:    ['date','ref','toTitle','toName','toShort','toAddress','subject','body','closing','signatoryName','signatoryOrg'],
   };
