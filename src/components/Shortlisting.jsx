@@ -286,15 +286,15 @@ async function openShortlistLetter(row, opts = {}) {
     }
   }
   .page {
-    width: 210mm;
-    height: 297mm;
+    width: 794px;
+    height: 1123px;
     flex-shrink: 0;
     background: #fff;
     position: relative;
     padding: 0;
     overflow: hidden;
   }
-  .lh-img { position:absolute;top:0;left:0;width:210mm;height:297mm;object-fit:fill;z-index:0; }
+  .lh-img { position:absolute;top:0;left:0;width:100%;height:100%;object-fit:fill;z-index:0; }
   .page-inner {
     position: relative;
     z-index: 1;
