@@ -92,6 +92,42 @@ function todayBS() {
 }
 
 // ── Letter generator — opens print-ready A4 in new window ─────────────────────
+// Scan the letterhead image to find where the header ends (last non-white row in top 60%)
+async function detectLetterheadHeaderMm(dataUrl) {
+  if (!dataUrl) return null;
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => {
+      try {
+        const canvas = document.createElement('canvas');
+        canvas.width = img.naturalWidth;
+        canvas.height = img.naturalHeight;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0);
+        const w = canvas.width, h = canvas.height;
+        const limit = Math.floor(h * 0.6);
+        const step = Math.max(1, Math.floor(w / 30));
+        // Walk from limit upward; find the last row with significant non-white pixels
+        for (let y = limit; y >= 0; y--) {
+          let dark = 0;
+          for (let x = 0; x < w; x += step) {
+            const d = ctx.getImageData(x, y, 1, 1).data;
+            if (d[3] > 50 && (d[0] < 220 || d[1] < 220 || d[2] < 220)) dark++;
+          }
+          if (dark >= 3) {
+            const mm = (y / h) * 297;
+            resolve(Math.ceil(mm) + 8); // 8 mm breathing room below header
+            return;
+          }
+        }
+        resolve(null);
+      } catch { resolve(null); }
+    };
+    img.onerror = () => resolve(null);
+    img.src = dataUrl;
+  });
+}
+
 async function urlToDataUrl(url) {
   if (!url) return null;
   if (url.startsWith('data:')) return url;
@@ -110,7 +146,6 @@ async function urlToDataUrl(url) {
 
 async function openShortlistLetter(row, opts = {}) {
   const { includeSign = false, includeStamp = false, docs = {}, serviceType: svcType } = opts;
-  const pageTopMargin    = row.institute_letter_top_margin    ?? 15;
   const lrPadding        = row.institute_letter_lr_padding    ?? 10;
   const pageBottomPadding = row.institute_letter_bottom_padding ?? 15;
   // Firm (institute) — letterhead owner
@@ -130,6 +165,13 @@ async function openShortlistLetter(row, opts = {}) {
     urlToDataUrl(row.institute_sign || null),
     urlToDataUrl(row.institute_stamp || null),
   ]);
+
+  // Auto-detect header height from letterhead image; use it if larger than configured margin
+  let pageTopMargin = row.institute_letter_top_margin ?? 15;
+  if (firmLetterhead) {
+    const detected = await detectLetterheadHeaderMm(firmLetterhead);
+    if (detected && detected > pageTopMargin) pageTopMargin = detected;
+  }
   const firmContact     = row.institute_contact || '';
   const firmNameNp      = row.institute_name_np || firmName;
   const firmAddressNp   = row.institute_address_np || firmAddress;
