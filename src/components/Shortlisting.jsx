@@ -1651,6 +1651,13 @@ function ShortlistRow({ row, idx, canEdit, isAdmin, isSuperAdmin, onEdit, onDele
           onMouseEnter={e=>{e.currentTarget.style.background='var(--primary-light)';e.currentTarget.style.color='var(--primary-dark)';}}
           onMouseLeave={e=>{e.currentTarget.style.background='';e.currentTarget.style.color='var(--text3)';}}
         ><span className="material-icons-round" style={{fontSize:15}}>description</span></button>
+        {isSuperAdmin && (
+          <button title="Letter Builder" onClick={() => setShowBuilder(true)}
+            style={{width:30,height:30,borderRadius:50,border:'none',background:'transparent',color:'var(--text3)',cursor:'pointer',display:'inline-flex',alignItems:'center',justifyContent:'center'}}
+            onMouseEnter={e=>{e.currentTarget.style.background='var(--primary-light)';e.currentTarget.style.color='var(--primary-dark)';}}
+            onMouseLeave={e=>{e.currentTarget.style.background='';e.currentTarget.style.color='var(--text3)';}}
+          ><span className="material-icons-round" style={{fontSize:15}}>edit_note</span></button>
+        )}
         {canEdit && (
           <button title="Edit" onClick={() => onEdit(row)}
             style={{width:30,height:30,borderRadius:50,border:'none',background:'transparent',color:'var(--text3)',cursor:'pointer',display:'inline-flex',alignItems:'center',justifyContent:'center'}}
