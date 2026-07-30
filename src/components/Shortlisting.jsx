@@ -443,6 +443,7 @@ ${docPages}
 </html>`;
 
   // Render into a hidden iframe on the same page so fonts + images resolve correctly
+  const A4_W = 794, A4_H = 1123;
   const iframe = document.createElement('iframe');
   iframe.style.cssText = `position:fixed;left:-9999px;top:0;width:${A4_W}px;height:${A4_H}px;border:none;visibility:hidden;`;
   document.body.appendChild(iframe);
@@ -464,8 +465,6 @@ ${docPages}
   const pdf = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait' });
   const pages = iframeDoc.querySelectorAll('.page, [data-doc="1"]');
 
-  // A4 at 96dpi = 794 × 1123px
-  const A4_W = 794, A4_H = 1123;
   for (let i = 0; i < pages.length; i++) {
     const page = pages[i];
     const canvas = await html2canvas(page, {
