@@ -1373,12 +1373,13 @@ function DocumentsTab({ institute, token, canEdit, onUpdate, isShortlistOnly }) 
           <div style={{fontSize:12, color:'var(--text3)', marginBottom:16}}>Controls the layout of the generated letter.</div>
           <div className="form-group">
             <label style={{fontSize:12, fontWeight:600, color:'var(--text3)', display:'block', marginBottom:6}}>सेवाको प्रकार (Service Type)</label>
-            <select value={fields.serviceType} onChange={e=>set('serviceType',e.target.value)} disabled={!canEdit}
-              style={{width:'100%', padding:'10px 12px', borderRadius:8, border:'1px solid var(--border)', background:'var(--surface)', color:'var(--text)', fontSize:14}}>
-              <option value="सीपमूलक तथा व्यावसायिक तालिम कार्यक्रमहरु सञ्चालन">सीपमूलक तथा व्यावसायिक तालिम कार्यक्रमहरु सञ्चालन</option>
-              <option value="परामर्श सेवा">परामर्श सेवा</option>
-              <option value="अन्य सेवा">अन्य सेवा</option>
-            </select>
+            <input list="service-type-list" value={fields.serviceType} onChange={e=>set('serviceType',e.target.value)} disabled={!canEdit}
+              style={{width:'100%', padding:'10px 12px', borderRadius:8, border:'1px solid var(--border)', background:'var(--surface)', color:'var(--text)', fontSize:14}}/>
+            <datalist id="service-type-list">
+              <option value="सीपमूलक तथा व्यावसायिक तालिम कार्यक्रमहरु सञ्चालन"/>
+              <option value="परामर्श सेवा"/>
+              <option value="अन्य सेवा"/>
+            </datalist>
           </div>
           <div style={{display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:'0 20px'}}>
             {[
