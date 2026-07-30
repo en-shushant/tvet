@@ -210,10 +210,10 @@ function openShortlistLetter(row, opts = {}) {
     background: #fff;
     position: relative;
     padding: 0;
-    ${useLhBg ? `background-image:url('${firmLetterhead}');background-size:100% auto;background-repeat:no-repeat;background-position:top left;` : ''}
   }
+  .lh-img { display:block; width:210mm; height:auto; }
   .page-inner {
-    padding: ${pageTopMargin}mm ${lrPadding}mm ${pageBottomPadding}mm ${lrPadding}mm;
+    padding: ${useLhBg ? `0` : `${pageTopMargin}mm`} ${lrPadding}mm ${pageBottomPadding}mm ${lrPadding}mm;
   }
   .lh-regpan { display:flex;justify-content:space-between;font-size:9pt;font-style:italic;color:#7b1a1a;margin-bottom:5px; }
   .lh-center { text-align:center; }
@@ -244,7 +244,9 @@ function openShortlistLetter(row, opts = {}) {
 </style>
 </head>
 <body>
-<div class="page"><div class="page-inner">
+<div class="page">
+  ${useLhBg ? `<img src="${firmLetterhead}" class="lh-img" alt="">` : ''}
+  <div class="page-inner">
 
   ${!useLhBg ? `
   ${firmRegNo || firmPan ? `<div class="lh-regpan"><span>${firmRegNo ? 'Govt. Regd.No. ' + firmRegNo : ''}</span><span>${firmPan ? 'PAN No. ' + firmPan : ''}</span></div>` : ''}
@@ -343,7 +345,7 @@ function openShortlistLetter(row, opts = {}) {
     </td></tr>
   </table>
 
-</div></div>
+  </div></div>
 ${docPages}
 <script>window.onload = function() { window.print(); };</script>
 </body>
