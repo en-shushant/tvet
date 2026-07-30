@@ -53,6 +53,7 @@ function LoginPage({ onLogin }) {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!email.trim() || !password.trim()) { setError('Email and password are required.'); return; }
     if (!capToken) { setError('Please complete the CAPTCHA verification.'); return; }
     setError('');
     setLoading(true);
