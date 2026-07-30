@@ -3,13 +3,13 @@ import { Btn } from '../md.jsx';
 import { toNpNum, adToBS, BS_MONTHS, BS_DATA } from '../constants/nepali.js';
 import { api } from '../utils/api.js';
 
-// ─── helpers (duplicated from Shortlisting to keep this self-contained) ───────
+// ─── helpers ──────────────────────────────────────────────────────────────────
 function todayBS() {
   const d = new Date();
   const [y, m, day] = [d.getFullYear(), d.getMonth() + 1, d.getDate()];
   const bsData = BS_DATA;
   let bsYear = 2000, rem = 0;
-  let adRef = new Date(1943, 3, 14); // BS 2000/01/01
+  let adRef = new Date(1943, 3, 14);
   for (let yr = 2000; yr <= 2090; yr++) {
     const months = bsData[yr] || [];
     const total = months.reduce((s, v) => s + v, 0);
@@ -77,45 +77,84 @@ async function detectLetterheadMargins(dataUrl) {
 }
 
 // ─── Letter templates ─────────────────────────────────────────────────────────
+// date defaults are filled at runtime in the patch useEffect
 const TEMPLATES = {
   registration: {
     label: 'मौजुदा सूची दर्ता पत्र',
     fields: {
-      toTitle:     { label: 'To Title', value: 'कार्यालय प्रमुख' },
-      subject:     { label: 'Subject', value: 'मौजुदा सूचीमा दर्ता गरी पाऊँ।', multiline: true },
-      body:        { label: 'Body Paragraph', multiline: true,
+      date:          { label: 'मिति (BS Date)', value: '' },
+      ref:           { label: 'संख्या / Ref. No.', value: '' },
+      toName:        { label: 'To: Name (प्रापक नाम)', value: '', multiline: false },
+      toShort:       { label: 'To: Short Name', value: '' },
+      toAddress:     { label: 'To: Address (ठेगाना)', value: '' },
+      toTitle:       { label: 'To Title (पद)', value: 'कार्यालय प्रमुख' },
+      subject:       { label: 'Subject (विषय)', value: 'मौजुदा सूचीमा दर्ता गरी पाऊँ।', multiline: true },
+      body:          { label: 'Body Paragraph', multiline: true,
         value: 'सार्वजनिक खरिद नियमावली, २०६४ को नियम १८ को उपनियम (१) बमोजिम तपशिलमा उल्लेखित विवरण अनुसारको पृष्ठाई गर्ने कागजात संलग्न गरी मौजुदा सूचीमा दर्ता हुन यो निवेदन पेश गरेको छु।' },
-      tapasil:     { label: 'तपशिल Label', value: 'तपशिल:' },
-      serviceType: { label: 'Service Type', value: 'सीपमूलक तथा व्यावसायिक तालिम कार्यक्रमहरु सञ्चालन', multiline: true },
+      tapasil:       { label: 'तपशिल Label', value: 'तपशिल:' },
+      serviceType:   { label: 'Service Type (सेवा प्रकार)', value: 'सीपमूलक तथा व्यावसायिक तालिम कार्यक्रमहरु सञ्चालन', multiline: true },
+      firmNameNp:    { label: 'Firm Name (Nepali)', value: '' },
+      firmAcronym:   { label: 'Firm Acronym', value: '' },
+      firmAddressNp: { label: 'Firm Address (Nepali)', value: '' },
+      firmContact:   { label: 'Contact Person (Nepali)', value: '' },
+      firmPhone:     { label: 'Phone / टेलिफोन', value: '' },
+      fy:            { label: 'आ.व. (Fiscal Year)', value: '' },
+      applicantName: { label: 'Applicant Name (निवेदकको नाम)', value: '' },
     },
   },
   shortlist_notice: {
     label: 'छनोट सूचना पत्र',
     fields: {
-      toTitle:  { label: 'To Title', value: 'कार्यालय प्रमुख' },
-      subject:  { label: 'Subject', value: 'मौजुदा सूचीमा छनोट भएको सूचना।', multiline: true },
-      body:     { label: 'Body', multiline: true,
+      date:          { label: 'मिति (BS Date)', value: '' },
+      ref:           { label: 'संख्या / Ref. No.', value: '' },
+      toName:        { label: 'To: Name (प्रापक नाम)', value: '' },
+      toShort:       { label: 'To: Short Name', value: '' },
+      toAddress:     { label: 'To: Address (ठेगाना)', value: '' },
+      toTitle:       { label: 'To Title (पद)', value: 'कार्यालय प्रमुख' },
+      subject:       { label: 'Subject (विषय)', value: 'मौजुदा सूचीमा छनोट भएको सूचना।', multiline: true },
+      body:          { label: 'Body', multiline: true,
         value: 'उपरोक्त सम्बन्धमा यस कार्यालयले सञ्चालन गर्ने कार्यको लागि मौजुदा सूचीमा तपाईंको संस्थालाई छनोट गरिएको व्यहोरा सूचित गरिन्छ।' },
-      closing:  { label: 'Closing', value: 'धन्यवाद।' },
+      closing:       { label: 'Closing', value: 'धन्यवाद।' },
+      signatoryName: { label: 'Signatory Name (हस्ताक्षरकर्ता)', value: '' },
+      signatoryOrg:  { label: 'Signatory Org (संस्थाको नाम)', value: '' },
     },
   },
   cover_letter: {
     label: 'Cover Letter',
     fields: {
-      toTitle:  { label: 'To Title', value: 'कार्यालय प्रमुख' },
-      subject:  { label: 'Subject', value: '', multiline: true },
-      body:     { label: 'Body', multiline: true, value: '' },
-      closing:  { label: 'Closing', value: 'धन्यवाद।' },
+      date:          { label: 'मिति (BS Date)', value: '' },
+      ref:           { label: 'संख्या / Ref. No.', value: '' },
+      toName:        { label: 'To: Name', value: '' },
+      toShort:       { label: 'To: Short Name', value: '' },
+      toAddress:     { label: 'To: Address', value: '' },
+      toTitle:       { label: 'To Title', value: 'कार्यालय प्रमुख' },
+      subject:       { label: 'Subject', value: '', multiline: true },
+      body:          { label: 'Body', multiline: true, value: '' },
+      closing:       { label: 'Closing', value: 'धन्यवाद।' },
+      signatoryName: { label: 'Signatory Name', value: '' },
+      signatoryOrg:  { label: 'Signatory Org', value: '' },
     },
   },
 };
 
-// ─── HTML builder per template ────────────────────────────────────────────────
+// ─── HTML builders ────────────────────────────────────────────────────────────
 function buildRegistrationHtml({ fields, row, imgs, topMm, bottomMm, lrMm, inclSign, inclStamp, todayBSStr }) {
-  const { firmName, firmNameNp, firmAcronym, firmAddressNp, firmMeta, firmRegNo, firmPan,
-          firmLogo, firmLetterhead, firmSign, firmStamp, firmContactNp } = imgs;
-  const { toName, toShort, toAddress, firmPhone, fyNp } = row;
+  const { firmLogo, firmLetterhead, firmSign, firmStamp,
+          firmRegNo, firmPan, firmMeta, firmName } = imgs;
   const useLhBg = !!firmLetterhead;
+
+  const date          = fields.date          || todayBSStr;
+  const ref           = fields.ref           || '';
+  const toName        = fields.toName        || row.toName        || '';
+  const toShort       = fields.toShort       || row.toShort       || '';
+  const toAddress     = fields.toAddress     || row.toAddress     || '';
+  const firmNameNp    = fields.firmNameNp    || imgs.firmNameNp   || firmName || '';
+  const firmAcronym   = fields.firmAcronym   || imgs.firmAcronym  || '';
+  const firmAddressNp = fields.firmAddressNp || imgs.firmAddressNp || '';
+  const firmContact   = fields.firmContact   || imgs.firmContactNp || '';
+  const firmPhone     = fields.firmPhone     || row.firmPhone     || '';
+  const fy            = fields.fy            || row.fyNp          || '';
+  const applicantName = fields.applicantName || firmContact       || '';
 
   return `<!DOCTYPE html><html lang="ne"><head><meta charset="UTF-8">
 <style>
@@ -149,14 +188,14 @@ function buildRegistrationHtml({ fields, row, imgs, topMm, bottomMm, lrMm, inclS
   ${firmRegNo || firmPan ? `<div class="lh-regpan"><span>${firmRegNo ? 'Govt. Regd.No. '+firmRegNo : ''}</span><span>${firmPan ? 'PAN No. '+firmPan : ''}</span></div>` : ''}
   <div class="lh-center">
     ${firmLogo ? `<img src="${firmLogo}" class="lh-logo" alt="">` : ''}
-    <div class="lh-name">${firmName}${firmAcronym && firmAcronym !== firmName ? ` (${firmAcronym})` : ''}</div>
+    <div class="lh-name">${firmNameNp}${firmAcronym && firmAcronym !== firmNameNp ? ` (${firmAcronym})` : ''}</div>
     ${firmMeta ? `<div class="lh-meta">${firmMeta}</div>` : ''}
   </div>
   <div class="lh-border"></div>` : ''}
 
   <div class="ref-row">
-    <span></span>
-    <span>मिति: ${todayBSStr}</span>
+    ${ref ? `<span>संख्या: ${ref}</span>` : '<span></span>'}
+    <span>मिति: ${date}</span>
   </div>
   <div class="to-block">
     <div>श्री ${fields.toTitle} ज्यू,</div>
@@ -175,7 +214,7 @@ function buildRegistrationHtml({ fields, row, imgs, topMm, bottomMm, lrMm, inclS
     </tr>
     <tr>
       <td class="half">(ग) पत्राचार गर्ने ठेगाना: ${firmAddressNp}</td>
-      <td class="half">(घ) मुख्य व्यक्तिको नाम: ${firmContactNp || ''}</td>
+      <td class="half">(घ) मुख्य व्यक्तिको नाम: ${firmContact}</td>
     </tr>
     <tr>
       <td class="half">(ड) टेलिफोन नं: ${firmPhone ? toNpNum(firmPhone) : ''}</td>
@@ -209,8 +248,8 @@ function buildRegistrationHtml({ fields, row, imgs, topMm, bottomMm, lrMm, inclS
     <tr><td colspan="2" style="padding:0;">
       <div style="display:flex;min-height:100px;">
         <div style="flex:0 0 34%;padding:8px 10px;border-right:1px solid #666;line-height:2;font-size:10pt;">
-          <div>निवेदन दिएको मिति: ${todayBSStr}</div>
-          ${fyNp ? `<div>आ.व.: ${fyNp}</div>` : ''}
+          <div>निवेदन दिएको मिति: ${date}</div>
+          ${fy ? `<div>आ.व.: ${fy}</div>` : ''}
         </div>
         <div style="flex:0 0 32%;border-right:1px solid #666;text-align:center;padding:6px 4px;">
           ${inclStamp && firmStamp
@@ -218,7 +257,7 @@ function buildRegistrationHtml({ fields, row, imgs, topMm, bottomMm, lrMm, inclS
             : ''}
         </div>
         <div style="flex:1;padding:8px 10px;font-size:10pt;line-height:2;">
-          <div>निवेदकको नाम: ${firmContactNp || ''}</div>
+          <div>निवेदकको नाम: ${applicantName}</div>
           ${inclSign && firmSign
             ? `<div style="margin-top:4px;">हस्ताक्षर: <img src="${firmSign}" style="display:inline-block;vertical-align:middle;margin-left:4px;height:28mm;width:auto;background:#fff;"></div>`
             : ''}
@@ -232,10 +271,18 @@ function buildRegistrationHtml({ fields, row, imgs, topMm, bottomMm, lrMm, inclS
 }
 
 function buildGenericHtml({ fields, row, imgs, topMm, bottomMm, lrMm, inclSign, inclStamp, todayBSStr }) {
-  const { firmName, firmNameNp, firmAcronym, firmMeta, firmRegNo, firmPan,
-          firmLogo, firmLetterhead, firmSign, firmStamp, firmContactNp } = imgs;
-  const { toName, toShort, toAddress } = row;
+  const { firmLogo, firmLetterhead, firmSign, firmStamp,
+          firmRegNo, firmPan, firmMeta, firmName, firmNameNp, firmAcronym } = imgs;
   const useLhBg = !!firmLetterhead;
+
+  const date          = fields.date          || todayBSStr;
+  const ref           = fields.ref           || '';
+  const toName        = fields.toName        || row.toName   || '';
+  const toShort       = fields.toShort       || row.toShort  || '';
+  const toAddress     = fields.toAddress     || row.toAddress || '';
+  const signatoryName = fields.signatoryName || imgs.firmContactNp || '';
+  const signatoryOrg  = fields.signatoryOrg  || firmNameNp   || firmName || '';
+  const sigAcronym    = firmAcronym || '';
 
   return `<!DOCTYPE html><html lang="ne"><head><meta charset="UTF-8">
 <style>
@@ -264,14 +311,14 @@ function buildGenericHtml({ fields, row, imgs, topMm, bottomMm, lrMm, inclSign, 
   ${firmRegNo || firmPan ? `<div class="lh-regpan"><span>${firmRegNo ? 'Govt. Regd.No. '+firmRegNo : ''}</span><span>${firmPan ? 'PAN No. '+firmPan : ''}</span></div>` : ''}
   <div class="lh-center">
     ${firmLogo ? `<img src="${firmLogo}" class="lh-logo" alt="">` : ''}
-    <div class="lh-name">${firmName}${firmAcronym && firmAcronym !== firmName ? ` (${firmAcronym})` : ''}</div>
+    <div class="lh-name">${firmNameNp || firmName}${sigAcronym && sigAcronym !== (firmNameNp||firmName) ? ` (${sigAcronym})` : ''}</div>
     ${firmMeta ? `<div class="lh-meta">${firmMeta}</div>` : ''}
   </div>
   <div class="lh-border"></div>` : ''}
 
   <div class="ref-row">
-    <span></span>
-    <span>मिति: ${todayBSStr}</span>
+    ${ref ? `<span>संख्या: ${ref}</span>` : '<span></span>'}
+    <span>मिति: ${date}</span>
   </div>
   <div class="to-block">
     <div>श्री ${fields.toTitle} ज्यू,</div>
@@ -284,8 +331,8 @@ function buildGenericHtml({ fields, row, imgs, topMm, bottomMm, lrMm, inclSign, 
   <div class="sign-block">
     ${inclStamp && firmStamp ? `<img src="${firmStamp}" style="width:28mm;height:28mm;object-fit:contain;background:#fff;display:inline-block;margin-right:12mm;">` : ''}
     ${inclSign && firmSign ? `<img src="${firmSign}" style="height:22mm;width:auto;background:#fff;display:inline-block;vertical-align:bottom;">` : ''}
-    <div>${firmContactNp || ''}</div>
-    <div>${firmNameNp}${firmAcronym ? ` (${firmAcronym})` : ''}</div>
+    <div>${signatoryName}</div>
+    <div>${signatoryOrg}${sigAcronym && sigAcronym !== signatoryOrg ? ` (${sigAcronym})` : ''}</div>
   </div>
   </div>
 </div>
@@ -293,9 +340,9 @@ function buildGenericHtml({ fields, row, imgs, topMm, bottomMm, lrMm, inclSign, 
 }
 
 const BUILDERS = {
-  registration: buildRegistrationHtml,
+  registration:    buildRegistrationHtml,
   shortlist_notice: buildGenericHtml,
-  cover_letter: buildGenericHtml,
+  cover_letter:    buildGenericHtml,
 };
 
 // ─── Main component ───────────────────────────────────────────────────────────
@@ -307,10 +354,12 @@ export default function LetterBuilder({ row: initialRow, token, onClose, allRows
   const [templateKey, setTemplateKey] = useState('registration');
   const [fields, setFields] = useState(() => {
     const tpl = TEMPLATES.registration;
-    return Object.fromEntries(Object.entries(tpl.fields).map(([k, v]) => [k, v.value]));
+    const f = Object.fromEntries(Object.entries(tpl.fields).map(([k, v]) => [k, v.value]));
+    f.date = todayBS();
+    return f;
   });
-  const [inclSign, setInclSign] = useState(!!row.institute_sign);
-  const [inclStamp, setInclStamp] = useState(!!row.institute_stamp);
+  const [inclSign, setInclSign] = useState(!!row?.institute_sign);
+  const [inclStamp, setInclStamp] = useState(!!row?.institute_stamp);
   const [previewHtml, setPreviewHtml] = useState('');
   const [imgs, setImgs] = useState(null);
   const [margins, setMargins] = useState({ top: null, bottom: null });
@@ -318,52 +367,60 @@ export default function LetterBuilder({ row: initialRow, token, onClose, allRows
   const [generating, setGenerating] = useState(false);
   const iframeRef = useRef(null);
 
-  // Patch in service type from firm on mount
-  useEffect(() => {
-    if (row.institute_service_type) {
-      setFields(f => ({ ...f, serviceType: row.institute_service_type }));
-    }
-    if (row.client_signatory_position) {
-      setFields(f => ({ ...f, toTitle: row.client_signatory_position }));
-    }
-  }, [row?.id]);
-
-  // Pre-fetch all images when row changes
+  // Patch editable fields from row/firm data when row changes
   useEffect(() => {
     setInclSign(!!row?.institute_sign);
     setInclStamp(!!row?.institute_stamp);
+    setFields(f => ({
+      ...f,
+      date:          f.date || todayBS(),
+      toName:        row?.client_name        || row?.client_name_manual || f.toName   || '',
+      toShort:       row?.client_short       || f.toShort  || '',
+      toAddress:     row?.client_address     || f.toAddress || '',
+      toTitle:       row?.client_signatory_position || f.toTitle || 'कार्यालय प्रमुख',
+      serviceType:   row?.institute_service_type    || f.serviceType || '',
+      firmNameNp:    row?.institute_name_np  || row?.institute_name  || f.firmNameNp  || '',
+      firmAcronym:   row?.institute_acronym  || f.firmAcronym  || '',
+      firmAddressNp: row?.institute_address_np || row?.institute_address || f.firmAddressNp || '',
+      firmContact:   row?.institute_contact_np || row?.institute_contact || f.firmContact || '',
+      firmPhone:     row?.institute_phone    || f.firmPhone || '',
+      fy:            row?.fy                 ? toNpNum(row.fy) : f.fy || '',
+      applicantName: row?.institute_contact_np || row?.institute_contact || f.applicantName || '',
+      signatoryName: row?.institute_contact_np || row?.institute_contact || f.signatoryName || '',
+      signatoryOrg:  row?.institute_name_np  || row?.institute_name  || f.signatoryOrg || '',
+    }));
   }, [row?.id]);
 
+  // Pre-fetch images when row changes
   useEffect(() => {
     let cancelled = false;
     (async () => {
       setLoading(true);
       const [logo, lh, sign, stamp] = await Promise.all([
-        urlToDataUrl(row.institute_logo || null),
-        urlToDataUrl(row.institute_letterhead || null),
-        urlToDataUrl(row.institute_sign || null),
-        urlToDataUrl(row.institute_stamp || null),
+        urlToDataUrl(row?.institute_logo || null),
+        urlToDataUrl(row?.institute_letterhead || null),
+        urlToDataUrl(row?.institute_sign || null),
+        urlToDataUrl(row?.institute_stamp || null),
       ]);
       if (cancelled) return;
-      const firmName    = row.institute_name || '';
-      const firmAcronym = row.institute_acronym || '';
-      const firmAddress = row.institute_address || '';
-      const firmPhone   = row.institute_phone || '';
-      const firmEmail   = row.institute_email || '';
-      const firmWebsite = row.institute_website || '';
+      const firmName    = row?.institute_name    || '';
+      const firmAcronym = row?.institute_acronym || '';
+      const firmAddress = row?.institute_address || '';
+      const firmPhone   = row?.institute_phone   || '';
+      const firmEmail   = row?.institute_email   || '';
+      const firmWebsite = row?.institute_website || '';
       const imgData = {
         firmName, firmAcronym,
-        firmNameNp:    row.institute_name_np    || firmName,
-        firmAddressNp: row.institute_address_np || firmAddress,
-        firmContactNp: row.institute_contact_np || row.institute_contact || '',
+        firmNameNp:    row?.institute_name_np    || firmName,
+        firmAddressNp: row?.institute_address_np || firmAddress,
+        firmContactNp: row?.institute_contact_np || row?.institute_contact || '',
         firmMeta: [firmAddress, firmPhone ? `फोन: ${firmPhone}` : '', firmEmail, firmWebsite].filter(Boolean).join('  |  '),
-        firmRegNo: row.institute_reg_no || '',
-        firmPan:   row.institute_pan   || '',
+        firmRegNo: row?.institute_reg_no || '',
+        firmPan:   row?.institute_pan   || '',
         firmPhone,
         firmLogo: logo, firmLetterhead: lh, firmSign: sign, firmStamp: stamp,
       };
       setImgs(imgData);
-      // detect margins from letterhead
       const m = await detectLetterheadMargins(lh);
       if (!cancelled) { setMargins(m); setLoading(false); }
     })();
@@ -372,18 +429,19 @@ export default function LetterBuilder({ row: initialRow, token, onClose, allRows
 
   const buildHtml = useCallback(() => {
     if (!imgs) return '';
-    const lrMm     = row.institute_letter_lr_padding    ?? 10;
-    const cfgTop   = row.institute_letter_top_margin    ?? 15;
-    const cfgBot   = row.institute_letter_bottom_padding ?? 15;
+    const lrMm     = row?.institute_letter_lr_padding    ?? 10;
+    const cfgTop   = row?.institute_letter_top_margin    ?? 15;
+    const cfgBot   = row?.institute_letter_bottom_padding ?? 15;
     const topMm    = margins.top    && margins.top    > cfgTop ? margins.top    : cfgTop;
     const bottomMm = margins.bottom && margins.bottom > cfgBot ? margins.bottom : cfgBot;
     const todayBSStr = todayBS();
+    // pass raw row data as fallback; fields take priority (see builders)
     const rowData = {
-      toName:  row.client_name || row.client_name_manual || '',
-      toShort: row.client_short || '',
-      toAddress: row.client_address || '',
-      firmPhone: row.institute_phone || '',
-      fyNp: row.fy ? toNpNum(row.fy) : '',
+      toName:   row?.client_name || row?.client_name_manual || '',
+      toShort:  row?.client_short || '',
+      toAddress:row?.client_address || '',
+      firmPhone:row?.institute_phone || '',
+      fyNp:     row?.fy ? toNpNum(row.fy) : '',
     };
     const builder = BUILDERS[templateKey] || buildGenericHtml;
     return builder({ fields, row: rowData, imgs, topMm, bottomMm, lrMm, inclSign, inclStamp, todayBSStr });
@@ -398,9 +456,9 @@ export default function LetterBuilder({ row: initialRow, token, onClose, allRows
     setTemplateKey(key);
     const tpl = TEMPLATES[key];
     const next = Object.fromEntries(Object.entries(tpl.fields).map(([k, v]) => [k, v.value]));
-    // carry over editable values that exist in both templates
-    Object.keys(next).forEach(k => { if (fields[k] !== undefined) next[k] = fields[k]; });
-    if (row.institute_service_type && next.serviceType !== undefined) next.serviceType = row.institute_service_type;
+    // carry over all current field values that exist in new template
+    Object.keys(next).forEach(k => { if (fields[k] !== undefined && fields[k] !== '') next[k] = fields[k]; });
+    if (!next.date) next.date = todayBS();
     setFields(next);
   };
 
@@ -433,13 +491,22 @@ export default function LetterBuilder({ row: initialRow, token, onClose, allRows
 
   const tplDef = TEMPLATES[templateKey];
 
+  // Field ordering: group logically for the editor panel
+  const FIELD_ORDER = {
+    registration:    ['date','ref','toTitle','toName','toShort','toAddress','subject','body','tapasil','serviceType','firmNameNp','firmAcronym','firmAddressNp','firmContact','firmPhone','fy','applicantName'],
+    shortlist_notice:['date','ref','toTitle','toName','toShort','toAddress','subject','body','closing','signatoryName','signatoryOrg'],
+    cover_letter:    ['date','ref','toTitle','toName','toShort','toAddress','subject','body','closing','signatoryName','signatoryOrg'],
+  };
+  const orderedFields = (FIELD_ORDER[templateKey] || Object.keys(tplDef.fields))
+    .filter(k => tplDef.fields[k]);
+
   return (
     <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,.55)', zIndex:1200, display:'flex', flexDirection:'column' }}>
       {/* Header */}
       <div style={{ display:'flex', alignItems:'center', gap:12, padding:'10px 20px', background:'var(--surface)', borderBottom:'1px solid var(--border)', flexShrink:0 }}>
         <div style={{ fontWeight:700, fontSize:16, color:'var(--text)' }}>Letter Builder</div>
 
-        {/* Firm picker — only shown when opened standalone with allRows */}
+        {/* Firm picker */}
         {allRows && allRows.length > 0 && (
           <select value={selectedRowId ?? ''} onChange={e => setSelectedRowId(Number(e.target.value))}
             style={{ padding:'6px 10px', borderRadius:8, border:'1px solid var(--border)', background:'var(--surface)',
@@ -487,22 +554,26 @@ export default function LetterBuilder({ row: initialRow, token, onClose, allRows
         {/* Left: editor */}
         <div style={{ width:340, flexShrink:0, overflowY:'auto', padding:20, borderRight:'1px solid var(--border)', background:'var(--bg)', display:'flex', flexDirection:'column', gap:14 }}>
           {loading && <div style={{ color:'var(--text3)', fontSize:13 }}>Loading images…</div>}
-          {!loading && Object.entries(tplDef.fields).map(([key, def]) => (
-            <div key={key}>
-              <div style={{ fontSize:11, fontWeight:600, color:'var(--text3)', marginBottom:4, textTransform:'uppercase', letterSpacing:.5 }}>{def.label}</div>
-              {def.multiline
-                ? <textarea value={fields[key] ?? ''} onChange={e => setFields(f => ({...f, [key]: e.target.value}))}
-                    rows={3}
-                    style={{ width:'100%', padding:'8px 10px', border:'1px solid var(--border)', borderRadius:6, fontSize:13,
-                      fontFamily:'Kalimati,Noto Sans Devanagari,Arial Unicode MS,sans-serif', resize:'vertical',
-                      background:'var(--surface)', color:'var(--text)', outline:'none', lineHeight:1.7 }}/>
-                : <input value={fields[key] ?? ''} onChange={e => setFields(f => ({...f, [key]: e.target.value}))}
-                    style={{ width:'100%', padding:'8px 10px', border:'1px solid var(--border)', borderRadius:6, fontSize:13,
-                      fontFamily:'Kalimati,Noto Sans Devanagari,Arial Unicode MS,sans-serif',
-                      background:'var(--surface)', color:'var(--text)', outline:'none' }}/>
-              }
-            </div>
-          ))}
+          {!loading && orderedFields.map(key => {
+            const def = tplDef.fields[key];
+            if (!def) return null;
+            return (
+              <div key={key}>
+                <div style={{ fontSize:11, fontWeight:600, color:'var(--text3)', marginBottom:4, textTransform:'uppercase', letterSpacing:.5 }}>{def.label}</div>
+                {def.multiline
+                  ? <textarea value={fields[key] ?? ''} onChange={e => setFields(f => ({...f, [key]: e.target.value}))}
+                      rows={3}
+                      style={{ width:'100%', padding:'8px 10px', border:'1px solid var(--border)', borderRadius:6, fontSize:13,
+                        fontFamily:'Kalimati,Noto Sans Devanagari,Arial Unicode MS,sans-serif', resize:'vertical',
+                        background:'var(--surface)', color:'var(--text)', outline:'none', lineHeight:1.7 }}/>
+                  : <input value={fields[key] ?? ''} onChange={e => setFields(f => ({...f, [key]: e.target.value}))}
+                      style={{ width:'100%', padding:'8px 10px', border:'1px solid var(--border)', borderRadius:6, fontSize:13,
+                        fontFamily:'Kalimati,Noto Sans Devanagari,Arial Unicode MS,sans-serif',
+                        background:'var(--surface)', color:'var(--text)', outline:'none' }}/>
+                }
+              </div>
+            );
+          })}
         </div>
 
         {/* Right: live preview */}
