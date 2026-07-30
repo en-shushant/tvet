@@ -297,12 +297,11 @@ async function openShortlistLetter(row, opts = {}) {
     width: 794px;
     height: 1123px;
     flex-shrink: 0;
-    background: #fff;
+    background: #fff ${useLhBg ? `url("${firmLetterhead}") no-repeat 0 0 / 794px 1123px` : ''};
     position: relative;
     padding: 0;
     overflow: hidden;
   }
-  .lh-img { display:block;position:absolute;top:0;left:0;width:794px;height:1123px;z-index:0; }
   .page-inner {
     position: relative;
     z-index: 1;
@@ -338,7 +337,6 @@ async function openShortlistLetter(row, opts = {}) {
 </head>
 <body>
 <div class="page">
-  ${useLhBg ? `<img src="${firmLetterhead}" class="lh-img" alt="">` : ''}
   <div class="page-inner">
 
   ${!useLhBg ? `

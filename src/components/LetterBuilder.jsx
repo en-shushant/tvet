@@ -205,8 +205,7 @@ function buildRegistrationHtml({ fields, row, imgs, topMm, bottomMm, lrMm, inclS
 <style>
   * { margin:0; padding:0; box-sizing:border-box; }
   body { background:#fff; }
-  .page { width:794px; height:1123px; background:#fff; position:relative; padding:0; overflow:hidden; font-family:'Kalimati','Noto Sans Devanagari','Arial Unicode MS',sans-serif; font-size:13px; }
-  .lh-img { display:block;position:absolute;top:0;left:0;width:794px;height:1123px;z-index:0; }
+  .page { width:794px; height:1123px; background:#fff ${useLhBg ? `url("${firmLetterhead}") no-repeat 0 0 / 794px 1123px` : ''}; position:relative; padding:0; overflow:hidden; font-family:'Kalimati','Noto Sans Devanagari','Arial Unicode MS',sans-serif; font-size:13px; }
   .page-inner { position:relative;z-index:1;padding:${topMm}mm ${lrMm}mm ${bottomMm}mm ${lrMm}mm; }
   .lh-regpan { display:flex;justify-content:space-between;font-size:9pt;font-style:italic;color:#7b1a1a;margin-bottom:5px; }
   .lh-center { text-align:center; }
@@ -227,7 +226,6 @@ function buildRegistrationHtml({ fields, row, imgs, topMm, bottomMm, lrMm, inclS
   .tall { min-height:36px; }
 </style></head><body>
 <div class="page">
-  ${useLhBg ? `<img src="${firmLetterhead}" class="lh-img" alt="">` : ''}
   <div class="page-inner">
   ${!useLhBg ? `
   ${firmRegNo || firmPan ? `<div class="lh-regpan"><span>${firmRegNo ? 'Govt. Regd.No. '+firmRegNo : ''}</span><span>${firmPan ? 'PAN No. '+firmPan : ''}</span></div>` : ''}
@@ -329,8 +327,7 @@ function buildGenericHtml({ fields, row, imgs, topMm, bottomMm, lrMm, inclSign, 
 <style>
   * { margin:0; padding:0; box-sizing:border-box; }
   body { background:#fff; }
-  .page { width:794px; height:1123px; background:#fff; position:relative; padding:0; overflow:hidden; font-family:'Kalimati','Noto Sans Devanagari','Arial Unicode MS',sans-serif; font-size:13px; }
-  .lh-img { display:block;position:absolute;top:0;left:0;width:794px;height:1123px;z-index:0; }
+  .page { width:794px; height:1123px; background:#fff ${useLhBg ? `url("${firmLetterhead}") no-repeat 0 0 / 794px 1123px` : ''}; position:relative; padding:0; overflow:hidden; font-family:'Kalimati','Noto Sans Devanagari','Arial Unicode MS',sans-serif; font-size:13px; }
   .page-inner { position:relative;z-index:1;padding:${topMm}mm ${lrMm}mm ${bottomMm}mm ${lrMm}mm; }
   .lh-regpan { display:flex;justify-content:space-between;font-size:9pt;font-style:italic;color:#7b1a1a;margin-bottom:5px; }
   .lh-center { text-align:center; }
@@ -346,7 +343,6 @@ function buildGenericHtml({ fields, row, imgs, topMm, bottomMm, lrMm, inclSign, 
   .sign-block { margin-top:48px;font-size:10.5pt;line-height:2; }
 </style></head><body>
 <div class="page">
-  ${useLhBg ? `<img src="${firmLetterhead}" class="lh-img" alt="">` : ''}
   <div class="page-inner">
   ${!useLhBg ? `
   ${firmRegNo || firmPan ? `<div class="lh-regpan"><span>${firmRegNo ? 'Govt. Regd.No. '+firmRegNo : ''}</span><span>${firmPan ? 'PAN No. '+firmPan : ''}</span></div>` : ''}
