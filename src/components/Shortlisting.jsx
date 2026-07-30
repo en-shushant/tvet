@@ -205,14 +205,13 @@ function openShortlistLetter(row, opts = {}) {
   }
   .page {
     width: 210mm;
-    height: 297mm;
+    min-height: 297mm;
     flex-shrink: 0;
     background: #fff;
     position: relative;
     padding: 0;
-    overflow: hidden;
   }
-  .lh-img { position:absolute;top:0;left:0;width:100%;height:100%;object-fit:fill;z-index:0; }
+  .lh-img { position:absolute;top:0;left:0;width:210mm;height:297mm;object-fit:fill;z-index:0; }
   .page-inner {
     position: relative;
     z-index: 1;
@@ -333,14 +332,14 @@ function openShortlistLetter(row, opts = {}) {
         <div style="flex:0 0 32%;border-right:1px solid #666;text-align:center;padding:6px 4px;">
           <div style="font-size:9pt;margin-bottom:3px;">फर्मको छाप:</div>
           ${includeStamp && firmStamp
-            ? `<img src="${firmStamp}" style="display:block;margin:0 auto;width:30mm;height:30mm;object-fit:contain;">`
+            ? `<img src="${firmStamp}" style="display:block;margin:0 auto;width:30mm;height:30mm;object-fit:contain;background:#fff;">`
             : '<div style="width:30mm;height:30mm;border-radius:50%;border:1.5px dashed #aaa;display:flex;align-items:center;justify-content:center;color:#aaa;font-size:9pt;text-align:center;margin:0 auto;">फर्मको<br>छाप</div>'
           }
         </div>
         <div style="flex:1;padding:8px 10px;font-size:10pt;line-height:2;">
           <div>निवेदकको नाम: ${firmContactNp || '_______________'}</div>
           <div style="margin-top:4px;">हस्ताक्षर: ${includeSign && firmSign
-            ? `<img src="${firmSign}" style="display:inline-block;vertical-align:middle;margin-left:4px;height:28mm;width:auto;mix-blend-mode:multiply;">`
+            ? `<img src="${firmSign}" style="display:inline-block;vertical-align:middle;margin-left:4px;height:28mm;width:auto;background:#fff;">`
             : '_______________'
           }</div>
         </div>
