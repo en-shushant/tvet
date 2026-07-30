@@ -92,9 +92,9 @@ function todayBS() {
 }
 
 // ── Letter generator — opens print-ready A4 in new window ─────────────────────
-// Scan the letterhead image to find where the header ends (last non-white row in top 60%)
-async function detectLetterheadHeaderMm(dataUrl) {
-  if (!dataUrl) return null;
+// Scan letterhead image for header/footer boundaries
+async function detectLetterheadMargins(dataUrl) {
+  if (!dataUrl) return { top: null, bottom: null };
   return new Promise((resolve) => {
     const img = new Image();
     img.onload = () => {
@@ -105,25 +105,34 @@ async function detectLetterheadHeaderMm(dataUrl) {
         const ctx = canvas.getContext('2d');
         ctx.drawImage(img, 0, 0);
         const w = canvas.width, h = canvas.height;
-        const limit = Math.floor(h * 0.6);
         const step = Math.max(1, Math.floor(w / 30));
-        // Walk from limit upward; find the last row with significant non-white pixels
-        for (let y = limit; y >= 0; y--) {
-          let dark = 0;
-          for (let x = 0; x < w; x += step) {
-            const d = ctx.getImageData(x, y, 1, 1).data;
-            if (d[3] > 50 && (d[0] < 220 || d[1] < 220 || d[2] < 220)) dark++;
-          }
-          if (dark >= 3) {
-            const mm = (y / h) * 297;
-            resolve(Math.ceil(mm) + 8); // 8 mm breathing room below header
-            return;
-          }
+
+        const isDark = (x, y) => {
+          const d = ctx.getImageData(x, y, 1, 1).data;
+          return d[3] > 50 && (d[0] < 220 || d[1] < 220 || d[2] < 220);
+        };
+        const rowDark = (y) => {
+          let n = 0;
+          for (let x = 0; x < w; x += step) if (isDark(x, y)) n++;
+          return n;
+        };
+
+        // Header: last dark row in top 60%
+        let topMm = null;
+        for (let y = Math.floor(h * 0.6); y >= 0; y--) {
+          if (rowDark(y) >= 3) { topMm = Math.ceil((y / h) * 297) + 8; break; }
         }
-        resolve(null);
-      } catch { resolve(null); }
+
+        // Footer: first dark row in bottom 40% (scanning from bottom up)
+        let bottomMm = null;
+        for (let y = h - 1; y >= Math.floor(h * 0.6); y--) {
+          if (rowDark(y) >= 3) { bottomMm = Math.ceil(((h - y) / h) * 297) + 8; break; }
+        }
+
+        resolve({ top: topMm, bottom: bottomMm });
+      } catch { resolve({ top: null, bottom: null }); }
     };
-    img.onerror = () => resolve(null);
+    img.onerror = () => resolve({ top: null, bottom: null });
     img.src = dataUrl;
   });
 }
@@ -166,11 +175,13 @@ async function openShortlistLetter(row, opts = {}) {
     urlToDataUrl(row.institute_stamp || null),
   ]);
 
-  // Auto-detect header height from letterhead image; use it if larger than configured margin
-  let pageTopMargin = row.institute_letter_top_margin ?? 15;
+  // Auto-detect header/footer heights from letterhead image
+  let pageTopMargin    = row.institute_letter_top_margin    ?? 15;
+  let pageBottomPadding = row.institute_letter_bottom_padding ?? 15;
   if (firmLetterhead) {
-    const detected = await detectLetterheadHeaderMm(firmLetterhead);
-    if (detected && detected > pageTopMargin) pageTopMargin = detected;
+    const { top, bottom } = await detectLetterheadMargins(firmLetterhead);
+    if (top    && top    > pageTopMargin)    pageTopMargin    = top;
+    if (bottom && bottom > pageBottomPadding) pageBottomPadding = bottom;
   }
   const firmContact     = row.institute_contact || '';
   const firmNameNp      = row.institute_name_np || firmName;
@@ -276,11 +287,12 @@ async function openShortlistLetter(row, opts = {}) {
   }
   .page {
     width: 210mm;
-    min-height: 297mm;
+    height: 297mm;
     flex-shrink: 0;
     background: #fff;
     position: relative;
     padding: 0;
+    overflow: hidden;
   }
   .lh-img { position:absolute;top:0;left:0;width:210mm;height:297mm;object-fit:fill;z-index:0; }
   .page-inner {
@@ -445,6 +457,8 @@ ${docPages}
   const pdf = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait' });
   const pages = iframeDoc.querySelectorAll('.page, [data-doc="1"]');
 
+  // A4 at 96dpi = 794 × 1123px
+  const A4_W = 794, A4_H = 1123;
   for (let i = 0; i < pages.length; i++) {
     const page = pages[i];
     const canvas = await html2canvas(page, {
@@ -452,10 +466,10 @@ ${docPages}
       useCORS: true,
       allowTaint: true,
       backgroundColor: '#ffffff',
-      width: page.scrollWidth,
-      height: page.scrollHeight,
-      windowWidth: page.scrollWidth,
-      windowHeight: page.scrollHeight,
+      width: A4_W,
+      height: A4_H,
+      windowWidth: A4_W,
+      windowHeight: A4_H,
     });
     const imgData = canvas.toDataURL('image/jpeg', 0.95);
     if (i > 0) pdf.addPage();
