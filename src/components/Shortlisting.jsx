@@ -512,15 +512,21 @@ async function openShortlistLetter(row, opts = {}) {
       signImg = sniff(bytes) === 'png' ? await outDoc.embedPng(bytes) : await outDoc.embedJpg(bytes);
     } catch {}
   }
-  const SIGN_H_MM = 18; // was 32mm — too large next to the stamp on attachment pages
+  // These pages are real, already-printed certificates — the overlay only
+  // needs to read as a small corner stamp, not compete with the page's own
+  // content. Previous sizes (stamp 38mm, sign 32mm/18mm) were tuned against a
+  // blank page and were far too dominant once real document content was
+  // actually visible underneath.
+  const STAMP_H_MM = 20;
+  const SIGN_H_MM  = 9;
   const drawOverlay = (page) => {
     if (!stampImg && !signImg) return;
-    const stampW = stampImg ? 38 * MM : 0;
+    const stampW = stampImg ? STAMP_H_MM * MM : 0;
     const signW  = signImg ? (SIGN_H_MM * MM) * (signImg.width / signImg.height) : 0;
-    const gap = stampImg && signImg ? 4 * MM : 0;
-    let x = PAGE_W - 12 * MM - stampW - gap - signW;
-    const y = 12 * MM;
-    if (stampImg) { page.drawImage(stampImg, { x, y, width: stampW, height: 38 * MM }); x += stampW + gap; }
+    const gap = stampImg && signImg ? 3 * MM : 0;
+    let x = PAGE_W - 10 * MM - stampW - gap - signW;
+    const y = 10 * MM;
+    if (stampImg) { page.drawImage(stampImg, { x, y, width: stampW, height: STAMP_H_MM * MM }); x += stampW + gap; }
     if (signImg)  { page.drawImage(signImg,  { x, y, width: signW,  height: SIGN_H_MM * MM }); }
   };
 
