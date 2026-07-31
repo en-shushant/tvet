@@ -165,6 +165,12 @@ async function urlToDataUrl(url) {
   } catch { return url; }
 }
 
+// A4 at 96dpi. Declared at the top of the function scope: the letter body, the
+// attachment pages and the html2canvas capture all size off these, and `const`
+// does not hoist — referencing them before this line throws a ReferenceError
+// and silently kills letter generation.
+const A4_W = 794, A4_H = 1123;
+
 async function openShortlistLetter(row, opts = {}) {
   const { includeSign = false, includeStamp = false, docs = {}, serviceType: svcType } = opts;
   const lrPadding = row.institute_letter_lr_padding ?? 20;
@@ -256,11 +262,18 @@ async function openShortlistLetter(row, opts = {}) {
     return files.map((src) => {
       const isPdf = !src.startsWith('data:') ? src.toLowerCase().endsWith('.pdf') : src.startsWith('data:application/pdf');
       const resolvedSrc = docSrcMap.get(src) || src;
+      // html2canvas ignores object-fit on <img>, which rendered every attached
+      // document as a blank page. Paint it as a background instead — the same
+      // approach the letterhead uses. The server already normalises scans onto
+      // an A4 canvas, so scaling to the page is proportional, not a stretch.
+      const bg = isPdf ? '' : `background-image:url("${resolvedSrc}");background-repeat:no-repeat;background-position:center center;background-size:${A4_W}px ${A4_H}px;`;
+      // html2canvas cannot rasterise an <embed>, so a PDF attachment would come
+      // out blank. Institute documents are image-only, so this is a safety net.
       const content = isPdf
-        ? `<embed src="${src}" style="display:block;width:210mm;height:297mm;" type="application/pdf">`
-        : `<img src="${resolvedSrc}" style="display:block;width:210mm;height:297mm;object-fit:fill;">`;
+        ? `<embed src="${src}" style="display:block;width:${A4_W}px;height:${A4_H}px;" type="application/pdf">`
+        : '';
       return `
-<div data-doc="1" style="page-break-before:always;page-break-after:always;break-before:page;break-after:page;position:relative;width:210mm;height:297mm;box-sizing:border-box;padding:0;background:#fff;box-shadow:0 2px 12px rgba(0,0,0,.18);overflow:hidden;">
+<div data-doc="1" style="page-break-before:always;page-break-after:always;break-before:page;break-after:page;position:relative;width:${A4_W}px;height:${A4_H}px;box-sizing:border-box;padding:0;background-color:#fff;${bg}box-shadow:0 2px 12px rgba(0,0,0,.18);overflow:hidden;">
   ${content}
   ${sigstampOverlay}
 </div>`;
@@ -449,7 +462,6 @@ ${docPages}
 </html>`;
 
   // Render into a hidden iframe on the same page so fonts + images resolve correctly
-  const A4_W = 794, A4_H = 1123;
   const iframe = document.createElement('iframe');
   iframe.style.cssText = `position:fixed;left:-9999px;top:0;width:${A4_W}px;height:${A4_H}px;border:none;visibility:hidden;`;
   document.body.appendChild(iframe);
