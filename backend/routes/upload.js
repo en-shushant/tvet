@@ -36,6 +36,9 @@ async function normaliseLetterhead(inputBuffer) {
   const output = await sharp(inputBuffer)
     .rotate()
     .resize(A4_W, A4_H, { fit: 'fill' })   // exact A4, no margins, no letterboxing
+    // JPEG has no alpha channel; without an explicit flatten sharp drops it and
+    // every transparent pixel lands on black instead of the page white.
+    .flatten({ background: { r: 255, g: 255, b: 255 } })
     .jpeg({ quality: 92, progressive: true, mozjpeg: true })
     .toBuffer();
 
@@ -112,6 +115,9 @@ async function normaliseImage(inputBuffer) {
       right:  A4_W - info.width  - padLeft,
       background: { r: 255, g: 255, b: 255, alpha: 1 },
     })
+    // extend() only whitens the padding — flatten covers transparent pixels
+    // inside the image itself, which JPEG would otherwise render black.
+    .flatten({ background: { r: 255, g: 255, b: 255 } })
     .jpeg({ quality: 92, progressive: true, mozjpeg: true })
     .toBuffer();
 

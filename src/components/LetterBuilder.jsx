@@ -62,8 +62,12 @@ async function detectLetterheadMargins(dataUrl) {
         let top = null;
         for (let y = Math.floor(h * 0.6); y >= 0; y--)
           if (rowDark(y) >= 3) { top = Math.ceil((y / h) * 297) + 8; break; }
+        // Scan DOWNWARD to find the top edge of the footer artwork. Scanning up
+        // from the last row matches the footer band's own bottom edge (it runs
+        // to the page edge) and reserves almost no margin, so body content ends
+        // up printed on top of the footer.
         let bottom = null;
-        for (let y = h - 1; y >= Math.floor(h * 0.6); y--)
+        for (let y = Math.floor(h * 0.6); y < h; y++)
           if (rowDark(y) >= 3) { bottom = Math.ceil(((h - y) / h) * 297) + 8; break; }
         resolve({ top, bottom });
       } catch { resolve({ top: null, bottom: null }); }
@@ -276,7 +280,7 @@ function buildLetterHtml({ fields, row, imgs, topMm, bottomMm, lrMm, inclSign, i
         <div style="flex:1;padding:8px 10px;font-size:10pt;line-height:2;">
           <div>${applicantLabel} ${applicantName}</div>
           ${inclSign && firmSign
-            ? `<div style="margin-top:4px;">${signLabel} <img src="${firmSign}" style="display:inline-block;vertical-align:middle;margin-left:4px;height:28mm;width:auto;background:#fff;"></div>`
+            ? `<div style="margin-top:4px;">${signLabel} <img src="${firmSign}" style="display:inline-block;vertical-align:middle;margin-left:4px;max-height:20mm;max-width:100%;width:auto;height:auto;object-fit:contain;"></div>`
             : ''}
         </div>
       </div>
