@@ -518,7 +518,7 @@ async function openShortlistLetter(row, opts = {}) {
   // blank page and were far too dominant once real document content was
   // actually visible underneath.
   const STAMP_H_MM = 20;
-  const SIGN_H_MM  = 9;
+  const SIGN_H_MM  = 14;
   const drawOverlay = (page) => {
     if (!stampImg && !signImg) return;
     const stampW = stampImg ? STAMP_H_MM * MM : 0;
