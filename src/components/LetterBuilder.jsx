@@ -73,10 +73,9 @@ async function detectLetterheadMargins(dataUrl) {
   });
 }
 
-// ─── Letter template ──────────────────────────────────────────────────────────
+// ─── Letter template: मौजुदा सूची दर्ता पत्र ───────────────────────────────────
 // `date` is filled at runtime; firm/client fields are patched from the row.
 const TEMPLATE = {
-  label: 'मौजुदा सूची दर्ता पत्र',
   fields: {
     date:          { label: 'मिति (BS Date)', value: '' },
     ref:           { label: 'संख्या / Ref. No.', value: '' },
@@ -425,9 +424,6 @@ export default function LetterBuilder({ row: initialRow, onClose, allRows }) {
       {/* Header */}
       <div style={{ display:'flex', alignItems:'center', gap:12, padding:'10px 20px', background:'var(--surface)', borderBottom:'1px solid var(--border)', flexShrink:0 }}>
         <div style={{ fontWeight:700, fontSize:16, color:'var(--text)' }}>Letter Builder</div>
-        <div style={{ fontSize:12, fontWeight:600, color:'var(--text3)', padding:'3px 10px', borderRadius:20, background:'var(--bg)', border:'1px solid var(--border)' }}>
-          {TEMPLATE.label}
-        </div>
 
         {/* Firm picker */}
         {allRows && allRows.length > 0 && (
