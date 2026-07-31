@@ -512,15 +512,16 @@ async function openShortlistLetter(row, opts = {}) {
       signImg = sniff(bytes) === 'png' ? await outDoc.embedPng(bytes) : await outDoc.embedJpg(bytes);
     } catch {}
   }
+  const SIGN_H_MM = 18; // was 32mm — too large next to the stamp on attachment pages
   const drawOverlay = (page) => {
     if (!stampImg && !signImg) return;
     const stampW = stampImg ? 38 * MM : 0;
-    const signW  = signImg ? (32 * MM) * (signImg.width / signImg.height) : 0;
+    const signW  = signImg ? (SIGN_H_MM * MM) * (signImg.width / signImg.height) : 0;
     const gap = stampImg && signImg ? 4 * MM : 0;
     let x = PAGE_W - 12 * MM - stampW - gap - signW;
     const y = 12 * MM;
     if (stampImg) { page.drawImage(stampImg, { x, y, width: stampW, height: 38 * MM }); x += stampW + gap; }
-    if (signImg)  { page.drawImage(signImg,  { x, y, width: signW,  height: 32 * MM }); }
+    if (signImg)  { page.drawImage(signImg,  { x, y, width: signW,  height: SIGN_H_MM * MM }); }
   };
 
   // Attachments — merged as real pages, not screenshotted. A PDF source keeps
