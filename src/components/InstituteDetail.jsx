@@ -1182,10 +1182,11 @@ const THUMB_SIZE = 80;
 
 function FileThumb({ src, onRemove }) {
   const [hover, setHover] = useState(false);
+  const [confirming, setConfirming] = useState(false);
   return (
     <div
       onMouseEnter={() => setHover(true)}
-      onMouseLeave={() => setHover(false)}
+      onMouseLeave={() => { setHover(false); setConfirming(false); }}
       style={{position:'relative', flexShrink:0, width:THUMB_SIZE, height:THUMB_SIZE, borderRadius:10,
         // white (not var(--bg)) so transparent signatures/stamps stay legible in dark mode
         overflow:'hidden', border:'1.5px solid var(--border)', background:'#fff', cursor: onRemove ? 'pointer' : 'default',
@@ -1197,10 +1198,27 @@ function FileThumb({ src, onRemove }) {
         <img src={src} alt="" style={{width:'100%', height:'100%', objectFit:'contain', display:'block'}}/>
       </a>
       {onRemove && hover && (
-        <button onClick={e=>{e.preventDefault();onRemove();}}
-          style={{position:'absolute', inset:0, width:'100%', height:'100%', background:'rgba(229,57,53,.72)',
-            color:'#fff', border:'none', cursor:'pointer', fontSize:18, display:'flex', alignItems:'center',
-            justifyContent:'center', backdropFilter:'blur(2px)'}}>✕</button>
+        confirming ? (
+          <div style={{position:'absolute', inset:0, background:'rgba(229,57,53,.88)', display:'flex',
+            flexDirection:'column', alignItems:'center', justifyContent:'center', gap:4, backdropFilter:'blur(2px)'}}>
+            <span style={{color:'#fff', fontSize:10.5, fontWeight:600, textAlign:'center', padding:'0 4px'}}>Remove?</span>
+            <div style={{display:'flex', gap:6}}>
+              <button onClick={e=>{e.preventDefault(); e.stopPropagation(); onRemove(); setConfirming(false);}}
+                style={{background:'#fff', color:'#c0392b', border:'none', borderRadius:6, padding:'2px 8px', fontSize:11, fontWeight:700, cursor:'pointer'}}>
+                Yes
+              </button>
+              <button onClick={e=>{e.preventDefault(); e.stopPropagation(); setConfirming(false);}}
+                style={{background:'rgba(255,255,255,.25)', color:'#fff', border:'1px solid #fff', borderRadius:6, padding:'2px 8px', fontSize:11, fontWeight:600, cursor:'pointer'}}>
+                No
+              </button>
+            </div>
+          </div>
+        ) : (
+          <button onClick={e=>{e.preventDefault(); setConfirming(true);}}
+            style={{position:'absolute', inset:0, width:'100%', height:'100%', background:'rgba(229,57,53,.72)',
+              color:'#fff', border:'none', cursor:'pointer', fontSize:18, display:'flex', alignItems:'center',
+              justifyContent:'center', backdropFilter:'blur(2px)'}}>✕</button>
+        )
       )}
     </div>
   );

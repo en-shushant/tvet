@@ -1210,6 +1210,88 @@ function AssignFirmsModal({ list, institutes, assignedIds, onSave, onClose, savi
   );
 }
 
+function parseDocUrls(src) {
+  if (!src) return [];
+  try { const p = JSON.parse(src); return Array.isArray(p) ? p : [src]; }
+  catch { return [src]; }
+}
+
+// Read-only view of everything uploaded for a firm — letter images plus every
+// supporting document — reachable directly from the shortlisting row so
+// nobody has to leave this page to check what's on file.
+function ViewDocumentsModal({ instituteId, token, onClose }) {
+  const [inst, setInst] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [err, setErr] = useState('');
+
+  useEffect(() => {
+    let cancelled = false;
+    api('GET', `/institutes/${instituteId}`, null, token)
+      .then(r => { if (!cancelled) setInst(r); })
+      .catch(e => { if (!cancelled) setErr(e.message || 'Could not load documents.'); })
+      .finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
+  }, [instituteId, token]);
+
+  const Thumb = ({ src }) => (
+    <a href={src} target="_blank" rel="noreferrer" style={{
+      display:'block', width:64, height:64, borderRadius:8, overflow:'hidden',
+      border:'1.5px solid var(--border)', background:'#fff', flexShrink:0,
+    }}>
+      <img src={src} alt="" style={{width:'100%', height:'100%', objectFit:'contain', display:'block'}}/>
+    </a>
+  );
+
+  const Row = ({ label, urls }) => (
+    <div style={{display:'flex', alignItems:'center', gap:12, padding:'10px 14px', borderBottom:'1px solid var(--border)'}}>
+      <div style={{flex:'0 0 220px', fontSize:13, color: urls.length ? 'var(--text)' : 'var(--text3)', fontWeight: urls.length ? 600 : 400}}>
+        {label}
+      </div>
+      <div style={{flex:1, display:'flex', gap:8, flexWrap:'wrap'}}>
+        {urls.length
+          ? urls.map((u, i) => <Thumb key={i} src={u}/>)
+          : <span style={{fontSize:12, color:'var(--text3)', fontStyle:'italic'}}>Not uploaded</span>}
+      </div>
+    </div>
+  );
+
+  const docRows = inst ? [
+    { label: 'Letterhead',            urls: parseDocUrls(inst.letterhead) },
+    { label: 'Logo',                  urls: parseDocUrls(inst.logo) },
+    { label: 'Authorized Signature',  urls: parseDocUrls(inst.sign) },
+    { label: 'Stamp / Seal',          urls: parseDocUrls(inst.stamp) },
+    ...Object.entries({
+      ocrReg:   inst.ocr_registration,
+      ocrRen:   inst.ocr_renewal,
+      llReg:    inst.local_level_registration,
+      llRen:    inst.local_level_renewal,
+      vat:      inst.vat_registration,
+      taxClear: inst.tax_clearance_doc,
+      vatExt:   inst.vat_extension,
+      ctevtAff: inst.ctevt_affiliation,
+      ctevtRen: inst.ctevt_renewal,
+    }).map(([k, src]) => ({ label: DOC_LABELS[k], urls: parseDocUrls(src) })),
+  ] : [];
+
+  return (
+    <Modal title={inst ? `Documents — ${inst.acronym || inst.name}` : 'Documents'} onClose={onClose} footer={
+      <Btn className="btn btn-secondary" onClick={onClose}>Close</Btn>
+    }>
+      {loading ? (
+        <div style={{textAlign:'center', padding:30, color:'var(--text3)'}}>
+          <span className="spin material-icons-round" style={{fontSize:24}}>sync</span>
+        </div>
+      ) : err ? (
+        <div style={{color:'#c0391e', fontSize:13, padding:'8px 4px'}}>{err}</div>
+      ) : (
+        <div style={{border:'1px solid var(--border)', borderRadius:10, overflow:'hidden'}}>
+          {docRows.map((r, i) => <Row key={i} label={r.label} urls={r.urls}/>)}
+        </div>
+      )}
+    </Modal>
+  );
+}
+
 function LetterOptsModal({ row, token, onClose, onOpenBuilder }) {
   const [inclSign, setInclSign]   = useState(false);
   const [inclStamp, setInclStamp] = useState(false);
@@ -1907,6 +1989,7 @@ function ShortlistRow({ row, idx, canEdit, isAdmin, isSuperAdmin, onEdit, onDele
   const [showLetterOpts, setShowLetterOpts] = useState(false);
   const [showBuilder, setShowBuilder] = useState(false);
   const [showBill, setShowBill] = useState(false);
+  const [showDocs, setShowDocs] = useState(false);
   const hasBill = !!(row.shortlist_doc);
   return (
     <div style={{
@@ -1969,6 +2052,12 @@ function ShortlistRow({ row, idx, canEdit, isAdmin, isSuperAdmin, onEdit, onDele
         {showLetterOpts && <LetterOptsModal row={row} token={token} onClose={()=>setShowLetterOpts(false)} onOpenBuilder={isSuperAdmin ? ()=>setShowBuilder(true) : null}/>}
         {showBuilder && <LetterBuilderWrapper row={row} onClose={()=>setShowBuilder(false)}/>}
         {showBill && <BillModal row={row} token={token} saving={saving} onClose={()=>setShowBill(false)} onSave={async (patch) => { await onBillSave(row.id, patch); setShowBill(false); }}/>}
+        {showDocs && <ViewDocumentsModal instituteId={row.institute_id} token={token} onClose={()=>setShowDocs(false)}/>}
+        <button title="View Documents" onClick={() => setShowDocs(true)}
+          style={{width:30,height:30,borderRadius:50,border:'none',background:'transparent',color:'var(--text3)',cursor:'pointer',display:'inline-flex',alignItems:'center',justifyContent:'center'}}
+          onMouseEnter={e=>{e.currentTarget.style.background='var(--bg2)';e.currentTarget.style.color='var(--text)';}}
+          onMouseLeave={e=>{e.currentTarget.style.background='';e.currentTarget.style.color='var(--text3)';}}
+        ><span className="material-icons-round" style={{fontSize:15}}>folder_open</span></button>
         {canEdit && (
           <button title={hasBill ? 'Bill uploaded — click to update' : 'Upload bill / certificate'} onClick={() => setShowBill(true)}
             style={{width:30,height:30,borderRadius:50,border:'none',background: hasBill ? 'var(--success-light)' : 'transparent',color: hasBill ? 'var(--success)' : 'var(--text3)',cursor:'pointer',display:'inline-flex',alignItems:'center',justifyContent:'center'}}
