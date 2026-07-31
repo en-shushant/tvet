@@ -1,23 +1,20 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { Btn } from '../md.jsx';
-import { toNpNum, adToBS, BS_MONTHS, BS_DATA } from '../constants/nepali.js';
-import { api } from '../utils/api.js';
+import { toNpNum, BS_DATA } from '../constants/nepali.js';
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
 function todayBS() {
   const d = new Date();
-  const [y, m, day] = [d.getFullYear(), d.getMonth() + 1, d.getDate()];
-  const bsData = BS_DATA;
   let bsYear = 2000, rem = 0;
   let adRef = new Date(1943, 3, 14);
   for (let yr = 2000; yr <= 2090; yr++) {
-    const months = bsData[yr] || [];
+    const months = BS_DATA[yr] || [];
     const total = months.reduce((s, v) => s + v, 0);
     const next = new Date(adRef.getTime() + total * 86400000);
     if (next > d) { bsYear = yr; rem = Math.floor((d - adRef) / 86400000); break; }
     adRef = next;
   }
-  const months = bsData[bsYear] || [];
+  const months = BS_DATA[bsYear] || [];
   let bsMonth = 1, bsDay = rem + 1;
   for (let i = 0; i < months.length; i++) {
     if (bsDay <= months[i]) { bsMonth = i + 1; break; }
@@ -76,180 +73,69 @@ async function detectLetterheadMargins(dataUrl) {
   });
 }
 
-// ─── Letter templates ─────────────────────────────────────────────────────────
-// date defaults are filled at runtime in the patch useEffect
-const TEMPLATES = {
-  registration: {
-    label: 'मौजुदा सूची दर्ता पत्र',
-    fields: {
-      date:          { label: 'मिति (BS Date)', value: '' },
-      ref:           { label: 'संख्या / Ref. No.', value: '' },
-      lrPadding:     { label: 'Left / Right Margin (mm)', value: '20' },
-      toName:        { label: 'To: Name (प्रापक नाम)', value: '', multiline: false },
-      toShort:       { label: 'To: Short Name', value: '' },
-      toAddress:     { label: 'To: Address (ठेगाना)', value: '' },
-      toTitle:       { label: 'To Title (पद)', value: 'कार्यालय प्रमुख' },
-      subject:       { label: 'Subject (विषय)', value: 'मौजुदा सूचीमा दर्ता गरी पाऊँ।', multiline: true },
-      body:          { label: 'Body Paragraph', multiline: true,
-        value: 'सार्वजनिक खरिद नियमावली, २०६४ को नियम १८ को उपनियम (१) बमोजिम तपशिलमा उल्लेखित विवरण अनुसारको पृष्ठाई गर्ने कागजात संलग्न गरी मौजुदा सूचीमा दर्ता हुन यो निवेदन पेश गरेको छु।' },
-      tapasil:       { label: 'तपशिल Label', value: 'तपशिल:' },
-      serviceType:   { label: 'Service Type (सेवा प्रकार)', value: 'सीपमूलक तथा व्यावसायिक तालिम कार्यक्रमहरु सञ्चालन', multiline: true },
-      firmNameNp:    { label: 'Firm Name (Nepali)', value: '' },
-      firmAcronym:   { label: 'Firm Acronym', value: '' },
-      firmAddressNp: { label: 'Firm Address (Nepali)', value: '' },
-      firmContact:   { label: 'Contact Person (Nepali)', value: '' },
-      firmPhone:     { label: 'Phone / टेलिफोन', value: '' },
-      mobileNo:      { label: 'Mobile No. (मोबाईल)', value: '' },
-      fy:            { label: 'आ.व. (Fiscal Year)', value: '' },
-      applicantName: { label: 'Applicant Name (निवेदकको नाम)', value: '' },
-      // Table section headers
-      sec1Header:    { label: 'Section १ Header', multiline: true,
-        value: 'मौजुदा सूचीको लागि निवेदन दिने व्यक्ति, संस्था, आपूर्तिकर्ता, निर्माण व्यवसायी, परामर्शदाता वा सेवा प्रदायकको विवरण:' },
-      sec2Header:    { label: 'Section २ Header', multiline: true,
-        value: 'मौजुदा सूचीमा दर्ता हुनको लागि निम्न बमोजिमको प्रमाणपत्र संलग्न गर्नुहोला।' },
-      sec2Items:     { label: 'Section २ Checklist (one per line)', multiline: true,
-        value: '(क) संस्था वा फर्म दर्ताको प्रमाणपत्र  छ ☑  छैन □\n(ख) नविकरण गरिएको  छ ☑  छैन □\n(ग) मूल्य अभिवृद्धि कर वा स्थायी लेखा नम्बर दर्ताको प्रमाणपत्र  छ ☑  छैन □\n(घ) कर चुक्ताको प्रमाणपत्र  छ ☑  छैन □\n(ड) कुन खरिदको लागि मौजुदार सूचीमा दर्ता हुन निवेदन दिने हो, सो कामको लागि इजाजत पत्र आवश्यक पत्ने भएमा सो को प्रतिलिपि  छ ☑  छैन □' },
-      sec3Header:    { label: 'Section ३ Header', multiline: true,
-        value: 'सार्वजनिक निकायबाट हुने खरिदको लागि दर्ता हुन चाहेको खरिदको प्रकृतिको विवरण:' },
-      // Section 3 sub-labels and values
-      supplyLabel:        { label: '(क) Supply Label', value: '(क) मालसामान आपूर्ति:' },
-      supplyValue:        { label: '(क) Supply Value', value: '', multiline: true },
-      constructionLabel:  { label: '(ख) Construction Label', value: '(ख) निर्माण कार्य' },
-      constructionValue:  { label: '(ख) Construction Value', value: '', multiline: true },
-      consultingLabel:    { label: '(ग) Consulting Label', value: '(ग) परामर्श सेवा:' },
-      otherServiceLabel:  { label: '(घ) Other Service Label', value: '(घ) अन्य सेवा:' },
-      otherServiceValue:  { label: '(घ) Other Service Value', value: '', multiline: true },
-      // Bottom row labels
-      dateLabel:      { label: 'Date Label (bottom)', value: 'निवेदन दिएको मिति:' },
-      fyLabel:        { label: 'FY Label (bottom)', value: 'आ.व.:' },
-      stampLabel:     { label: 'Stamp Label', value: 'फर्मको छाप:' },
-      applicantLabel: { label: 'Applicant Label', value: 'निवेदकको नाम:' },
-      signLabel:      { label: 'Signature Label', value: 'हस्ताक्षर:' },
-    },
-  },
-  shortlist_notice: {
-    label: 'छनोट सूचना पत्र',
-    fields: {
-      date:          { label: 'मिति (BS Date)', value: '' },
-      ref:           { label: 'संख्या / Ref. No.', value: '' },
-      lrPadding:     { label: 'Left / Right Margin (mm)', value: '20' },
-      toName:        { label: 'To: Name (प्रापक नाम)', value: '' },
-      toShort:       { label: 'To: Short Name', value: '' },
-      toAddress:     { label: 'To: Address (ठेगाना)', value: '' },
-      toTitle:       { label: 'To Title (पद)', value: 'कार्यालय प्रमुख' },
-      subject:       { label: 'Subject (विषय)', value: 'मौजुदा सूचीमा छनोट भएको सूचना।', multiline: true },
-      body:          { label: 'Body', multiline: true,
-        value: 'उपरोक्त सम्बन्धमा यस कार्यालयले सञ्चालन गर्ने कार्यको लागि मौजुदा सूचीमा तपाईंको संस्थालाई छनोट गरिएको व्यहोरा सूचित गरिन्छ।' },
-      closing:       { label: 'Closing', value: 'धन्यवाद।' },
-      signatoryName: { label: 'Signatory Name (हस्ताक्षरकर्ता)', value: '' },
-      signatoryOrg:  { label: 'Signatory Org (संस्थाको नाम)', value: '' },
-    },
-  },
-  cover_letter: {
-    label: 'Cover Letter',
-    fields: {
-      date:          { label: 'मिति (BS Date)', value: '' },
-      ref:           { label: 'संख्या / Ref. No.', value: '' },
-      lrPadding:     { label: 'Left / Right Margin (mm)', value: '20' },
-      toName:        { label: 'To: Name', value: '' },
-      toShort:       { label: 'To: Short Name', value: '' },
-      toAddress:     { label: 'To: Address', value: '' },
-      toTitle:       { label: 'To Title', value: 'कार्यालय प्रमुख' },
-      subject:       { label: 'Subject', value: '', multiline: true },
-      body:          { label: 'Body', multiline: true, value: '' },
-      closing:       { label: 'Closing', value: 'धन्यवाद।' },
-      signatoryName: { label: 'Signatory Name', value: '' },
-      signatoryOrg:  { label: 'Signatory Org', value: '' },
-    },
-  },
-  nea_essd: {
-    label: 'NEA ESSD',
-    fields: {
-      date:            { label: 'मिति (BS Date)', value: '' },
-      ref:             { label: 'संख्या / Ref. No.', value: '' },
-      lrPadding:       { label: 'Left / Right Margin (mm)', value: '20' },
-      neaRef:          { label: 'NEA Ref. No. (NEA को पत्र संख्या)', value: '' },
-      neaDate:         { label: 'NEA Letter Date (NEA को मिति)', value: '' },
-      toTitle:         { label: 'To Title (पद)', value: 'विभागीय प्रमुख' },
-      toName:          { label: 'To: Name (प्रापक नाम)', value: 'नेपाल विद्युत प्राधिकरण, ईन्जिनियरिङ्ग सेवा निर्देशनालय, वातावरण तथा सामाजिक अध्ययन विभाग' },
-      toShort:         { label: 'To: Short Name', value: 'NEA ESSD' },
-      toAddress:       { label: 'To: Address (ठेगाना)', value: 'लाजिम्पाट, काठमाडौ॥' },
-      subject:         { label: 'Subject (विषय)', multiline: true,
-        value: 'NEA ESSD को मौजुदा सूचीमा दर्ता गरी पाऊँ।' },
-      body1:           { label: 'Opening Paragraph', multiline: true,
-        value: 'उपर्युक्त विषयमा, नेपाल विद्युत प्राधिकरण, ईन्जिनियरिङ्ग सेवा निर्देशनालय, वातावरण तथा सामाजिक अध्ययन विभागको मिति ${neaDate} को पत्र संख्या ${neaRef} बमोजिम मौजुदा सूचीमा दर्ता हुनको लागि यो निवेदन पेश गर्दछु।' },
-      body2:           { label: 'Body Paragraph 2', multiline: true,
-        value: 'हाम्रो संस्थाले वातावरण तथा सामाजिक अध्ययन सम्बन्धी प्राविधिक तालिम तथा जनशक्ति विकास कार्यक्रमहरू सञ्चालन गर्दै आएको छ। उक्त सेवा प्रदान गर्न सक्षम भएको हुँदा मौजुदा सूचीमा दर्ता गरी सेवा प्रदान गर्ने अवसर प्रदान गरिदिनु हुन विनम्र अनुरोध गर्दछु।' },
-      tradeTypes:      { label: 'Trade / Service Types', multiline: true,
-        value: 'वातावरण तथा सामाजिक अध्ययन सम्बन्धी प्राविधिक तालिम, जनशक्ति विकास तालिम' },
-      attachments:     { label: 'Attachments / संलग्न कागजातहरू', multiline: true,
-        value: '१. संस्था दर्ता प्रमाणपत्र प्रतिलिपि\n२. नवीकरण प्रमाणपत्र प्रतिलिपि\n३. स्थायी लेखा नम्बर (PAN) प्रमाणपत्र\n४. कर चुक्ता प्रमाणपत्र\n५. CTEVT सम्बन्धन पत्र प्रतिलिपि' },
-      closing:         { label: 'Closing', value: 'धन्यवाद।' },
-      applicantName:   { label: 'Applicant Name (निवेदकको नाम)', value: '' },
-      applicantTitle:  { label: 'Applicant Title (पद)', value: 'कार्यकारी निर्देशक' },
-      signatoryOrg:    { label: 'Organisation Name (संस्थाको नाम)', value: '' },
-    },
-  },
-  nea_ssemd: {
-    label: 'NEA SSEMD',
-    fields: {
-      date:            { label: 'मिति (BS Date)', value: '' },
-      ref:             { label: 'संख्या / Ref. No.', value: '' },
-      lrPadding:       { label: 'Left / Right Margin (mm)', value: '20' },
-      neaRef:          { label: 'NEA Ref. No. (NEA को पत्र संख्या)', value: '' },
-      neaDate:         { label: 'NEA Letter Date (NEA को मिति)', value: '' },
-      toTitle:         { label: 'To Title (पद)', value: 'विभागीय प्रमुख' },
-      toName:          { label: 'To: Name (प्रापक नाम)', value: 'नेपाल विद्युत प्राधिकरण, आयोजना विकास निर्देशनालय, सामाजिक सुरक्षण तथा वातावरण व्यवस्थापन विभाग' },
-      toShort:         { label: 'To: Short Name', value: 'NEA SSEMD' },
-      toAddress:       { label: 'To: Address (ठेगाना)', value: 'मातातीर्थ, काठमाडौ॥' },
-      subject:         { label: 'Subject (विषय)', multiline: true,
-        value: 'NEA SSEMD को मौजुदा सूचीमा दर्ता गरी पाऊँ।' },
-      body1:           { label: 'Opening Paragraph', multiline: true,
-        value: 'उपर्युक्त विषयमा, नेपाल विद्युत प्राधिकरण, आयोजना विकास निर्देशनालय, सामाजिक सुरक्षण तथा वातावरण व्यवस्थापन विभागको मिति ${neaDate} को पत्र संख्या ${neaRef} बमोजिम मौजुदा सूचीमा दर्ता हुनको लागि यो निवेदन पेश गर्दछु।' },
-      body2:           { label: 'Body Paragraph 2', multiline: true,
-        value: 'हाम्रो संस्थाले सामाजिक सुरक्षण तथा वातावरण व्यवस्थापन सम्बन्धी प्राविधिक तालिम तथा जनशक्ति विकास कार्यक्रमहरू सञ्चालन गर्दै आएको छ। उक्त सेवा प्रदान गर्न सक्षम भएको हुँदा मौजुदा सूचीमा दर्ता गरी सेवा प्रदान गर्ने अवसर प्रदान गरिदिनु हुन विनम्र अनुरोध गर्दछु।' },
-      tradeTypes:      { label: 'Trade / Service Types', multiline: true,
-        value: 'सामाजिक सुरक्षण तथा वातावरण व्यवस्थापन सम्बन्धी प्राविधिक तालिम, जनशक्ति विकास तालिम' },
-      attachments:     { label: 'Attachments / संलग्न कागजातहरू', multiline: true,
-        value: '१. संस्था दर्ता प्रमाणपत्र प्रतिलिपि\n२. नवीकरण प्रमाणपत्र प्रतिलिपि\n३. स्थायी लेखा नम्बर (PAN) प्रमाणपत्र\n४. कर चुक्ता प्रमाणपत्र\n५. CTEVT सम्बन्धन पत्र प्रतिलिपि' },
-      closing:         { label: 'Closing', value: 'धन्यवाद।' },
-      applicantName:   { label: 'Applicant Name (निवेदकको नाम)', value: '' },
-      applicantTitle:  { label: 'Applicant Title (पद)', value: 'कार्यकारी निर्देशक' },
-      signatoryOrg:    { label: 'Organisation Name (संस्थाको नाम)', value: '' },
-    },
-  },
-  nea_shortlisting: {
-    label: 'NEA Shortlisting',
-    fields: {
-      date:            { label: 'मिति (BS Date)', value: '' },
-      ref:             { label: 'संख्या / Ref. No.', value: '' },
-      lrPadding:       { label: 'Left / Right Margin (mm)', value: '20' },
-      neaRef:          { label: 'NEA Ref. No. (NEA को पत्र संख्या)', value: '' },
-      neaDate:         { label: 'NEA Letter Date (NEA को मिति)', value: '' },
-      toTitle:         { label: 'To Title (पद)', value: 'महाप्रबन्धक' },
-      toName:          { label: 'To: Name (प्रापक नाम)', value: 'नेपाल विद्युत प्राधिकरण' },
-      toShort:         { label: 'To: Short Name', value: 'NEA' },
-      toAddress:       { label: 'To: Address (ठेगाना)', value: 'काठमाडौँ' },
-      subject:         { label: 'Subject (विषय)', multiline: true,
-        value: 'NEA को मौजुदा सूचीमा दर्ता गरी पाऊँ।' },
-      body1:           { label: 'Opening Paragraph', multiline: true,
-        value: 'उपर्युक्त विषयमा, नेपाल विद्युत प्राधिकरणको मिति ${neaDate} को पत्र संख्या ${neaRef} बमोजिम मौजुदा सूचीमा दर्ता हुनको लागि यो निवेदन पेश गर्दछु।' },
-      body2:           { label: 'Body Paragraph 2', multiline: true,
-        value: 'हाम्रो संस्थाले विद्युत सम्बन्धी प्राविधिक तालिम तथा जनशक्ति विकास कार्यक्रमहरू सञ्चालन गर्दै आएको छ। उक्त सेवा प्रदान गर्न सक्षम भएको हुँदा मौजुदा सूचीमा दर्ता गरी सेवा प्रदान गर्ने अवसर प्रदान गरिदिनु हुन विनम्र अनुरोध गर्दछु।' },
-      tradeTypes:      { label: 'Trade / Service Types (व्यापार/सेवा प्रकार)', multiline: true,
-        value: 'विद्युत सम्बन्धी प्राविधिक तालिम, जनशक्ति विकास तालिम' },
-      attachments:     { label: 'Attachments / संलग्न कागजातहरू', multiline: true,
-        value: '१. संस्था दर्ता प्रमाणपत्र प्रतिलिपि\n२. नवीकरण प्रमाणपत्र प्रतिलिपि\n३. स्थायी लेखा नम्बर (PAN) प्रमाणपत्र\n४. कर चुक्ता प्रमाणपत्र\n५. CTEVT सम्बन्धन पत्र प्रतिलिपि' },
-      closing:         { label: 'Closing', value: 'धन्यवाद।' },
-      applicantName:   { label: 'Applicant Name (निवेदकको नाम)', value: '' },
-      applicantTitle:  { label: 'Applicant Title (पद)', value: 'कार्यकारी निर्देशक' },
-      signatoryOrg:    { label: 'Organisation Name (संस्थाको नाम)', value: '' },
-    },
+// ─── Letter template ──────────────────────────────────────────────────────────
+// `date` is filled at runtime; firm/client fields are patched from the row.
+const TEMPLATE = {
+  label: 'मौजुदा सूची दर्ता पत्र',
+  fields: {
+    date:          { label: 'मिति (BS Date)', value: '' },
+    ref:           { label: 'संख्या / Ref. No.', value: '' },
+    lrPadding:     { label: 'Left / Right Margin (mm)', value: '20' },
+    toName:        { label: 'To: Name (प्रापक नाम)', value: '' },
+    toShort:       { label: 'To: Short Name', value: '' },
+    toAddress:     { label: 'To: Address (ठेगाना)', value: '' },
+    toTitle:       { label: 'To Title (पद)', value: 'कार्यालय प्रमुख' },
+    subject:       { label: 'Subject (विषय)', value: 'मौजुदा सूचीमा दर्ता गरी पाऊँ।', multiline: true },
+    body:          { label: 'Body Paragraph', multiline: true,
+      value: 'सार्वजनिक खरिद नियमावली, २०६४ को नियम १८ को उपनियम (१) बमोजिम तपशिलमा उल्लेखित विवरण अनुसारको पृष्ठाई गर्ने कागजात संलग्न गरी मौजुदा सूचीमा दर्ता हुन यो निवेदन पेश गरेको छु।' },
+    tapasil:       { label: 'तपशिल Label', value: 'तपशिल:' },
+    serviceType:   { label: 'Service Type (सेवा प्रकार)', value: 'सीपमूलक तथा व्यावसायिक तालिम कार्यक्रमहरु सञ्चालन', multiline: true },
+    firmNameNp:    { label: 'Firm Name (Nepali)', value: '' },
+    firmAcronym:   { label: 'Firm Acronym', value: '' },
+    firmAddressNp: { label: 'Firm Address (Nepali)', value: '' },
+    firmContact:   { label: 'Contact Person (Nepali)', value: '' },
+    firmPhone:     { label: 'Phone / टेलिफोन', value: '' },
+    mobileNo:      { label: 'Mobile No. (मोबाईल)', value: '' },
+    fy:            { label: 'आ.व. (Fiscal Year)', value: '' },
+    applicantName: { label: 'Applicant Name (निवेदकको नाम)', value: '' },
+    // Table section headers
+    sec1Header:    { label: 'Section १ Header', multiline: true,
+      value: 'मौजुदा सूचीको लागि निवेदन दिने व्यक्ति, संस्था, आपूर्तिकर्ता, निर्माण व्यवसायी, परामर्शदाता वा सेवा प्रदायकको विवरण:' },
+    sec2Header:    { label: 'Section २ Header', multiline: true,
+      value: 'मौजुदा सूचीमा दर्ता हुनको लागि निम्न बमोजिमको प्रमाणपत्र संलग्न गर्नुहोला।' },
+    sec2Items:     { label: 'Section २ Checklist (one per line)', multiline: true,
+      value: '(क) संस्था वा फर्म दर्ताको प्रमाणपत्र  छ ☑  छैन □\n(ख) नविकरण गरिएको  छ ☑  छैन □\n(ग) मूल्य अभिवृद्धि कर वा स्थायी लेखा नम्बर दर्ताको प्रमाणपत्र  छ ☑  छैन □\n(घ) कर चुक्ताको प्रमाणपत्र  छ ☑  छैन □\n(ड) कुन खरिदको लागि मौजुदार सूचीमा दर्ता हुन निवेदन दिने हो, सो कामको लागि इजाजत पत्र आवश्यक पत्ने भएमा सो को प्रतिलिपि  छ ☑  छैन □' },
+    sec3Header:    { label: 'Section ३ Header', multiline: true,
+      value: 'सार्वजनिक निकायबाट हुने खरिदको लागि दर्ता हुन चाहेको खरिदको प्रकृतिको विवरण:' },
+    // Section 3 sub-labels and values
+    supplyLabel:       { label: '(क) Supply Label', value: '(क) मालसामान आपूर्ति:' },
+    supplyValue:       { label: '(क) Supply Value', value: '', multiline: true },
+    constructionLabel: { label: '(ख) Construction Label', value: '(ख) निर्माण कार्य' },
+    constructionValue: { label: '(ख) Construction Value', value: '', multiline: true },
+    consultingLabel:   { label: '(ग) Consulting Label', value: '(ग) परामर्श सेवा:' },
+    otherServiceLabel: { label: '(घ) Other Service Label', value: '(घ) अन्य सेवा:' },
+    otherServiceValue: { label: '(घ) Other Service Value', value: '', multiline: true },
+    // Bottom row labels
+    dateLabel:      { label: 'Date Label (bottom)', value: 'निवेदन दिएको मिति:' },
+    fyLabel:        { label: 'FY Label (bottom)', value: 'आ.व.:' },
+    stampLabel:     { label: 'Stamp Label', value: 'फर्मको छाप:' },
+    applicantLabel: { label: 'Applicant Label', value: 'निवेदकको नाम:' },
+    signLabel:      { label: 'Signature Label', value: 'हस्ताक्षर:' },
   },
 };
 
-// ─── HTML builders ────────────────────────────────────────────────────────────
-function buildRegistrationHtml({ fields, row, imgs, topMm, bottomMm, lrMm, inclSign, inclStamp, todayBSStr }) {
+// Order the fields appear in the editor panel
+const FIELD_ORDER = [
+  'date','ref','lrPadding','toTitle','toName','toShort','toAddress','subject','body','tapasil',
+  'firmNameNp','firmAcronym','firmAddressNp','firmContact','firmPhone','mobileNo','fy','applicantName',
+  'sec1Header','sec2Header','sec2Items','sec3Header',
+  'supplyLabel','supplyValue','constructionLabel','constructionValue',
+  'consultingLabel','serviceType','otherServiceLabel','otherServiceValue',
+  'dateLabel','fyLabel','stampLabel','applicantLabel','signLabel',
+];
+
+// ─── HTML builder ─────────────────────────────────────────────────────────────
+function buildLetterHtml({ fields, row, imgs, topMm, bottomMm, lrMm, inclSign, inclStamp, todayBSStr }) {
   const { firmLogo, firmLetterhead, firmSign, firmStamp,
           firmRegNo, firmPan, firmMeta, firmName } = imgs;
   const useLhBg = !!firmLetterhead;
@@ -259,8 +145,8 @@ function buildRegistrationHtml({ fields, row, imgs, topMm, bottomMm, lrMm, inclS
   const toName        = fields.toName        || row.toName        || '';
   const toShort       = fields.toShort       || row.toShort       || '';
   const toAddress     = fields.toAddress     || row.toAddress     || '';
-  const firmNameNp    = fields.firmNameNp    || imgs.firmNameNp   || firmName || '';
-  const firmAcronym   = fields.firmAcronym   || imgs.firmAcronym  || '';
+  const firmNameNp    = fields.firmNameNp    || imgs.firmNameNp    || firmName || '';
+  const firmAcronym   = fields.firmAcronym   || imgs.firmAcronym   || '';
   const firmAddressNp = fields.firmAddressNp || imgs.firmAddressNp || '';
   const firmContact   = fields.firmContact   || imgs.firmContactNp || '';
   const firmPhone     = fields.firmPhone     || row.firmPhone     || '';
@@ -268,22 +154,22 @@ function buildRegistrationHtml({ fields, row, imgs, topMm, bottomMm, lrMm, inclS
   const fy            = fields.fy            || row.fyNp          || '';
   const applicantName = fields.applicantName || firmContact       || '';
   // table texts
-  const sec1Header   = fields.sec1Header   || '१. मौजुदा सूचीको लागि निवेदन दिने व्यक्ति, संस्था, आपूर्तिकर्ता, निर्माण व्यवसायी, परामर्शदाता वा सेवा प्रदायकको विवरण:';
-  const sec2Header   = fields.sec2Header   || '२. मौजुदा सूचीमा दर्ता हुनको लागि निम्न बमोजिमको प्रमाणपत्र संलग्न गर्नुहोला।';
-  const sec2Items    = (fields.sec2Items   || '').split('\n').filter(Boolean);
-  const sec3Header   = fields.sec3Header   || '३. सार्वजनिक निकायबाट हुने खरिदको लागि दर्ता हुन चाहेको खरिदको प्रकृतिको विवरण:';
-  const supplyLabel       = fields.supplyLabel       || '(क) मालसामान आपूर्ति:';
+  const sec1Header = fields.sec1Header || '';
+  const sec2Header = fields.sec2Header || '';
+  const sec2Items  = (fields.sec2Items || '').split('\n').filter(Boolean);
+  const sec3Header = fields.sec3Header || '';
+  const supplyLabel       = fields.supplyLabel       || '';
   const supplyValue       = fields.supplyValue       || '';
-  const constructionLabel = fields.constructionLabel || '(ख) निर्माण कार्य';
+  const constructionLabel = fields.constructionLabel || '';
   const constructionValue = fields.constructionValue || '';
-  const consultingLabel   = fields.consultingLabel   || '(ग) परामर्श सेवा:';
-  const otherServiceLabel = fields.otherServiceLabel || '(घ) अन्य सेवा:';
+  const consultingLabel   = fields.consultingLabel   || '';
+  const otherServiceLabel = fields.otherServiceLabel || '';
   const otherServiceValue = fields.otherServiceValue || '';
-  const dateLabel      = fields.dateLabel      || 'निवेदन दिएको मिति:';
-  const fyLabel        = fields.fyLabel        || 'आ.व.:';
-  const stampLabel     = fields.stampLabel     || 'फर्मको छाप:';
-  const applicantLabel = fields.applicantLabel || 'निवेदकको नाम:';
-  const signLabel      = fields.signLabel      || 'हस्ताक्षर:';
+  const dateLabel      = fields.dateLabel      || '';
+  const fyLabel        = fields.fyLabel        || '';
+  const stampLabel     = fields.stampLabel     || '';
+  const applicantLabel = fields.applicantLabel || '';
+  const signLabel      = fields.signLabel      || '';
 
   return `<!DOCTYPE html><html lang="ne"><head><meta charset="UTF-8">
 <style>
@@ -349,7 +235,7 @@ function buildRegistrationHtml({ fields, row, imgs, topMm, bottomMm, lrMm, inclS
     </tr>
     <tr><td colspan="2" class="hdr">२. ${sec2Header}</td></tr>
     <tr><td colspan="2" style="padding:6px 10px;line-height:1.95;">
-      ${sec2Items.length ? sec2Items.join('<br>') : ''}
+      ${sec2Items.join('<br>')}
     </td></tr>
     <tr><td colspan="2" class="hdr">३. ${sec3Header}</td></tr>
     <tr><td colspan="2" style="padding:0;">
@@ -393,187 +279,14 @@ function buildRegistrationHtml({ fields, row, imgs, topMm, bottomMm, lrMm, inclS
 </body></html>`;
 }
 
-function buildGenericHtml({ fields, row, imgs, topMm, bottomMm, lrMm, inclSign, inclStamp, todayBSStr }) {
-  const { firmLogo, firmLetterhead, firmSign, firmStamp,
-          firmRegNo, firmPan, firmMeta, firmName, firmNameNp, firmAcronym } = imgs;
-  const useLhBg = !!firmLetterhead;
-
-  const date          = fields.date          || todayBSStr;
-  const ref           = fields.ref           || '';
-  const toName        = fields.toName        || row.toName   || '';
-  const toShort       = fields.toShort       || row.toShort  || '';
-  const toAddress     = fields.toAddress     || row.toAddress || '';
-  const signatoryName = fields.signatoryName || imgs.firmContactNp || '';
-  const signatoryOrg  = fields.signatoryOrg  || firmNameNp   || firmName || '';
-  const sigAcronym    = firmAcronym || '';
-
-  return `<!DOCTYPE html><html lang="ne"><head><meta charset="UTF-8">
-<style>
-  * { margin:0; padding:0; box-sizing:border-box; }
-  body { background:#fff; }
-  .page { width:794px; height:1123px; background:#fff ${useLhBg ? `url("${firmLetterhead}") no-repeat 0 0 / 794px 1123px` : ''}; position:relative; padding:0; overflow:hidden; font-family:'Kalimati','Noto Sans Devanagari','Arial Unicode MS',sans-serif; font-size:13px; }
-  .page-inner { position:relative;z-index:1;padding:${topMm}mm ${lrMm}mm ${bottomMm}mm ${lrMm}mm; }
-  .lh-regpan { display:flex;justify-content:space-between;font-size:9pt;font-style:italic;color:#7b1a1a;margin-bottom:5px; }
-  .lh-center { text-align:center; }
-  .lh-logo { max-height:75px;max-width:75px;object-fit:contain;margin-bottom:3px;mix-blend-mode:multiply; }
-  .lh-name { font-size:15pt;font-weight:700;color:#7b1a1a;line-height:1.3; }
-  .lh-meta { font-size:9pt;color:#444;margin-top:4px;line-height:1.6; }
-  .lh-border { border-bottom:3px double #7b1a1a;margin:7px 0 5mm; }
-  .ref-row { display:flex;justify-content:space-between;align-items:baseline;margin-bottom:14px;font-size:11pt; }
-  .to-block { margin-bottom:14px;font-size:10.5pt;line-height:1.75; }
-  .subject { text-align:center;font-size:11pt;font-weight:700;text-decoration:underline;text-underline-offset:3px;margin-bottom:14px; }
-  .body-txt { font-size:10.5pt;text-align:justify;line-height:1.8;margin-bottom:14px; }
-  .closing { font-size:10.5pt;margin-top:24px; }
-  .sign-block { margin-top:48px;font-size:10.5pt;line-height:2; }
-</style></head><body>
-<div class="page">
-  <div class="page-inner">
-  ${!useLhBg ? `
-  ${firmRegNo || firmPan ? `<div class="lh-regpan"><span>${firmRegNo ? 'Govt. Regd.No. '+firmRegNo : ''}</span><span>${firmPan ? 'PAN No. '+firmPan : ''}</span></div>` : ''}
-  <div class="lh-center">
-    ${firmLogo ? `<img src="${firmLogo}" class="lh-logo" alt="">` : ''}
-    <div class="lh-name">${firmNameNp || firmName}${sigAcronym && sigAcronym !== (firmNameNp||firmName) ? ` (${sigAcronym})` : ''}</div>
-    ${firmMeta ? `<div class="lh-meta">${firmMeta}</div>` : ''}
-  </div>
-  <div class="lh-border"></div>` : ''}
-
-  <div class="ref-row">
-    ${ref ? `<span>संख्या: ${ref}</span>` : '<span></span>'}
-    <span>मिति: ${date}</span>
-  </div>
-  <div class="to-block">
-    <div>श्री ${fields.toTitle} ज्यू,</div>
-    <div>${toName}${toShort && toShort !== toName ? `, (${toShort})` : ','}</div>
-    ${toAddress ? `<div>${toAddress}</div>` : ''}
-  </div>
-  <div class="subject">विषय: ${fields.subject}</div>
-  <div class="body-txt">${(fields.body || '').replace(/\n/g, '<br>')}</div>
-  ${fields.closing ? `<div class="closing">${fields.closing}</div>` : ''}
-  <div class="sign-block">
-    ${inclStamp && firmStamp ? `<img src="${firmStamp}" style="width:28mm;height:28mm;object-fit:contain;background:#fff;display:inline-block;margin-right:12mm;">` : ''}
-    ${inclSign && firmSign ? `<img src="${firmSign}" style="height:22mm;width:auto;background:#fff;display:inline-block;vertical-align:bottom;">` : ''}
-    <div>${signatoryName}</div>
-    <div>${signatoryOrg}${sigAcronym && sigAcronym !== signatoryOrg ? ` (${sigAcronym})` : ''}</div>
-  </div>
-  </div>
-</div>
-</body></html>`;
-}
-
-function buildNeaShortlistingHtml({ fields, row, imgs, topMm, bottomMm, lrMm, inclSign, inclStamp, todayBSStr }) {
-  const { firmLogo, firmLetterhead, firmSign, firmStamp,
-          firmRegNo, firmPan, firmMeta, firmName, firmNameNp, firmAcronym } = imgs;
-  const useLhBg = !!firmLetterhead;
-
-  const date           = fields.date           || todayBSStr;
-  const ref            = fields.ref            || '';
-  const neaRef         = fields.neaRef         || '';
-  const neaDate        = fields.neaDate        || '';
-  const toName         = fields.toName         || row.toName    || 'नेपाल विद्युत प्राधिकरण';
-  const toShort        = fields.toShort        || row.toShort   || 'NEA';
-  const toAddress      = fields.toAddress      || row.toAddress || 'काठमाडौँ';
-  const applicantName  = fields.applicantName  || imgs.firmContactNp || '';
-  const applicantTitle = fields.applicantTitle || 'कार्यकारी निर्देशक';
-  const signatoryOrg   = fields.signatoryOrg   || firmNameNp    || firmName || '';
-  const sigAcronym     = firmAcronym || '';
-
-  const body1 = (fields.body1 || '')
-    .replace(/\${neaDate}/g, neaDate || '............')
-    .replace(/\${neaRef}/g,  neaRef  || '............');
-  const body2       = fields.body2       || '';
-  const tradeTypes  = fields.tradeTypes  || '';
-  const attachments = (fields.attachments || '').split('\n').filter(Boolean);
-
-  return `<!DOCTYPE html><html lang="ne"><head><meta charset="UTF-8">
-<style>
-  * { margin:0; padding:0; box-sizing:border-box; }
-  body { background:#fff; }
-  .page { width:794px; height:1123px; background:#fff ${useLhBg ? `url("${firmLetterhead}") no-repeat 0 0 / 794px 1123px` : ''}; position:relative; padding:0; overflow:hidden; font-family:'Kalimati','Noto Sans Devanagari','Arial Unicode MS',sans-serif; font-size:13px; }
-  .page-inner { position:relative;z-index:1;padding:${topMm}mm ${lrMm}mm ${bottomMm}mm ${lrMm}mm; }
-  .lh-regpan { display:flex;justify-content:space-between;font-size:9pt;font-style:italic;color:#7b1a1a;margin-bottom:5px; }
-  .lh-center { text-align:center; }
-  .lh-logo { max-height:75px;max-width:75px;object-fit:contain;margin-bottom:3px;mix-blend-mode:multiply; }
-  .lh-name { font-size:15pt;font-weight:700;color:#7b1a1a;line-height:1.3; }
-  .lh-meta { font-size:9pt;color:#444;margin-top:4px;line-height:1.6; }
-  .lh-border { border-bottom:3px double #7b1a1a;margin:7px 0 5mm; }
-  .ref-row { display:flex;justify-content:space-between;align-items:baseline;margin-bottom:12px;font-size:11pt; }
-  .to-block { margin-bottom:12px;font-size:10.5pt;line-height:1.75; }
-  .subject { text-align:center;font-size:11pt;font-weight:700;text-decoration:underline;text-underline-offset:3px;margin-bottom:12px; }
-  .body-txt { font-size:10.5pt;text-align:justify;line-height:1.8;margin-bottom:10px; }
-  .section-label { font-weight:700;font-size:10.5pt;margin:10px 0 4px; }
-  .trade-box { border:1px solid #888;padding:7px 10px;font-size:10pt;line-height:1.8;margin-bottom:10px;border-radius:2px; }
-  .attach-list { font-size:10pt;line-height:2;margin-left:4px; }
-  .closing { font-size:10.5pt;margin-top:18px; }
-  .sign-block { margin-top:40px;font-size:10.5pt;line-height:1.9; }
-</style></head><body>
-<div class="page">
-  <div class="page-inner">
-  ${!useLhBg ? `
-  ${firmRegNo || firmPan ? `<div class="lh-regpan"><span>${firmRegNo ? 'Govt. Regd.No. '+firmRegNo : ''}</span><span>${firmPan ? 'PAN No. '+firmPan : ''}</span></div>` : ''}
-  <div class="lh-center">
-    ${firmLogo ? `<img src="${firmLogo}" class="lh-logo" alt="">` : ''}
-    <div class="lh-name">${firmNameNp || firmName}${sigAcronym && sigAcronym !== (firmNameNp||firmName) ? ` (${sigAcronym})` : ''}</div>
-    ${firmMeta ? `<div class="lh-meta">${firmMeta}</div>` : ''}
-  </div>
-  <div class="lh-border"></div>` : ''}
-
-  <div class="ref-row">
-    ${ref ? `<span>संख्या: ${ref}</span>` : '<span></span>'}
-    <span>मिति: ${date}</span>
-  </div>
-
-  <div class="to-block">
-    <div>श्री ${fields.toTitle} ज्यू,</div>
-    <div>${toName}${toShort && toShort !== toName ? ` (${toShort})` : ','}</div>
-    ${toAddress ? `<div>${toAddress}</div>` : ''}
-  </div>
-
-  <div class="subject">विषय: ${fields.subject}</div>
-
-  ${body1 ? `<div class="body-txt">${body1.replace(/\n/g,'<br>')}</div>` : ''}
-  ${body2 ? `<div class="body-txt">${body2.replace(/\n/g,'<br>')}</div>` : ''}
-
-  ${tradeTypes ? `
-  <div class="section-label">सूचिकृत हुन चाहेको समूह:</div>
-  <div class="trade-box">${tradeTypes.replace(/\n/g,'<br>')}</div>` : ''}
-
-  ${attachments.length ? `
-  <div class="section-label">संलग्न कागजातहरू:</div>
-  <div class="attach-list">${attachments.map(a => `<div>${a}</div>`).join('')}</div>` : ''}
-
-  ${fields.closing ? `<div class="closing">${fields.closing}</div>` : ''}
-
-  <div class="sign-block">
-    ${inclStamp && firmStamp ? `<img src="${firmStamp}" style="width:28mm;height:28mm;object-fit:contain;mix-blend-mode:multiply;display:inline-block;margin-right:12mm;vertical-align:bottom;">` : ''}
-    ${inclSign  && firmSign  ? `<img src="${firmSign}"  style="height:22mm;width:auto;mix-blend-mode:multiply;display:inline-block;vertical-align:bottom;">` : ''}
-    <div>${applicantName}</div>
-    <div>${applicantTitle}</div>
-    <div>${signatoryOrg}${sigAcronym && sigAcronym !== signatoryOrg ? ` (${sigAcronym})` : ''}</div>
-  </div>
-  </div>
-</div>
-</body></html>`;
-}
-
-const BUILDERS = {
-  registration:     buildRegistrationHtml,
-  shortlist_notice: buildGenericHtml,
-  cover_letter:     buildGenericHtml,
-  nea_essd:         buildNeaShortlistingHtml,
-  nea_ssemd:        buildNeaShortlistingHtml,
-  nea_shortlisting: buildNeaShortlistingHtml,
-};
-
 // ─── Main component ───────────────────────────────────────────────────────────
-export default function LetterBuilder({ row: initialRow, token, onClose, allRows }) {
+export default function LetterBuilder({ row: initialRow, onClose, allRows }) {
   const [selectedRowId, setSelectedRowId] = useState(initialRow?.id ?? null);
   const row = (allRows && selectedRowId)
     ? (allRows.find(r => r.id === selectedRowId) || initialRow)
     : initialRow;
-  const [templateKey, setTemplateKey] = useState('registration');
   const [fields, setFields] = useState(() => {
-    const tpl = TEMPLATES.registration;
-    const f = Object.fromEntries(Object.entries(tpl.fields).map(([k, v]) => [k, v.value]));
+    const f = Object.fromEntries(Object.entries(TEMPLATE.fields).map(([k, v]) => [k, v.value]));
     f.date = todayBS();
     return f;
   });
@@ -594,23 +307,21 @@ export default function LetterBuilder({ row: initialRow, token, onClose, allRows
       ...f,
       date:          f.date || todayBS(),
       lrPadding:     String(row?.institute_letter_lr_padding ?? 20),
-      toName:        row?.client_name        || row?.client_name_manual || f.toName   || '',
-      toShort:       row?.client_short       || f.toShort  || '',
-      toAddress:     row?.client_address     || f.toAddress || '',
+      toName:        row?.client_name || row?.client_name_manual || f.toName || '',
+      toShort:       row?.client_short   || f.toShort   || '',
+      toAddress:     row?.client_address || f.toAddress || '',
       toTitle:       row?.client_signatory_position || f.toTitle || 'कार्यालय प्रमुख',
       serviceType:   row?.institute_service_type    || f.serviceType || '',
-      firmNameNp:    row?.institute_name_np  || row?.institute_name  || f.firmNameNp  || '',
-      firmAcronym:   row?.institute_acronym  || f.firmAcronym  || '',
+      firmNameNp:    row?.institute_name_np    || row?.institute_name    || f.firmNameNp    || '',
+      firmAcronym:   row?.institute_acronym    || f.firmAcronym  || '',
       firmAddressNp: row?.institute_address_np || row?.institute_address || f.firmAddressNp || '',
-      firmContact:   row?.institute_contact_np || row?.institute_contact || f.firmContact || '',
-      firmPhone:     row?.institute_phone    || f.firmPhone || '',
-      fy:            row?.fy                 ? toNpNum(row.fy) : f.fy || '',
+      firmContact:   row?.institute_contact_np || row?.institute_contact || f.firmContact   || '',
+      firmPhone:     row?.institute_phone      || f.firmPhone || '',
+      fy:            row?.fy ? toNpNum(row.fy) : f.fy || '',
       applicantName: row?.institute_contact_np || row?.institute_contact || f.applicantName || '',
-      signatoryName: row?.institute_contact_np || row?.institute_contact || f.signatoryName || '',
-      signatoryOrg:  row?.institute_name_np  || row?.institute_name  || f.signatoryOrg || '',
-      // initialise table text fields from TEMPLATES defaults if not yet set
+      // fall back to template defaults for any label field not yet set
       ...Object.fromEntries(
-        Object.entries(TEMPLATES.registration.fields)
+        Object.entries(TEMPLATE.fields)
           .filter(([k, v]) => v.value && !f[k])
           .map(([k, v]) => [k, v.value])
       ),
@@ -630,13 +341,13 @@ export default function LetterBuilder({ row: initialRow, token, onClose, allRows
       ]);
       if (cancelled) return;
       const firmName    = row?.institute_name    || '';
-      const firmAcronym = row?.institute_acronym || '';
       const firmAddress = row?.institute_address || '';
       const firmPhone   = row?.institute_phone   || '';
       const firmEmail   = row?.institute_email   || '';
       const firmWebsite = row?.institute_website || '';
-      const imgData = {
-        firmName, firmAcronym,
+      setImgs({
+        firmName,
+        firmAcronym:   row?.institute_acronym    || '',
         firmNameNp:    row?.institute_name_np    || firmName,
         firmAddressNp: row?.institute_address_np || firmAddress,
         firmContactNp: row?.institute_contact_np || row?.institute_contact || '',
@@ -645,8 +356,7 @@ export default function LetterBuilder({ row: initialRow, token, onClose, allRows
         firmPan:   row?.institute_pan   || '',
         firmPhone,
         firmLogo: logo, firmLetterhead: lh, firmSign: sign, firmStamp: stamp,
-      };
-      setImgs(imgData);
+      });
       const m = await detectLetterheadMargins(lh);
       if (!cancelled) { setMargins(m); setLoading(false); }
     })();
@@ -656,47 +366,37 @@ export default function LetterBuilder({ row: initialRow, token, onClose, allRows
   const buildHtml = useCallback(() => {
     if (!imgs) return '';
     const lrMm     = parseFloat(fields.lrPadding) || row?.institute_letter_lr_padding || 20;
-    const cfgTop   = row?.institute_letter_top_margin    ?? 15;
+    const cfgTop   = row?.institute_letter_top_margin     ?? 15;
     const cfgBot   = row?.institute_letter_bottom_padding ?? 15;
     const topMm    = margins.top    && margins.top    > cfgTop ? margins.top    : cfgTop;
     const bottomMm = margins.bottom && margins.bottom > cfgBot ? margins.bottom : cfgBot;
-    const todayBSStr = todayBS();
-    // pass raw row data as fallback; fields take priority (see builders)
+    // row data is only a fallback — the editable fields take priority
     const rowData = {
-      toName:   row?.client_name || row?.client_name_manual || '',
-      toShort:  row?.client_short || '',
-      toAddress:row?.client_address || '',
-      firmPhone:row?.institute_phone || '',
-      fyNp:     row?.fy ? toNpNum(row.fy) : '',
+      toName:    row?.client_name || row?.client_name_manual || '',
+      toShort:   row?.client_short   || '',
+      toAddress: row?.client_address || '',
+      firmPhone: row?.institute_phone || '',
+      fyNp:      row?.fy ? toNpNum(row.fy) : '',
     };
-    const builder = BUILDERS[templateKey] || buildGenericHtml;
-    return builder({ fields, row: rowData, imgs, topMm, bottomMm, lrMm, inclSign, inclStamp, todayBSStr });
-  }, [fields, imgs, margins, templateKey, inclSign, inclStamp, row]);
+    return buildLetterHtml({
+      fields, row: rowData, imgs, topMm, bottomMm, lrMm,
+      inclSign, inclStamp, todayBSStr: todayBS(),
+    });
+  }, [fields, imgs, margins, inclSign, inclStamp, row]);
 
   // Rebuild preview whenever inputs change
   useEffect(() => {
     if (!loading) setPreviewHtml(buildHtml());
   }, [loading, buildHtml]);
 
-  const handleTemplateChange = (key) => {
-    setTemplateKey(key);
-    const tpl = TEMPLATES[key];
-    const next = Object.fromEntries(Object.entries(tpl.fields).map(([k, v]) => [k, v.value]));
-    // carry over all current field values that exist in new template
-    Object.keys(next).forEach(k => { if (fields[k] !== undefined && fields[k] !== '') next[k] = fields[k]; });
-    if (!next.date) next.date = todayBS();
-    setFields(next);
-  };
-
   const generatePdf = async () => {
     setGenerating(true);
     try {
-      const html = buildHtml();
       const A4_W = 794, A4_H = 1123;
       const iframe = document.createElement('iframe');
       iframe.style.cssText = `position:fixed;left:-9999px;top:0;width:${A4_W}px;height:${A4_H}px;border:none;visibility:hidden;`;
       document.body.appendChild(iframe);
-      await new Promise(r => { iframe.onload = r; iframe.srcdoc = html; });
+      await new Promise(r => { iframe.onload = r; iframe.srcdoc = buildHtml(); });
       const iDoc = iframe.contentDocument;
       await Promise.all([...iDoc.querySelectorAll('img')].map(img =>
         img.complete ? Promise.resolve() : new Promise(r => { img.onload = r; img.onerror = r; })
@@ -706,39 +406,28 @@ export default function LetterBuilder({ row: initialRow, token, onClose, allRows
       const pdf = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait' });
       const pages = iDoc.querySelectorAll('.page');
       for (let i = 0; i < pages.length; i++) {
-        const canvas = await html2canvas(pages[i], { scale: 2, useCORS: true, allowTaint: true, backgroundColor: '#fff', width: A4_W, height: A4_H, windowWidth: A4_W, windowHeight: A4_H });
+        const canvas = await html2canvas(pages[i], {
+          scale: 2, useCORS: true, allowTaint: true, backgroundColor: '#fff',
+          width: A4_W, height: A4_H, windowWidth: A4_W, windowHeight: A4_H,
+        });
         if (i > 0) pdf.addPage();
         pdf.addImage(canvas.toDataURL('image/jpeg', 0.95), 'JPEG', 0, 0, 210, 297);
       }
       document.body.removeChild(iframe);
-      pdf.save('letter.pdf');
+      pdf.save('shortlist-letter.pdf');
     } finally { setGenerating(false); }
   };
 
-  const tplDef = TEMPLATES[templateKey];
-
-  // Field ordering: group logically for the editor panel
-  const FIELD_ORDER = {
-    registration:    ['date','ref','lrPadding','toTitle','toName','toShort','toAddress','subject','body','tapasil',
-      'firmNameNp','firmAcronym','firmAddressNp','firmContact','firmPhone','mobileNo','fy','applicantName',
-      'sec1Header','sec2Header','sec2Items','sec3Header',
-      'supplyLabel','supplyValue','constructionLabel','constructionValue',
-      'consultingLabel','serviceType','otherServiceLabel','otherServiceValue',
-      'dateLabel','fyLabel','stampLabel','applicantLabel','signLabel'],
-    shortlist_notice: ['date','ref','lrPadding','toTitle','toName','toShort','toAddress','subject','body','closing','signatoryName','signatoryOrg'],
-    cover_letter:     ['date','ref','lrPadding','toTitle','toName','toShort','toAddress','subject','body','closing','signatoryName','signatoryOrg'],
-    nea_essd:         ['date','ref','lrPadding','neaRef','neaDate','toTitle','toName','toShort','toAddress','subject','body1','body2','tradeTypes','attachments','closing','applicantName','applicantTitle','signatoryOrg'],
-    nea_ssemd:        ['date','ref','lrPadding','neaRef','neaDate','toTitle','toName','toShort','toAddress','subject','body1','body2','tradeTypes','attachments','closing','applicantName','applicantTitle','signatoryOrg'],
-    nea_shortlisting: ['date','ref','lrPadding','neaRef','neaDate','toTitle','toName','toShort','toAddress','subject','body1','body2','tradeTypes','attachments','closing','applicantName','applicantTitle','signatoryOrg'],
-  };
-  const orderedFields = (FIELD_ORDER[templateKey] || Object.keys(tplDef.fields))
-    .filter(k => tplDef.fields[k]);
+  const orderedFields = FIELD_ORDER.filter(k => TEMPLATE.fields[k]);
 
   return (
     <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,.55)', zIndex:1200, display:'flex', flexDirection:'column' }}>
       {/* Header */}
       <div style={{ display:'flex', alignItems:'center', gap:12, padding:'10px 20px', background:'var(--surface)', borderBottom:'1px solid var(--border)', flexShrink:0 }}>
         <div style={{ fontWeight:700, fontSize:16, color:'var(--text)' }}>Letter Builder</div>
+        <div style={{ fontSize:12, fontWeight:600, color:'var(--text3)', padding:'3px 10px', borderRadius:20, background:'var(--bg)', border:'1px solid var(--border)' }}>
+          {TEMPLATE.label}
+        </div>
 
         {/* Firm picker */}
         {allRows && allRows.length > 0 && (
@@ -754,19 +443,7 @@ export default function LetterBuilder({ row: initialRow, token, onClose, allRows
           </select>
         )}
 
-        {/* Template selector */}
-        <div style={{ display:'flex', gap:6 }}>
-          {Object.entries(TEMPLATES).map(([k, t]) => (
-            <button key={k} onClick={() => handleTemplateChange(k)}
-              style={{ padding:'5px 12px', borderRadius:20, border:`1.5px solid ${k===templateKey ? 'var(--primary)' : 'var(--border)'}`,
-                background: k===templateKey ? 'var(--primary)' : 'var(--bg)', color: k===templateKey ? '#fff' : 'var(--text)',
-                cursor:'pointer', fontSize:12, fontWeight:600, fontFamily:'inherit', transition:'all .15s' }}>
-              {t.label}
-            </button>
-          ))}
-        </div>
-
-        <div style={{ display:'flex', gap:8, marginLeft:12 }}>
+        <div style={{ display:'flex', gap:8, marginLeft:'auto' }}>
           <label style={{ display:'flex', alignItems:'center', gap:6, fontSize:12, cursor:'pointer', color:'var(--text2)' }}>
             <input type="checkbox" checked={inclStamp} onChange={e=>setInclStamp(e.target.checked)} style={{ accentColor:'var(--primary)' }}/> छाप
           </label>
@@ -789,8 +466,7 @@ export default function LetterBuilder({ row: initialRow, token, onClose, allRows
         <div style={{ width:340, flexShrink:0, overflowY:'auto', padding:20, borderRight:'1px solid var(--border)', background:'var(--bg)', display:'flex', flexDirection:'column', gap:14 }}>
           {loading && <div style={{ color:'var(--text3)', fontSize:13 }}>Loading images…</div>}
           {!loading && orderedFields.map(key => {
-            const def = tplDef.fields[key];
-            if (!def) return null;
+            const def = TEMPLATE.fields[key];
             return (
               <div key={key}>
                 <div style={{ fontSize:11, fontWeight:600, color:'var(--text3)', marginBottom:4, textTransform:'uppercase', letterSpacing:.5 }}>{def.label}</div>

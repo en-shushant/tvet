@@ -163,7 +163,7 @@ async function urlToDataUrl(url) {
 }
 
 async function openShortlistLetter(row, opts = {}) {
-  const { includeSign = false, includeStamp = false, docs = {}, serviceType: svcType, letterType = 'registration' } = opts;
+  const { includeSign = false, includeStamp = false, docs = {}, serviceType: svcType } = opts;
   const lrPadding = row.institute_letter_lr_padding ?? 20;
   // Firm (institute) — letterhead owner
   const firmName        = row.institute_name || '';
@@ -910,17 +910,7 @@ const SERVICE_TYPES = [
   'अन्य सेवा',
 ];
 
-const LETTER_TYPES = [
-  { key: 'registration',     label: 'मौजुदा सूची दर्ता पत्र' },
-  { key: 'shortlist_notice', label: 'छनोट सूचना पत्र' },
-  { key: 'cover_letter',     label: 'Cover Letter' },
-  { key: 'nea_essd',         label: 'NEA ESSD' },
-  { key: 'nea_ssemd',        label: 'NEA SSEMD' },
-  { key: 'nea_shortlisting', label: 'NEA Shortlisting' },
-];
-
 function LetterOptsModal({ row, token, onClose, onOpenBuilder }) {
-  const [letterType, setLetterType] = useState('registration');
   const [inclSign, setInclSign] = useState(!!row.institute_sign);
   const [inclStamp, setInclStamp] = useState(!!row.institute_stamp);
   // Always fetch fresh institute data so latest margin settings are used
@@ -960,26 +950,10 @@ function LetterOptsModal({ row, token, onClose, onOpenBuilder }) {
       {onOpenBuilder && <Btn className="btn btn-secondary" onClick={() => { onClose(); onOpenBuilder(); }}>✏ Builder</Btn>}
       <Btn className="btn btn-primary" onClick={async () => {
         onClose();
-        await openShortlistLetter(freshRow, { includeSign: inclSign, includeStamp: inclStamp, docs: inclDocs, serviceType: freshRow.institute_service_type, letterType });
+        await openShortlistLetter(freshRow, { includeSign: inclSign, includeStamp: inclStamp, docs: inclDocs, serviceType: freshRow.institute_service_type });
       }}>Generate &amp; Download</Btn>
     </>}>
       <div style={{display:'flex', flexDirection:'column', gap:12}}>
-
-        {/* Letter type selector */}
-        <div>
-          <div style={{fontSize:12, fontWeight:600, color:'var(--text3)', marginBottom:6}}>LETTER TYPE</div>
-          <div style={{display:'flex', flexWrap:'wrap', gap:6}}>
-            {LETTER_TYPES.map(t => (
-              <button key={t.key} onClick={() => setLetterType(t.key)}
-                style={{padding:'5px 12px', borderRadius:20, border:`1.5px solid ${t.key===letterType ? 'var(--primary)' : 'var(--border)'}`,
-                  background: t.key===letterType ? 'var(--primary)' : 'var(--bg)',
-                  color: t.key===letterType ? '#fff' : 'var(--text)',
-                  cursor:'pointer', fontSize:12, fontWeight:600, fontFamily:'inherit'}}>
-                {t.label}
-              </button>
-            ))}
-          </div>
-        </div>
 
         {/* Signature toggle */}
         <label style={{display:'flex', alignItems:'center', gap:14, padding:'12px 14px', borderRadius:10, border:'1px solid var(--border)', background:'var(--bg)', cursor:'pointer'}}>
