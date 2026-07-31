@@ -21,6 +21,52 @@ const INNER_H = Math.round(A4_H * 0.92);
 // Blank-page threshold: mean pixel brightness above this → no meaningful content
 const BLANK_THRESHOLD = 247;
 
+// Longest edge for overlay assets (signature / stamp)
+const ASSET_MAX = 1200;
+
+/**
+ * Normalise a letterhead: full-bleed, exactly A4.
+ *
+ * A letterhead is a page background, so it must NOT be trimmed and re-padded
+ * to 92% like a scanned document — that bakes a ~4% white margin into all four
+ * edges and no amount of CSS can recover it. Stretch straight to A4 instead so
+ * the stored file already matches the page it will be painted onto.
+ */
+async function normaliseLetterhead(inputBuffer) {
+  const output = await sharp(inputBuffer)
+    .rotate()
+    .resize(A4_W, A4_H, { fit: 'fill' })   // exact A4, no margins, no letterboxing
+    .jpeg({ quality: 92, progressive: true, mozjpeg: true })
+    .toBuffer();
+
+  return { buffer: output, mime: 'image/jpeg', ext: '.jpg' };
+}
+
+/**
+ * Normalise an overlay asset (signature / stamp).
+ *
+ * These are composited on top of a letter, so — unlike a scanned page — they
+ * must keep their alpha channel and must NOT be padded onto an A4 canvas.
+ * Encoding them as JPEG would drop the alpha and flatten every transparent
+ * pixel to black, which is what produced solid-black signatures/stamps.
+ */
+async function normaliseAsset(inputBuffer) {
+  let trimmed;
+  try {
+    // trims the transparent / uniform border around the ink
+    trimmed = await sharp(inputBuffer).rotate().trim().toBuffer();
+  } catch {
+    trimmed = await sharp(inputBuffer).rotate().toBuffer();
+  }
+
+  const output = await sharp(trimmed)
+    .resize(ASSET_MAX, ASSET_MAX, { fit: 'inside', withoutEnlargement: true })
+    .png({ compressionLevel: 9 })
+    .toBuffer();
+
+  return { buffer: output, mime: 'image/png', ext: '.png' };
+}
+
 /**
  * Normalise a scanned image:
  *  1. Auto-rotate from EXIF orientation
@@ -98,7 +144,20 @@ module.exports = async function uploadRoutes(fastify) {
     let uploadBuf, uploadMime, ext;
 
     if (ALLOWED_IMAGE.test(originalMime)) {
-      const result = await normaliseImage(rawBuf);
+      // `kind` lets the client say what the image is for; scanned documents are
+      // the default. An image with genuinely transparent pixels is always an
+      // overlay asset regardless of `kind` — `isOpaque` checks real pixels, so
+      // an opaque PNG scan still goes down the document path.
+      const kind = String(request.query?.kind || 'document');
+
+      let isOpaque = true;
+      try { ({ isOpaque } = await sharp(rawBuf).stats()); } catch {}
+
+      let result;
+      if (kind === 'letterhead')            result = await normaliseLetterhead(rawBuf);
+      else if (kind === 'asset' || !isOpaque) result = await normaliseAsset(rawBuf);
+      else                                   result = await normaliseImage(rawBuf);
+
       if (!result) {
         return reply.code(422).send({ error: 'blank_page', message: 'This page appears to be blank and was not uploaded.' });
       }

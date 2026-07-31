@@ -1154,10 +1154,12 @@ async function removeImageBackground(file) {
   });
 }
 
-async function uploadToR2(file, token) {
+// `kind` tells the server how to normalise: 'letterhead' (full-bleed A4),
+// 'asset' (signature/stamp — keeps transparency), or 'document' (scanned page).
+async function uploadToR2(file, token, kind = 'document') {
   const fd = new FormData();
   fd.append('file', file);
-  const res = await fetch('/api/upload', {
+  const res = await fetch(`/api/upload?kind=${encodeURIComponent(kind)}`, {
     method: 'POST',
     headers: { Authorization: `Bearer ${token}` },
     body: fd,
@@ -1180,13 +1182,14 @@ function FileThumb({ src, onRemove }) {
       onMouseEnter={() => setHover(true)}
       onMouseLeave={() => setHover(false)}
       style={{position:'relative', flexShrink:0, width:THUMB_SIZE, height:THUMB_SIZE, borderRadius:10,
-        overflow:'hidden', border:'1.5px solid var(--border)', background:'var(--bg)', cursor: onRemove ? 'pointer' : 'default',
+        // white (not var(--bg)) so transparent signatures/stamps stay legible in dark mode
+        overflow:'hidden', border:'1.5px solid var(--border)', background:'#fff', cursor: onRemove ? 'pointer' : 'default',
         boxShadow: hover ? '0 2px 8px rgba(0,0,0,.14)' : '0 1px 3px rgba(0,0,0,.07)',
         transition:'box-shadow .15s',
       }}
     >
       <a href={src} target="_blank" rel="noreferrer" style={{display:'block', width:'100%', height:'100%'}}>
-        <img src={src} alt="" style={{width:'100%', height:'100%', objectFit:'cover', display:'block'}}/>
+        <img src={src} alt="" style={{width:'100%', height:'100%', objectFit:'contain', display:'block'}}/>
       </a>
       {onRemove && hover && (
         <button onClick={e=>{e.preventDefault();onRemove();}}
@@ -1198,7 +1201,7 @@ function FileThumb({ src, onRemove }) {
   );
 }
 
-function DocMultiUpload({ label, hint, value, onChange, disabled, token, processFile }) {
+function DocMultiUpload({ label, hint, value, onChange, disabled, token, processFile, kind }) {
   const [uploading, setUploading] = useState(false);
   const [err, setErr] = useState('');
   const files = parseFiles(value);
@@ -1209,7 +1212,7 @@ function DocMultiUpload({ label, hint, value, onChange, disabled, token, process
     setErr(''); setUploading(true);
     try {
       const processed = processFile ? await Promise.all(picked.map(f => processFile(f))) : picked;
-      const urls = await Promise.all(processed.map(f => uploadToR2(f, token)));
+      const urls = await Promise.all(processed.map(f => uploadToR2(f, token, kind)));
       onChange(filesToStore([...files, ...urls]));
     } catch (ex) { setErr(ex.message); }
     finally { setUploading(false); }
@@ -1260,11 +1263,11 @@ function DocMultiUpload({ label, hint, value, onChange, disabled, token, process
   );
 }
 
-function DocImgUpload({ label, hint, value, onChange, disabled, token, processFile }) {
+function DocImgUpload({ label, hint, value, onChange, disabled, token, processFile, kind }) {
   return (
     <DocMultiUpload
       label={label} hint={hint} token={token} disabled={disabled}
-      processFile={processFile}
+      processFile={processFile} kind={kind}
       value={value ? JSON.stringify([value]) : null}
       onChange={v => {
         const arr = parseFiles(v);
@@ -1359,10 +1362,10 @@ function DocumentsTab({ institute, token, canEdit, onUpdate, isShortlistOnly }) 
         <div className="card">
           <div className="section-title" style={{marginBottom:4}}>Letter Images</div>
           <div style={{fontSize:12, color:'var(--text3)', marginBottom:16}}>Signature and stamp are shown individually — toggle each in the Generate Letter dialog.</div>
-          <DocImgUpload label="Letterhead" hint="Full-width banner shown at the top of generated letters." value={fields.letterhead} onChange={v=>set('letterhead',v)} disabled={!canEdit} token={token}/>
+          <DocImgUpload label="Letterhead" hint="Stretched full-bleed to A4 behind generated letters." value={fields.letterhead} onChange={v=>set('letterhead',v)} disabled={!canEdit} token={token} kind="letterhead"/>
           <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:'0 20px'}}>
-            <DocImgUpload label="Authorized Signature" value={fields.sign} onChange={v=>set('sign',v)} disabled={!canEdit} token={token} processFile={removeImageBackground}/>
-            <DocImgUpload label="Stamp / Seal" value={fields.stamp} onChange={v=>set('stamp',v)} disabled={!canEdit} token={token} processFile={removeImageBackground}/>
+            <DocImgUpload label="Authorized Signature" value={fields.sign} onChange={v=>set('sign',v)} disabled={!canEdit} token={token} processFile={removeImageBackground} kind="asset"/>
+            <DocImgUpload label="Stamp / Seal" value={fields.stamp} onChange={v=>set('stamp',v)} disabled={!canEdit} token={token} processFile={removeImageBackground} kind="asset"/>
           </div>
         </div>
 
