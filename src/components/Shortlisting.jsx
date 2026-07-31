@@ -272,8 +272,15 @@ async function openShortlistLetter(row, opts = {}) {
       const content = isPdf
         ? `<embed src="${src}" style="display:block;width:${A4_W}px;height:${A4_H}px;" type="application/pdf">`
         : '';
+      // Nothing waits for a background-image to finish loading before capture,
+      // only real <img> elements — this sentinel piggybacks on that existing
+      // wait so the browser has actually decoded the bitmap in time. Without
+      // it, a page deep in a long attachment list can be captured before its
+      // (large, base64) background has decoded, rendering it blank.
+      const preload = isPdf ? '' : `<img src="${resolvedSrc}" alt="" style="position:absolute;width:1px;height:1px;opacity:0;pointer-events:none;">`;
       return `
 <div data-doc="1" style="page-break-before:always;page-break-after:always;break-before:page;break-after:page;position:relative;width:${A4_W}px;height:${A4_H}px;box-sizing:border-box;padding:0;background-color:#fff;${bg}box-shadow:0 2px 12px rgba(0,0,0,.18);overflow:hidden;">
+  ${preload}
   ${content}
   ${sigstampOverlay}
 </div>`;
@@ -358,6 +365,7 @@ async function openShortlistLetter(row, opts = {}) {
 </head>
 <body>
 <div class="page">
+  ${useLhBg ? `<img src="${firmLetterhead}" alt="" style="position:absolute;width:1px;height:1px;opacity:0;pointer-events:none;">` : ''}
   <div class="page-inner">
 
   ${!useLhBg ? `
@@ -471,10 +479,14 @@ ${docPages}
     iframe.srcdoc = html;
   });
 
-  // Wait for images inside the iframe to finish loading
+  // Wait for images inside the iframe to be fully decoded, not just "loaded" —
+  // `load`/`.complete` can fire before a large base64 image has finished
+  // decoding to a paintable bitmap, which is what left attachment pages blank
+  // when several large documents were captured back-to-back. decode() forces
+  // the browser to actually finish that work before we proceed.
   const iframeDoc = iframe.contentDocument;
   await Promise.all([...iframeDoc.querySelectorAll('img')].map(img =>
-    img.complete ? Promise.resolve() : new Promise(r => { img.onload = r; img.onerror = r; })
+    (img.decode ? img.decode() : Promise.resolve()).catch(() => {})
   ));
 
   const { default: html2canvas } = await import('html2canvas');

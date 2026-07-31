@@ -76,13 +76,19 @@ async function normaliseLetterhead(inputBuffer) {
   const output = await sharp(inputBuffer)
     .rotate()
     .resize(LETTERHEAD_W, LETTERHEAD_H, { fit: 'fill' })   // exact A4, no margins, no letterboxing
-    // JPEG has no alpha channel; without an explicit flatten sharp drops it and
-    // every transparent pixel lands on black instead of the page white.
+    // Flatten first so a transparent source doesn't leave any alpha behind —
+    // even under PNG, downstream consumers (html2canvas) composite it as if
+    // opaque, and a transparent edge would show as black otherwise.
     .flatten({ background: { r: 255, g: 255, b: 255 } })
-    .jpeg({ quality: 95, progressive: true, mozjpeg: true })
+    // PNG, not JPEG: a letterhead is mostly solid colour bands with crisp text
+    // on top (e.g. white text on a red bar). JPEG's chroma subsampling halves
+    // colour resolution at exactly those hard colour edges, which is what was
+    // reading as blur — it's independent of the source/output pixel size.
+    // Lossless PNG removes that artifact entirely.
+    .png({ compressionLevel: 9 })
     .toBuffer();
 
-  return { buffer: output, mime: 'image/jpeg', ext: '.jpg' };
+  return { buffer: output, mime: 'image/png', ext: '.png' };
 }
 
 /**
