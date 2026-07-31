@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { Btn } from '../md.jsx';
 import { toNpNum, BS_DATA } from '../constants/nepali.js';
+import { api } from '../utils/api.js';
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
 function todayBS() {
@@ -292,7 +293,7 @@ function buildLetterHtml({ fields, row, imgs, topMm, bottomMm, lrMm, inclSign, i
 }
 
 // ─── Main component ───────────────────────────────────────────────────────────
-export default function LetterBuilder({ row: initialRow, onClose, allRows }) {
+export default function LetterBuilder({ row: initialRow, token, onClose, allRows }) {
   const [selectedRowId, setSelectedRowId] = useState(initialRow?.id ?? null);
   const row = (allRows && selectedRowId)
     ? (allRows.find(r => r.id === selectedRowId) || initialRow)
@@ -309,12 +310,16 @@ export default function LetterBuilder({ row: initialRow, onClose, allRows }) {
   const [margins, setMargins] = useState({ top: null, bottom: null });
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
+  const [pdfUrl, setPdfUrl] = useState(null);
   const iframeRef = useRef(null);
+  const pdfFrameRef = useRef(null);
+
+  // Release the blob URL when the builder closes
+  useEffect(() => () => { if (pdfUrl) URL.revokeObjectURL(pdfUrl); }, [pdfUrl]);
 
   // Patch editable fields from row/firm data when row changes
   useEffect(() => {
-    setInclSign(!!row?.institute_sign);
-    setInclStamp(!!row?.institute_stamp);
+    // inclSign/inclStamp are set once the institute record arrives below
     setFields(f => ({
       ...f,
       date:          f.date || todayBS(),
@@ -346,11 +351,20 @@ export default function LetterBuilder({ row: initialRow, onClose, allRows }) {
     let cancelled = false;
     (async () => {
       setLoading(true);
+      // The shortlist list query omits the institute's images to keep the page
+      // fast, so fetch the full record for whichever firm is selected.
+      let inst = {};
+      if (row?.institute_id && token) {
+        try { inst = (await api('GET', `/institutes/${row.institute_id}`, null, token)) || {}; } catch {}
+      }
+      if (cancelled) return;
+      setInclSign(!!inst.sign);
+      setInclStamp(!!inst.stamp);
       const [logo, lh, sign, stamp] = await Promise.all([
-        urlToDataUrl(row?.institute_logo || null),
-        urlToDataUrl(row?.institute_letterhead || null),
-        urlToDataUrl(row?.institute_sign || null),
-        urlToDataUrl(row?.institute_stamp || null),
+        urlToDataUrl(inst.logo        || row?.institute_logo       || null),
+        urlToDataUrl(inst.letterhead  || row?.institute_letterhead || null),
+        urlToDataUrl(inst.sign        || row?.institute_sign       || null),
+        urlToDataUrl(inst.stamp       || row?.institute_stamp      || null),
       ]);
       if (cancelled) return;
       const firmName    = row?.institute_name    || '';
@@ -374,7 +388,7 @@ export default function LetterBuilder({ row: initialRow, onClose, allRows }) {
       if (!cancelled) { setMargins(m); setLoading(false); }
     })();
     return () => { cancelled = true; };
-  }, [row?.id]);
+  }, [row?.id, row?.institute_id, token]);
 
   const buildHtml = useCallback(() => {
     if (!imgs) return '';
@@ -427,8 +441,16 @@ export default function LetterBuilder({ row: initialRow, onClose, allRows }) {
         pdf.addImage(canvas.toDataURL('image/jpeg', 0.95), 'JPEG', 0, 0, 210, 297);
       }
       document.body.removeChild(iframe);
-      pdf.save('shortlist-letter.pdf');
+      setPdfUrl(prev => { if (prev) URL.revokeObjectURL(prev); return pdf.output('bloburl'); });
     } finally { setGenerating(false); }
+  };
+
+  const printPdf = () => {
+    try {
+      const w = pdfFrameRef.current?.contentWindow;
+      if (w) { w.focus(); w.print(); return; }
+    } catch {}
+    if (pdfUrl) window.open(pdfUrl, '_blank', 'noopener');
   };
 
   const orderedFields = FIELD_ORDER.filter(k => TEMPLATE.fields[k]);
@@ -464,7 +486,7 @@ export default function LetterBuilder({ row: initialRow, onClose, allRows }) {
 
         <Btn className="btn btn-primary" onClick={generatePdf} disabled={loading||generating}
           style={{ minWidth:130, fontSize:13 }}>
-          {generating ? 'Generating…' : '⬇ Download PDF'}
+          {generating ? 'Generating…' : 'Generate PDF'}
         </Btn>
         <button onClick={onClose} style={{ background:'none', border:'none', cursor:'pointer', fontSize:22, lineHeight:1, color:'var(--text3)', padding:'0 4px' }}>×</button>
       </div>
@@ -509,6 +531,28 @@ export default function LetterBuilder({ row: initialRow, onClose, allRows }) {
           }
         </div>
       </div>
+
+      {/* Generated PDF preview — print or download from here */}
+      {pdfUrl && (
+        <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,.65)', zIndex:1400, display:'flex', flexDirection:'column' }}>
+          <div style={{ display:'flex', alignItems:'center', gap:10, padding:'10px 20px', background:'var(--surface)', borderBottom:'1px solid var(--border)', flexShrink:0 }}>
+            <div style={{ fontWeight:700, fontSize:16, color:'var(--text)' }}>Letter Preview</div>
+            <div style={{ marginLeft:'auto', display:'flex', gap:8, alignItems:'center' }}>
+              <Btn className="btn btn-secondary" onClick={printPdf}>
+                <span className="material-icons-round" style={{fontSize:16}}>print</span> Print
+              </Btn>
+              <a href={pdfUrl} download="shortlist-letter.pdf" className="btn btn-primary"
+                style={{ textDecoration:'none', display:'inline-flex', alignItems:'center', gap:6 }}>
+                <span className="material-icons-round" style={{fontSize:16}}>download</span> Download
+              </a>
+              <button onClick={() => { URL.revokeObjectURL(pdfUrl); setPdfUrl(null); }}
+                style={{ background:'none', border:'none', cursor:'pointer', fontSize:22, lineHeight:1, color:'var(--text3)', padding:'0 4px' }}>×</button>
+            </div>
+          </div>
+          <iframe ref={pdfFrameRef} src={pdfUrl} title="Letter PDF preview"
+            style={{ flex:1, border:'none', background:'#666', width:'100%' }}/>
+        </div>
+      )}
     </div>
   );
 }

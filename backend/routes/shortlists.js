@@ -21,7 +21,6 @@ async function plugin(fastify, opts) {
         c.website          AS client_website,
         c.signatory_name   AS client_signatory_name,
         c.signatory_position AS client_signatory_position,
-        c.letterhead       AS client_letterhead,
         c.name_np          AS client_name_np,
         c.address_np       AS client_address_np,
         i.name        AS institute_name, i.acronym     AS institute_acronym,
@@ -30,21 +29,13 @@ async function plugin(fastify, opts) {
         i.email       AS institute_email,   i.website  AS institute_website,
         i.contact_person AS institute_contact,
         i.reg_no      AS institute_reg_no,  i.pan      AS institute_pan,
-        i.logo        AS institute_logo,
         i.name_np     AS institute_name_np,
         i.address_np  AS institute_address_np,
         i.contact_person_np AS institute_contact_np,
-        i.letterhead  AS institute_letterhead,
-        i.sign        AS institute_sign,     i.stamp    AS institute_stamp,
-        i.ocr_registration        AS institute_ocr_registration,
-        i.ocr_renewal             AS institute_ocr_renewal,
-        i.local_level_registration AS institute_local_level_registration,
-        i.local_level_renewal      AS institute_local_level_renewal,
-        i.vat_registration  AS institute_vat_registration,
-        i.vat_extension     AS institute_vat_extension,
-        i.ctevt_affiliation AS institute_ctevt_affiliation,
-        i.ctevt_renewal     AS institute_ctevt_renewal,
-        i.tax_clearance_doc AS institute_tax_clearance_doc,
+        -- Deliberately NOT selected: logo, letterhead, sign, stamp and the nine
+        -- document URL columns. The list never renders them and repeating them
+        -- on every shortlist row made this payload large enough to slow the
+        -- page down. LetterOptsModal fetches the full institute on demand.
         i.letter_top_margin AS institute_letter_top_margin,
         i.letter_lr_padding AS institute_letter_lr_padding,
         i.letter_bottom_padding AS institute_letter_bottom_padding,

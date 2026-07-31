@@ -490,7 +490,44 @@ ${docPages}
   }
 
   document.body.removeChild(iframe);
-  pdf.save('shortlist-letter.pdf');
+  // Hand back a blob URL so the caller can preview it before printing/saving.
+  return pdf.output('bloburl');
+}
+
+// Full-screen PDF preview with print / download, shown after generating.
+function LetterPreviewModal({ url, filename, onClose }) {
+  const frameRef = useRef(null);
+
+  const handlePrint = () => {
+    // Chrome's built-in PDF viewer exposes print() on the frame; if the browser
+    // blocks it, fall back to opening the PDF in its own tab.
+    try {
+      const w = frameRef.current?.contentWindow;
+      if (w) { w.focus(); w.print(); return; }
+    } catch {}
+    window.open(url, '_blank', 'noopener');
+  };
+
+  return (
+    <div style={{position:'fixed', inset:0, background:'rgba(0,0,0,.6)', zIndex:1300, display:'flex', flexDirection:'column'}}>
+      <div style={{display:'flex', alignItems:'center', gap:10, padding:'10px 20px', background:'var(--surface)', borderBottom:'1px solid var(--border)', flexShrink:0}}>
+        <div style={{fontWeight:700, fontSize:16, color:'var(--text)'}}>Letter Preview</div>
+        <div style={{marginLeft:'auto', display:'flex', gap:8, alignItems:'center'}}>
+          <Btn className="btn btn-secondary" onClick={handlePrint}>
+            <span className="material-icons-round" style={{fontSize:16}}>print</span> Print
+          </Btn>
+          <a href={url} download={filename}
+            className="btn btn-primary"
+            style={{textDecoration:'none', display:'inline-flex', alignItems:'center', gap:6}}>
+            <span className="material-icons-round" style={{fontSize:16}}>download</span> Download
+          </a>
+          <button onClick={onClose} style={{background:'none', border:'none', cursor:'pointer', fontSize:22, lineHeight:1, color:'var(--text3)', padding:'0 4px'}}>×</button>
+        </div>
+      </div>
+      <iframe ref={frameRef} src={url} title="Letter preview"
+        style={{flex:1, border:'none', background:'#666', width:'100%'}}/>
+    </div>
+  );
 }
 
 function statusColor(s) {
@@ -920,47 +957,103 @@ const SERVICE_TYPES = [
 ];
 
 function LetterOptsModal({ row, token, onClose, onOpenBuilder }) {
-  const [inclSign, setInclSign] = useState(!!row.institute_sign);
-  const [inclStamp, setInclStamp] = useState(!!row.institute_stamp);
-  // Always fetch fresh institute data so latest margin settings are used
-  const [freshRow, setFreshRow] = useState(row);
+  const [inclSign, setInclSign]   = useState(false);
+  const [inclStamp, setInclStamp] = useState(false);
+  const [inclDocs, setInclDocs]   = useState({});
+  const [freshRow, setFreshRow]   = useState(row);
+  const [instLoading, setInstLoading] = useState(true);
+
+  // The shortlist list query omits the institute's images and document URLs —
+  // they're only needed here, and carrying them on every row made #shortlisting
+  // slow to load. Fetch the full institute on demand instead.
   useEffect(() => {
-    if (!row.institute_id && !row.id) return;
     const instId = row.institute_id;
+    if (!instId) { setInstLoading(false); return; }
+    let cancelled = false;
+    setInstLoading(true);
     api('GET', `/institutes/${instId}`, null, token)
       .then(inst => {
+        if (cancelled) return;
+        // NOTE: this endpoint returns raw snake_case columns. It previously read
+        // inst.letterTopMargin etc., which were always undefined — so the
+        // configured page margins were silently discarded.
         setFreshRow(r => ({
           ...r,
-          institute_letter_top_margin: inst.letterTopMargin,
-          institute_letter_lr_padding: inst.letterLrPadding,
-          institute_letter_bottom_padding: inst.letterBottomPadding,
+          institute_letter_top_margin:     inst.letter_top_margin,
+          institute_letter_lr_padding:     inst.letter_lr_padding,
+          institute_letter_bottom_padding: inst.letter_bottom_padding,
+          institute_service_type:          inst.service_type,
+          institute_logo:       inst.logo,
+          institute_letterhead: inst.letterhead,
+          institute_sign:       inst.sign,
+          institute_stamp:      inst.stamp,
+          institute_ocr_registration:         inst.ocr_registration,
+          institute_ocr_renewal:              inst.ocr_renewal,
+          institute_local_level_registration: inst.local_level_registration,
+          institute_local_level_renewal:      inst.local_level_renewal,
+          institute_vat_registration:         inst.vat_registration,
+          institute_vat_extension:            inst.vat_extension,
+          institute_ctevt_affiliation:        inst.ctevt_affiliation,
+          institute_ctevt_renewal:            inst.ctevt_renewal,
+          institute_tax_clearance_doc:        inst.tax_clearance_doc,
         }));
       })
-      .catch(() => {}); // silently fall back to row values
+      .catch(() => {}) // fall back to whatever the row already carries
+      .finally(() => { if (!cancelled) setInstLoading(false); });
+    return () => { cancelled = true; };
   }, [row.institute_id, token]);
-  const hasDocs = {
-    ocrReg:   !!row.institute_ocr_registration,
-    ocrRen:   !!row.institute_ocr_renewal,
-    llReg:    !!row.institute_local_level_registration,
-    llRen:    !!row.institute_local_level_renewal,
-    vat:      !!row.institute_vat_registration,
-    taxClear: !!row.institute_tax_clearance_doc,
-    vatExt:   !!row.institute_vat_extension,
-    ctevtAff: !!row.institute_ctevt_affiliation,
-    ctevtRen: !!row.institute_ctevt_renewal,
-  };
-  const [inclDocs, setInclDocs] = useState({ ...hasDocs });
+
+  const hasDocs = useMemo(() => ({
+    ocrReg:   !!freshRow.institute_ocr_registration,
+    ocrRen:   !!freshRow.institute_ocr_renewal,
+    llReg:    !!freshRow.institute_local_level_registration,
+    llRen:    !!freshRow.institute_local_level_renewal,
+    vat:      !!freshRow.institute_vat_registration,
+    taxClear: !!freshRow.institute_tax_clearance_doc,
+    vatExt:   !!freshRow.institute_vat_extension,
+    ctevtAff: !!freshRow.institute_ctevt_affiliation,
+    ctevtRen: !!freshRow.institute_ctevt_renewal,
+  }), [freshRow]);
+
+  // Default every available document / image to checked once they arrive
+  useEffect(() => { setInclDocs({ ...hasDocs }); }, [hasDocs]);
+  useEffect(() => {
+    setInclSign(!!freshRow.institute_sign);
+    setInclStamp(!!freshRow.institute_stamp);
+  }, [freshRow.institute_sign, freshRow.institute_stamp]);
+
   const anyDocs = Object.values(hasDocs).some(Boolean);
   const toggle = k => setInclDocs(d => ({...d, [k]: !d[k]}));
+
+  const [pdfUrl, setPdfUrl] = useState(null);
+  const [generating, setGenerating] = useState(false);
+
+  // Release the blob URL when this modal goes away
+  useEffect(() => () => { if (pdfUrl) URL.revokeObjectURL(pdfUrl); }, [pdfUrl]);
+
+  const handleGenerate = async () => {
+    setGenerating(true);
+    try {
+      const url = await openShortlistLetter(freshRow, {
+        includeSign: inclSign, includeStamp: inclStamp,
+        docs: inclDocs, serviceType: freshRow.institute_service_type,
+      });
+      setPdfUrl(url);
+    } finally { setGenerating(false); }
+  };
+
+  if (pdfUrl) {
+    const name = `${freshRow.institute_acronym || freshRow.institute_name || 'shortlist'}-letter.pdf`;
+    return <LetterPreviewModal url={pdfUrl} filename={name} onClose={onClose}/>;
+  }
 
   return (
     <Modal title="Generate Letter" onClose={onClose} footer={<>
       <Btn className="btn btn-secondary" onClick={onClose}>Cancel</Btn>
       {onOpenBuilder && <Btn className="btn btn-secondary" onClick={() => { onClose(); onOpenBuilder(); }}>✏ Builder</Btn>}
-      <Btn className="btn btn-primary" onClick={async () => {
-        onClose();
-        await openShortlistLetter(freshRow, { includeSign: inclSign, includeStamp: inclStamp, docs: inclDocs, serviceType: freshRow.institute_service_type });
-      }}>Generate &amp; Download</Btn>
+      <Btn className="btn btn-primary" onClick={handleGenerate} disabled={instLoading || generating}>
+        {generating ? 'Generating…' : instLoading ? 'Loading…' : 'Generate Preview'}
+      </Btn>
     </>}>
       <div style={{display:'flex', flexDirection:'column', gap:12}}>
 
@@ -970,7 +1063,7 @@ function LetterOptsModal({ row, token, onClose, onOpenBuilder }) {
           <div style={{flex:1}}>
             <div style={{fontWeight:600, fontSize:13, color:'var(--text)'}}>Include signature</div>
             <div style={{fontSize:12, color:'var(--text3)', marginTop:2, lineHeight:1.4}}>
-              {row.institute_sign ? 'Signature appears in the letter and on each attached document.' : 'No signature uploaded yet — add it in the firm profile.'}
+              {freshRow.institute_sign ? 'Signature appears in the letter and on each attached document.' : 'No signature uploaded yet — add it in the firm profile.'}
             </div>
           </div>
         </label>
@@ -981,7 +1074,7 @@ function LetterOptsModal({ row, token, onClose, onOpenBuilder }) {
           <div style={{flex:1}}>
             <div style={{fontWeight:600, fontSize:13, color:'var(--text)'}}>Include stamp</div>
             <div style={{fontSize:12, color:'var(--text3)', marginTop:2, lineHeight:1.4}}>
-              {row.institute_stamp ? 'Stamp appears in the letter and on each attached document.' : 'No stamp uploaded yet — add it in the firm profile.'}
+              {freshRow.institute_stamp ? 'Stamp appears in the letter and on each attached document.' : 'No stamp uploaded yet — add it in the firm profile.'}
             </div>
           </div>
         </label>
