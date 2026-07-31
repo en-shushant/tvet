@@ -236,56 +236,21 @@ async function openShortlistLetter(row, opts = {}) {
     { key: 'ctevtAff',  src: row.institute_ctevt_affiliation,  label: 'CTEVT सम्बन्धन पत्र' },
     { key: 'ctevtRen',  src: row.institute_ctevt_renewal,      label: 'CTEVT नवीकरण पत्र' },
   ];
-  const sigstampOverlay = (includeSign && firmSign) || (includeStamp && firmStamp) ? `
-    <div style="position:absolute;bottom:12mm;right:12mm;display:flex;align-items:flex-end;gap:16px;z-index:2;">
-      ${includeStamp && firmStamp ? `<img src="${firmStamp}" style="width:38mm;height:38mm;object-fit:contain;mix-blend-mode:multiply;">` : ''}
-      ${includeSign  && firmSign  ? `<img src="${firmSign}"  style="height:32mm;width:auto;mix-blend-mode:multiply;">` : ''}
-    </div>` : '';
-
   const parseDocFiles = (src) => {
     if (!src) return [];
     try { const p = JSON.parse(src); return Array.isArray(p) ? p : [src]; }
     catch { return [src]; }
   };
 
-  // Pre-fetch all doc attachment images (skip PDFs — can't embed as data URL)
+  // Attachments are assembled directly with pdf-lib after the letter page is
+  // captured (see below) rather than rendered as HTML and screenshotted:
+  // real institute documents are very often actual PDF files (server accepts
+  // application/pdf — the client's accept="image/*" is only an upload-picker
+  // hint, not an enforced restriction), and html2canvas has no way to
+  // rasterise an <embed>/<object> at all, at any wait/timing. Merging real
+  // PDF pages in also preserves vector text quality and multi-page documents,
+  // neither of which screenshotting could ever have supported.
   const activeDocs = docDefs.filter(d => docs[d.key] && d.src);
-  const docSrcMap = new Map();
-  await Promise.all(activeDocs.flatMap(d => parseDocFiles(d.src).map(async (src) => {
-    if (!src.toLowerCase().endsWith('.pdf') && !src.startsWith('data:application/pdf')) {
-      docSrcMap.set(src, await urlToDataUrl(src));
-    }
-  })));
-
-  const docPages = activeDocs.flatMap(d => {
-    const files = parseDocFiles(d.src);
-    return files.map((src) => {
-      const isPdf = !src.startsWith('data:') ? src.toLowerCase().endsWith('.pdf') : src.startsWith('data:application/pdf');
-      const resolvedSrc = docSrcMap.get(src) || src;
-      // html2canvas ignores object-fit on <img>, which rendered every attached
-      // document as a blank page. Paint it as a background instead — the same
-      // approach the letterhead uses. The server already normalises scans onto
-      // an A4 canvas, so scaling to the page is proportional, not a stretch.
-      const bg = isPdf ? '' : `background-image:url("${resolvedSrc}");background-repeat:no-repeat;background-position:center center;background-size:${A4_W}px ${A4_H}px;`;
-      // html2canvas cannot rasterise an <embed>, so a PDF attachment would come
-      // out blank. Institute documents are image-only, so this is a safety net.
-      const content = isPdf
-        ? `<embed src="${src}" style="display:block;width:${A4_W}px;height:${A4_H}px;" type="application/pdf">`
-        : '';
-      // Nothing waits for a background-image to finish loading before capture,
-      // only real <img> elements — this sentinel piggybacks on that existing
-      // wait so the browser has actually decoded the bitmap in time. Without
-      // it, a page deep in a long attachment list can be captured before its
-      // (large, base64) background has decoded, rendering it blank.
-      const preload = isPdf ? '' : `<img src="${resolvedSrc}" alt="" style="position:absolute;width:1px;height:1px;opacity:0;pointer-events:none;">`;
-      return `
-<div data-doc="1" style="page-break-before:always;page-break-after:always;break-before:page;break-after:page;position:relative;width:${A4_W}px;height:${A4_H}px;box-sizing:border-box;padding:0;background-color:#fff;${bg}box-shadow:0 2px 12px rgba(0,0,0,.18);overflow:hidden;">
-  ${preload}
-  ${content}
-  ${sigstampOverlay}
-</div>`;
-    });
-  }).join('');
 
   const useLhBg = !!firmLetterhead;
   const fyNp = fy ? toNpNum(fy) : '';
@@ -465,11 +430,11 @@ async function openShortlistLetter(row, opts = {}) {
   </table>
 
   </div></div>
-${docPages}
 </body>
 </html>`;
 
-  // Render into a hidden iframe on the same page so fonts + images resolve correctly
+  // Render only the letter body into a hidden iframe — attachments are no
+  // longer part of this HTML at all (see above).
   const iframe = document.createElement('iframe');
   iframe.style.cssText = `position:fixed;left:-9999px;top:0;width:${A4_W}px;height:${A4_H}px;border:none;visibility:hidden;`;
   document.body.appendChild(iframe);
@@ -479,42 +444,116 @@ ${docPages}
     iframe.srcdoc = html;
   });
 
-  // Wait for images inside the iframe to be fully decoded, not just "loaded" —
-  // `load`/`.complete` can fire before a large base64 image has finished
-  // decoding to a paintable bitmap, which is what left attachment pages blank
-  // when several large documents were captured back-to-back. decode() forces
-  // the browser to actually finish that work before we proceed.
   const iframeDoc = iframe.contentDocument;
   await Promise.all([...iframeDoc.querySelectorAll('img')].map(img =>
     (img.decode ? img.decode() : Promise.resolve()).catch(() => {})
   ));
 
   const { default: html2canvas } = await import('html2canvas');
-  const { jsPDF } = await import('jspdf');
+  const { PDFDocument } = await import('pdf-lib');
 
-  const pdf = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait' });
-  const pages = iframeDoc.querySelectorAll('.page, [data-doc="1"]');
+  const letterCanvas = await html2canvas(iframeDoc.querySelector('.page'), {
+    scale: 2,
+    useCORS: true,
+    allowTaint: true,
+    backgroundColor: '#ffffff',
+    width: A4_W,
+    height: A4_H,
+    windowWidth: A4_W,
+    windowHeight: A4_H,
+  });
+  const letterJpegDataUrl = letterCanvas.toDataURL('image/jpeg', 0.95);
+  document.body.removeChild(iframe);
 
-  for (let i = 0; i < pages.length; i++) {
-    const page = pages[i];
-    const canvas = await html2canvas(page, {
-      scale: 2,
-      useCORS: true,
-      allowTaint: true,
-      backgroundColor: '#ffffff',
-      width: A4_W,
-      height: A4_H,
-      windowWidth: A4_W,
-      windowHeight: A4_H,
-    });
-    const imgData = canvas.toDataURL('image/jpeg', 0.95);
-    if (i > 0) pdf.addPage();
-    pdf.addImage(imgData, 'JPEG', 0, 0, 210, 297);
+  // ── Assemble the final PDF with pdf-lib: letter page + real attachments ──
+  const MM = 2.834645669; // points per mm
+  const PAGE_W = 210 * MM, PAGE_H = 297 * MM; // exact A4 in points
+
+  const dataUrlToBytes = (dataUrl) => {
+    const b64 = dataUrl.slice(dataUrl.indexOf(',') + 1);
+    const bin = atob(b64);
+    const bytes = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+    return bytes;
+  };
+
+  const sniff = (bytes) => {
+    if (bytes[0] === 0x25 && bytes[1] === 0x50 && bytes[2] === 0x44 && bytes[3] === 0x46) return 'pdf';
+    if (bytes[0] === 0xFF && bytes[1] === 0xD8) return 'jpeg';
+    if (bytes[0] === 0x89 && bytes[1] === 0x50 && bytes[2] === 0x4E && bytes[3] === 0x47) return 'png';
+    return 'unknown';
+  };
+
+  const fetchBytes = async (url) => {
+    if (url.startsWith('data:')) return dataUrlToBytes(url);
+    const resp = await fetch(url);
+    if (!resp.ok) throw new Error(`fetch failed: ${resp.status}`);
+    return new Uint8Array(await resp.arrayBuffer());
+  };
+
+  const outDoc = await PDFDocument.create();
+
+  // Letter page
+  const letterJpg = await outDoc.embedJpg(dataUrlToBytes(letterJpegDataUrl));
+  outDoc.addPage([PAGE_W, PAGE_H]).drawImage(letterJpg, { x: 0, y: 0, width: PAGE_W, height: PAGE_H });
+
+  // Sign/stamp overlay, embedded once and drawn on every attachment page —
+  // matches the overlay that used to be baked into each doc page's HTML.
+  let stampImg = null, signImg = null;
+  if (includeStamp && firmStamp) {
+    try {
+      const bytes = dataUrlToBytes(firmStamp);
+      stampImg = sniff(bytes) === 'png' ? await outDoc.embedPng(bytes) : await outDoc.embedJpg(bytes);
+    } catch {}
+  }
+  if (includeSign && firmSign) {
+    try {
+      const bytes = dataUrlToBytes(firmSign);
+      signImg = sniff(bytes) === 'png' ? await outDoc.embedPng(bytes) : await outDoc.embedJpg(bytes);
+    } catch {}
+  }
+  const drawOverlay = (page) => {
+    if (!stampImg && !signImg) return;
+    const stampW = stampImg ? 38 * MM : 0;
+    const signW  = signImg ? (32 * MM) * (signImg.width / signImg.height) : 0;
+    const gap = stampImg && signImg ? 4 * MM : 0;
+    let x = PAGE_W - 12 * MM - stampW - gap - signW;
+    const y = 12 * MM;
+    if (stampImg) { page.drawImage(stampImg, { x, y, width: stampW, height: 38 * MM }); x += stampW + gap; }
+    if (signImg)  { page.drawImage(signImg,  { x, y, width: signW,  height: 32 * MM }); }
+  };
+
+  // Attachments — merged as real pages, not screenshotted. A PDF source keeps
+  // every page (not just the first) and stays vector/text-sharp; an image
+  // source is embedded directly, full-bleed, onto its own A4 page.
+  for (const d of activeDocs) {
+    for (const src of parseDocFiles(d.src)) {
+      let bytes;
+      try { bytes = await fetchBytes(src); }
+      catch { continue; } // skip a document we can't fetch rather than fail the whole letter
+
+      const kind = sniff(bytes);
+      if (kind === 'pdf') {
+        try {
+          const srcDoc = await PDFDocument.load(bytes, { ignoreEncryption: true });
+          const copied = await outDoc.copyPages(srcDoc, srcDoc.getPageIndices());
+          copied.forEach(p => { outDoc.addPage(p); drawOverlay(p); });
+        } catch { /* corrupt/unreadable PDF — skip it */ }
+      } else if (kind === 'jpeg' || kind === 'png') {
+        try {
+          const embedded = kind === 'png' ? await outDoc.embedPng(bytes) : await outDoc.embedJpg(bytes);
+          const page = outDoc.addPage([PAGE_W, PAGE_H]);
+          page.drawImage(embedded, { x: 0, y: 0, width: PAGE_W, height: PAGE_H });
+          drawOverlay(page);
+        } catch { /* unreadable image — skip it */ }
+      }
+      // anything else (unrecognised format) is silently skipped
+    }
   }
 
-  document.body.removeChild(iframe);
-  // Hand back a blob URL so the caller can preview it before printing/saving.
-  return pdf.output('bloburl');
+  const outBytes = await outDoc.save();
+  const blob = new Blob([outBytes], { type: 'application/pdf' });
+  return URL.createObjectURL(blob);
 }
 
 // Full-screen PDF preview with print / download, shown after generating.
