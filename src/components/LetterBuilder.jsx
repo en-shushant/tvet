@@ -319,9 +319,10 @@ export default function LetterBuilder({ row: initialRow, onClose, allRows }) {
       ...f,
       date:          f.date || todayBS(),
       lrPadding:     String(row?.institute_letter_lr_padding ?? 20),
-      toName:        row?.client_name || row?.client_name_manual || f.toName || '',
-      toShort:       row?.client_short   || f.toShort   || '',
-      toAddress:     row?.client_address || f.toAddress || '',
+      // Nepali name/address win for the श्री … block; English is the fallback
+      toName:        row?.client_name_np || row?.client_name || row?.client_name_manual || f.toName || '',
+      toShort:       row?.client_short || f.toShort || '',
+      toAddress:     row?.client_address_np || row?.client_address || f.toAddress || '',
       toTitle:       row?.client_signatory_position || f.toTitle || 'कार्यालय प्रमुख',
       serviceType:   row?.institute_service_type    || f.serviceType || '',
       firmNameNp:    row?.institute_name_np    || row?.institute_name    || f.firmNameNp    || '',
@@ -384,9 +385,9 @@ export default function LetterBuilder({ row: initialRow, onClose, allRows }) {
     const bottomMm = margins.bottom && margins.bottom > cfgBot ? margins.bottom : cfgBot;
     // row data is only a fallback — the editable fields take priority
     const rowData = {
-      toName:    row?.client_name || row?.client_name_manual || '',
-      toShort:   row?.client_short   || '',
-      toAddress: row?.client_address || '',
+      toName:    row?.client_name_np || row?.client_name || row?.client_name_manual || '',
+      toShort:   row?.client_short || '',
+      toAddress: row?.client_address_np || row?.client_address || '',
       firmPhone: row?.institute_phone || '',
       fyNp:      row?.fy ? toNpNum(row.fy) : '',
     };

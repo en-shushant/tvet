@@ -143,6 +143,8 @@ async function runMigrations() {
     `ALTER TABLE clients ADD COLUMN IF NOT EXISTS signatory_name TEXT`,
     `ALTER TABLE clients ADD COLUMN IF NOT EXISTS signatory_position TEXT`,
     `ALTER TABLE clients ADD COLUMN IF NOT EXISTS letterhead TEXT`,
+    `ALTER TABLE clients ADD COLUMN IF NOT EXISTS name_np TEXT`,
+    `ALTER TABLE clients ADD COLUMN IF NOT EXISTS address_np TEXT`,
     `ALTER TABLE institutes ADD COLUMN IF NOT EXISTS letterhead TEXT`,
     `ALTER TABLE institutes ADD COLUMN IF NOT EXISTS sign TEXT`,
     `ALTER TABLE institutes ADD COLUMN IF NOT EXISTS stamp TEXT`,

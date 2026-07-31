@@ -201,9 +201,10 @@ async function openShortlistLetter(row, opts = {}) {
   const firmPhoneNp     = firmPhone ? toNpNum(firmPhone) : '';
   const firmMobileNp    = firmMobile ? toNpNum(firmMobile) : '';
   // To — procuring entity (client)
-  const toName          = row.client_name || row.client_name_manual || '';
+  // Prefer the Nepali name/address for the श्री … block; fall back to English
+  const toName          = row.client_name_np || row.client_name || row.client_name_manual || '';
   const toShort         = row.client_short || '';
-  const toAddress       = row.client_address || '';
+  const toAddress       = row.client_address_np || row.client_address || '';
   const toContact       = row.client_signatory_position || '';
   // Shortlisting details
   const listName  = row.standing_list_name || 'Standing List';

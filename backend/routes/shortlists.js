@@ -22,6 +22,8 @@ async function plugin(fastify, opts) {
         c.signatory_name   AS client_signatory_name,
         c.signatory_position AS client_signatory_position,
         c.letterhead       AS client_letterhead,
+        c.name_np          AS client_name_np,
+        c.address_np       AS client_address_np,
         i.name        AS institute_name, i.acronym     AS institute_acronym,
         i.address     AS institute_address, i.phone    AS institute_phone,
         i.mobile      AS institute_mobile,

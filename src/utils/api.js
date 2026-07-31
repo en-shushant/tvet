@@ -235,6 +235,8 @@ export function normClient(r) {
     signatoryName: r.signatory_name || '',
     signatoryPosition: r.signatory_position || '',
     letterhead: r.letterhead || null,
+    nameNp: r.name_np || '',
+    addressNp: r.address_np || '',
   };
 }
 
@@ -394,5 +396,7 @@ export function clientToAPI(f) {
     signatory_name: f.signatoryName || null,
     signatory_position: f.signatoryPosition || null,
     letterhead: f.letterhead || null,
+    name_np: f.nameNp || null,
+    address_np: f.addressNp || null,
   };
 }

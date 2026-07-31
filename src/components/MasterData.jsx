@@ -157,7 +157,7 @@ function MasterData({clients, onUpdateClients, token, isAdmin, isEditor, isSuper
   const updateFY = (i, v) => { if (!/^\d{4}\/\d{2}$/.test(v)) return; const l=[...fiscalYears]; l[i]=v; saveFY(l.sort()); setEditFy(null); };
 
   const ClientForm = ({client, onSave, onClose}) => {
-    const [form, setForm] = useState(client || {fullName:'', shortName:'', type:'Government', address:'', remarks:'', phone:'', email:'', website:'', signatoryName:'', signatoryPosition:'', letterhead:null});
+    const [form, setForm] = useState(client || {fullName:'', shortName:'', type:'Government', address:'', remarks:'', phone:'', email:'', website:'', signatoryName:'', signatoryPosition:'', letterhead:null, nameNp:'', addressNp:''});
     const set = (k,v) => setForm(f=>({...f,[k]:v}));
     return (
       <Modal title={client ? 'Edit client' : 'Add new client'} onClose={onClose}
@@ -199,7 +199,18 @@ function MasterData({clients, onUpdateClients, token, isAdmin, isEditor, isSuper
             Letter Generation
           </div>
           <div style={{fontSize:11.5, color:'var(--text3)', marginBottom:12}}>
-            Used in the signature block when generating shortlisting letters for this organization.
+            Used in the recipient and signature blocks when generating shortlisting letters for this organization.
+          </div>
+          <div className="form-row form-row-2">
+            <div className="form-group">
+              <MdTextField label="Name in Nepali (नाम)" value={form.nameNp||''} onChange={e=>set('nameNp',e.target.value)} placeholder="e.g. नागार्जुन नगरपालिका"/>
+            </div>
+            <div className="form-group">
+              <MdTextField label="Address in Nepali (ठेगाना)" value={form.addressNp||''} onChange={e=>set('addressNp',e.target.value)} placeholder="e.g. काठमाडौँ"/>
+            </div>
+          </div>
+          <div style={{fontSize:11.5, color:'var(--text3)', marginTop:-4, marginBottom:12}}>
+            Shown in the letter's श्री … block. Falls back to the English name and address when blank.
           </div>
           <div className="form-row form-row-2">
             <div className="form-group">
