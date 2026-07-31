@@ -132,9 +132,12 @@ async function detectLetterheadMargins(dataUrl) {
           if (rowDark(y) >= 3) { topMm = Math.ceil((y / h) * 297) + 8; break; }
         }
 
-        // Footer: first dark row in bottom 40% (scanning from bottom up)
+        // Footer: TOP edge of the footer artwork — scan downward from 60%.
+        // Scanning up from the last row matches the footer band's own bottom
+        // edge (it runs to the page edge), reserving almost no margin, so body
+        // content ends up printed on top of the footer.
         let bottomMm = null;
-        for (let y = h - 1; y >= Math.floor(h * 0.6); y--) {
+        for (let y = Math.floor(h * 0.6); y < h; y++) {
           if (rowDark(y) >= 3) { bottomMm = Math.ceil(((h - y) / h) * 297) + 8; break; }
         }
 
@@ -432,7 +435,7 @@ async function openShortlistLetter(row, opts = {}) {
         <div style="flex:1;padding:8px 10px;font-size:10pt;line-height:2;">
           <div>निवेदकको नाम: ${firmContactNp || '_______________'}</div>
           ${includeSign && firmSign
-            ? `<div style="margin-top:4px;">हस्ताक्षर: <img src="${firmSign}" style="display:inline-block;vertical-align:middle;margin-left:4px;height:28mm;width:auto;background:#fff;"></div>`
+            ? `<div style="margin-top:4px;">हस्ताक्षर: <img src="${firmSign}" style="display:inline-block;vertical-align:middle;margin-left:4px;max-height:20mm;max-width:100%;width:auto;height:auto;object-fit:contain;"></div>`
             : ''
           }
         </div>
@@ -1895,6 +1898,27 @@ export default function Shortlisting({ institutes, clients, isAdmin, isEditor, i
           ))}
         </div>
 
+        {/* Expand / collapse all groups */}
+        <div style={{display:'flex', gap:2, background:'var(--bg)', borderRadius:100, padding:3, flexShrink:0}}>
+          {[['expand','Expand all','unfold_more'],['collapse','Collapse all','unfold_less']].map(([act,lbl,icon]) => (
+            <button key={act} title={lbl}
+              onClick={() => setExpanded(act === 'expand'
+                ? Object.fromEntries(grouped.map(([k]) => [k, true]))
+                : {})}
+              style={{
+                display:'flex', alignItems:'center', gap:4,
+                padding:'5px 12px', borderRadius:100, border:'none', cursor:'pointer',
+                fontFamily:'inherit', fontSize:12.5, fontWeight:500,
+                background:'transparent', color:'var(--text3)', transition:'all .15s',
+              }}
+              onMouseEnter={e=>{ e.currentTarget.style.background='var(--surface)'; e.currentTarget.style.color='var(--primary)'; }}
+              onMouseLeave={e=>{ e.currentTarget.style.background='transparent'; e.currentTarget.style.color='var(--text3)'; }}>
+              <span className="material-icons-round" style={{fontSize:16}}>{icon}</span>
+              {lbl}
+            </button>
+          ))}
+        </div>
+
         <div style={{fontSize:12, color:'var(--text3)', whiteSpace:'nowrap', flexShrink:0}}>
           {filtered.length} {filtered.length === 1 ? 'entry' : 'entries'}
         </div>
@@ -1914,7 +1938,9 @@ export default function Shortlisting({ institutes, clients, isAdmin, isEditor, i
       ) : (
         <div style={{display:'flex', flexDirection:'column', gap:10}}>
           {grouped.map(([key, group]) => {
-            const isOpen = expanded[key] !== false; // default open
+            // Default collapsed — expanding every group up front renders all
+            // rows at once and makes the page slow to load.
+            const isOpen = expanded[key] === true;
             // For org grouping, extract client_id / client_name_manual from first row
             const firstRow = group.rows[0];
             const orgClientId   = groupBy === 'org' ? (firstRow?.client_id || null) : null;
