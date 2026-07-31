@@ -1152,17 +1152,16 @@ function StandingListModal({ list, onSave, onClose, saving }) {
 
 // Bulk-assign firms to an existing standing list.
 function AssignFirmsModal({ list, institutes, assignedIds, onSave, onClose, saving }) {
-  const [picked, setPicked] = useState(() => new Set());
+  const [picked, setPicked] = useState(() => new Set(assignedIds));
   const [q, setQ] = useState('');
 
-  const available = useMemo(() => {
+  const visible = useMemo(() => {
     const needle = q.trim().toLowerCase();
-    return institutes.filter(i => {
-      if (assignedIds.has(i.id)) return false;
-      if (!needle) return true;
-      return `${i.name} ${i.acronym || ''}`.toLowerCase().includes(needle);
-    });
-  }, [institutes, assignedIds, q]);
+    if (!needle) return institutes;
+    return institutes.filter(i =>
+      `${i.name} ${i.acronym || ''}`.toLowerCase().includes(needle)
+    );
+  }, [institutes, q]);
 
   const toggle = id => setPicked(s => {
     const n = new Set(s);
@@ -1170,26 +1169,29 @@ function AssignFirmsModal({ list, institutes, assignedIds, onSave, onClose, savi
     return n;
   });
 
+  const toAdd    = [...picked].filter(id => !assignedIds.has(id));
+  const toRemove = [...assignedIds].filter(id => !picked.has(id));
+  const changed  = toAdd.length + toRemove.length;
+
   return (
-    <Modal title={`Assign firms${list?.name ? ` — ${list.name}` : ''}`} onClose={onClose} footer={<>
+    <Modal title={`Manage firms${list?.name ? ` — ${list.name}` : ''}`} onClose={onClose} footer={<>
       <Btn className="btn btn-secondary" onClick={onClose}>Cancel</Btn>
-      <Btn className="btn btn-primary" disabled={!picked.size || saving}
-        onClick={() => onSave([...picked])}>
-        {saving ? 'Assigning…' : `Assign ${picked.size || ''} firm${picked.size === 1 ? '' : 's'}`.trim()}
+      <Btn className="btn btn-primary" disabled={!changed || saving}
+        onClick={() => onSave(toAdd, toRemove)}>
+        {saving ? 'Saving…' : changed ? `Save (${toAdd.length > 0 ? `+${toAdd.length}` : ''}${toAdd.length > 0 && toRemove.length > 0 ? ' ' : ''}${toRemove.length > 0 ? `−${toRemove.length}` : ''})` : 'No changes'}
       </Btn>
     </>}>
       <div style={{display:'flex', flexDirection:'column', gap:10}}>
         <MdTextField label="Search firms" value={q} onChange={e=>setQ(e.target.value)} placeholder="Name or acronym"/>
         <div style={{fontSize:12, color:'var(--text3)'}}>
-          {assignedIds.size > 0 && `${assignedIds.size} already on this list. `}
-          {available.length} available.
+          {picked.size} of {institutes.length} firm{institutes.length !== 1 ? 's' : ''} selected
         </div>
         <div style={{maxHeight:340, overflowY:'auto', border:'1px solid var(--border)', borderRadius:10}}>
-          {available.length === 0 ? (
+          {visible.length === 0 ? (
             <div style={{padding:20, textAlign:'center', color:'var(--text3)', fontSize:13}}>
-              {q ? 'No firms match your search.' : 'Every firm is already on this list.'}
+              No firms match your search.
             </div>
-          ) : available.map(i => {
+          ) : visible.map(i => {
             const on = picked.has(i.id);
             return (
               <label key={i.id} style={{
@@ -2192,10 +2194,14 @@ export default function Shortlisting({ institutes, clients, isAdmin, isEditor, i
     } finally { setSaving(false); }
   };
 
-  const handleAssignFirms = async (instituteIds) => {
+  const handleAssignFirms = async (toAdd, toRemove) => {
     setSaving(true);
     try {
-      await api('POST', `/standing-lists/${listModal.data.id}/firms`, { institute_ids: instituteIds }, token);
+      const id = listModal.data.id;
+      if (toAdd.length)
+        await api('POST', `/standing-lists/${id}/firms`, { institute_ids: toAdd }, token);
+      for (const instId of toRemove)
+        await api('DELETE', `/standing-lists/${id}/firms/${instId}`, null, token);
       setListModal(null);
       await load();
     } finally { setSaving(false); }
