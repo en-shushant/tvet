@@ -245,6 +245,11 @@ function InstituteDetail({institute, clients, onUpdateClients, onBack, onUpdate,
             Reg: {institute.regNo} &nbsp;·&nbsp; PAN: {institute.pan}
           </div>
         </div>
+        {/* Visible to every role, including read-only viewers — the Documents
+            tab itself already shows uploaded files to anyone, this just makes
+            it easy to find instead of requiring someone to know to click it
+            among the other tabs. */}
+        <Btn className="btn btn-secondary btn-sm" onClick={()=>switchTab('documents')}>📄 View Documents</Btn>
         {canEdit && !isShortlistOnly && <Btn className="btn btn-secondary btn-sm" onClick={()=>setModal({type:'editInstitute'})}>✏ Edit profile</Btn>}
         {isAdmin && <Btn className="btn btn-danger btn-sm" onClick={()=>setModal({type:'deleteInstitute'})}>🗑 Delete</Btn>}
       </div>
