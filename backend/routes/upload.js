@@ -18,6 +18,13 @@ const A4_H = 1754;  // 297 mm × 150 dpi / 25.4
 const INNER_W = Math.round(A4_W * 0.92); // 92% — ~8mm margin each side
 const INNER_H = Math.round(A4_H * 0.92);
 
+// Letterhead is captured by html2canvas at 794x1123 px and doubled again by
+// `scale: 2` in the PDF capture, i.e. ~1588x2246 actual output pixels. Storing
+// it at the 150dpi A4 size above (1240x1754) meant every letter upscaled it by
+// ~28%, which is what was reading as blur. 300dpi comfortably covers that.
+const LETTERHEAD_W = 2480; // 210 mm × 300 dpi / 25.4
+const LETTERHEAD_H = 3508; // 297 mm × 300 dpi / 25.4
+
 // Blank-page detection. Mean brightness is a poor proxy: a normal scanned page
 // is overwhelmingly white paper, so sparse text averages well above any usable
 // threshold and legitimate documents get rejected. Measure how much ink is on
@@ -68,11 +75,11 @@ async function isBlankPage(inputBuffer) {
 async function normaliseLetterhead(inputBuffer) {
   const output = await sharp(inputBuffer)
     .rotate()
-    .resize(A4_W, A4_H, { fit: 'fill' })   // exact A4, no margins, no letterboxing
+    .resize(LETTERHEAD_W, LETTERHEAD_H, { fit: 'fill' })   // exact A4, no margins, no letterboxing
     // JPEG has no alpha channel; without an explicit flatten sharp drops it and
     // every transparent pixel lands on black instead of the page white.
     .flatten({ background: { r: 255, g: 255, b: 255 } })
-    .jpeg({ quality: 92, progressive: true, mozjpeg: true })
+    .jpeg({ quality: 95, progressive: true, mozjpeg: true })
     .toBuffer();
 
   return { buffer: output, mime: 'image/jpeg', ext: '.jpg' };
