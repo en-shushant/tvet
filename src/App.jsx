@@ -121,7 +121,8 @@ function App() {
 
   // Load institutes and clients — stale-while-revalidate from sessionStorage cache
   useEffect(() => {
-    if (!session || !token) return;
+    // Never leave the spinner latched on if we bail out before fetching
+    if (!session || !token) { setLoading(false); return; }
     setApiError('');
 
     const CACHE_KEY = 'tvettrack_cache_v1';
@@ -158,42 +159,49 @@ function App() {
       }
     };
 
+    const fetchAll = () => Promise.all([
+      api('GET', '/institutes', null, token),
+      api('GET', '/clients', null, token),
+      api('GET', '/occupations', null, token).catch(() => []),
+      api('GET', '/locations', null, token).catch(() => []),
+    ]);
+
+    // A corrupt/outdated cache entry must never be able to wedge the app
+    const applyCached = () => {
+      if (!cached) return false;
+      try {
+        applyData(cached.insts, cached.cls, cached.occs || [], cached.locs || [], true);
+        return true;
+      } catch {
+        try { sessionStorage.removeItem(CACHE_KEY); } catch {}
+        return false;
+      }
+    };
+
     // If cache is fresh (< 5 min), show it instantly and skip the loading spinner
     const cacheAge = cached ? Date.now() - (cached.ts || 0) : Infinity;
-    if (cached && cacheAge < 5 * 60 * 1000) {
-      applyData(cached.insts, cached.cls, cached.occs || [], cached.locs || [], true);
+    if (cached && cacheAge < 5 * 60 * 1000 && applyCached()) {
       setLoading(false);
       restoreRoute();
       // Refresh in background silently
-      Promise.all([
-        api('GET', '/institutes', null, token),
-        api('GET', '/clients', null, token),
-        api('GET', '/occupations', null, token).catch(() => []),
-        api('GET', '/locations', null, token).catch(() => []),
-      ]).then(([insts, cls, occs, locs]) => applyData(insts, cls, occs, locs, false))
+      fetchAll()
+        .then(([insts, cls, occs, locs]) => applyData(insts, cls, occs, locs, false))
         .catch(() => {});
     } else {
       setLoading(true);
-      Promise.all([
-        api('GET', '/institutes', null, token),
-        api('GET', '/clients', null, token),
-        api('GET', '/occupations', null, token).catch(() => []),
-        api('GET', '/locations', null, token).catch(() => []),
-      ]).then(([insts, cls, occs, locs]) => {
-        applyData(insts, cls, occs, locs, false);
-        restoreRoute();
-        setLoading(false);
-      }).catch(err => {
-        // Fall back to stale cache if network fails
-        if (cached) {
-          applyData(cached.insts, cached.cls, cached.occs || [], cached.locs || [], true);
+      fetchAll()
+        .then(([insts, cls, occs, locs]) => {
+          applyData(insts, cls, occs, locs, false);
           restoreRoute();
-          setLoading(false);
-        } else {
-          setApiError(err.message);
-          setLoading(false);
-        }
-      });
+        })
+        .catch(err => {
+          // Fall back to stale cache if the network/API fails
+          if (applyCached()) restoreRoute();
+          else setApiError(err.message || 'Could not load data.');
+        })
+        // Runs even if applyData/restoreRoute above threw, so the spinner
+        // can never latch on permanently.
+        .finally(() => setLoading(false));
     }
   }, [session]);
 

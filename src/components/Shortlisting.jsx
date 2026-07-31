@@ -297,7 +297,12 @@ async function openShortlistLetter(row, opts = {}) {
     width: 794px;
     height: 1123px;
     flex-shrink: 0;
-    background: #fff ${useLhBg ? `url("${firmLetterhead}") no-repeat 0 0 / 794px 1123px` : ''};
+    background-color: #fff;
+    ${useLhBg ? `/* longhand: html2canvas drops background-size from the shorthand */
+    background-image: url("${firmLetterhead}");
+    background-repeat: no-repeat;
+    background-position: 0 0;
+    background-size: 794px 1123px;` : ''}
     position: relative;
     padding: 0;
     overflow: hidden;

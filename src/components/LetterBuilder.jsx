@@ -174,7 +174,16 @@ function buildLetterHtml({ fields, row, imgs, topMm, bottomMm, lrMm, inclSign, i
 <style>
   * { margin:0; padding:0; box-sizing:border-box; }
   body { background:#fff; }
-  .page { width:794px; height:1123px; background:#fff ${useLhBg ? `url("${firmLetterhead}") no-repeat 0 0 / 794px 1123px` : ''}; position:relative; padding:0; overflow:hidden; font-family:'Kalimati','Noto Sans Devanagari','Arial Unicode MS',sans-serif; font-size:13px; }
+  .page {
+    width:794px; height:1123px; position:relative; padding:0; overflow:hidden;
+    font-family:'Kalimati','Noto Sans Devanagari','Arial Unicode MS',sans-serif; font-size:13px;
+    background-color:#fff;
+    ${useLhBg ? `/* longhand: html2canvas drops background-size from the shorthand */
+    background-image:url("${firmLetterhead}");
+    background-repeat:no-repeat;
+    background-position:0 0;
+    background-size:794px 1123px;` : ''}
+  }
   .page-inner { position:relative;z-index:1;padding:${topMm}mm ${lrMm}mm ${bottomMm}mm ${lrMm}mm; }
   .lh-regpan { display:flex;justify-content:space-between;font-size:9pt;font-style:italic;color:#7b1a1a;margin-bottom:5px; }
   .lh-center { text-align:center; }
