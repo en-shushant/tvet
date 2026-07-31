@@ -18,11 +18,44 @@ const A4_H = 1754;  // 297 mm × 150 dpi / 25.4
 const INNER_W = Math.round(A4_W * 0.92); // 92% — ~8mm margin each side
 const INNER_H = Math.round(A4_H * 0.92);
 
-// Blank-page threshold: mean pixel brightness above this → no meaningful content
-const BLANK_THRESHOLD = 247;
+// Blank-page detection. Mean brightness is a poor proxy: a normal scanned page
+// is overwhelmingly white paper, so sparse text averages well above any usable
+// threshold and legitimate documents get rejected. Measure how much ink is on
+// the page instead — anything below this fraction of dark pixels is blank.
+const INK_DARK_LEVEL    = 200;    // 0-255; below this counts as ink
+const MIN_INK_FRACTION  = 0.0008; // 0.08% of pixels — a stray speck won't pass
 
 // Longest edge for overlay assets (signature / stamp)
 const ASSET_MAX = 1200;
+
+/**
+ * True only when the page carries essentially no ink.
+ *
+ * Downsamples to a small greyscale bitmap and counts dark pixels. Flattening
+ * onto white first matters twice over: it keeps transparent regions from being
+ * read as ink, and it drops the alpha channel that would otherwise skew the
+ * measurement. Errs strongly towards keeping the upload — wrongly rejecting a
+ * real document is far worse than storing a blank one.
+ */
+async function isBlankPage(inputBuffer) {
+  try {
+    const { data } = await sharp(inputBuffer)
+      .flatten({ background: { r: 255, g: 255, b: 255 } })
+      .greyscale()
+      .resize(500, 500, { fit: 'inside', withoutEnlargement: true })
+      .raw()
+      .toBuffer({ resolveWithObject: true });
+
+    if (!data.length) return false;
+    let dark = 0;
+    for (let i = 0; i < data.length; i++) {
+      if (data[i] < INK_DARK_LEVEL) dark++;
+    }
+    return (dark / data.length) < MIN_INK_FRACTION;
+  } catch {
+    return false; // if we can't tell, keep the upload
+  }
+}
 
 /**
  * Normalise a letterhead: full-bleed, exactly A4.
@@ -94,9 +127,7 @@ async function normaliseImage(inputBuffer) {
   }
 
   // ── 3: blank detection ──────────────────────────────────────────────────────
-  const stats = await sharp(trimmed).stats();
-  const meanBrightness = stats.channels.reduce((s, c) => s + c.mean, 0) / stats.channels.length;
-  if (meanBrightness > BLANK_THRESHOLD) return null;
+  if (await isBlankPage(trimmed)) return null;
 
   // ── 4: scale to fit inner A4 area ───────────────────────────────────────────
   const { data: resized, info } = await sharp(trimmed)
