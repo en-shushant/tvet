@@ -534,7 +534,7 @@ function buildNeaShortlistingHtml({ fields, row, imgs, topMm, bottomMm, lrMm, in
   ${body2 ? `<div class="body-txt">${body2.replace(/\n/g,'<br>')}</div>` : ''}
 
   ${tradeTypes ? `
-  <div class="section-label">सञ्चालन गर्ने सेवा/व्यापारको प्रकार:</div>
+  <div class="section-label">सृचिकृत हुन चाहेको समूह:</div>
   <div class="trade-box">${tradeTypes.replace(/\n/g,'<br>')}</div>` : ''}
 
   ${attachments.length ? `
