@@ -567,11 +567,17 @@ async function openShortlistLetter(row, opts = {}) {
   // Attachments — merged as real pages, not screenshotted. A PDF source keeps
   // every page (not just the first) and stays vector/text-sharp; an image
   // source is embedded directly, full-bleed, onto its own A4 page.
+  let mergedCount = 0, skippedCount = 0;
   for (const d of activeDocs) {
-    for (const src of parseDocFiles(d.src)) {
+    const files = parseDocFiles(d.src);
+    for (const src of files) {
       let bytes;
       try { bytes = await fetchBytes(src); }
-      catch { continue; } // skip a document we can't fetch rather than fail the whole letter
+      catch (e) {
+        skippedCount++;
+        console.warn(`[letter] ${d.label}: could not fetch attachment, skipping`, src, e);
+        continue; // skip a document we can't fetch rather than fail the whole letter
+      }
 
       const kind = sniff(bytes);
       if (kind === 'pdf') {
@@ -579,17 +585,29 @@ async function openShortlistLetter(row, opts = {}) {
           const srcDoc = await PDFDocument.load(bytes, { ignoreEncryption: true });
           const copied = await outDoc.copyPages(srcDoc, srcDoc.getPageIndices());
           copied.forEach(p => { outDoc.addPage(p); drawOverlay(p); });
-        } catch { /* corrupt/unreadable PDF — skip it */ }
+          mergedCount += copied.length;
+        } catch (e) {
+          skippedCount++;
+          console.warn(`[letter] ${d.label}: PDF failed to load (corrupt, or password-protected — pdf-lib cannot open an encrypted PDF even with ignoreEncryption, that flag only tolerates missing/blank owner passwords), skipping`, src, e);
+        }
       } else if (kind === 'jpeg' || kind === 'png') {
         const embedded = await embedImageBytes(bytes, d.label || 'attachment');
         if (embedded) {
           const page = outDoc.addPage([PAGE_W, PAGE_H]);
           page.drawImage(embedded, { x: 0, y: 0, width: PAGE_W, height: PAGE_H });
           drawOverlay(page);
+          mergedCount++;
+        } else {
+          skippedCount++;
         }
+      } else {
+        skippedCount++;
+        console.warn(`[letter] ${d.label}: unrecognised file format (first bytes: ${[...bytes.slice(0,4)]}), skipping`, src);
       }
-      // anything else (unrecognised format) is silently skipped
     }
+  }
+  if (skippedCount > 0) {
+    console.warn(`[letter] ${mergedCount} attachment page(s) merged, ${skippedCount} skipped — see warnings above for why.`);
   }
 
   const outBytes = await outDoc.save();
