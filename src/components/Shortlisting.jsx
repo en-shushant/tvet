@@ -497,21 +497,55 @@ async function openShortlistLetter(row, opts = {}) {
   const letterJpg = await outDoc.embedJpg(dataUrlToBytes(letterJpegDataUrl));
   outDoc.addPage([PAGE_W, PAGE_H]).drawImage(letterJpg, { x: 0, y: 0, width: PAGE_W, height: PAGE_H });
 
+  const bytesToDataUrl = (bytes, mime) => {
+    let bin = '';
+    for (let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
+    return `data:${mime};base64,${btoa(bin)}`;
+  };
+
+  // pdf-lib's embedPng/embedJpg reject some otherwise-valid variants (16-bit
+  // depth, interlacing, certain colour profiles, CMYK JPEGs). Re-encoding
+  // through a plain <canvas> always yields a standard 8-bit RGBA PNG it
+  // accepts, so a source image that fails direct embedding gets one retry
+  // before being skipped — instead of silently vanishing with no way to tell
+  // why (this is what previously made a stamp or signature disappear with no
+  // visible cause, independent of any other toggle).
+  const normalizeForPdfLib = (bytes, mime) => new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => {
+      try {
+        const c = document.createElement('canvas');
+        c.width = img.naturalWidth; c.height = img.naturalHeight;
+        c.getContext('2d').drawImage(img, 0, 0);
+        resolve(c.toDataURL('image/png'));
+      } catch (e) { reject(e); }
+    };
+    img.onerror = reject;
+    img.src = bytesToDataUrl(bytes, mime);
+  });
+
+  const embedImageBytes = async (bytes, label) => {
+    const kind = sniff(bytes);
+    const mime = kind === 'png' ? 'image/png' : 'image/jpeg';
+    try {
+      return kind === 'png' ? await outDoc.embedPng(bytes) : await outDoc.embedJpg(bytes);
+    } catch (e) {
+      console.warn(`[letter] ${label}: direct embed failed, retrying via canvas re-encode`, e);
+      try {
+        return await outDoc.embedPng(dataUrlToBytes(await normalizeForPdfLib(bytes, mime)));
+      } catch (e2) {
+        console.warn(`[letter] ${label}: could not be embedded even after re-encode — omitting it`, e2);
+        return null;
+      }
+    }
+  };
+
   // Sign/stamp overlay, embedded once and drawn on every attachment page —
   // matches the overlay that used to be baked into each doc page's HTML.
+  // These are independent: turning signature off never affects the stamp.
   let stampImg = null, signImg = null;
-  if (includeStamp && firmStamp) {
-    try {
-      const bytes = dataUrlToBytes(firmStamp);
-      stampImg = sniff(bytes) === 'png' ? await outDoc.embedPng(bytes) : await outDoc.embedJpg(bytes);
-    } catch {}
-  }
-  if (includeSign && firmSign) {
-    try {
-      const bytes = dataUrlToBytes(firmSign);
-      signImg = sniff(bytes) === 'png' ? await outDoc.embedPng(bytes) : await outDoc.embedJpg(bytes);
-    } catch {}
-  }
+  if (includeStamp && firmStamp) stampImg = await embedImageBytes(dataUrlToBytes(firmStamp), 'stamp');
+  if (includeSign  && firmSign)  signImg  = await embedImageBytes(dataUrlToBytes(firmSign),  'signature');
   // These pages are real, already-printed certificates — the overlay only
   // needs to read as a small corner stamp, not compete with the page's own
   // content. Previous sizes (stamp 38mm, sign 32mm/18mm) were tuned against a
@@ -547,12 +581,12 @@ async function openShortlistLetter(row, opts = {}) {
           copied.forEach(p => { outDoc.addPage(p); drawOverlay(p); });
         } catch { /* corrupt/unreadable PDF — skip it */ }
       } else if (kind === 'jpeg' || kind === 'png') {
-        try {
-          const embedded = kind === 'png' ? await outDoc.embedPng(bytes) : await outDoc.embedJpg(bytes);
+        const embedded = await embedImageBytes(bytes, d.label || 'attachment');
+        if (embedded) {
           const page = outDoc.addPage([PAGE_W, PAGE_H]);
           page.drawImage(embedded, { x: 0, y: 0, width: PAGE_W, height: PAGE_H });
           drawOverlay(page);
-        } catch { /* unreadable image — skip it */ }
+        }
       }
       // anything else (unrecognised format) is silently skipped
     }
