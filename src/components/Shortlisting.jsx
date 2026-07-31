@@ -1990,6 +1990,19 @@ export default function Shortlisting({ institutes, clients, isAdmin, isEditor, i
     } finally { setSaving(false); }
   };
 
+  // Deleting a list cascades to its firm entries, so force=1 is only sent once
+  // the user has confirmed against the actual count.
+  const handleListDelete = async () => {
+    const list = listModal.data;
+    setSaving(true);
+    try {
+      await api('DELETE', `/standing-lists/${list.id}?force=1`, null, token);
+      setListModal(null);
+      await load();
+    } catch (e) { alert(e.message || 'Delete failed'); }
+    finally { setSaving(false); }
+  };
+
   const filtered = useMemo(() => rows.filter(r => {
     if (r.standing_list_id) return false; // shown under its standing list
     if (filterOrg    && String(r.client_id)    !== filterOrg)    return false;
@@ -2143,6 +2156,14 @@ export default function Shortlisting({ institutes, clients, isAdmin, isEditor, i
                         style={{width:30, height:30, borderRadius:50, border:'none', background:'transparent', color:'var(--text3)', cursor:'pointer'}}>
                         <span className="material-icons-round" style={{fontSize:17}}>edit</span>
                       </button>
+                      {isAdmin && (
+                        <button title="Delete shortlist" onClick={() => setListModal({ type:'delete', data:list })}
+                          style={{width:30, height:30, borderRadius:50, border:'none', background:'transparent', color:'var(--text3)', cursor:'pointer'}}
+                          onMouseEnter={e=>{e.currentTarget.style.background='var(--error-light)'; e.currentTarget.style.color='var(--error)';}}
+                          onMouseLeave={e=>{e.currentTarget.style.background='transparent'; e.currentTarget.style.color='var(--text3)';}}>
+                          <span className="material-icons-round" style={{fontSize:17}}>delete</span>
+                        </button>
+                      )}
                     </>
                   )}
                 </div>
@@ -2175,7 +2196,28 @@ export default function Shortlisting({ institutes, clients, isAdmin, isEditor, i
         </div>
       )}
 
-      {listModal?.type === 'assign' ? (
+      {listModal?.type === 'delete' ? (() => {
+        const n = (firmsByList.get(String(listModal.data.id)) || []).length;
+        return (
+          <Modal title="Delete shortlist" onClose={() => setListModal(null)} footer={<>
+            <Btn className="btn btn-secondary" onClick={() => setListModal(null)}>Cancel</Btn>
+            <Btn className="btn btn-danger" disabled={saving} onClick={handleListDelete}>
+              {saving ? 'Deleting…' : n > 0 ? `Delete list and ${n} entr${n === 1 ? 'y' : 'ies'}` : 'Delete list'}
+            </Btn>
+          </>}>
+            <div style={{fontSize:14, color:'var(--text)', lineHeight:1.6}}>
+              Delete <b>{listModal.data.client_name_manual || 'this shortlist'}</b>
+              {listModal.data.name ? <> — {listModal.data.name}</> : null}?
+            </div>
+            {n > 0 && (
+              <div style={{marginTop:12, padding:'10px 14px', borderRadius:10, background:'var(--error-light)', color:'#c0391e', fontSize:13, lineHeight:1.6}}>
+                This also permanently deletes the <b>{n}</b> firm entr{n === 1 ? 'y' : 'ies'} assigned to it,
+                along with their amounts, documents and remarks. This cannot be undone.
+              </div>
+            )}
+          </Modal>
+        );
+      })() : listModal?.type === 'assign' ? (
         <AssignFirmsModal
           list={listModal.data}
           institutes={sortedInstitutes}
