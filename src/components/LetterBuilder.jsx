@@ -86,7 +86,6 @@ const TEMPLATE = {
     ref:           { label: 'संख्या / Ref. No.', value: '' },
     lrPadding:     { label: 'Left / Right Margin (mm)', value: '20' },
     toName:        { label: 'To: Name (प्रापक नाम)', value: '' },
-    toShort:       { label: 'To: Short Name', value: '' },
     toAddress:     { label: 'To: Address (ठेगाना)', value: '' },
     toTitle:       { label: 'To Title (पद)', value: 'कार्यालय प्रमुख' },
     subject:       { label: 'Subject (विषय)', value: 'मौजुदा सूचीमा दर्ता गरी पाऊँ।', multiline: true },
@@ -130,7 +129,7 @@ const TEMPLATE = {
 
 // Order the fields appear in the editor panel
 const FIELD_ORDER = [
-  'date','ref','lrPadding','toTitle','toName','toShort','toAddress','subject','body','tapasil',
+  'date','ref','lrPadding','toTitle','toName','toAddress','subject','body','tapasil',
   'firmNameNp','firmAcronym','firmAddressNp','firmContact','firmPhone','mobileNo','fy','applicantName',
   'sec1Header','sec2Header','sec2Items','sec3Header',
   'supplyLabel','supplyValue','constructionLabel','constructionValue',
@@ -147,7 +146,6 @@ function buildLetterHtml({ fields, row, imgs, topMm, bottomMm, lrMm, inclSign, i
   const date          = fields.date          || todayBSStr;
   const ref           = fields.ref           || '';
   const toName        = fields.toName        || row.toName        || '';
-  const toShort       = fields.toShort       || row.toShort       || '';
   const toAddress     = fields.toAddress     || row.toAddress     || '';
   const firmNameNp    = fields.firmNameNp    || imgs.firmNameNp    || firmName || '';
   const firmAcronym   = fields.firmAcronym   || imgs.firmAcronym   || '';
@@ -225,7 +223,7 @@ function buildLetterHtml({ fields, row, imgs, topMm, bottomMm, lrMm, inclSign, i
   </div>
   <div class="to-block">
     <div>श्री ${fields.toTitle} ज्यू,</div>
-    <div>${toName}${toShort && toShort !== toName ? `, (${toShort})` : ','}</div>
+    <div>${toName}</div>
     ${toAddress ? `<div>${toAddress}</div>` : ''}
   </div>
   <div class="subject">विषय: ${fields.subject}</div>
@@ -324,10 +322,9 @@ export default function LetterBuilder({ row: initialRow, token, onClose, allRows
       ...f,
       date:          f.date || todayBS(),
       lrPadding:     String(row?.institute_letter_lr_padding ?? 20),
-      // Nepali name/address win for the श्री … block; English is the fallback
-      toName:        row?.client_name_np || row?.client_name || row?.client_name_manual || f.toName || '',
-      toShort:       row?.client_short || f.toShort || '',
-      toAddress:     row?.client_address_np || row?.client_address || f.toAddress || '',
+      // श्री block: manual entry wins, then Nepali, then English
+      toName:        row?.client_name_manual    || row?.client_name_np    || row?.client_name    || f.toName    || '',
+      toAddress:     row?.client_address_manual || row?.client_address_np || row?.client_address || f.toAddress || '',
       toTitle:       row?.client_signatory_position || f.toTitle || 'कार्यालय प्रमुख',
       serviceType:   row?.institute_service_type    || f.serviceType || '',
       firmNameNp:    row?.institute_name_np    || row?.institute_name    || f.firmNameNp    || '',
@@ -399,9 +396,8 @@ export default function LetterBuilder({ row: initialRow, token, onClose, allRows
     const bottomMm = margins.bottom && margins.bottom > cfgBot ? margins.bottom : cfgBot;
     // row data is only a fallback — the editable fields take priority
     const rowData = {
-      toName:    row?.client_name_np || row?.client_name || row?.client_name_manual || '',
-      toShort:   row?.client_short || '',
-      toAddress: row?.client_address_np || row?.client_address || '',
+      toName:    row?.client_name_manual    || row?.client_name_np    || row?.client_name    || '',
+      toAddress: row?.client_address_manual || row?.client_address_np || row?.client_address || '',
       firmPhone: row?.institute_phone || '',
       fyNp:      row?.fy ? toNpNum(row.fy) : '',
     };

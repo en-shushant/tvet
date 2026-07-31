@@ -201,10 +201,9 @@ async function openShortlistLetter(row, opts = {}) {
   const firmPhoneNp     = firmPhone ? toNpNum(firmPhone) : '';
   const firmMobileNp    = firmMobile ? toNpNum(firmMobile) : '';
   // To — procuring entity (client)
-  // Prefer the Nepali name/address for the श्री … block; fall back to English
-  const toName          = row.client_name_np || row.client_name || row.client_name_manual || '';
-  const toShort         = row.client_short || '';
-  const toAddress       = row.client_address_np || row.client_address || '';
+  // श्री block: the manually entered name/address win, then Nepali, then English
+  const toName          = row.client_name_manual    || row.client_name_np    || row.client_name    || '';
+  const toAddress       = row.client_address_manual || row.client_address_np || row.client_address || '';
   const toContact       = row.client_signatory_position || '';
   // Shortlisting details
   const listName  = row.standing_list_name || 'Standing List';
@@ -364,7 +363,7 @@ async function openShortlistLetter(row, opts = {}) {
 
   <div class="to-block">
     <div>श्री ${toContact || 'कार्यालय प्रमुख'} ज्यू,</div>
-    <div>${toName}${toShort && toShort !== toName ? `, (${toShort})` : ','}</div>
+    <div>${toName}</div>
     ${toAddress ? `<div>${toAddress}</div>` : ''}
   </div>
 
@@ -955,6 +954,139 @@ const SERVICE_TYPES = [
   'परामर्श सेवा',
   'अन्य सेवा',
 ];
+
+// Create / edit a standing list. Firms are assigned separately, so a list can
+// exist before any firm is on it.
+function StandingListModal({ list, onSave, onClose, saving }) {
+  const [f, setF] = useState(() => ({
+    client_name_manual: list?.client_name_manual || '',
+    client_address_manual: list?.client_address_manual || '',
+    name:        list?.name || '',
+    fy:          list?.fy || getCurrentFY(),
+    list_date:   list?.list_date ? String(list.list_date).slice(0, 10) : new Date().toISOString().slice(0, 10),
+    valid_until: list?.valid_until ? String(list.valid_until).slice(0, 10) : '',
+    status:      list?.status || 'Active',
+    remarks:     list?.remarks || '',
+  }));
+  const set = (k, v) => setF(p => ({ ...p, [k]: v }));
+  const valid = !!f.client_name_manual.trim();
+
+  return (
+    <Modal title={list ? 'Edit shortlist' : 'New shortlist'} onClose={onClose} footer={<>
+      <Btn className="btn btn-secondary" onClick={onClose}>Cancel</Btn>
+      <Btn className="btn btn-primary" disabled={!valid || saving}
+        onClick={() => onSave({
+          ...f,
+          client_name_manual:    f.client_name_manual.trim(),
+          client_address_manual: f.client_address_manual.trim() || null,
+        })}>
+        {saving ? 'Saving…' : list ? 'Save changes' : 'Create shortlist'}
+      </Btn>
+    </>}>
+      <div style={{display:'flex', flexDirection:'column', gap:12}}>
+        {/* The letter prints these verbatim as lines 2 and 3 of the श्री block */}
+        <div className="form-group">
+          <MdTextField label="Organization name *" value={f.client_name_manual}
+            onChange={e=>set('client_name_manual', e.target.value)} placeholder="e.g. नागार्जुन नगरपालिका"/>
+        </div>
+        <div className="form-group">
+          <MdTextField label="Organization address" value={f.client_address_manual}
+            onChange={e=>set('client_address_manual', e.target.value)} placeholder="e.g. काठमाडौँ"/>
+        </div>
+        <div style={{fontSize:11.5, color:'var(--text3)', marginTop:-4}}>
+          Printed in the letter as:&nbsp; श्री कार्यालय प्रमुख ज्यू, / {f.client_name_manual || '…'} / {f.client_address_manual || '…'}
+        </div>
+        <div className="form-group">
+          <MdTextField label="Shortlist name" value={f.name} onChange={e=>set('name', e.target.value)}
+            placeholder="e.g. Standing List 2081/82"/>
+        </div>
+        <div className="form-row form-row-2">
+          <div className="form-group">
+            <MdSelect label="Fiscal year" value={f.fy} onChange={e=>set('fy', e.target.value)}>
+              {FYS.map(y => <MdOption key={y} value={y}>{y}</MdOption>)}
+            </MdSelect>
+          </div>
+          <div className="form-group">
+            <MdSelect label="Status" value={f.status} onChange={e=>set('status', e.target.value)}>
+              {['Active','Expired','Pending'].map(s => <MdOption key={s} value={s}>{s}</MdOption>)}
+            </MdSelect>
+          </div>
+        </div>
+        <div className="form-row form-row-2">
+          <div className="form-group">
+            <MdTextField type="date" label="Shortlist date" value={f.list_date} onChange={e=>set('list_date', e.target.value)}/>
+          </div>
+          <div className="form-group">
+            <MdTextField type="date" label="Valid until (optional)" value={f.valid_until} onChange={e=>set('valid_until', e.target.value)}/>
+          </div>
+        </div>
+        <div className="form-group">
+          <MdTextField label="Remarks" value={f.remarks} onChange={e=>set('remarks', e.target.value)}/>
+        </div>
+      </div>
+    </Modal>
+  );
+}
+
+// Bulk-assign firms to an existing standing list.
+function AssignFirmsModal({ list, institutes, assignedIds, onSave, onClose, saving }) {
+  const [picked, setPicked] = useState(() => new Set());
+  const [q, setQ] = useState('');
+
+  const available = useMemo(() => {
+    const needle = q.trim().toLowerCase();
+    return institutes.filter(i => {
+      if (assignedIds.has(i.id)) return false;
+      if (!needle) return true;
+      return `${i.name} ${i.acronym || ''}`.toLowerCase().includes(needle);
+    });
+  }, [institutes, assignedIds, q]);
+
+  const toggle = id => setPicked(s => {
+    const n = new Set(s);
+    n.has(id) ? n.delete(id) : n.add(id);
+    return n;
+  });
+
+  return (
+    <Modal title={`Assign firms${list?.name ? ` — ${list.name}` : ''}`} onClose={onClose} footer={<>
+      <Btn className="btn btn-secondary" onClick={onClose}>Cancel</Btn>
+      <Btn className="btn btn-primary" disabled={!picked.size || saving}
+        onClick={() => onSave([...picked])}>
+        {saving ? 'Assigning…' : `Assign ${picked.size || ''} firm${picked.size === 1 ? '' : 's'}`.trim()}
+      </Btn>
+    </>}>
+      <div style={{display:'flex', flexDirection:'column', gap:10}}>
+        <MdTextField label="Search firms" value={q} onChange={e=>setQ(e.target.value)} placeholder="Name or acronym"/>
+        <div style={{fontSize:12, color:'var(--text3)'}}>
+          {assignedIds.size > 0 && `${assignedIds.size} already on this list. `}
+          {available.length} available.
+        </div>
+        <div style={{maxHeight:340, overflowY:'auto', border:'1px solid var(--border)', borderRadius:10}}>
+          {available.length === 0 ? (
+            <div style={{padding:20, textAlign:'center', color:'var(--text3)', fontSize:13}}>
+              {q ? 'No firms match your search.' : 'Every firm is already on this list.'}
+            </div>
+          ) : available.map(i => {
+            const on = picked.has(i.id);
+            return (
+              <label key={i.id} style={{
+                display:'flex', alignItems:'center', gap:10, padding:'9px 12px', cursor:'pointer',
+                borderBottom:'1px solid var(--border)',
+                background: on ? 'color-mix(in srgb, var(--primary) 10%, transparent)' : 'transparent',
+              }}>
+                <input type="checkbox" checked={on} onChange={()=>toggle(i.id)} style={{accentColor:'var(--primary)'}}/>
+                <span style={{fontSize:13, color:'var(--text)'}}>
+                  {i.acronym ? <b>[{i.acronym}] </b> : ''}{i.name}
+                </span>
+              </label>
+            );
+          })}
+        </div>
+      </div>
+    </Modal>
+  );
+}
 
 function LetterOptsModal({ row, token, onClose, onOpenBuilder }) {
   const [inclSign, setInclSign]   = useState(false);
@@ -1799,6 +1931,8 @@ export default function Shortlisting({ institutes, clients, isAdmin, isEditor, i
   const canEdit = !!(isAdmin || isEditor || isShortlistOnly);
 
   const [rows, setRows] = useState([]);
+  const [standingLists, setStandingLists] = useState([]);
+  const [listModal, setListModal] = useState(null);   // {type:'new'|'edit'|'assign', data?}
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [modal, setModal] = useState(null); // {type:'add'|'edit'|'delete', data?}
@@ -1814,14 +1948,50 @@ export default function Shortlisting({ institutes, clients, isAdmin, isEditor, i
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const data = await api('GET', '/shortlists', null, token);
+      const [data, lists] = await Promise.all([
+        api('GET', '/shortlists', null, token),
+        api('GET', '/standing-lists', null, token).catch(() => []),
+      ]);
       setRows(data);
+      setStandingLists(lists || []);
     } finally { setLoading(false); }
   }, [token]);
 
   useEffect(() => { load(); }, [load]);
 
+  // Firms currently assigned to each standing list
+  const firmsByList = useMemo(() => {
+    const m = new Map();
+    for (const r of rows) {
+      if (!r.standing_list_id) continue;
+      const k = String(r.standing_list_id);
+      if (!m.has(k)) m.set(k, []);
+      m.get(k).push(r);
+    }
+    return m;
+  }, [rows]);
+
+  const handleListSave = async (data) => {
+    setSaving(true);
+    try {
+      if (listModal?.data?.id) await api('PUT', `/standing-lists/${listModal.data.id}`, data, token);
+      else                     await api('POST', '/standing-lists', data, token);
+      setListModal(null);
+      await load();
+    } finally { setSaving(false); }
+  };
+
+  const handleAssignFirms = async (instituteIds) => {
+    setSaving(true);
+    try {
+      await api('POST', `/standing-lists/${listModal.data.id}/firms`, { institute_ids: instituteIds }, token);
+      setListModal(null);
+      await load();
+    } finally { setSaving(false); }
+  };
+
   const filtered = useMemo(() => rows.filter(r => {
+    if (r.standing_list_id) return false; // shown under its standing list
     if (filterOrg    && String(r.client_id)    !== filterOrg)    return false;
     if (filterFirm   && String(r.institute_id) !== filterFirm)   return false;
     if (filterStatus && r.status !== filterStatus)               return false;
@@ -1928,13 +2098,100 @@ export default function Shortlisting({ institutes, clients, isAdmin, isEditor, i
             </Btn>
           )}
           {canEdit && (
-            <Btn className="btn btn-primary" onClick={() => setModal({ type:'add' })}>
-              <span className="material-icons-round" style={{fontSize:16}}>add</span>
-              Add Entry
+            <Btn className="btn btn-primary" onClick={() => setListModal({ type:'new' })}>
+              <span className="material-icons-round" style={{fontSize:16}}>playlist_add</span>
+              New Shortlist
             </Btn>
           )}
         </div>
       </div>
+
+      {/* ── Standing lists: create the list, then assign firms to it ── */}
+      {!loading && standingLists.length > 0 && (
+        <div style={{display:'flex', flexDirection:'column', gap:10, marginBottom:16}}>
+          {standingLists.map(list => {
+            const firms = firmsByList.get(String(list.id)) || [];
+            const open  = expanded[`sl:${list.id}`] === true;
+            return (
+              <div key={list.id} style={{background:'var(--surface)', borderRadius:16, boxShadow:'var(--shadow)', overflow:'hidden'}}>
+                <div style={{display:'flex', alignItems:'center', gap:10, padding:'12px 18px'}}>
+                  <button onClick={() => toggle(`sl:${list.id}`)}
+                    style={{background:'none', border:'none', cursor:'pointer', color:'var(--text3)', display:'flex', padding:0}}>
+                    <span className="material-icons-round">{open ? 'expand_more' : 'chevron_right'}</span>
+                  </button>
+                  <div style={{flex:1, minWidth:0, cursor:'pointer'}} onClick={() => toggle(`sl:${list.id}`)}>
+                    <div style={{fontSize:14.5, fontWeight:600, color:'var(--text)'}}>
+                      {list.client_name_manual || 'Untitled organization'}
+                    </div>
+                    <div style={{fontSize:12, color:'var(--text3)', marginTop:2}}>
+                      {[list.name, list.fy && `FY ${list.fy}`, bsDateLabel(list.list_date)].filter(Boolean).join('  ·  ')}
+                    </div>
+                  </div>
+                  <span style={{fontSize:11, fontWeight:600, padding:'3px 10px', borderRadius:100,
+                    background: firms.length ? 'var(--primary-light)' : 'var(--bg2)',
+                    color: firms.length ? 'var(--primary-dark)' : 'var(--text3)', flexShrink:0}}>
+                    {firms.length} firm{firms.length === 1 ? '' : 's'}
+                  </span>
+                  {canEdit && (
+                    <>
+                      <Btn className="btn btn-secondary" style={{fontSize:12}}
+                        onClick={() => setListModal({ type:'assign', data:list })}>
+                        <span className="material-icons-round" style={{fontSize:15}}>group_add</span>
+                        Assign firms
+                      </Btn>
+                      <button title="Edit shortlist" onClick={() => setListModal({ type:'edit', data:list })}
+                        style={{width:30, height:30, borderRadius:50, border:'none', background:'transparent', color:'var(--text3)', cursor:'pointer'}}>
+                        <span className="material-icons-round" style={{fontSize:17}}>edit</span>
+                      </button>
+                    </>
+                  )}
+                </div>
+                {open && (
+                  firms.length === 0 ? (
+                    <div style={{padding:'18px 20px', borderTop:'1px solid var(--border)', fontSize:13, color:'var(--text3)'}}>
+                      No firms assigned yet — use “Assign firms” to add them.
+                    </div>
+                  ) : (
+                    <>
+                      <TableHead groupBy="org"/>
+                      {firms.map((row, i) => (
+                        <ShortlistRow
+                          key={row.id} row={row} idx={i}
+                          canEdit={canEdit} isAdmin={isAdmin} isSuperAdmin={isSuperAdmin}
+                          showFY={false}
+                          onEdit={(r) => setModal({ type:'edit', data:r })}
+                          onDelete={(r) => setModal({ type:'delete', data:r })}
+                          onBillSave={handleBillSave}
+                          saving={saving}
+                          token={token}
+                        />
+                      ))}
+                    </>
+                  )
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {listModal?.type === 'assign' ? (
+        <AssignFirmsModal
+          list={listModal.data}
+          institutes={sortedInstitutes}
+          assignedIds={new Set((firmsByList.get(String(listModal.data.id)) || []).map(r => r.institute_id))}
+          onSave={handleAssignFirms}
+          onClose={() => setListModal(null)}
+          saving={saving}
+        />
+      ) : listModal ? (
+        <StandingListModal
+          list={listModal.type === 'edit' ? listModal.data : null}
+          onSave={handleListSave}
+          onClose={() => setListModal(null)}
+          saving={saving}
+        />
+      ) : null}
 
       {/* ── Controls bar ── */}
       <div style={{
@@ -2024,11 +2281,13 @@ export default function Shortlisting({ institutes, clients, isAdmin, isEditor, i
           <span className="spin material-icons-round" style={{fontSize:28}}>sync</span>
         </div>
       ) : filtered.length === 0 ? (
-        <div className="empty-state">
-          <div className="empty-state-icon"><span className="material-icons-round" style={{fontSize:44, opacity:.3}}>playlist_add_check</span></div>
-          <div className="empty-state-title">No shortlist entries yet</div>
-          <div className="empty-state-sub">{canEdit ? 'Click "Add Entry" to record a shortlisting.' : 'No records found.'}</div>
-        </div>
+        standingLists.length === 0 && (
+          <div className="empty-state">
+            <div className="empty-state-icon"><span className="material-icons-round" style={{fontSize:44, opacity:.3}}>playlist_add_check</span></div>
+            <div className="empty-state-title">No shortlists yet</div>
+            <div className="empty-state-sub">{canEdit ? 'Click "New Shortlist" to create one, then assign firms to it.' : 'No records found.'}</div>
+          </div>
+        )
       ) : (
         <div style={{display:'flex', flexDirection:'column', gap:10}}>
           {grouped.map(([key, group]) => {

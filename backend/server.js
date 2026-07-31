@@ -168,6 +168,26 @@ async function runMigrations() {
     `ALTER TABLE institutes ADD COLUMN IF NOT EXISTS created_by UUID REFERENCES users(id) ON DELETE SET NULL`,
     `ALTER TABLE shortlists ADD COLUMN IF NOT EXISTS contract_amount BIGINT`,
     `ALTER TABLE shortlists ADD COLUMN IF NOT EXISTS shortlist_doc TEXT`,
+    // A standing list is created first, then firms are assigned to it. Existing
+    // shortlist rows predate this and keep standing_list_id NULL — they stay
+    // valid and are shown as ungrouped legacy entries.
+    `CREATE TABLE IF NOT EXISTS standing_lists (
+      id                 SERIAL PRIMARY KEY,
+      client_id          INTEGER REFERENCES clients(id) ON DELETE SET NULL,
+      client_name_manual TEXT,
+      name               TEXT,
+      fy                 TEXT,
+      list_date          DATE,
+      valid_until        DATE,
+      status             TEXT DEFAULT 'Active',
+      remarks            TEXT,
+      created_at         TIMESTAMPTZ DEFAULT NOW(),
+      updated_at         TIMESTAMPTZ DEFAULT NOW()
+    )`,
+    `ALTER TABLE standing_lists ADD COLUMN IF NOT EXISTS client_address_manual TEXT`,
+    `ALTER TABLE shortlists ADD COLUMN IF NOT EXISTS standing_list_id INTEGER REFERENCES standing_lists(id) ON DELETE CASCADE`,
+    `ALTER TABLE shortlists ADD COLUMN IF NOT EXISTS client_address_manual TEXT`,
+    `CREATE INDEX IF NOT EXISTS idx_shortlists_standing_list ON shortlists(standing_list_id)`,
     `CREATE TABLE IF NOT EXISTS contracts (
       id                SERIAL PRIMARY KEY,
       client_id         INTEGER REFERENCES clients(id) ON DELETE SET NULL,
@@ -263,6 +283,7 @@ fastify.register(require('./routes/occupation-tools'), { prefix: '/api/occupatio
 fastify.register(require('./routes/infrastructure'),   { prefix: '/api/infrastructure' });
 fastify.register(require('./routes/dashboard'),        { prefix: '/api/dashboard' });
 fastify.register(require('./routes/shortlists'),       { prefix: '/api/shortlists' });
+fastify.register(require('./routes/standingLists'),   { prefix: '/api/standing-lists' });
 fastify.register(require('./routes/contracts'),        { prefix: '/api/contracts' });
 fastify.register(require('./routes/quotations'),       { prefix: '/api/quotations' });
 fastify.register(require('./routes/upload'),           { prefix: '/api/upload' });
