@@ -209,8 +209,9 @@ async function openShortlistLetter(row, opts = {}) {
   // To — procuring entity (client)
   // श्री block: the manually entered name/address win, then Nepali, then English
   const toName          = row.client_name_manual    || row.client_name_np    || row.client_name    || '';
+  const toName2         = row.client_name2_manual   || '';
   const toAddress       = row.client_address_manual || row.client_address_np || row.client_address || '';
-  const toContact       = row.client_signatory_position || '';
+  const toAddresseeTitle = row.addressee            || row.client_signatory_position || '';
   // Shortlisting details
   const listName  = row.standing_list_name || 'Standing List';
   const fy        = row.fy || '';
@@ -348,8 +349,9 @@ async function openShortlistLetter(row, opts = {}) {
   </div>
 
   <div class="to-block">
-    <div>श्री ${toContact || 'कार्यालय प्रमुख'} ज्यू,</div>
+    <div>श्री ${toAddresseeTitle || 'कार्यालय प्रमुख'} ज्यू,</div>
     <div>${toName}</div>
+    ${toName2 ? `<div>${toName2}</div>` : ''}
     ${toAddress ? `<div>${toAddress}</div>` : ''}
   </div>
 
@@ -1081,7 +1083,9 @@ const SERVICE_TYPES = [
 // exist before any firm is on it.
 function StandingListModal({ list, onSave, onClose, saving }) {
   const [f, setF] = useState(() => ({
-    client_name_manual: list?.client_name_manual || '',
+    addressee:            list?.addressee            || '',
+    client_name_manual:   list?.client_name_manual   || '',
+    client_name2_manual:  list?.client_name2_manual  || '',
     client_address_manual: list?.client_address_manual || '',
     name:        list?.name || '',
     fy:          list?.fy || getCurrentFY(),
@@ -1093,30 +1097,56 @@ function StandingListModal({ list, onSave, onClose, saving }) {
   const set = (k, v) => setF(p => ({ ...p, [k]: v }));
   const valid = !!f.client_name_manual.trim();
 
+  // Build the live letter-address preview
+  const addrLine1 = `श्री ${f.addressee.trim() || 'कार्यालय प्रमुख'} ज्यू,`;
+  const addrLines = [
+    addrLine1,
+    f.client_name_manual.trim() || '…',
+    f.client_name2_manual.trim() || null,
+    f.client_address_manual.trim() || '…',
+  ].filter(Boolean);
+
   return (
     <Modal title={list ? 'Edit shortlist' : 'New shortlist'} onClose={onClose} footer={<>
       <Btn className="btn btn-secondary" onClick={onClose}>Cancel</Btn>
       <Btn className="btn btn-primary" disabled={!valid || saving}
         onClick={() => onSave({
           ...f,
+          addressee:            f.addressee.trim() || null,
           client_name_manual:    f.client_name_manual.trim(),
+          client_name2_manual:  f.client_name2_manual.trim() || null,
           client_address_manual: f.client_address_manual.trim() || null,
         })}>
         {saving ? 'Saving…' : list ? 'Save changes' : 'Create shortlist'}
       </Btn>
     </>}>
       <div style={{display:'flex', flexDirection:'column', gap:12}}>
-        {/* The letter prints these verbatim as lines 2 and 3 of the श्री block */}
+        {/* Address block — printed verbatim at the top of the generated letter */}
+        <div className="form-group">
+          <MdTextField label="Addressee title" value={f.addressee}
+            onChange={e=>set('addressee', e.target.value)} placeholder="e.g. कार्यालय प्रमुख"/>
+          <div style={{fontSize:11, color:'var(--text3)', marginTop:4}}>
+            Printed as: <b>श्री {f.addressee.trim() || 'कार्यालय प्रमुख'} ज्यू,</b>
+          </div>
+        </div>
         <div className="form-group">
           <MdTextField label="Organization name *" value={f.client_name_manual}
-            onChange={e=>set('client_name_manual', e.target.value)} placeholder="e.g. नागार्जुन नगरपालिका"/>
+            onChange={e=>set('client_name_manual', e.target.value)} placeholder="e.g. नेपाल विद्युत प्राधिकरण"/>
+        </div>
+        <div className="form-group">
+          <MdTextField label="Department / Level 2 (optional)" value={f.client_name2_manual}
+            onChange={e=>set('client_name2_manual', e.target.value)} placeholder="e.g. वातावरण तथा सामाजिक अध्ययन विभाग"/>
         </div>
         <div className="form-group">
           <MdTextField label="Organization address" value={f.client_address_manual}
-            onChange={e=>set('client_address_manual', e.target.value)} placeholder="e.g. काठमाडौँ"/>
+            onChange={e=>set('client_address_manual', e.target.value)} placeholder="e.g. लाजिम्पाट, काठमाडौं"/>
         </div>
-        <div style={{fontSize:11.5, color:'var(--text3)', marginTop:-4}}>
-          Printed in the letter as:&nbsp; श्री कार्यालय प्रमुख ज्यू, / {f.client_name_manual || '…'} / {f.client_address_manual || '…'}
+        <div style={{
+          fontSize:12, color:'var(--text2)', background:'var(--bg)', border:'1px solid var(--border)',
+          borderRadius:8, padding:'8px 12px', lineHeight:1.7, marginTop:-4,
+        }}>
+          <div style={{fontSize:11, color:'var(--text3)', marginBottom:4}}>Printed in the letter as:</div>
+          {addrLines.map((l, i) => <div key={i}>{l}</div>)}
         </div>
         <div className="form-group">
           <MdTextField label="Shortlist name" value={f.name} onChange={e=>set('name', e.target.value)}
