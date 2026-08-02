@@ -1512,23 +1512,26 @@ function LetterOptsModal({ row, token, onClose, onOpenBuilder }) {
         // configured page margins were silently discarded.
         setFreshRow(r => ({
           ...r,
-          institute_letter_top_margin:     inst.letterTopMargin,
-          institute_letter_lr_padding:     inst.letterLrPadding,
-          institute_letter_bottom_padding: inst.letterBottomPadding,
-          institute_service_type:          inst.serviceType,
+          // Use ?? r.* so a null from the fresh fetch doesn't overwrite a
+          // value that was already on the shortlist list row (e.g. margins
+          // come from the JOIN in the shortlist query and are already correct).
+          institute_letter_top_margin:     inst.letterTopMargin     ?? r.institute_letter_top_margin,
+          institute_letter_lr_padding:     inst.letterLrPadding     ?? r.institute_letter_lr_padding,
+          institute_letter_bottom_padding: inst.letterBottomPadding ?? r.institute_letter_bottom_padding,
+          institute_service_type:          inst.serviceType         || r.institute_service_type,
           institute_logo:       inst.logo,
           institute_letterhead: inst.letterhead,
           institute_sign:       inst.sign,
           institute_stamp:      inst.stamp,
-          institute_ocr_registration:         inst.ocr_registration,
-          institute_ocr_renewal:              inst.ocr_renewal,
-          institute_local_level_registration: inst.local_level_registration,
-          institute_local_level_renewal:      inst.local_level_renewal,
-          institute_vat_registration:         inst.vat_registration,
-          institute_vat_extension:            inst.vat_extension,
-          institute_ctevt_affiliation:        inst.ctevt_affiliation,
-          institute_ctevt_renewal:            inst.ctevt_renewal,
-          institute_tax_clearance_doc:        inst.tax_clearance_doc,
+          institute_ocr_registration:         inst.ocrRegistration,
+          institute_ocr_renewal:              inst.ocrRenewal,
+          institute_local_level_registration: inst.localLevelRegistration,
+          institute_local_level_renewal:      inst.localLevelRenewal,
+          institute_vat_registration:         inst.vatRegistration,
+          institute_vat_extension:            inst.vatExtension,
+          institute_ctevt_affiliation:        inst.ctevtAffiliation,
+          institute_ctevt_renewal:            inst.ctevtRenewal,
+          institute_tax_clearance_doc:        inst.taxClearanceDoc,
         }));
       })
       .catch(() => {}) // fall back to whatever the row already carries
