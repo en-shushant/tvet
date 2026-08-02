@@ -256,7 +256,7 @@ function buildNeaLetterHtml({ letterType, dateBS, toTitle, toName, toName2, toAd
       ${inclSign && firmSign
         ? `<img src="${firmSign}" style="display:block;margin:0 auto;max-height:14mm;max-width:100%;object-fit:contain;margin-bottom:4px;">`
         : ''}
-      <div class="sig-line">…………………<br>${firmContactNp}<br>${firmNameNp}</div>
+      <div class="sig-line">${firmContactNp}<br>${firmNameNp}</div>
     </div>
   </div>
 
