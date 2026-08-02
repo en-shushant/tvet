@@ -202,9 +202,10 @@ function buildNeaLetterHtml({ letterType, dateBS, toTitle, toName, toName2, toAd
   const body = `उपरोक्त सम्बन्धमा तहाँ विभागको सूचना अनुसार आ.व. ${fyStr} को लागि यस कम्पनीलाई तपसिल अनुसारको सेवा प्रदान गर्ने प्रयोजनका लागि मौजुदा सूचीमा सूचीकृत गरिदिनुहुन अनुरोध गर्दछु।`;
 
   return `<!DOCTYPE html><html lang="ne"><head><meta charset="UTF-8">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Kalimati&display=swap">
 <style>
   * { margin:0; padding:0; box-sizing:border-box; }
-  body { background:#fff; }
+  body { background:#fff; font-family:'Kalimati','Noto Sans Devanagari','Arial Unicode MS',sans-serif; }
   .page {
     width:794px; height:1123px; position:relative; overflow:hidden;
     font-family:'Kalimati','Noto Sans Devanagari','Arial Unicode MS',sans-serif; font-size:13px;
@@ -221,7 +222,7 @@ function buildNeaLetterHtml({ letterType, dateBS, toTitle, toName, toName2, toAd
   .bullets { font-size:10pt;line-height:1.7;padding-left:0;list-style:none; }
   .bullets li { display:flex;gap:8px;margin-bottom:6px;text-align:justify; }
   .bullets li::before { content:"•";flex-shrink:0;margin-top:1px; }
-  .sig-row { display:flex;justify-content:flex-end;gap:24px;align-items:flex-end;margin-top:32px; }
+  .sig-row { display:flex;justify-content:flex-end;gap:24px;align-items:flex-end;margin-top:72px; }
   .sig-stamp { text-align:center;min-width:70px; }
   .sig-block { text-align:center;min-width:130px; }
   .sig-line { border-top:1px solid #333;padding-top:4px;font-size:8pt; }
@@ -355,6 +356,7 @@ async function openShortlistLetter(row, opts = {}) {
 <head>
 <meta charset="UTF-8">
 <title>मौजुदा सूची — ${firmAcronym || firmName}</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Kalimati&display=swap">
 <style>
   @page { size: A4 portrait; margin: 0; }
   * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -564,9 +566,12 @@ async function openShortlistLetter(row, opts = {}) {
   });
 
   const iframeDoc = iframe.contentDocument;
-  await Promise.all([...iframeDoc.querySelectorAll('img')].map(img =>
-    (img.decode ? img.decode() : Promise.resolve()).catch(() => {})
-  ));
+  await Promise.all([
+    ...[...iframeDoc.querySelectorAll('img')].map(img =>
+      (img.decode ? img.decode() : Promise.resolve()).catch(() => {})
+    ),
+    iframeDoc.fonts?.ready ?? Promise.resolve(),
+  ]);
 
   const { default: html2canvas } = await import('html2canvas');
   const { PDFDocument } = await import('pdf-lib');

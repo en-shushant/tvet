@@ -95,9 +95,10 @@ function buildNeaHtml({ fields, imgs, topMm, bottomMm, lrMm, inclSign, inclStamp
   const firmNp  = fields.firmNameNp || imgs.firmNameNp || firmName || '';
 
   return `<!DOCTYPE html><html lang="ne"><head><meta charset="UTF-8">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Kalimati&display=swap">
 <style>
   * { margin:0; padding:0; box-sizing:border-box; }
-  body { background:#fff; }
+  body { background:#fff; font-family:'Kalimati','Noto Sans Devanagari','Arial Unicode MS',sans-serif; }
   .page {
     width:794px; height:1123px; position:relative; overflow:hidden;
     font-family:'Kalimati','Noto Sans Devanagari','Arial Unicode MS',sans-serif; font-size:13px;
@@ -114,7 +115,7 @@ function buildNeaHtml({ fields, imgs, topMm, bottomMm, lrMm, inclSign, inclStamp
   .bullets { font-size:10pt;line-height:1.7;padding-left:0;list-style:none; }
   .bullets li { display:flex;gap:8px;margin-bottom:6px;text-align:justify; }
   .bullets li::before { content:"•";flex-shrink:0;margin-top:1px; }
-  .sig-row { display:flex;justify-content:flex-end;gap:24px;align-items:flex-end;margin-top:32px; }
+  .sig-row { display:flex;justify-content:flex-end;gap:24px;align-items:flex-end;margin-top:72px; }
   .sig-stamp { text-align:center;min-width:70px; }
   .sig-block { text-align:center;min-width:130px; }
   .sig-line { border-top:1px solid #333;padding-top:4px;font-size:8pt; }
