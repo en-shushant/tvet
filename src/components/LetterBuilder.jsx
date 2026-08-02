@@ -497,14 +497,11 @@ export default function LetterBuilder({ row: initialRow, token, onClose, allRows
       if (cancelled) return;
       setInclSign(!!inst.sign);
       setInclStamp(!!inst.stamp);
-      const [[logo, lh, sign, stamp], kCss] = await Promise.all([
-        Promise.all([
-          urlToDataUrl(inst.logo        || row?.institute_logo       || null),
-          urlToDataUrl(inst.letterhead  || row?.institute_letterhead || null),
-          urlToDataUrl(inst.sign        || row?.institute_sign       || null),
-          urlToDataUrl(inst.stamp       || row?.institute_stamp      || null),
-        ]),
-        loadKalimatiCss(),
+      const [logo, lh, sign, stamp] = await Promise.all([
+        urlToDataUrl(inst.logo        || row?.institute_logo       || null),
+        urlToDataUrl(inst.letterhead  || row?.institute_letterhead || null),
+        urlToDataUrl(inst.sign        || row?.institute_sign       || null),
+        urlToDataUrl(inst.stamp       || row?.institute_stamp      || null),
       ]);
       if (cancelled) return;
       const firmName    = row?.institute_name    || '';
@@ -524,8 +521,13 @@ export default function LetterBuilder({ row: initialRow, token, onClose, allRows
         firmPhone,
         firmLogo: logo, firmLetterhead: lh, firmSign: sign, firmStamp: stamp,
       });
+      // Font loading and letterhead margin detection run in parallel after images.
+      // Font is intentionally NOT awaited before setLoading(false) — a slow
+      // network shouldn't block the preview from rendering. The kalimatiCss state
+      // updates whenever the font resolves, triggering a preview rebuild.
+      loadKalimatiCss().then(kCss => { if (!cancelled) setKalimatiCss(kCss); });
       const m = await detectLetterheadMargins(lh);
-      if (!cancelled) { setKalimatiCss(kCss); setMargins(m); setLoading(false); }
+      if (!cancelled) { setMargins(m); setLoading(false); }
     })();
     return () => { cancelled = true; };
   }, [row?.id, row?.institute_id, token]);

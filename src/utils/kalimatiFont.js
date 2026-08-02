@@ -3,19 +3,37 @@
 // subsequent letters in the same session cost nothing. This is the only reliable
 // way to get a Devanagari font into a srcdoc iframe — Google Fonts <link> tags
 // don't load in null-origin contexts.
+//
+// A 5-second abort timeout prevents this from hanging the PDF generation flow
+// when Google Fonts is slow or unreachable; the fallback is an empty string
+// (system sans-serif renders instead of Kalimati).
 let _cache;
 
 export async function loadKalimatiCss() {
   if (_cache !== undefined) return _cache;
   try {
-    const cssRes = await fetch(
-      'https://fonts.googleapis.com/css2?family=Kalimati&display=swap',
-      { headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' } }
-    );
+    const abort = new AbortController();
+    const timer = setTimeout(() => abort.abort(), 5000);
+    let cssRes;
+    try {
+      cssRes = await fetch(
+        'https://fonts.googleapis.com/css2?family=Kalimati&display=swap',
+        { signal: abort.signal }
+      );
+    } finally {
+      clearTimeout(timer);
+    }
     const css = await cssRes.text();
     const m = css.match(/url\(([^)]+)\)/);
     if (m) {
-      const fontRes = await fetch(m[1]);
+      const abort2 = new AbortController();
+      const timer2 = setTimeout(() => abort2.abort(), 10000);
+      let fontRes;
+      try {
+        fontRes = await fetch(m[1], { signal: abort2.signal });
+      } finally {
+        clearTimeout(timer2);
+      }
       if (fontRes.ok) {
         const arr = new Uint8Array(await fontRes.arrayBuffer());
         let bin = '';
