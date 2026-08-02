@@ -7,19 +7,48 @@ async function plugin(fastify, opts) {
 
   fastify.get('/', async (request, reply) => {
     const { status, search } = request.query;
-    let q = `SELECT i.*,
-      COALESCE(json_agg(DISTINCT jsonb_build_object('fy', t.fiscal_year, 'turnover', t.turnover)) FILTER (WHERE t.id IS NOT NULL), '[]') as "taxClearance",
-      COALESCE(json_agg(DISTINCT jsonb_build_object('fy', n.fiscal_year)) FILTER (WHERE n.id IS NOT NULL), '[]') as nstb,
-      COALESCE(json_agg(DISTINCT jsonb_build_object('status', a.status, 'expiryDate', a.expiry_date, 'affiliationDate', a.affiliation_date)) FILTER (WHERE a.id IS NOT NULL), '[]') as affiliation,
-      COALESCE('[]'::json, '[]') as experience,
-      COALESCE((SELECT SUM(ao.trainees) FROM assignments a2 JOIN assignment_occupations ao ON ao.assignment_id = a2.id WHERE a2.institute_id = i.id), 0) as total_trainees,
-      COALESCE((SELECT SUM(ao.skill_test_appeared) FROM assignments a2 JOIN assignment_occupations ao ON ao.assignment_id = a2.id WHERE a2.institute_id = i.id), 0) as total_st_appeared,
-      COALESCE((SELECT COUNT(DISTINCT a2.client_id) FROM assignments a2 WHERE a2.institute_id = i.id AND a2.client_id IS NOT NULL), 0) as total_clients,
-      COALESCE((SELECT COUNT(*) FROM affiliations af2 JOIN affiliation_programs ap ON ap.affiliation_id = af2.id WHERE af2.institute_id = i.id), 0) as total_aff_programs
+    // Heavy blob columns (letterhead, logo, sign, stamp, document URLs) are
+    // fetched only on GET /:id — they're not needed for the list and were
+    // the main cause of slow list loads (each can be several hundred KB).
+    // Correlated subqueries replaced with aggregated CTEs for a single pass.
+    let q = `
+      WITH asgn_stats AS (
+        SELECT a.institute_id,
+          SUM(ao.trainees)           AS total_trainees,
+          SUM(ao.skill_test_appeared) AS total_st_appeared,
+          COUNT(DISTINCT a.client_id) FILTER (WHERE a.client_id IS NOT NULL) AS total_clients
+        FROM assignments a
+        JOIN assignment_occupations ao ON ao.assignment_id = a.id
+        GROUP BY a.institute_id
+      ),
+      aff_stats AS (
+        SELECT af.institute_id, COUNT(ap.id) AS total_aff_programs
+        FROM affiliations af
+        JOIN affiliation_programs ap ON ap.affiliation_id = af.id
+        GROUP BY af.institute_id
+      )
+      SELECT
+        i.id, i.name, i.acronym, i.reg_no, i.reg_date, i.pan, i.permanent_account_no,
+        i.contact_person, i.phone, i.mobile, i.email, i.address, i.type, i.status,
+        i.renewal_due, i.remarks, i.website, i.google_map_link, i.latitude, i.longitude,
+        i.is_shortlisting_only, i.name_np, i.address_np, i.contact_person_np,
+        i.letter_top_margin, i.letter_lr_padding, i.letter_bottom_padding,
+        i.service_type, i.created_by, i.created_at,
+        i.desc_template_id, i.narrative_template_id, i.services_template_id,
+        COALESCE(json_agg(DISTINCT jsonb_build_object('fy', t.fiscal_year, 'turnover', t.turnover)) FILTER (WHERE t.id IS NOT NULL), '[]') AS "taxClearance",
+        COALESCE(json_agg(DISTINCT jsonb_build_object('fy', n.fiscal_year)) FILTER (WHERE n.id IS NOT NULL), '[]') AS nstb,
+        COALESCE(json_agg(DISTINCT jsonb_build_object('status', a.status, 'expiryDate', a.expiry_date, 'affiliationDate', a.affiliation_date)) FILTER (WHERE a.id IS NOT NULL), '[]') AS affiliation,
+        '[]'::json AS experience,
+        COALESCE(s.total_trainees, 0)     AS total_trainees,
+        COALESCE(s.total_st_appeared, 0)  AS total_st_appeared,
+        COALESCE(s.total_clients, 0)      AS total_clients,
+        COALESCE(af.total_aff_programs, 0) AS total_aff_programs
       FROM institutes i
-      LEFT JOIN tax_clearances t ON t.institute_id = i.id
-      LEFT JOIN nstb_records n ON n.institute_id = i.id
-      LEFT JOIN affiliations a ON a.institute_id = i.id
+      LEFT JOIN tax_clearances t    ON t.institute_id = i.id
+      LEFT JOIN nstb_records n      ON n.institute_id = i.id
+      LEFT JOIN affiliations a      ON a.institute_id = i.id
+      LEFT JOIN asgn_stats s        ON s.institute_id = i.id
+      LEFT JOIN aff_stats af        ON af.institute_id = i.id
       WHERE 1=1`;
     const params = [];
     if (request.user.role === 'editor') {
