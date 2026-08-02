@@ -612,8 +612,11 @@ async function openShortlistLetter(row, opts = {}) {
   const { default: html2canvas } = await import('html2canvas');
   const { PDFDocument } = await import('pdf-lib');
 
+  // scale:1.5 halves peak canvas memory vs scale:2 (8 MB vs 14 MB).
+  // This matters on low-end PCs where the browser can silently discard
+  // subsequent pdf-lib operations once RAM is exhausted.
   const letterCanvas = await html2canvas(iframeDoc.querySelector('.page'), {
-    scale: 2,
+    scale: 1.5,
     useCORS: true,
     allowTaint: true,
     backgroundColor: '#ffffff',
@@ -622,7 +625,7 @@ async function openShortlistLetter(row, opts = {}) {
     windowWidth: A4_W,
     windowHeight: A4_H,
   });
-  const letterJpegDataUrl = letterCanvas.toDataURL('image/jpeg', 0.95);
+  const letterJpegDataUrl = letterCanvas.toDataURL('image/jpeg', 0.92);
   document.body.removeChild(iframe);
 
   // ── Assemble the final PDF with pdf-lib: letter page + real attachments ──
@@ -744,6 +747,10 @@ async function openShortlistLetter(row, opts = {}) {
       if (kind === 'pdf') {
         try {
           const srcDoc = await PDFDocument.load(bytes, { ignoreEncryption: true });
+          // Release the raw bytes immediately — pdf-lib has its own copy now.
+          // On low-end PCs this gives GC a chance to free memory before the
+          // next document is loaded, preventing silent OOM failures.
+          bytes = null;
           const copied = await outDoc.copyPages(srcDoc, srcDoc.getPageIndices());
           copied.forEach(p => { outDoc.addPage(p); drawOverlay(p); });
           docMerged += copied.length;
@@ -752,6 +759,7 @@ async function openShortlistLetter(row, opts = {}) {
         }
       } else if (kind === 'jpeg' || kind === 'png') {
         const embedded = await embedImageBytes(bytes, d.label || 'attachment');
+        bytes = null;
         if (embedded) {
           const page = outDoc.addPage([PAGE_W, PAGE_H]);
           page.drawImage(embedded, { x: 0, y: 0, width: PAGE_W, height: PAGE_H });
@@ -762,6 +770,7 @@ async function openShortlistLetter(row, opts = {}) {
         }
       } else {
         console.warn(`[letter] ${d.label}: unrecognised file format (first bytes: ${[...bytes.slice(0,4)]}), skipping`, src);
+        bytes = null;
       }
     }
     mergedCount += docMerged;
