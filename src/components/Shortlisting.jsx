@@ -722,16 +722,17 @@ async function openShortlistLetter(row, opts = {}) {
   // Attachments — merged as real pages, not screenshotted. A PDF source keeps
   // every page (not just the first) and stays vector/text-sharp; an image
   // source is embedded directly, full-bleed, onto its own A4 page.
-  let mergedCount = 0, skippedCount = 0;
+  let mergedCount = 0;
+  const skippedLabels = [];
   for (const d of activeDocs) {
     const files = parseDocFiles(d.src);
+    let docMerged = 0;
     for (const src of files) {
       let bytes;
       try { bytes = await fetchBytes(src); }
       catch (e) {
-        skippedCount++;
         console.warn(`[letter] ${d.label}: could not fetch attachment, skipping`, src, e);
-        continue; // skip a document we can't fetch rather than fail the whole letter
+        continue;
       }
 
       const kind = sniff(bytes);
@@ -740,10 +741,9 @@ async function openShortlistLetter(row, opts = {}) {
           const srcDoc = await PDFDocument.load(bytes, { ignoreEncryption: true });
           const copied = await outDoc.copyPages(srcDoc, srcDoc.getPageIndices());
           copied.forEach(p => { outDoc.addPage(p); drawOverlay(p); });
-          mergedCount += copied.length;
+          docMerged += copied.length;
         } catch (e) {
-          skippedCount++;
-          console.warn(`[letter] ${d.label}: PDF failed to load (corrupt, or password-protected — pdf-lib cannot open an encrypted PDF even with ignoreEncryption, that flag only tolerates missing/blank owner passwords), skipping`, src, e);
+          console.warn(`[letter] ${d.label}: PDF failed to load (corrupt or password-protected)`, src, e);
         }
       } else if (kind === 'jpeg' || kind === 'png') {
         const embedded = await embedImageBytes(bytes, d.label || 'attachment');
@@ -751,23 +751,21 @@ async function openShortlistLetter(row, opts = {}) {
           const page = outDoc.addPage([PAGE_W, PAGE_H]);
           page.drawImage(embedded, { x: 0, y: 0, width: PAGE_W, height: PAGE_H });
           drawOverlay(page);
-          mergedCount++;
+          docMerged++;
         } else {
-          skippedCount++;
+          console.warn(`[letter] ${d.label}: image could not be embedded`, src);
         }
       } else {
-        skippedCount++;
         console.warn(`[letter] ${d.label}: unrecognised file format (first bytes: ${[...bytes.slice(0,4)]}), skipping`, src);
       }
     }
-  }
-  if (skippedCount > 0) {
-    console.warn(`[letter] ${mergedCount} attachment page(s) merged, ${skippedCount} skipped — see warnings above for why.`);
+    mergedCount += docMerged;
+    if (docMerged === 0 && files.length > 0) skippedLabels.push(d.label);
   }
 
   const outBytes = await outDoc.save();
   const blob = new Blob([outBytes], { type: 'application/pdf' });
-  return URL.createObjectURL(blob);
+  return { url: URL.createObjectURL(blob), skipped: skippedLabels };
 }
 
 // Full-screen PDF preview with print / download, shown after generating.
@@ -1577,20 +1575,44 @@ function LetterOptsModal({ row, token, onClose, onOpenBuilder }) {
   // Release the blob URL when this modal goes away
   useEffect(() => () => { if (pdfUrl) URL.revokeObjectURL(pdfUrl); }, [pdfUrl]);
 
+  const [skipWarning, setSkipWarning] = useState([]);
+
   const handleGenerate = async () => {
     setGenerating(true);
     try {
-      const url = await openShortlistLetter(freshRow, {
+      const { url, skipped } = await openShortlistLetter(freshRow, {
         includeSign: inclSign, includeStamp: inclStamp, includeLh: inclLh,
         docs: inclDocs, serviceType: freshRow.institute_service_type,
       });
+      if (skipped.length) setSkipWarning(skipped);
       setPdfUrl(url);
     } finally { setGenerating(false); }
   };
 
   if (pdfUrl) {
     const name = `${freshRow.institute_acronym || freshRow.institute_name || 'shortlist'}-letter.pdf`;
-    return <LetterPreviewModal url={pdfUrl} filename={name} onClose={onClose}/>;
+    return (
+      <>
+        {skipWarning.length > 0 && (
+          <div style={{position:'fixed', inset:0, zIndex:1400, display:'flex', alignItems:'center', justifyContent:'center', background:'rgba(0,0,0,.4)'}}>
+            <div style={{background:'var(--surface)', borderRadius:12, padding:'24px 28px', maxWidth:420, width:'90%', boxShadow:'0 8px 32px rgba(0,0,0,.25)'}}>
+              <div style={{fontWeight:700, fontSize:15, color:'var(--error)', marginBottom:10}}>Some documents could not be attached</div>
+              <div style={{fontSize:13, color:'var(--text2)', marginBottom:12, lineHeight:1.6}}>
+                The following selected documents were skipped because the file could not be fetched, is password-protected, or is in an unsupported format:
+              </div>
+              <ul style={{paddingLeft:18, margin:'0 0 16px', fontSize:13, color:'var(--text)'}}>
+                {skipWarning.map(l => <li key={l}>{l}</li>)}
+              </ul>
+              <div style={{fontSize:12, color:'var(--text3)', marginBottom:16}}>
+                Re-upload the file in the firm's profile page (Documents tab) to fix this.
+              </div>
+              <button className="btn btn-primary" style={{width:'100%'}} onClick={() => setSkipWarning([])}>View Letter Anyway</button>
+            </div>
+          </div>
+        )}
+        <LetterPreviewModal url={pdfUrl} filename={name} onClose={onClose}/>
+      </>
+    );
   }
 
   return (
