@@ -109,11 +109,16 @@ async function detectLetterheadMargins(dataUrl) {
     const img = new Image();
     img.onload = () => {
       try {
+        // Cap canvas to 794×1123 — high-res scans (300dpi+) can exceed the
+        // browser's MAX_TEXTURE_SIZE, causing drawImage to silently fail and
+        // getImageData to return empty data (all zeros), breaking detection.
+        const MAX_W = 794, MAX_H = 1123;
+        const scale = Math.min(1, MAX_W / img.naturalWidth, MAX_H / img.naturalHeight);
         const canvas = document.createElement('canvas');
-        canvas.width = img.naturalWidth;
-        canvas.height = img.naturalHeight;
+        canvas.width  = Math.round(img.naturalWidth  * scale);
+        canvas.height = Math.round(img.naturalHeight * scale);
         const ctx = canvas.getContext('2d');
-        ctx.drawImage(img, 0, 0);
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
         const w = canvas.width, h = canvas.height;
         const step = Math.max(1, Math.floor(w / 30));
 
