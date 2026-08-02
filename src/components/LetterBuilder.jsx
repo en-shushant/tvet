@@ -117,7 +117,7 @@ function buildNeaHtml({ fields, imgs, topMm, bottomMm, lrMm, inclSign, inclStamp
   .sig-row { display:flex;justify-content:flex-end;gap:24px;align-items:flex-end;margin-top:32px; }
   .sig-stamp { text-align:center;min-width:70px; }
   .sig-block { text-align:center;min-width:130px; }
-  .sig-line { border-top:1px solid #333;padding-top:4px;font-size:10pt; }
+  .sig-line { border-top:1px solid #333;padding-top:4px;font-size:8pt; }
 </style></head><body>
 <div class="page"><div class="page-inner">
 
@@ -149,7 +149,7 @@ function buildNeaHtml({ fields, imgs, topMm, bottomMm, lrMm, inclSign, inclStamp
       ${inclSign && firmSign
         ? `<img src="${firmSign}" style="display:block;margin:0 auto;max-height:14mm;max-width:100%;object-fit:contain;margin-bottom:4px;">`
         : ''}
-      <div class="sig-line">……………………………………<br>${sigName}<br>${firmNp}</div>
+      <div class="sig-line">…………………<br>${sigName}<br>${firmNp}</div>
     </div>
   </div>
 

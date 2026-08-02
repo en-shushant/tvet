@@ -171,6 +171,99 @@ async function urlToDataUrl(url) {
 // and silently kills letter generation.
 const A4_W = 794, A4_H = 1123;
 
+const NEA_TEMPLATES = {
+  nea_ssemd: {
+    sectionHeader: '(ख) परामर्श सेवा :',
+    bullets: [
+      'समूह (१) : वातावरणीय अध्ययन तर्फ : वातावरणीय अध्ययन कार्यको लागि आवश्यक कार्यसूची (ToR) तथा क्षेत्र निर्धारण (Scoping) सम्बन्धी कार्य, संक्षिप्त वातावरणीय अध्ययन (BES), प्रारम्भिक वातावरणीय परीक्षण (IEE) तथा वातावरणीय प्रभाव मूल्याङ्कन (EIA) वन्यजन्तु, चराचुरुङ्गी एवं जैविक विविधता सम्बन्धि विषयगत अध्ययन कार्य ।',
+      'समूह (२) : वातावरणीय तथा सामाजिक अनुगमन सम्बन्धि कार्य : सामाजिक तथा वातावरणीय पक्षको अनुगमन कार्य, वातावरणीय व्यवस्थापन योजना (EMP) सम्बन्धि कार्य, पुर्नवास तथा पुर्नस्थापना कार्य योजना (RRAP) सम्बन्धी कार्य एवं आयोजनाको बाह्य (तेस्रो पक्ष) अनुगमन तथा मूल्यांकन सम्बन्धी कार्य ।',
+      'समूह (३) : आयोजना स्थलमा संचालन हुने वातावरणीय तथा सामाजिक अनुगमन इकाई (ESMU) का लागि वातावरण, समाजिक, लैङ्गिक विज्ञ तथा अन्य जनशक्ति आपूर्ति सम्बन्धी सेवा । आयोजना स्थलमा सञ्चालन गर्नुपर्ने जनचेतनामूलक तथा अन्य कार्य: सामाजिक, वन संरक्षण तथा वन्यजन्तु संरक्षण सम्बन्धी सचेतनामूलक कार्यक्रम, आय आर्जन सम्बन्धी कार्यक्रम, लैङ्गिक समानता तथा सामाजिक समावेशीकरण सम्बन्धी कार्य ।',
+      'समूह (४) : सिपमुलक तालिम : छोटो अवधिको ड्राइभिङ, हाउस वायरिङ, प्लम्बिङ्ग, वेल्डिङ्ग, मर्मत सम्भार, सिलाई, बुनाई, व्युटिपार्लर आदी सम्बन्धि कार्य ।',
+      'समूह (५) : आयोजना स्थलमा सञ्चालन गर्नुपर्ने वातावरणीय सुचकाङ्क बमोजिमको Air, Noise, Water Quality मापन सम्बन्धी कार्य ।',
+    ],
+  },
+  nea_essd: {
+    sectionHeader: '१) परामर्श सेवा आपूर्ति तर्फ:',
+    bullets: [
+      'समूह-क:- वातावरणीय तथा सामाजिक अध्ययन कार्य: प्रारम्भिक वातावरणीय परीक्षणको कार्यसूची (ToR), प्रारम्भिक वातावरणीय परीक्षण कार्य (IEE) वातावरणीय प्रभाव मूल्यांकनको लागि क्षेत्र निर्धारण (Scoping) तथा कार्यसुची (ToR)\' तयार गर्ने कार्य, वातावरणीय प्रभाव मूल्यांकन कार्य (EIA), विषयगत अध्ययन कार्य (माछा, वन्यजन्तु, वन तथा वनस्पति, भौतिक वातावरण, सामाजिक, आर्थिक आदि) तथा दातृ संस्थाहरुको लागि गरिने सामाजिक प्रभाव मूल्याङ्कन (SIA), पुनर्वास कार्य योजना (RAP) उत्पीडित समुदाय विकास योजना (VCDP) तथा वातावरणीय व्यवस्थापन कार्य योजना (EMAP) आयोजनाको अध्ययन अनुगमनको लागि विज्ञहरुको सेवा खरिद आदि ।',
+      'समूह ख :- आयोजना स्थलमा संचालन गर्नुपर्ने जनचेतना तथा अन्य कार्य: सामाजिक सचेतना कार्यक्रम, वन संरक्षण सचेतना कार्यहरु, वन्यजन्तु संरक्षण सचेतना कार्यक्रम, आय आर्जन सम्बन्धी आदि ।',
+      'समूह ग: सीपमुलक तालिम: छोटो अवधिको ड्राइभिङ्ग, हाउस वायरिङ्ग, प्लम्बिङ्ग, वेल्डिङ्ग, सिलाई, बुनाई मर्मत संभार आदि ।',
+      'समूह घ: आयोजना स्थलमा संचालन गर्नुपर्ने: Air, Noise, Water Quality मापन सम्बन्धी कार्य ।',
+    ],
+  },
+};
+
+function buildNeaLetterHtml({ letterType, dateBS, toTitle, toName, toName2, toAddr,
+  fy, firmNameNp, firmContactNp, firmLetterhead, firmSign, firmStamp,
+  topMm, bottomMm, lrMm, inclSign, inclStamp }) {
+  const tpl = NEA_TEMPLATES[letterType] || NEA_TEMPLATES.nea_ssemd;
+  const useLhBg = !!firmLetterhead;
+  const fyStr = fy || '';
+  const body = `उपरोक्त सम्बन्धमा तहाँ विभागको सूचना अनुसार आ.व. ${fyStr} को लागि यस कम्पनीलाई तपसिल अनुसारको सेवा प्रदान गर्ने प्रयोजनका लागि मौजुदा सूचीमा सूचीकृत गरिदिनुहुन अनुरोध गर्दछु।`;
+
+  return `<!DOCTYPE html><html lang="ne"><head><meta charset="UTF-8">
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { background:#fff; }
+  .page {
+    width:794px; height:1123px; position:relative; overflow:hidden;
+    font-family:'Kalimati','Noto Sans Devanagari','Arial Unicode MS',sans-serif; font-size:13px;
+    background-color:#fff;
+    ${useLhBg ? `background-image:url("${firmLetterhead}");background-repeat:no-repeat;background-position:0 0;background-size:794px 1123px;` : ''}
+  }
+  .page-inner { position:relative;z-index:1;padding:${topMm}mm ${lrMm}mm ${bottomMm}mm ${lrMm}mm; }
+  .ref-row { display:flex;justify-content:flex-end;margin-bottom:10px;font-size:11pt; }
+  .to-block { margin-bottom:12px;font-size:10.5pt;line-height:1.75; }
+  .subject { text-align:center;font-size:11pt;font-weight:700;text-decoration:underline;text-underline-offset:3px;margin-bottom:10px; }
+  .body-txt { margin-bottom:8px;font-size:10pt;text-align:justify;line-height:1.7; }
+  .tapasil { font-weight:700;font-size:10.5pt;margin-bottom:6px; }
+  .sec-hdr { font-weight:600;font-size:10pt;margin-bottom:6px; }
+  .bullets { font-size:10pt;line-height:1.7;padding-left:0;list-style:none; }
+  .bullets li { display:flex;gap:8px;margin-bottom:6px;text-align:justify; }
+  .bullets li::before { content:"•";flex-shrink:0;margin-top:1px; }
+  .sig-row { display:flex;justify-content:flex-end;gap:24px;align-items:flex-end;margin-top:32px; }
+  .sig-stamp { text-align:center;min-width:70px; }
+  .sig-block { text-align:center;min-width:130px; }
+  .sig-line { border-top:1px solid #333;padding-top:4px;font-size:8pt; }
+</style></head><body>
+<div class="page"><div class="page-inner">
+
+  <div class="ref-row"><span>मिति: ${dateBS}</span></div>
+
+  <div class="to-block">
+    <div>श्री ${toTitle || 'कार्यालय प्रमुख'} ज्यू,</div>
+    ${toName  ? `<div>${toName}</div>` : ''}
+    ${toName2 ? `<div>${toName2}</div>` : ''}
+    ${toAddr  ? `<div>${toAddr}</div>` : ''}
+  </div>
+
+  <div class="subject">विषय: सूचीदर्ता गरिदिने बारे</div>
+  <div class="body-txt">महोदय,</div>
+  <div class="body-txt">${body}</div>
+  <div class="tapasil">तपसिल:</div>
+  <div class="sec-hdr">${tpl.sectionHeader}</div>
+  <ul class="bullets">
+    ${tpl.bullets.map(b => `<li>${b}</li>`).join('\n    ')}
+  </ul>
+
+  <div class="sig-row">
+    <div class="sig-stamp">
+      ${inclStamp && firmStamp
+        ? `<img src="${firmStamp}" style="width:26mm;height:26mm;object-fit:contain;display:block;margin:0 auto;">`
+        : ''}
+    </div>
+    <div class="sig-block">
+      ${inclSign && firmSign
+        ? `<img src="${firmSign}" style="display:block;margin:0 auto;max-height:14mm;max-width:100%;object-fit:contain;margin-bottom:4px;">`
+        : ''}
+      <div class="sig-line">…………………<br>${firmContactNp}<br>${firmNameNp}</div>
+    </div>
+  </div>
+
+</div></div>
+</body></html>`;
+}
+
 async function openShortlistLetter(row, opts = {}) {
   const { includeSign = false, includeStamp = false, docs = {}, serviceType: svcType } = opts;
   const lrPadding = row.institute_letter_lr_padding ?? 20;
@@ -209,9 +302,9 @@ async function openShortlistLetter(row, opts = {}) {
   // To — procuring entity (client)
   // श्री block: the manually entered name/address win, then Nepali, then English
   const toName          = row.client_name_manual    || row.client_name_np    || row.client_name    || '';
-  const toName2         = row.client_name2_manual   || '';
+  const toName2         = row.list_client_name2 || row.client_name2_manual || '';
   const toAddress       = row.client_address_manual || row.client_address_np || row.client_address || '';
-  const toAddresseeTitle = row.addressee            || row.client_signatory_position || '';
+  const toAddresseeTitle = row.list_addressee || row.addressee || row.client_signatory_position || '';
   // Shortlisting details
   const listName  = row.standing_list_name || 'Standing List';
   const fy        = row.fy || '';
@@ -257,7 +350,7 @@ async function openShortlistLetter(row, opts = {}) {
   const fyNp = fy ? toNpNum(fy) : '';
   const serviceType = svcType || 'सीपमूलक तथा व्यावसायिक तालिम कार्यक्रमहरु सञ्चालन';
 
-  const html = `<!DOCTYPE html>
+  let html = `<!DOCTYPE html>
 <html lang="ne">
 <head>
 <meta charset="UTF-8">
@@ -434,6 +527,30 @@ async function openShortlistLetter(row, opts = {}) {
   </div></div>
 </body>
 </html>`;
+
+  // Override HTML for NEA letter types — generate directly without Builder
+  const effectiveLt = row.list_letter_type || row.letter_type || 'basic';
+  if (effectiveLt !== 'basic') {
+    html = buildNeaLetterHtml({
+      letterType: effectiveLt,
+      dateBS,
+      toTitle: toAddresseeTitle,
+      toName,
+      toName2,
+      toAddr: toAddress,
+      fy,
+      firmNameNp,
+      firmContactNp,
+      firmLetterhead,
+      firmSign,
+      firmStamp,
+      topMm: pageTopMargin,
+      bottomMm: pageBottomPadding,
+      lrMm: lrPadding,
+      inclSign: includeSign,
+      inclStamp: includeStamp,
+    });
+  }
 
   // Render only the letter body into a hidden iframe — attachments are no
   // longer part of this HTML at all (see above).
@@ -2118,11 +2235,7 @@ function ShortlistRow({ row, idx, canEdit, isAdmin, isSuperAdmin, onEdit, onDele
           ><span className="material-icons-round" style={{fontSize:15}}>receipt</span></button>
         )}
         <button title="Generate Letter"
-          onClick={() => {
-            const lt = row.list_letter_type || row.letter_type || 'basic';
-            if (lt === 'basic') setShowLetterOpts(true);
-            else setShowBuilder(true);
-          }}
+          onClick={() => setShowLetterOpts(true)}
           style={{width:30,height:30,borderRadius:50,border:'none',background:'transparent',color:'var(--text3)',cursor:'pointer',display:'inline-flex',alignItems:'center',justifyContent:'center'}}
           onMouseEnter={e=>{e.currentTarget.style.background='var(--primary-light)';e.currentTarget.style.color='var(--primary-dark)';}}
           onMouseLeave={e=>{e.currentTarget.style.background='';e.currentTarget.style.color='var(--text3)';}}
