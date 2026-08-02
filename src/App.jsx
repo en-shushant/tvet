@@ -607,7 +607,7 @@ function App() {
 
       {/* Global modals */}
       {showAddInstitute && (
-        <InstituteForm onSave={handleAddInstitute} onClose={()=>setShowAddInstitute(false)} isSuperAdmin={isSuperAdmin}/>
+        <InstituteForm onSave={handleAddInstitute} onClose={()=>setShowAddInstitute(false)} isSuperAdmin={isAdmin}/>
       )}
       {showChangePwd && <ChangePasswordModal onClose={()=>setShowChangePwd(false)}/>}
     </div>
