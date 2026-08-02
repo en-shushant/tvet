@@ -2117,7 +2117,12 @@ function ShortlistRow({ row, idx, canEdit, isAdmin, isSuperAdmin, onEdit, onDele
             onMouseLeave={e=>{e.currentTarget.style.background= hasBill ? 'var(--success-light)' : '';e.currentTarget.style.color= hasBill ? 'var(--success)' : 'var(--text3)';}}
           ><span className="material-icons-round" style={{fontSize:15}}>receipt</span></button>
         )}
-        <button title="Generate Letter" onClick={() => setShowLetterOpts(true)}
+        <button title="Generate Letter"
+          onClick={() => {
+            const lt = row.list_letter_type || row.letter_type || 'basic';
+            if (lt === 'basic') setShowLetterOpts(true);
+            else setShowBuilder(true);
+          }}
           style={{width:30,height:30,borderRadius:50,border:'none',background:'transparent',color:'var(--text3)',cursor:'pointer',display:'inline-flex',alignItems:'center',justifyContent:'center'}}
           onMouseEnter={e=>{e.currentTarget.style.background='var(--primary-light)';e.currentTarget.style.color='var(--primary-dark)';}}
           onMouseLeave={e=>{e.currentTarget.style.background='';e.currentTarget.style.color='var(--text3)';}}
