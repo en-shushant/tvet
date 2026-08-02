@@ -39,10 +39,10 @@ async function plugin(fastify, opts) {
         COALESCE(json_agg(DISTINCT jsonb_build_object('fy', n.fiscal_year)) FILTER (WHERE n.id IS NOT NULL), '[]') AS nstb,
         COALESCE(json_agg(DISTINCT jsonb_build_object('status', a.status, 'expiryDate', a.expiry_date, 'affiliationDate', a.affiliation_date)) FILTER (WHERE a.id IS NOT NULL), '[]') AS affiliation,
         '[]'::json AS experience,
-        COALESCE(s.total_trainees, 0)     AS total_trainees,
-        COALESCE(s.total_st_appeared, 0)  AS total_st_appeared,
-        COALESCE(s.total_clients, 0)      AS total_clients,
-        COALESCE(af.total_aff_programs, 0) AS total_aff_programs
+        COALESCE(MAX(s.total_trainees), 0)      AS total_trainees,
+        COALESCE(MAX(s.total_st_appeared), 0)   AS total_st_appeared,
+        COALESCE(MAX(s.total_clients), 0)        AS total_clients,
+        COALESCE(MAX(af.total_aff_programs), 0)  AS total_aff_programs
       FROM institutes i
       LEFT JOIN tax_clearances t    ON t.institute_id = i.id
       LEFT JOIN nstb_records n      ON n.institute_id = i.id
