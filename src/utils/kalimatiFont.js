@@ -31,7 +31,10 @@ export async function loadKalimatiCss() {
           bin += String.fromCharCode(...arr.subarray(i, i + 8192));
         const fmt = m[1].includes('.woff2') ? 'woff2' : 'woff';
         // Space before format() is required by the CSS spec
-        _cache = `@font-face{font-family:'Kalimati';src:url('data:font/${fmt};base64,${btoa(bin)}') format('${fmt}');}`;
+        // font-display:block tells Safari to wait for the font before painting
+        // text — without it, Safari renders with a fallback in srcdoc iframes
+        // and never repaints even though the data-URI font is already embedded.
+        _cache = `@font-face{font-family:'Kalimati';font-display:block;src:url('data:font/${fmt};base64,${btoa(bin)}') format('${fmt}');}`;
         return _cache;
       }
     }
