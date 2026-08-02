@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { Btn } from '../md.jsx';
 import { toNpNum, BS_DATA } from '../constants/nepali.js';
 import { api } from '../utils/api.js';
+import { loadKalimatiCss } from '../utils/kalimatiFont.js';
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
 function todayBS() {
@@ -79,7 +80,7 @@ async function detectLetterheadMargins(dataUrl) {
 }
 
 // ─── Shared NEA letter builder ────────────────────────────────────────────────
-function buildNeaHtml({ fields, imgs, topMm, bottomMm, lrMm, inclSign, inclStamp, todayBSStr }) {
+function buildNeaHtml({ fields, imgs, topMm, bottomMm, lrMm, inclSign, inclStamp, todayBSStr, kalimatiCss = '' }) {
   const { firmLetterhead, firmSign, firmStamp, firmName } = imgs;
   const useLhBg = !!firmLetterhead;
   const date    = fields.date    || todayBSStr;
@@ -95,7 +96,7 @@ function buildNeaHtml({ fields, imgs, topMm, bottomMm, lrMm, inclSign, inclStamp
   const firmNp  = fields.firmNameNp || imgs.firmNameNp || firmName || '';
 
   return `<!DOCTYPE html><html lang="ne"><head><meta charset="UTF-8">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Kalimati&display=swap">
+<style>${kalimatiCss}</style>
 <style>
   * { margin:0; padding:0; box-sizing:border-box; }
   body { background:#fff; font-family:'Kalimati','Noto Sans Devanagari','Arial Unicode MS',sans-serif; }
@@ -276,7 +277,7 @@ const TEMPLATES = {
 };
 
 // ─── HTML builder ─────────────────────────────────────────────────────────────
-function buildLetterHtml({ fields, row, imgs, topMm, bottomMm, lrMm, inclSign, inclStamp, todayBSStr }) {
+function buildLetterHtml({ fields, row, imgs, topMm, bottomMm, lrMm, inclSign, inclStamp, todayBSStr, kalimatiCss = '' }) {
   const { firmLogo, firmLetterhead, firmSign, firmStamp,
           firmRegNo, firmPan, firmMeta, firmName } = imgs;
   const useLhBg = !!firmLetterhead;
@@ -312,6 +313,7 @@ function buildLetterHtml({ fields, row, imgs, topMm, bottomMm, lrMm, inclSign, i
   const signLabel      = fields.signLabel      || '';
 
   return `<!DOCTYPE html><html lang="ne"><head><meta charset="UTF-8">
+<style>${kalimatiCss}</style>
 <style>
   * { margin:0; padding:0; box-sizing:border-box; }
   body { background:#fff; }
@@ -447,6 +449,7 @@ export default function LetterBuilder({ row: initialRow, token, onClose, allRows
   const [inclStamp, setInclStamp] = useState(!!row?.institute_stamp);
   const [previewHtml, setPreviewHtml] = useState('');
   const [imgs, setImgs] = useState(null);
+  const [kalimatiCss, setKalimatiCss] = useState('');
   const [margins, setMargins] = useState({ top: null, bottom: null });
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
@@ -494,11 +497,14 @@ export default function LetterBuilder({ row: initialRow, token, onClose, allRows
       if (cancelled) return;
       setInclSign(!!inst.sign);
       setInclStamp(!!inst.stamp);
-      const [logo, lh, sign, stamp] = await Promise.all([
-        urlToDataUrl(inst.logo        || row?.institute_logo       || null),
-        urlToDataUrl(inst.letterhead  || row?.institute_letterhead || null),
-        urlToDataUrl(inst.sign        || row?.institute_sign       || null),
-        urlToDataUrl(inst.stamp       || row?.institute_stamp      || null),
+      const [[logo, lh, sign, stamp], kCss] = await Promise.all([
+        Promise.all([
+          urlToDataUrl(inst.logo        || row?.institute_logo       || null),
+          urlToDataUrl(inst.letterhead  || row?.institute_letterhead || null),
+          urlToDataUrl(inst.sign        || row?.institute_sign       || null),
+          urlToDataUrl(inst.stamp       || row?.institute_stamp      || null),
+        ]),
+        loadKalimatiCss(),
       ]);
       if (cancelled) return;
       const firmName    = row?.institute_name    || '';
@@ -519,7 +525,7 @@ export default function LetterBuilder({ row: initialRow, token, onClose, allRows
         firmLogo: logo, firmLetterhead: lh, firmSign: sign, firmStamp: stamp,
       });
       const m = await detectLetterheadMargins(lh);
-      if (!cancelled) { setMargins(m); setLoading(false); }
+      if (!cancelled) { setKalimatiCss(kCss); setMargins(m); setLoading(false); }
     })();
     return () => { cancelled = true; };
   }, [row?.id, row?.institute_id, token]);
@@ -539,9 +545,9 @@ export default function LetterBuilder({ row: initialRow, token, onClose, allRows
     };
     return tpl.buildHtml({
       fields, row: rowData, imgs, topMm, bottomMm, lrMm,
-      inclSign, inclStamp, todayBSStr: todayBS(),
+      inclSign, inclStamp, todayBSStr: todayBS(), kalimatiCss,
     });
-  }, [fields, imgs, margins, inclSign, inclStamp, row, tpl]);
+  }, [fields, imgs, margins, inclSign, inclStamp, row, tpl, kalimatiCss]);
 
   // Rebuild preview whenever inputs change
   useEffect(() => {

@@ -5,6 +5,7 @@ import { api } from '../utils/api.js';
 import { getSession } from '../utils/auth.js';
 import { FISCAL_YEARS, getCurrentFY } from '../constants/data.js';
 import { adToBS, bsToAD, BS_MONTHS, BS_DATA, toNpNum } from '../constants/nepali.js';
+import { loadKalimatiCss } from '../utils/kalimatiFont.js';
 
 const LetterBuilderLazy = lazy(() => import('./LetterBuilder.jsx'));
 function LetterBuilderWrapper({ row, onClose, allRows }) {
@@ -195,15 +196,15 @@ const NEA_TEMPLATES = {
 
 function buildNeaLetterHtml({ letterType, dateBS, toTitle, toName, toName2, toAddr,
   fy, firmNameNp, firmContactNp, firmLetterhead, firmSign, firmStamp,
-  topMm, bottomMm, lrMm, inclSign, inclStamp, inclLh = true }) {
+  topMm, bottomMm, lrMm, inclSign, inclStamp, inclLh = true, kalimatiCss = '' }) {
   const tpl = NEA_TEMPLATES[letterType] || NEA_TEMPLATES.nea_ssemd;
   const useLhBg = !!firmLetterhead && inclLh;
   const fyStr = fy || '';
   const body = `उपरोक्त सम्बन्धमा तहाँ विभागको सूचना अनुसार आ.व. ${fyStr} को लागि यस कम्पनीलाई तपसिल अनुसारको सेवा प्रदान गर्ने प्रयोजनका लागि मौजुदा सूचीमा सूचीकृत गरिदिनुहुन अनुरोध गर्दछु।`;
 
   return `<!DOCTYPE html><html lang="ne"><head><meta charset="UTF-8">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Kalimati&display=swap">
 <style>
+  ${kalimatiCss}
   * { margin:0; padding:0; box-sizing:border-box; }
   body { background:#fff; font-family:'Kalimati','Noto Sans Devanagari','Arial Unicode MS',sans-serif; }
   .page {
@@ -278,12 +279,16 @@ async function openShortlistLetter(row, opts = {}) {
   const firmWebsite     = row.institute_website || '';
   const firmRegNo       = row.institute_reg_no || '';
   const firmPan         = row.institute_pan || '';
-  // Pre-fetch all images as data URLs so the popup never needs cross-origin requests
-  const [firmLogo, firmLetterhead, firmSign, firmStamp] = await Promise.all([
-    urlToDataUrl(row.institute_logo || null),
-    urlToDataUrl(row.institute_letterhead || null),
-    urlToDataUrl(row.institute_sign || null),
-    urlToDataUrl(row.institute_stamp || null),
+  // Pre-fetch all images as data URLs so the popup never needs cross-origin requests.
+  // Also load Kalimati font inline — Google Fonts <link> is unreliable inside srcdoc iframes.
+  const [[firmLogo, firmLetterhead, firmSign, firmStamp], kalimatiCss] = await Promise.all([
+    Promise.all([
+      urlToDataUrl(row.institute_logo || null),
+      urlToDataUrl(row.institute_letterhead || null),
+      urlToDataUrl(row.institute_sign || null),
+      urlToDataUrl(row.institute_stamp || null),
+    ]),
+    loadKalimatiCss(),
   ]);
 
   // Use user-set margins; only auto-detect when a value hasn't been explicitly configured.
@@ -359,8 +364,8 @@ async function openShortlistLetter(row, opts = {}) {
 <head>
 <meta charset="UTF-8">
 <title>मौजुदा सूची — ${firmAcronym || firmName}</title>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Kalimati&display=swap">
 <style>
+  ${kalimatiCss}
   @page { size: A4 portrait; margin: 0; }
   * { box-sizing: border-box; margin: 0; padding: 0; }
   html { background: #888; }
@@ -555,6 +560,7 @@ async function openShortlistLetter(row, opts = {}) {
       inclSign: includeSign,
       inclStamp: includeStamp,
       inclLh: includeLh,
+      kalimatiCss,
     });
   }
 
