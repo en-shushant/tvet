@@ -291,17 +291,18 @@ async function openShortlistLetter(row, opts = {}) {
     loadKalimatiCss(),
   ]);
 
-  // Use user-set margins; only auto-detect when a value hasn't been explicitly configured.
-  // Auto-detection is also skipped when the letterhead is being hidden (includeLh=false).
-  let pageTopMargin     = row.institute_letter_top_margin     != null ? Number(row.institute_letter_top_margin)     : null;
-  let pageBottomPadding = row.institute_letter_bottom_padding != null ? Number(row.institute_letter_bottom_padding) : null;
-  if (firmLetterhead && includeLh && (pageTopMargin == null || pageBottomPadding == null)) {
+  // Configured margins are a floor — auto-detection can raise them if the
+  // letterhead's artwork extends further than the configured value. This matches
+  // LetterBuilder's max(detected, configured) behaviour.
+  const cfgTop    = row.institute_letter_top_margin     != null ? Number(row.institute_letter_top_margin)     : null;
+  const cfgBottom = row.institute_letter_bottom_padding != null ? Number(row.institute_letter_bottom_padding) : null;
+  let pageTopMargin     = cfgTop    ?? 15;
+  let pageBottomPadding = cfgBottom ?? 15;
+  if (firmLetterhead && includeLh) {
     const { top, bottom } = await detectLetterheadMargins(firmLetterhead);
-    if (pageTopMargin     == null) pageTopMargin     = top    || 15;
-    if (pageBottomPadding == null) pageBottomPadding = bottom || 15;
+    if (top    && top    > pageTopMargin)     pageTopMargin     = top;
+    if (bottom && bottom > pageBottomPadding) pageBottomPadding = bottom;
   }
-  pageTopMargin     = pageTopMargin     ?? 15;
-  pageBottomPadding = pageBottomPadding ?? 15;
   const useLhBg = !!firmLetterhead && includeLh;
   const firmContact     = row.institute_contact || '';
   const firmNameNp      = row.institute_name_np || firmName;
