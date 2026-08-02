@@ -1512,10 +1512,10 @@ function LetterOptsModal({ row, token, onClose, onOpenBuilder }) {
         // configured page margins were silently discarded.
         setFreshRow(r => ({
           ...r,
-          institute_letter_top_margin:     inst.letter_top_margin,
-          institute_letter_lr_padding:     inst.letter_lr_padding,
-          institute_letter_bottom_padding: inst.letter_bottom_padding,
-          institute_service_type:          inst.service_type,
+          institute_letter_top_margin:     inst.letterTopMargin,
+          institute_letter_lr_padding:     inst.letterLrPadding,
+          institute_letter_bottom_padding: inst.letterBottomPadding,
+          institute_service_type:          inst.serviceType,
           institute_logo:       inst.logo,
           institute_letterhead: inst.letterhead,
           institute_sign:       inst.sign,
