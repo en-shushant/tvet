@@ -434,7 +434,7 @@ export default function LetterBuilder({ row: initialRow, token, onClose, allRows
     ? (allRows.find(r => r.id === selectedRowId) || initialRow)
     : initialRow;
 
-  const letterType = row?.list_letter_type || 'basic';
+  const letterType = row?.list_letter_type || row?.letter_type || 'basic';
   const tpl = TEMPLATES[letterType] || TEMPLATES.basic;
 
   const [fields, setFields] = useState(() => {

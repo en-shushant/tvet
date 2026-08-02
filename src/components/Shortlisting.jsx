@@ -845,6 +845,7 @@ function ShortlistForm({ initial, institutes, clients, onSave, onClose, saving, 
   const empty = {
     client_id: '', client_name_manual: '', institute_id: '', standing_list_name: '', fy: '',
     shortlist_date: '', status: 'Active', remarks: '', contract_amount: '', shortlist_doc: null,
+    letter_type: 'basic',
   };
   const [form, setForm] = useState(initial ? {
     client_id:          initial.client_id    ?? '',
@@ -853,11 +854,11 @@ function ShortlistForm({ initial, institutes, clients, onSave, onClose, saving, 
     standing_list_name: initial.standing_list_name ?? '',
     fy:                 initial.fy           ?? '',
     shortlist_date:     initial.shortlist_date ? initial.shortlist_date.slice(0,10) : '',
-
     status:             initial.status        ?? 'Active',
     remarks:            initial.remarks       ?? '',
     contract_amount:    initial.contract_amount != null ? String(initial.contract_amount) : '',
     shortlist_doc:      initial.shortlist_doc ?? null,
+    letter_type:        initial.letter_type   ?? 'basic',
   } : empty);
 
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
@@ -946,6 +947,11 @@ function ShortlistForm({ initial, institutes, clients, onSave, onClose, saving, 
             <MdOption value="Active">Active</MdOption>
             <MdOption value="Expired">Expired</MdOption>
             <MdOption value="Pending">Pending</MdOption>
+          </MdSelect>
+        </div>
+        <div className="form-group">
+          <MdSelect label="Letter Format" value={form.letter_type} onChange={e => set('letter_type', e.target.value)}>
+            {LETTER_TYPES.map(t => <MdOption key={t.value} value={t.value}>{t.label}</MdOption>)}
           </MdSelect>
         </div>
       </div>

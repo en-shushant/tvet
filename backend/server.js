@@ -190,6 +190,7 @@ async function runMigrations() {
     `ALTER TABLE standing_lists ADD COLUMN IF NOT EXISTS letter_type TEXT DEFAULT 'basic'`,
     `ALTER TABLE shortlists ADD COLUMN IF NOT EXISTS standing_list_id INTEGER REFERENCES standing_lists(id) ON DELETE CASCADE`,
     `ALTER TABLE shortlists ADD COLUMN IF NOT EXISTS client_address_manual TEXT`,
+    `ALTER TABLE shortlists ADD COLUMN IF NOT EXISTS letter_type TEXT DEFAULT 'basic'`,
     `CREATE INDEX IF NOT EXISTS idx_shortlists_standing_list ON shortlists(standing_list_id)`,
     `CREATE TABLE IF NOT EXISTS contracts (
       id                SERIAL PRIMARY KEY,
