@@ -39,10 +39,14 @@ async function plugin(fastify, opts) {
         i.letter_top_margin AS institute_letter_top_margin,
         i.letter_lr_padding AS institute_letter_lr_padding,
         i.letter_bottom_padding AS institute_letter_bottom_padding,
-        i.service_type AS institute_service_type
+        i.service_type AS institute_service_type,
+        stl.letter_type      AS list_letter_type,
+        stl.addressee        AS list_addressee,
+        stl.client_name2_manual AS list_client_name2
       FROM shortlists sl
-      LEFT JOIN clients    c ON c.id = sl.client_id
-      LEFT JOIN institutes i ON i.id = sl.institute_id
+      LEFT JOIN clients       c   ON c.id   = sl.client_id
+      LEFT JOIN institutes    i   ON i.id   = sl.institute_id
+      LEFT JOIN standing_lists stl ON stl.id = sl.standing_list_id
       ${where}
       ORDER BY sl.shortlist_date DESC, sl.id DESC
     `;

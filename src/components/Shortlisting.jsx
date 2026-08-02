@@ -1081,8 +1081,15 @@ const SERVICE_TYPES = [
 
 // Create / edit a standing list. Firms are assigned separately, so a list can
 // exist before any firm is on it.
+const LETTER_TYPES = [
+  { value: 'basic',     label: 'Basic Shortlisting' },
+  { value: 'nea_ssemd', label: 'NEA SSEMD' },
+  { value: 'nea_essd',  label: 'NEA ESSD' },
+];
+
 function StandingListModal({ list, onSave, onClose, saving }) {
   const [f, setF] = useState(() => ({
+    letter_type:          list?.letter_type          || 'basic',
     addressee:            list?.addressee            || '',
     client_name_manual:   list?.client_name_manual   || '',
     client_name2_manual:  list?.client_name2_manual  || '',
@@ -1112,15 +1119,22 @@ function StandingListModal({ list, onSave, onClose, saving }) {
       <Btn className="btn btn-primary" disabled={!valid || saving}
         onClick={() => onSave({
           ...f,
-          addressee:            f.addressee.trim() || null,
+          letter_type:           f.letter_type || 'basic',
+          addressee:             f.addressee.trim() || null,
           client_name_manual:    f.client_name_manual.trim(),
-          client_name2_manual:  f.client_name2_manual.trim() || null,
+          client_name2_manual:   f.client_name2_manual.trim() || null,
           client_address_manual: f.client_address_manual.trim() || null,
         })}>
         {saving ? 'Saving…' : list ? 'Save changes' : 'Create shortlist'}
       </Btn>
     </>}>
       <div style={{display:'flex', flexDirection:'column', gap:12}}>
+        {/* Letter format */}
+        <div className="form-group">
+          <MdSelect label="Letter format" value={f.letter_type} onChange={e=>set('letter_type', e.target.value)}>
+            {LETTER_TYPES.map(t => <MdOption key={t.value} value={t.value}>{t.label}</MdOption>)}
+          </MdSelect>
+        </div>
         {/* Address block — printed verbatim at the top of the generated letter */}
         <div className="form-group">
           <MdTextField label="Addressee title" value={f.addressee}

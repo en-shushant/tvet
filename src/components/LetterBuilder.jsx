@@ -78,6 +78,85 @@ async function detectLetterheadMargins(dataUrl) {
   });
 }
 
+// ─── Shared NEA letter builder ────────────────────────────────────────────────
+function buildNeaHtml({ fields, imgs, topMm, bottomMm, lrMm, inclSign, inclStamp, todayBSStr }) {
+  const { firmLetterhead, firmSign, firmStamp, firmName } = imgs;
+  const useLhBg = !!firmLetterhead;
+  const date    = fields.date    || todayBSStr;
+  const toTitle = fields.toTitle || 'कार्यालय प्रमुख';
+  const toName  = fields.toName  || '';
+  const toName2 = fields.toName2 || '';
+  const toAddr  = fields.toAddress || '';
+  const fy      = fields.fy || '';
+  const body    = (fields.body || '').replace(/\{fy\}/g, fy);
+  const bullets = (fields.bullets || '').split('\n').filter(Boolean);
+  const sectionHeader = fields.sectionHeader || '';
+  const sigName = fields.signatoryName || imgs.firmContactNp || '';
+  const firmNp  = fields.firmNameNp || imgs.firmNameNp || firmName || '';
+
+  return `<!DOCTYPE html><html lang="ne"><head><meta charset="UTF-8">
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { background:#fff; }
+  .page {
+    width:794px; height:1123px; position:relative; overflow:hidden;
+    font-family:'Kalimati','Noto Sans Devanagari','Arial Unicode MS',sans-serif; font-size:13px;
+    background-color:#fff;
+    ${useLhBg ? `background-image:url("${firmLetterhead}");background-repeat:no-repeat;background-position:0 0;background-size:794px 1123px;` : ''}
+  }
+  .page-inner { position:relative;z-index:1;padding:${topMm}mm ${lrMm}mm ${bottomMm}mm ${lrMm}mm; }
+  .ref-row { display:flex;justify-content:flex-end;margin-bottom:10px;font-size:11pt; }
+  .to-block { margin-bottom:12px;font-size:10.5pt;line-height:1.75; }
+  .subject { text-align:center;font-size:11pt;font-weight:700;text-decoration:underline;text-underline-offset:3px;margin-bottom:10px; }
+  .body-txt { margin-bottom:8px;font-size:10pt;text-align:justify;line-height:1.7; }
+  .tapasil { font-weight:700;font-size:10.5pt;margin-bottom:6px; }
+  .sec-hdr { font-weight:600;font-size:10pt;margin-bottom:6px; }
+  .bullets { font-size:10pt;line-height:1.7;padding-left:0;list-style:none; }
+  .bullets li { display:flex;gap:8px;margin-bottom:6px;text-align:justify; }
+  .bullets li::before { content:"•";flex-shrink:0;margin-top:1px; }
+  .sig-row { display:flex;justify-content:flex-end;gap:24px;align-items:flex-end;margin-top:32px; }
+  .sig-stamp { text-align:center;min-width:70px; }
+  .sig-block { text-align:center;min-width:130px; }
+  .sig-line { border-top:1px solid #333;padding-top:4px;font-size:10pt; }
+</style></head><body>
+<div class="page"><div class="page-inner">
+
+  <div class="ref-row"><span>मिति: ${date}</span></div>
+
+  <div class="to-block">
+    <div>श्री ${toTitle} ज्यू,</div>
+    ${toName  ? `<div>${toName}</div>` : ''}
+    ${toName2 ? `<div>${toName2}</div>` : ''}
+    ${toAddr  ? `<div>${toAddr}</div>` : ''}
+  </div>
+
+  <div class="subject">विषय: ${fields.subject || ''}</div>
+  <div class="body-txt">महोदय,</div>
+  <div class="body-txt">${body}</div>
+  <div class="tapasil">तपसिल:</div>
+  ${sectionHeader ? `<div class="sec-hdr">${sectionHeader}</div>` : ''}
+  <ul class="bullets">
+    ${bullets.map(b => `<li>${b}</li>`).join('\n    ')}
+  </ul>
+
+  <div class="sig-row">
+    <div class="sig-stamp">
+      ${inclStamp && firmStamp
+        ? `<img src="${firmStamp}" style="width:26mm;height:26mm;object-fit:contain;display:block;margin:0 auto;">`
+        : ''}
+    </div>
+    <div class="sig-block">
+      ${inclSign && firmSign
+        ? `<img src="${firmSign}" style="display:block;margin:0 auto;max-height:14mm;max-width:100%;object-fit:contain;margin-bottom:4px;">`
+        : ''}
+      <div class="sig-line">……………………………………<br>${sigName}<br>${firmNp}</div>
+    </div>
+  </div>
+
+</div></div>
+</body></html>`;
+}
+
 // ─── Letter template: मौजुदा सूची दर्ता पत्र ───────────────────────────────────
 // `date` is filled at runtime; firm/client fields are patched from the row.
 const TEMPLATE = {
@@ -136,6 +215,64 @@ const FIELD_ORDER = [
   'consultingLabel','serviceType','otherServiceLabel','otherServiceValue',
   'dateLabel','fyLabel','stampLabel','applicantLabel','signLabel',
 ];
+
+// ─── NEA letter template fields (shared base) ─────────────────────────────────
+const NEA_FIELDS_BASE = {
+  date:          { label: 'मिति (BS Date)', value: '' },
+  lrPadding:     { label: 'Left / Right Margin (mm)', value: '20' },
+  toTitle:       { label: 'Addressee Title (पद)', value: 'कार्यालय प्रमुख' },
+  toName:        { label: 'Organization Name', value: '' },
+  toName2:       { label: 'Department / Level 2 (optional)', value: '' },
+  toAddress:     { label: 'Address', value: '' },
+  subject:       { label: 'Subject (विषय)', value: 'सूचीदर्ता गरिदिने बारे' },
+  body:          { label: 'Body Paragraph', multiline: true,
+    value: 'उपरोक्त सम्बन्धमा तहाँ विभागको सूचना अनुसार आ.व. {fy} को लागि यस कम्पनीलाई तपसिल अनुसारको सेवा प्रदान गर्ने प्रयोजनका लागि मौजुदा सूचीमा सूचीकृत गरिदिनुहुन अनुरोध गर्दछु।' },
+  fy:            { label: 'आ.व. (Fiscal Year)', value: '' },
+  sectionHeader: { label: 'Section Header', value: '' },
+  bullets:       { label: 'Bullet Points (one per line)', multiline: true, value: '' },
+  signatoryName: { label: 'Signatory Name', value: '' },
+  firmNameNp:    { label: 'Firm Name (Nepali)', value: '' },
+};
+const NEA_FIELD_ORDER = ['date','lrPadding','toTitle','toName','toName2','toAddress','subject','body','fy','sectionHeader','bullets','signatoryName','firmNameNp'];
+
+// ─── All templates ─────────────────────────────────────────────────────────────
+const TEMPLATES = {
+  basic: {
+    name: 'Basic Shortlisting',
+    fields: TEMPLATE.fields,
+    fieldOrder: FIELD_ORDER,
+    buildHtml: buildLetterHtml,
+  },
+  nea_ssemd: {
+    name: 'NEA SSEMD',
+    fields: {
+      ...NEA_FIELDS_BASE,
+      sectionHeader: { label: 'Section Header', value: '(ख) परामर्श सेवा :' },
+      bullets: { label: 'Bullet Points (one per line)', multiline: true, value:
+        'समूह (१) : वातावरणीय अध्ययन तर्फ : वातावरणीय अध्ययन कार्यको लागि आवश्यक कार्यसूची (ToR) तथा क्षेत्र निर्धारण (Scoping) सम्बन्धी कार्य, संक्षिप्त वातावरणीय अध्ययन (BES), प्रारम्भिक वातावरणीय परीक्षण (IEE) तथा वातावरणीय प्रभाव मूल्याङ्कन (EIA) वन्यजन्तु, चराचुरुङ्गी एवं जैविक विविधता सम्बन्धि विषयगत अध्ययन कार्य ।\n' +
+        'समूह (२) : वातावरणीय तथा सामाजिक अनुगमन सम्बन्धि कार्य : सामाजिक तथा वातावरणीय पक्षको अनुगमन कार्य, वातावरणीय व्यवस्थापन योजना (EMP) सम्बन्धि कार्य, पुर्नवास तथा पुर्नस्थापना कार्य योजना (RRAP) सम्बन्धी कार्य एवं आयोजनाको बाह्य (तेस्रो पक्ष) अनुगमन तथा मूल्यांकन सम्बन्धी कार्य ।\n' +
+        'समूह (३) : आयोजना स्थलमा संचालन हुने वातावरणीय तथा सामाजिक अनुगमन इकाई (ESMU) का लागि वातावरण, समाजिक, लैङ्गिक विज्ञ तथा अन्य जनशक्ति आपूर्ति सम्बन्धी सेवा । आयोजना स्थलमा सञ्चालन गर्नुपर्ने जनचेतनामूलक तथा अन्य कार्य: सामाजिक, वन संरक्षण तथा वन्यजन्तु संरक्षण सम्बन्धी सचेतनामूलक कार्यक्रम, आय आर्जन सम्बन्धी कार्यक्रम, लैङ्गिक समानता तथा सामाजिक समावेशीकरण सम्बन्धी कार्य ।\n' +
+        'समूह (४) : सिपमुलक तालिम : छोटो अवधिको ड्राइभिङ, हाउस वायरिङ, प्लम्बिङ्ग, वेल्डिङ्ग, मर्मत सम्भार, सिलाई, बुनाई, व्युटिपार्लर आदी सम्बन्धि कार्य ।\n' +
+        'समूह (५) : आयोजना स्थलमा सञ्चालन गर्नुपर्ने वातावरणीय सुचकाङ्क बमोजिमको Air, Noise, Water Quality मापन सम्बन्धी कार्य ।' },
+    },
+    fieldOrder: NEA_FIELD_ORDER,
+    buildHtml: buildNeaHtml,
+  },
+  nea_essd: {
+    name: 'NEA ESSD',
+    fields: {
+      ...NEA_FIELDS_BASE,
+      sectionHeader: { label: 'Section Header', value: '१) परामर्श सेवा आपूर्ति तर्फ:' },
+      bullets: { label: 'Bullet Points (one per line)', multiline: true, value:
+        'समूह-क:- वातावरणीय तथा सामाजिक अध्ययन कार्य: प्रारम्भिक वातावरणीय परीक्षणको कार्यसूची (ToR), प्रारम्भिक वातावरणीय परीक्षण कार्य (IEE) वातावरणीय प्रभाव मूल्यांकनको लागि क्षेत्र निर्धारण (Scoping) तथा कार्यसुची (ToR)\' तयार गर्ने कार्य, वातावरणीय प्रभाव मूल्यांकन कार्य (EIA), विषयगत अध्ययन कार्य (माछा, वन्यजन्तु, वन तथा वनस्पति, भौतिक वातावरण, सामाजिक, आर्थिक आदि) तथा दातृ संस्थाहरुको लागि गरिने सामाजिक प्रभाव मूल्याङ्कन (SIA), पुनर्वास कार्य योजना (RAP) उत्पीडित समुदाय विकास योजना (VCDP) तथा वातावरणीय व्यवस्थापन कार्य योजना (EMAP) आयोजनाको अध्ययन अनुगमनको लागि विज्ञहरुको सेवा खरिद आदि ।\n' +
+        'समूह ख :- आयोजना स्थलमा संचालन गर्नुपर्ने जनचेतना तथा अन्य कार्य: सामाजिक सचेतना कार्यक्रम, वन संरक्षण सचेतना कार्यहरु, वन्यजन्तु संरक्षण सचेतना कार्यक्रम, आय आर्जन सम्बन्धी आदि ।\n' +
+        'समूह ग: सीपमुलक तालिम: छोटो अवधिको ड्राइभिङ्ग, हाउस वायरिङ्ग, प्लम्बिङ्ग, वेल्डिङ्ग, सिलाई, बुनाई मर्मत संभार आदि ।\n' +
+        'समूह घ: आयोजना स्थलमा संचालन गर्नुपर्ने: Air, Noise, Water Quality मापन सम्बन्धी कार्य ।' },
+    },
+    fieldOrder: NEA_FIELD_ORDER,
+    buildHtml: buildNeaHtml,
+  },
+};
 
 // ─── HTML builder ─────────────────────────────────────────────────────────────
 function buildLetterHtml({ fields, row, imgs, topMm, bottomMm, lrMm, inclSign, inclStamp, todayBSStr }) {
@@ -296,8 +433,12 @@ export default function LetterBuilder({ row: initialRow, token, onClose, allRows
   const row = (allRows && selectedRowId)
     ? (allRows.find(r => r.id === selectedRowId) || initialRow)
     : initialRow;
+
+  const letterType = row?.list_letter_type || 'basic';
+  const tpl = TEMPLATES[letterType] || TEMPLATES.basic;
+
   const [fields, setFields] = useState(() => {
-    const f = Object.fromEntries(Object.entries(TEMPLATE.fields).map(([k, v]) => [k, v.value]));
+    const f = Object.fromEntries(Object.entries(tpl.fields).map(([k, v]) => [k, v.value]));
     f.date = todayBS();
     return f;
   });
@@ -317,31 +458,26 @@ export default function LetterBuilder({ row: initialRow, token, onClose, allRows
 
   // Patch editable fields from row/firm data when row changes
   useEffect(() => {
-    // inclSign/inclStamp are set once the institute record arrives below
     setFields(f => ({
-      ...f,
+      // start fresh from template defaults for the (possibly new) template
+      ...Object.fromEntries(Object.entries(tpl.fields).map(([k, v]) => [k, v.value])),
       date:          f.date || todayBS(),
       lrPadding:     String(row?.institute_letter_lr_padding ?? 20),
-      // श्री block: manual entry wins, then Nepali, then English
-      toName:        row?.client_name_manual    || row?.client_name_np    || row?.client_name    || f.toName    || '',
-      toAddress:     row?.client_address_manual || row?.client_address_np || row?.client_address || f.toAddress || '',
-      toTitle:       row?.client_signatory_position || f.toTitle || 'कार्यालय प्रमुख',
-      serviceType:   row?.institute_service_type    || f.serviceType || '',
-      firmNameNp:    row?.institute_name_np    || row?.institute_name    || f.firmNameNp    || '',
-      firmAcronym:   row?.institute_acronym    || f.firmAcronym  || '',
-      firmAddressNp: row?.institute_address_np || row?.institute_address || f.firmAddressNp || '',
-      firmContact:   row?.institute_contact_np || row?.institute_contact || f.firmContact   || '',
-      firmPhone:     row?.institute_phone      || f.firmPhone || '',
-      fy:            row?.fy ? toNpNum(row.fy) : f.fy || '',
-      applicantName: row?.institute_contact_np || row?.institute_contact || f.applicantName || '',
-      // fall back to template defaults for any label field not yet set
-      ...Object.fromEntries(
-        Object.entries(TEMPLATE.fields)
-          .filter(([k, v]) => v.value && !f[k])
-          .map(([k, v]) => [k, v.value])
-      ),
+      toTitle:       row?.list_addressee || row?.client_signatory_position || tpl.fields.toTitle?.value || 'कार्यालय प्रमुख',
+      toName:        row?.client_name_manual    || row?.client_name_np    || row?.client_name    || '',
+      toName2:       row?.list_client_name2     || '',
+      toAddress:     row?.client_address_manual || row?.client_address_np || row?.client_address || '',
+      serviceType:   row?.institute_service_type || tpl.fields.serviceType?.value || '',
+      firmNameNp:    row?.institute_name_np    || row?.institute_name    || '',
+      firmAcronym:   row?.institute_acronym    || '',
+      firmAddressNp: row?.institute_address_np || row?.institute_address || '',
+      firmContact:   row?.institute_contact_np || row?.institute_contact || '',
+      firmPhone:     row?.institute_phone      || '',
+      fy:            row?.fy ? toNpNum(row.fy) : '',
+      applicantName: row?.institute_contact_np || row?.institute_contact || '',
+      signatoryName: row?.institute_contact_np || row?.institute_contact || '',
     }));
-  }, [row?.id]);
+  }, [row?.id, letterType]);
 
   // Pre-fetch images when row changes
   useEffect(() => {
@@ -394,18 +530,17 @@ export default function LetterBuilder({ row: initialRow, token, onClose, allRows
     const cfgBot   = row?.institute_letter_bottom_padding ?? 15;
     const topMm    = margins.top    && margins.top    > cfgTop ? margins.top    : cfgTop;
     const bottomMm = margins.bottom && margins.bottom > cfgBot ? margins.bottom : cfgBot;
-    // row data is only a fallback — the editable fields take priority
     const rowData = {
       toName:    row?.client_name_manual    || row?.client_name_np    || row?.client_name    || '',
       toAddress: row?.client_address_manual || row?.client_address_np || row?.client_address || '',
       firmPhone: row?.institute_phone || '',
       fyNp:      row?.fy ? toNpNum(row.fy) : '',
     };
-    return buildLetterHtml({
+    return tpl.buildHtml({
       fields, row: rowData, imgs, topMm, bottomMm, lrMm,
       inclSign, inclStamp, todayBSStr: todayBS(),
     });
-  }, [fields, imgs, margins, inclSign, inclStamp, row]);
+  }, [fields, imgs, margins, inclSign, inclStamp, row, tpl]);
 
   // Rebuild preview whenever inputs change
   useEffect(() => {
@@ -449,13 +584,14 @@ export default function LetterBuilder({ row: initialRow, token, onClose, allRows
     if (pdfUrl) window.open(pdfUrl, '_blank', 'noopener');
   };
 
-  const orderedFields = FIELD_ORDER.filter(k => TEMPLATE.fields[k]);
+  const orderedFields = tpl.fieldOrder.filter(k => tpl.fields[k]);
 
   return (
     <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,.55)', zIndex:1200, display:'flex', flexDirection:'column' }}>
       {/* Header */}
       <div style={{ display:'flex', alignItems:'center', gap:12, padding:'10px 20px', background:'var(--surface)', borderBottom:'1px solid var(--border)', flexShrink:0 }}>
         <div style={{ fontWeight:700, fontSize:16, color:'var(--text)' }}>Letter Builder</div>
+        <div style={{ fontSize:12, color:'var(--text3)', padding:'3px 10px', borderRadius:100, background:'var(--bg)', border:'1px solid var(--border)' }}>{tpl.name}</div>
 
         {/* Firm picker */}
         {allRows && allRows.length > 0 && (
@@ -494,7 +630,7 @@ export default function LetterBuilder({ row: initialRow, token, onClose, allRows
         <div style={{ width:340, flexShrink:0, overflowY:'auto', padding:20, borderRight:'1px solid var(--border)', background:'var(--bg)', display:'flex', flexDirection:'column', gap:14 }}>
           {loading && <div style={{ color:'var(--text3)', fontSize:13 }}>Loading images…</div>}
           {!loading && orderedFields.map(key => {
-            const def = TEMPLATE.fields[key];
+            const def = tpl.fields[key];
             return (
               <div key={key}>
                 <div style={{ fontSize:11, fontWeight:600, color:'var(--text3)', marginBottom:4, textTransform:'uppercase', letterSpacing:.5 }}>{def.label}</div>

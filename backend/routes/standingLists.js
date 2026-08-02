@@ -29,17 +29,17 @@ async function plugin(fastify) {
 
   fastify.post('/', { preHandler: requireWriter }, async (request, reply) => {
     const { client_name_manual, client_name2_manual, client_address_manual,
-            addressee, name, fy, list_date, valid_until, status, remarks } = request.body;
+            addressee, letter_type, name, fy, list_date, valid_until, status, remarks } = request.body;
     if (!client_name_manual) {
       return reply.code(400).send({ error: 'An organisation name is required' });
     }
     const { rows: [row] } = await pool.query(
       `INSERT INTO standing_lists
-        (client_name_manual, client_name2_manual, client_address_manual, addressee,
+        (client_name_manual, client_name2_manual, client_address_manual, addressee, letter_type,
          name, fy, list_date, valid_until, status, remarks)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING *`,
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING *`,
       [client_name_manual, client_name2_manual || null, client_address_manual || null,
-       addressee || null, name || null, fy || null,
+       addressee || null, letter_type || 'basic', name || null, fy || null,
        list_date || null, valid_until || null, status || 'Active', remarks || null]
     );
     return reply.code(201).send(row);
@@ -47,15 +47,15 @@ async function plugin(fastify) {
 
   fastify.put('/:id', { preHandler: requireWriter }, async (request, reply) => {
     const { client_name_manual, client_name2_manual, client_address_manual,
-            addressee, name, fy, list_date, valid_until, status, remarks } = request.body;
+            addressee, letter_type, name, fy, list_date, valid_until, status, remarks } = request.body;
     const { rows } = await pool.query(
       `UPDATE standing_lists SET
          client_name_manual=$1, client_name2_manual=$2, client_address_manual=$3,
-         addressee=$4, name=$5, fy=$6,
-         list_date=$7, valid_until=$8, status=$9, remarks=$10, updated_at=NOW()
-       WHERE id=$11 RETURNING *`,
+         addressee=$4, letter_type=$5, name=$6, fy=$7,
+         list_date=$8, valid_until=$9, status=$10, remarks=$11, updated_at=NOW()
+       WHERE id=$12 RETURNING *`,
       [client_name_manual || null, client_name2_manual || null, client_address_manual || null,
-       addressee || null, name || null, fy || null,
+       addressee || null, letter_type || 'basic', name || null, fy || null,
        list_date || null, valid_until || null, status || 'Active', remarks || null,
        request.params.id]
     );
