@@ -195,9 +195,9 @@ const NEA_TEMPLATES = {
 
 function buildNeaLetterHtml({ letterType, dateBS, toTitle, toName, toName2, toAddr,
   fy, firmNameNp, firmContactNp, firmLetterhead, firmSign, firmStamp,
-  topMm, bottomMm, lrMm, inclSign, inclStamp }) {
+  topMm, bottomMm, lrMm, inclSign, inclStamp, inclLh = true }) {
   const tpl = NEA_TEMPLATES[letterType] || NEA_TEMPLATES.nea_ssemd;
-  const useLhBg = !!firmLetterhead;
+  const useLhBg = !!firmLetterhead && inclLh;
   const fyStr = fy || '';
   const body = `उपरोक्त सम्बन्धमा तहाँ विभागको सूचना अनुसार आ.व. ${fyStr} को लागि यस कम्पनीलाई तपसिल अनुसारको सेवा प्रदान गर्ने प्रयोजनका लागि मौजुदा सूचीमा सूचीकृत गरिदिनुहुन अनुरोध गर्दछु।`;
 
@@ -266,7 +266,7 @@ function buildNeaLetterHtml({ letterType, dateBS, toTitle, toName, toName2, toAd
 }
 
 async function openShortlistLetter(row, opts = {}) {
-  const { includeSign = false, includeStamp = false, docs = {}, serviceType: svcType } = opts;
+  const { includeSign = false, includeStamp = false, includeLh = true, docs = {}, serviceType: svcType } = opts;
   const lrPadding = row.institute_letter_lr_padding ?? 20;
   // Firm (institute) — letterhead owner
   const firmName        = row.institute_name || '';
@@ -286,14 +286,18 @@ async function openShortlistLetter(row, opts = {}) {
     urlToDataUrl(row.institute_stamp || null),
   ]);
 
-  // Auto-detect header/footer heights from letterhead image
-  let pageTopMargin    = row.institute_letter_top_margin    ?? 15;
-  let pageBottomPadding = row.institute_letter_bottom_padding ?? 15;
-  if (firmLetterhead) {
+  // Use user-set margins; only auto-detect when a value hasn't been explicitly configured.
+  // Auto-detection is also skipped when the letterhead is being hidden (includeLh=false).
+  let pageTopMargin     = row.institute_letter_top_margin     != null ? Number(row.institute_letter_top_margin)     : null;
+  let pageBottomPadding = row.institute_letter_bottom_padding != null ? Number(row.institute_letter_bottom_padding) : null;
+  if (firmLetterhead && includeLh && (pageTopMargin == null || pageBottomPadding == null)) {
     const { top, bottom } = await detectLetterheadMargins(firmLetterhead);
-    if (top    && top    > pageTopMargin)    pageTopMargin    = top;
-    if (bottom && bottom > pageBottomPadding) pageBottomPadding = bottom;
+    if (pageTopMargin     == null) pageTopMargin     = top    || 15;
+    if (pageBottomPadding == null) pageBottomPadding = bottom || 15;
   }
+  pageTopMargin     = pageTopMargin     ?? 15;
+  pageBottomPadding = pageBottomPadding ?? 15;
+  const useLhBg = !!firmLetterhead && includeLh;
   const firmContact     = row.institute_contact || '';
   const firmNameNp      = row.institute_name_np || firmName;
   const firmAddressNp   = row.institute_address_np || firmAddress;
@@ -347,7 +351,6 @@ async function openShortlistLetter(row, opts = {}) {
   // neither of which screenshotting could ever have supported.
   const activeDocs = docDefs.filter(d => docs[d.key] && d.src);
 
-  const useLhBg = !!firmLetterhead;
   const fyNp = fy ? toNpNum(fy) : '';
   const serviceType = svcType || 'सीपमूलक तथा व्यावसायिक तालिम कार्यक्रमहरु सञ्चालन';
 
@@ -551,6 +554,7 @@ async function openShortlistLetter(row, opts = {}) {
       lrMm: lrPadding,
       inclSign: includeSign,
       inclStamp: includeStamp,
+      inclLh: includeLh,
     });
   }
 
@@ -572,6 +576,18 @@ async function openShortlistLetter(row, opts = {}) {
     ),
     iframeDoc.fonts?.ready ?? Promise.resolve(),
   ]);
+
+  // Force-fit: if content overflows the A4 page height, scale it down to fit.
+  const pageInnerEl = iframeDoc.querySelector('.page-inner');
+  if (pageInnerEl) {
+    const contentH = pageInnerEl.scrollHeight;
+    if (contentH > A4_H - 10) {
+      const scale = Math.max(0.5, (A4_H - 10) / contentH);
+      pageInnerEl.style.transformOrigin = 'top left';
+      pageInnerEl.style.transform = `scale(${scale})`;
+      pageInnerEl.style.width = `${Math.round(100 / scale)}%`;
+    }
+  }
 
   const { default: html2canvas } = await import('html2canvas');
   const { PDFDocument } = await import('pdf-lib');
@@ -1469,6 +1485,7 @@ function ViewDocumentsModal({ instituteId, token, onClose }) {
 function LetterOptsModal({ row, token, onClose, onOpenBuilder }) {
   const [inclSign, setInclSign]   = useState(false);
   const [inclStamp, setInclStamp] = useState(false);
+  const [inclLh, setInclLh]       = useState(true);
   const [inclDocs, setInclDocs]   = useState({});
   const [freshRow, setFreshRow]   = useState(row);
   const [instLoading, setInstLoading] = useState(true);
@@ -1530,7 +1547,8 @@ function LetterOptsModal({ row, token, onClose, onOpenBuilder }) {
   useEffect(() => {
     setInclSign(!!freshRow.institute_sign);
     setInclStamp(!!freshRow.institute_stamp);
-  }, [freshRow.institute_sign, freshRow.institute_stamp]);
+    setInclLh(!!freshRow.institute_letterhead);
+  }, [freshRow.institute_sign, freshRow.institute_stamp, freshRow.institute_letterhead]);
 
   const anyDocs = Object.values(hasDocs).some(Boolean);
   const toggle = k => setInclDocs(d => ({...d, [k]: !d[k]}));
@@ -1545,7 +1563,7 @@ function LetterOptsModal({ row, token, onClose, onOpenBuilder }) {
     setGenerating(true);
     try {
       const url = await openShortlistLetter(freshRow, {
-        includeSign: inclSign, includeStamp: inclStamp,
+        includeSign: inclSign, includeStamp: inclStamp, includeLh: inclLh,
         docs: inclDocs, serviceType: freshRow.institute_service_type,
       });
       setPdfUrl(url);
@@ -1589,6 +1607,16 @@ function LetterOptsModal({ row, token, onClose, onOpenBuilder }) {
           </div>
         </label>
 
+        {/* Letterhead toggle */}
+        <label style={{display:'flex', alignItems:'center', gap:14, padding:'12px 14px', borderRadius:10, border:'1px solid var(--border)', background:'var(--bg)', cursor:'pointer'}}>
+          <MdToggle selected={inclLh} onChange={e=>setInclLh(e.target.selected)} style={{flexShrink:0}}/>
+          <div style={{flex:1}}>
+            <div style={{fontWeight:600, fontSize:13, color:'var(--text)'}}>Include letterhead</div>
+            <div style={{fontSize:12, color:'var(--text3)', marginTop:2, lineHeight:1.4}}>
+              {freshRow.institute_letterhead ? 'Letterhead background image appears behind the letter.' : 'No letterhead uploaded yet — add it in the firm profile.'}
+            </div>
+          </div>
+        </label>
 
         {/* Document attachments */}
         {anyDocs ? (
