@@ -519,7 +519,7 @@ function App() {
         <div className="page-content">
           {screen === 'dashboard' && !isShortlistOnly && <Dashboard institutes={institutes} isEditor={isEditor} onNavigate={(s, inst, tab)=>{ if(inst) handleSelectInstitute(inst).then(()=>{ if(tab) setJumpToTab(tab); }); else setScreen(s); }}/>}
           {screen === 'dashboard' && isShortlistOnly && <ShortlistDashboard institutes={institutes} onNavigate={(inst) => { handleSelectInstitute(inst); }}/>}
-          {screen === 'institutes' && <InstituteList institutes={isShortlistOnly ? institutes : isSuperAdmin ? institutes : institutes.filter(i => !i.isShortlistingOnly)} onSelect={handleSelectInstitute} onAdd={(isAdmin || isShortlistOnly) ? ()=>setShowAddInstitute(true) : null} initialSearch={globalSearch} isShortlistOnly={isShortlistOnly}/>}
+          {screen === 'institutes' && <InstituteList institutes={isShortlistOnly ? institutes : isAdmin ? institutes : institutes.filter(i => !i.isShortlistingOnly)} onSelect={handleSelectInstitute} onAdd={(isAdmin || isShortlistOnly) ? ()=>setShowAddInstitute(true) : null} initialSearch={globalSearch} isShortlistOnly={isShortlistOnly}/>}
           {screen === 'detail' && selectedInstitute && (
             <InstituteDetail
               institute={selectedInstitute}
