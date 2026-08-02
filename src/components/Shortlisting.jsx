@@ -583,12 +583,20 @@ async function openShortlistLetter(row, opts = {}) {
     iframeDoc.fonts?.ready ?? Promise.resolve(),
   ]);
 
-  // Force-fit: if content overflows the A4 page height, scale it down to fit.
+  // If content overflows: first shrink the sig-row gap (saves ~1-2 lines without
+  // distorting the rest of the layout), then fall back to whole-page scaling.
   const pageInnerEl = iframeDoc.querySelector('.page-inner');
   if (pageInnerEl) {
-    const contentH = pageInnerEl.scrollHeight;
-    if (contentH > A4_H - 10) {
-      const scale = Math.max(0.5, (A4_H - 10) / contentH);
+    const sigRowEl = iframeDoc.querySelector('.sig-row');
+    if (sigRowEl && pageInnerEl.scrollHeight > A4_H - 10) {
+      let margin = 72;
+      while (pageInnerEl.scrollHeight > A4_H - 10 && margin > 8) {
+        margin = Math.max(8, margin - 8);
+        sigRowEl.style.marginTop = `${margin}px`;
+      }
+    }
+    if (pageInnerEl.scrollHeight > A4_H - 10) {
+      const scale = Math.max(0.5, (A4_H - 10) / pageInnerEl.scrollHeight);
       pageInnerEl.style.transformOrigin = 'top left';
       pageInnerEl.style.transform = `scale(${scale})`;
       pageInnerEl.style.width = `${Math.round(100 / scale)}%`;

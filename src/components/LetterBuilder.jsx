@@ -568,6 +568,24 @@ export default function LetterBuilder({ row: initialRow, token, onClose, allRows
       await Promise.all([...iDoc.querySelectorAll('img')].map(img =>
         img.complete ? Promise.resolve() : new Promise(r => { img.onload = r; img.onerror = r; })
       ));
+      // Shrink sig-row gap before falling back to whole-page scaling.
+      const pageInnerEl = iDoc.querySelector('.page-inner');
+      if (pageInnerEl) {
+        const sigRowEl = iDoc.querySelector('.sig-row');
+        if (sigRowEl && pageInnerEl.scrollHeight > A4_H - 10) {
+          let margin = 72;
+          while (pageInnerEl.scrollHeight > A4_H - 10 && margin > 8) {
+            margin = Math.max(8, margin - 8);
+            sigRowEl.style.marginTop = `${margin}px`;
+          }
+        }
+        if (pageInnerEl.scrollHeight > A4_H - 10) {
+          const scale = Math.max(0.5, (A4_H - 10) / pageInnerEl.scrollHeight);
+          pageInnerEl.style.transformOrigin = 'top left';
+          pageInnerEl.style.transform = `scale(${scale})`;
+          pageInnerEl.style.width = `${Math.round(100 / scale)}%`;
+        }
+      }
       const { default: html2canvas } = await import('html2canvas');
       const { jsPDF } = await import('jspdf');
       const pdf = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait' });
