@@ -2393,6 +2393,143 @@ function TableHead({ groupBy }) {
 }
 
 // ── Main component ─────────────────────────────────────────────────────────────
+function printShortlistReport(rows, groupBy, filters = {}) {
+  const fmt = (d) => {
+    if (!d) return '—';
+    try { return new Date(d).toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'numeric' }); }
+    catch { return d; }
+  };
+
+  // Group rows
+  const map = new Map();
+  for (const r of rows) {
+    let key, label;
+    if (groupBy === 'firm') {
+      key = String(r.institute_id);
+      label = [r.institute_acronym ? `[${r.institute_acronym}]` : '', r.institute_name].filter(Boolean).join(' ');
+    } else {
+      key = r.client_id ? String(r.client_id) : (r.client_name_manual || '__none__');
+      label = r.client_name || r.client_name_manual || 'Unknown Organization';
+    }
+    if (!map.has(key)) map.set(key, { label, rows: [] });
+    map.get(key).rows.push(r);
+  }
+  const groups = [...map.entries()].sort((a, b) => a[1].label.localeCompare(b[1].label));
+
+  const statusColor = (s) =>
+    s === 'Active'  ? '#166534' :
+    s === 'Expired' ? '#991b1b' : '#92400e';
+  const statusBg = (s) =>
+    s === 'Active'  ? '#dcfce7' :
+    s === 'Expired' ? '#fee2e2' : '#fef3c7';
+
+  const filterDesc = [
+    filters.org    && `Organization: ${filters.org}`,
+    filters.firm   && `Firm: ${filters.firm}`,
+    filters.fy     && `FY: ${filters.fy}`,
+    filters.status && `Status: ${filters.status}`,
+    filters.search && `Search: "${filters.search}"`,
+  ].filter(Boolean).join('  ·  ');
+
+  const totalRows = rows.length;
+
+  const sectionsHtml = groups.map(([, g]) => {
+    const isOrgView = groupBy === 'org';
+    const rowsHtml = g.rows.map((r, i) => {
+      const name  = isOrgView
+        ? [r.institute_acronym ? `[${r.institute_acronym}]` : '', r.institute_name].filter(Boolean).join(' ')
+        : (r.client_name || r.client_name_manual || '—');
+      const list  = r.standing_list_name || r.client_short || '—';
+      const date  = fmt(r.shortlist_date);
+      const valid = fmt(r.valid_until);
+      const fy    = r.fy || '—';
+      const amt   = r.contract_amount ? `NPR ${Number(r.contract_amount).toLocaleString()}` : '—';
+      const st    = r.status || 'Active';
+      return `<tr style="background:${i % 2 === 0 ? '#fff' : '#f9fafb'}">
+        <td style="padding:7px 10px;border-bottom:1px solid #e5e7eb;font-size:12px;font-weight:500">${i + 1}</td>
+        <td style="padding:7px 10px;border-bottom:1px solid #e5e7eb;font-size:12px">${name}</td>
+        <td style="padding:7px 10px;border-bottom:1px solid #e5e7eb;font-size:12px;color:#6b7280">${list}</td>
+        <td style="padding:7px 10px;border-bottom:1px solid #e5e7eb;font-size:12px">${date}</td>
+        <td style="padding:7px 10px;border-bottom:1px solid #e5e7eb;font-size:12px;color:#6b7280">${valid}</td>
+        <td style="padding:7px 10px;border-bottom:1px solid #e5e7eb;font-size:12px;color:#6b7280">${fy}</td>
+        <td style="padding:7px 10px;border-bottom:1px solid #e5e7eb;font-size:12px;color:#4b5563">${amt}</td>
+        <td style="padding:7px 10px;border-bottom:1px solid #e5e7eb;font-size:12px">
+          <span style="padding:2px 8px;border-radius:100px;font-size:11px;font-weight:600;background:${statusBg(st)};color:${statusColor(st)}">${st}</span>
+        </td>
+      </tr>`;
+    }).join('');
+
+    const colHeader = isOrgView ? 'Firm' : 'Organization';
+    return `
+      <div style="margin-bottom:32px;page-break-inside:avoid">
+        <div style="display:flex;align-items:baseline;gap:10px;margin-bottom:8px;padding-bottom:6px;border-bottom:2px solid #1e3a5f">
+          <div style="font-size:14px;font-weight:700;color:#1e3a5f">${g.label}</div>
+          <div style="font-size:11px;color:#6b7280;font-weight:500">${g.rows.length} entr${g.rows.length === 1 ? 'y' : 'ies'}</div>
+        </div>
+        <table style="width:100%;border-collapse:collapse;border:1px solid #e5e7eb;border-radius:6px;overflow:hidden">
+          <thead>
+            <tr style="background:#1e3a5f;color:#fff">
+              <th style="padding:8px 10px;text-align:left;font-size:11px;font-weight:600;width:32px">#</th>
+              <th style="padding:8px 10px;text-align:left;font-size:11px;font-weight:600">${colHeader}</th>
+              <th style="padding:8px 10px;text-align:left;font-size:11px;font-weight:600">List / Short Name</th>
+              <th style="padding:8px 10px;text-align:left;font-size:11px;font-weight:600">Shortlist Date</th>
+              <th style="padding:8px 10px;text-align:left;font-size:11px;font-weight:600">Valid Until</th>
+              <th style="padding:8px 10px;text-align:left;font-size:11px;font-weight:600">FY</th>
+              <th style="padding:8px 10px;text-align:left;font-size:11px;font-weight:600">Amount</th>
+              <th style="padding:8px 10px;text-align:left;font-size:11px;font-weight:600">Status</th>
+            </tr>
+          </thead>
+          <tbody>${rowsHtml}</tbody>
+        </table>
+      </div>`;
+  }).join('');
+
+  const reportTitle = groupBy === 'firm' ? 'Shortlisting Report — By Firm' : 'Shortlisting Report — By Organization';
+  const now = new Date().toLocaleDateString('en-GB', { day:'2-digit', month:'long', year:'numeric' });
+
+  const html = `<!DOCTYPE html><html><head><meta charset="UTF-8">
+<title>${reportTitle}</title>
+<style>
+  @page { size: A4 landscape; margin: 15mm 18mm; }
+  @media print { body { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif; color: #111; margin: 0; }
+  .no-print { margin-bottom: 20px; }
+  @media print { .no-print { display: none; } }
+</style>
+</head><body>
+<div class="no-print">
+  <button onclick="window.print()" style="padding:10px 24px;background:#1e3a5f;color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;margin-right:10px">
+    🖨 Print / Save as PDF
+  </button>
+  <button onclick="window.close()" style="padding:10px 20px;background:#f3f4f6;color:#374151;border:none;border-radius:8px;font-size:14px;cursor:pointer">
+    Close
+  </button>
+</div>
+
+<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px">
+  <div>
+    <div style="font-size:20px;font-weight:700;color:#1e3a5f;letter-spacing:-0.3px">${reportTitle}</div>
+    ${filterDesc ? `<div style="font-size:11px;color:#6b7280;margin-top:3px">${filterDesc}</div>` : ''}
+  </div>
+  <div style="text-align:right;font-size:11px;color:#6b7280">
+    <div>Generated: ${now}</div>
+    <div style="margin-top:2px;font-weight:600;color:#374151">${totalRows} total entr${totalRows === 1 ? 'y' : 'ies'} · ${groups.length} ${groupBy === 'firm' ? 'firm' : 'organization'}${groups.length === 1 ? '' : 's'}</div>
+  </div>
+</div>
+<hr style="border:none;border-top:3px solid #1e3a5f;margin:0 0 20px">
+
+${sectionsHtml}
+
+<div style="margin-top:24px;padding-top:10px;border-top:1px solid #e5e7eb;font-size:10px;color:#9ca3af;display:flex;justify-content:space-between">
+  <span>TVETtrack — Shortlisting Report</span>
+  <span>Total: ${totalRows} ${totalRows === 1 ? 'entry' : 'entries'}</span>
+</div>
+</body></html>`;
+
+  const w = window.open('', '_blank', 'width=1100,height=800');
+  if (w) { w.document.write(html); w.document.close(); }
+}
+
 export default function Shortlisting({ institutes, clients, isAdmin, isEditor, isShortlistOnly, isSuperAdmin }) {
   const session = getSession();
   const token = session?.token;
@@ -2787,6 +2924,31 @@ export default function Shortlisting({ institutes, clients, isAdmin, isEditor, i
         <div style={{fontSize:12, color:'var(--text3)', whiteSpace:'nowrap', flexShrink:0}}>
           {filtered.length} {filtered.length === 1 ? 'entry' : 'entries'}
         </div>
+
+        {/* Print report — only for firm/org views, not FY */}
+        {groupBy !== 'fy' && filtered.length > 0 && (
+          <button
+            title="Print report"
+            onClick={() => printShortlistReport(filtered, groupBy, {
+              org:    filterOrg    ? (clients.find(c => String(c.id) === filterOrg)?.short_name || filterOrg) : '',
+              firm:   filterFirm   ? (sortedInstitutes.find(i => String(i.id) === filterFirm)?.name || filterFirm) : '',
+              fy:     filterFY,
+              status: filterStatus,
+              search,
+            })}
+            style={{
+              display:'flex', alignItems:'center', gap:5,
+              padding:'6px 14px', borderRadius:100, border:'1px solid var(--border)',
+              background:'var(--surface)', color:'var(--text2)', cursor:'pointer',
+              fontFamily:'inherit', fontSize:12.5, fontWeight:500, flexShrink:0,
+              transition:'all .15s',
+            }}
+            onMouseEnter={e=>{ e.currentTarget.style.borderColor='var(--primary)'; e.currentTarget.style.color='var(--primary)'; }}
+            onMouseLeave={e=>{ e.currentTarget.style.borderColor='var(--border)'; e.currentTarget.style.color='var(--text2)'; }}>
+            <span className="material-icons-round" style={{fontSize:16}}>print</span>
+            Print Report
+          </button>
+        )}
       </div>
 
       {/* ── Content ── */}
