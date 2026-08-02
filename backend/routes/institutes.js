@@ -30,6 +30,10 @@ async function plugin(fastify, opts) {
       params.push(request.user.id);
       q += ` AND (i.created_by=$${params.length} OR i.id IN (SELECT institute_id FROM user_institutes WHERE user_id=$${params.length}))`;
     }
+    // Shortlisting-only firms are hidden from the main list for viewers/editors/shortlist roles
+    if (request.user.role !== 'admin' && request.user.role !== 'superadmin') {
+      q += ` AND (i.is_shortlisting_only IS NULL OR i.is_shortlisting_only = false)`;
+    }
     if (status) { params.push(status); q += ` AND i.status = $${params.length}`; }
     if (search) { params.push(`%${search}%`); q += ` AND (i.name ILIKE $${params.length} OR i.acronym ILIKE $${params.length} OR i.reg_no ILIKE $${params.length} OR i.pan ILIKE $${params.length})`; }
     q += ' GROUP BY i.id ORDER BY i.name';

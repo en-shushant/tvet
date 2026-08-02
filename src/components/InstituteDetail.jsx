@@ -639,7 +639,7 @@ function InstituteDetail({institute, clients, onUpdateClients, onBack, onUpdate,
       )}
 
       {/* Modals */}
-      {modal?.type === 'editInstitute' && <InstituteForm institute={institute} onSave={saveProfile} onClose={()=>setModal(null)} isSuperAdmin={isSuperAdmin}/>}
+      {modal?.type === 'editInstitute' && <InstituteForm institute={institute} onSave={saveProfile} onClose={()=>setModal(null)} isSuperAdmin={isAdmin || isSuperAdmin}/>}
       {modal?.type === 'deleteInstitute' && ReactDOM.createPortal(
         <div className="modal-overlay" onClick={()=>setModal(null)}>
           <div className="modal" style={{maxWidth:420}} onClick={e=>e.stopPropagation()}>
