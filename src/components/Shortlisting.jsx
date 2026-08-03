@@ -516,17 +516,18 @@ async function openShortlistLetter(row, opts = {}) {
           ${fyNp ? `<div>आ.व.: ${fyNp}</div>` : ''}
         </div>
         <div style="flex:0 0 32%;border-right:1px solid #666;text-align:center;padding:6px 4px;">
+          <div style="font-size:9pt;margin-bottom:3px;">फर्मको छाप:</div>
           ${includeStamp && firmStamp
-            ? `<div style="font-size:9pt;margin-bottom:3px;">फर्मको छाप:</div><img src="${firmStamp}" style="display:block;margin:0 auto;width:30mm;height:30mm;object-fit:contain;background:#fff;">`
+            ? `<img src="${firmStamp}" style="display:block;margin:0 auto;width:30mm;height:30mm;object-fit:contain;background:#fff;">`
             : ''
           }
         </div>
         <div style="flex:1;padding:8px 10px;font-size:10pt;line-height:2;">
           <div>निवेदकको नाम: ${firmContactNp || '_______________'}</div>
-          ${includeSign && firmSign
-            ? `<div style="margin-top:4px;">हस्ताक्षर: <img src="${firmSign}" style="display:inline-block;vertical-align:middle;margin-left:4px;max-height:20mm;max-width:100%;width:auto;height:auto;object-fit:contain;"></div>`
+          <div style="margin-top:4px;">हस्ताक्षर: ${includeSign && firmSign
+            ? `<img src="${firmSign}" style="display:inline-block;vertical-align:middle;margin-left:4px;max-height:20mm;max-width:100%;width:auto;height:auto;object-fit:contain;">`
             : ''
-          }
+          }</div>
         </div>
       </div>
     </td></tr>
