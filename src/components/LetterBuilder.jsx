@@ -351,14 +351,6 @@ function buildLetterHtml({ fields, row, imgs, topMm, bottomMm, lrMm, inclSign, i
 </style></head><body>
 <div class="page">
   <div class="page-inner">
-  ${!useLhBg ? `
-  ${firmRegNo || firmPan ? `<div class="lh-regpan"><span>${firmRegNo ? 'Govt. Regd.No. '+firmRegNo : ''}</span><span>${firmPan ? 'PAN No. '+firmPan : ''}</span></div>` : ''}
-  <div class="lh-center">
-    ${firmLogo ? `<img src="${firmLogo}" class="lh-logo" alt="">` : ''}
-    <div class="lh-name">${firmNameNp}${firmAcronym && firmAcronym !== firmNameNp ? ` (${firmAcronym})` : ''}</div>
-    ${firmMeta ? `<div class="lh-meta">${firmMeta}</div>` : ''}
-  </div>
-  <div class="lh-border"></div>` : ''}
 
   <div class="ref-row">
     ${ref ? `<span>संख्या: ${ref}</span>` : '<span></span>'}
