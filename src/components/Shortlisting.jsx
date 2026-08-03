@@ -443,14 +443,6 @@ async function openShortlistLetter(row, opts = {}) {
   ${useLhBg ? `<img src="${firmLetterhead}" alt="" style="position:absolute;width:1px;height:1px;opacity:0;pointer-events:none;">` : ''}
   <div class="page-inner">
 
-  ${!useLhBg ? `
-  ${firmRegNo || firmPan ? `<div class="lh-regpan"><span>${firmRegNo ? 'Govt. Regd.No. ' + firmRegNo : ''}</span><span>${firmPan ? 'PAN No. ' + firmPan : ''}</span></div>` : ''}
-  <div class="lh-center">
-    ${firmLogo ? `<img src="${firmLogo}" class="lh-logo" alt="${firmName}">` : ''}
-    <div class="lh-name">${firmName}${firmAcronym && firmAcronym !== firmName ? ` (${firmAcronym})` : ''}</div>
-    ${firmMeta ? `<div class="lh-meta">${firmMeta}</div>` : ''}
-  </div>
-  <div class="lh-border"></div>` : ''}
 
   <div class="ref-row">
     <span class="ref-bold"></span>

@@ -1,28 +1,58 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { getSession } from '../utils/auth.js';
 import { getNepaliDate } from '../constants/nepali.js';
 import { api } from '../utils/api.js';
 
 const fmt = (n) => n ? Number(n).toLocaleString('en-IN') : '—';
 
+// Animates a numeric value from 0 to `target` over ~600ms using easeOutExpo
+function useCountUp(target, enabled = true) {
+  const [val, setVal] = useState(0);
+  const raf = useRef(null);
+  useEffect(() => {
+    if (!enabled || typeof target !== 'number' || isNaN(target)) { setVal(target); return; }
+    const start = performance.now();
+    const dur = Math.min(600 + target * 0.4, 1200);
+    const tick = (now) => {
+      const t = Math.min((now - start) / dur, 1);
+      const eased = 1 - Math.pow(1 - t, 3); // easeOutCubic
+      setVal(Math.round(eased * target));
+      if (t < 1) raf.current = requestAnimationFrame(tick);
+    };
+    raf.current = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf.current);
+  }, [target, enabled]);
+  return val;
+}
+
 // ── M3 KPI Card ──────────────────────────────────────────────────────────────
-function KpiCard({ icon, iconColor, iconBg, label, value, valueColor, sub, badge, onClick }) {
+function KpiCard({ icon, iconColor, iconBg, label, value, valueColor, sub, badge, onClick, highlight }) {
   const [hov, setHov] = useState(false);
+  const [pressed, setPressed] = useState(false);
+  const isNumeric = typeof value === 'number';
+  const animated = useCountUp(isNumeric ? value : 0, isNumeric);
+  const displayValue = isNumeric ? animated : value;
+
   return (
     <div
       onClick={onClick}
       onMouseEnter={() => setHov(true)}
-      onMouseLeave={() => setHov(false)}
+      onMouseLeave={() => { setHov(false); setPressed(false); }}
+      onMouseDown={() => onClick && setPressed(true)}
+      onMouseUp={() => setPressed(false)}
       style={{
         background: hov && onClick ? 'var(--bg)' : 'var(--surface)',
         borderRadius: 20,
         padding: '20px 20px 18px',
         cursor: onClick ? 'pointer' : 'default',
         display: 'flex', flexDirection: 'column',
-        boxShadow: hov
-          ? '0 3px 10px rgba(18,38,63,.12), 0 1px 4px rgba(18,38,63,.07)'
+        boxShadow: hov && onClick
+          ? '0 3px 10px rgba(18,38,63,.14), 0 1px 4px rgba(18,38,63,.09)'
+          : highlight
+          ? '0 0 0 2px var(--primary), 0 1px 3px rgba(18,38,63,.07)'
           : '0 1px 3px rgba(18,38,63,.07)',
-        transition: 'box-shadow .2s ease, background .15s ease',
+        transform: pressed ? 'scale(0.97)' : 'scale(1)',
+        transition: 'box-shadow .2s ease, background .15s ease, transform .12s ease',
         position: 'relative', overflow: 'hidden',
       }}
     >
@@ -36,24 +66,24 @@ function KpiCard({ icon, iconColor, iconBg, label, value, valueColor, sub, badge
         <span className="material-icons-round" style={{ fontSize: 22, color: iconColor }}>{icon}</span>
       </div>
 
-      {/* Label — M3 label-medium */}
+      {/* Label */}
       <div style={{ fontSize: 12, fontWeight: 500, letterSpacing: 0.3, color: 'var(--text3)', marginBottom: 4 }}>
         {label}
       </div>
 
-      {/* Value — M3 display-small */}
+      {/* Value — count-up animated */}
       <div style={{
-        fontSize: 36, fontWeight: 400, lineHeight: 1.1,
+        fontSize: 36, fontWeight: 600, lineHeight: 1.1,
         color: valueColor || 'var(--text)', letterSpacing: -0.5,
         fontVariantNumeric: 'tabular-nums', marginBottom: 6,
       }}>
-        {value}
+        {displayValue}
       </div>
 
       {/* Supporting text */}
       <div style={{ fontSize: 11, color: 'var(--text3)', lineHeight: 1.45, flex: 1 }}>{sub}</div>
 
-      {/* Tonal badge — M3 assist chip style */}
+      {/* Tonal badge */}
       {badge != null && (
         <div style={{
           marginTop: 14,
@@ -69,6 +99,17 @@ function KpiCard({ icon, iconColor, iconBg, label, value, valueColor, sub, badge
           </span>
           {badge > 0 ? `+${badge} this month` : 'None this month'}
         </div>
+      )}
+
+      {/* Click affordance arrow for clickable cards */}
+      {onClick && (
+        <span className="material-icons-round" style={{
+          position: 'absolute', top: 18, right: 16,
+          fontSize: 16, color: 'var(--text3)',
+          opacity: hov ? 1 : 0,
+          transition: 'opacity .15s, transform .15s',
+          transform: hov ? 'translateX(2px)' : 'translateX(0)',
+        }}>arrow_forward</span>
       )}
     </div>
   );
@@ -125,15 +166,29 @@ function Dashboard({ institutes, isEditor, onNavigate }) {
   const missingNSTB = alertable.filter(i => !i.nstb.find(n => n.fy === '2081/82')).length;
 
   const [activity, setActivity] = useState(null);
+  const [alertFilter, setAlertFilter] = useState(null); // 'tax' | 'affiliation' | 'nstb' | null
+  const [alertsExpanded, setAlertsExpanded] = useState(false);
+  const alertsRef = useRef(null);
+
   useEffect(() => {
     api('GET', '/dashboard/activity', null, session?.token).then(setActivity).catch(() => {});
   }, []);
-  const alerts = [
-    ...alertable.filter(i => i.status === 'Pending Renewal').map(i => ({ type: 'warning', msg: `${i.acronym ? '[' + i.acronym + '] ' : ''}${i.name} — Renewal due: ${i.renewalDue}`, inst: i, tab: 'profile' })),
-    ...alertable.filter(i => !i.taxClearance.find(t => t.fy === '2081/82')).map(i => ({ type: 'danger',  msg: `${i.acronym ? '[' + i.acronym + '] ' : ''}${i.name} — Tax clearance missing for FY 2081/82`, inst: i, tab: 'tax' })),
-    ...alertable.filter(i => i.affiliation.some(a => a.status === 'Expired')).map(i => ({ type: 'info',    msg: `${i.acronym ? '[' + i.acronym + '] ' : ''}${i.name} — Has expired CTEVT affiliation(s)`, inst: i, tab: 'affiliation' })),
-    ...alertable.filter(i => !i.nstb.find(n => n.fy === '2081/82')).map(i => ({ type: 'info',    msg: `${i.acronym ? '[' + i.acronym + '] ' : ''}${i.name} — NSTB data missing for FY 2081/82`, inst: i, tab: 'nstb' })),
+
+  const scrollToAlerts = useCallback((filter) => {
+    setAlertFilter(prev => prev === filter ? null : filter);
+    setAlertsExpanded(true);
+    setTimeout(() => alertsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50);
+  }, []);
+
+  const allAlerts = [
+    ...alertable.filter(i => i.status === 'Pending Renewal').map(i => ({ type: 'warning', group: 'renewal', msg: `${i.acronym ? '[' + i.acronym + '] ' : ''}${i.name} — Renewal due: ${i.renewalDue}`, inst: i, tab: 'profile' })),
+    ...alertable.filter(i => !i.taxClearance.find(t => t.fy === '2081/82')).map(i => ({ type: 'danger',  group: 'tax',     msg: `${i.acronym ? '[' + i.acronym + '] ' : ''}${i.name} — Tax clearance missing for FY 2081/82`, inst: i, tab: 'tax' })),
+    ...alertable.filter(i => i.affiliation.some(a => a.status === 'Expired')).map(i => ({ type: 'info',   group: 'affiliation', msg: `${i.acronym ? '[' + i.acronym + '] ' : ''}${i.name} — Has expired CTEVT affiliation(s)`, inst: i, tab: 'affiliation' })),
+    ...alertable.filter(i => !i.nstb.find(n => n.fy === '2081/82')).map(i => ({ type: 'info',    group: 'nstb',    msg: `${i.acronym ? '[' + i.acronym + '] ' : ''}${i.name} — NSTB data missing for FY 2081/82`, inst: i, tab: 'nstb' })),
   ];
+  const alerts = alertFilter ? allAlerts.filter(a => a.group === alertFilter) : allAlerts;
+  const ALERTS_PAGE = 6;
+  const visibleAlerts = alertsExpanded ? alerts : alerts.slice(0, ALERTS_PAGE);
 
   const activityChips = activity ? [
     { icon: 'business',          label: 'New institutes',    count: activity.institutes,  color: 'var(--primary)',   bg: 'var(--primary-light)' },
@@ -209,29 +264,51 @@ function Dashboard({ institutes, isEditor, onNavigate }) {
           <KpiCard
             icon="account_balance" iconBg="var(--primary-light)" iconColor="var(--primary)"
             label="Total Institutes" value={institutes.length}
-            sub={<><span style={{ color: 'var(--teal)', fontWeight: 600 }}>{active} active</span>{' · '}<span style={{ color: 'var(--warning)', fontWeight: 600 }}>{pending} pending</span>{' · '}<span style={{ color: 'var(--error)', fontWeight: 600 }}>{expired} expired</span></>}
+            sub={
+              <div>
+                <div style={{ marginBottom: 8 }}>
+                  <span style={{ color: 'var(--teal)', fontWeight: 600 }}>{active} active</span>
+                  {' · '}<span style={{ color: 'var(--warning)', fontWeight: 600 }}>{pending} pending</span>
+                  {' · '}<span style={{ color: 'var(--error)', fontWeight: 600 }}>{expired} expired</span>
+                </div>
+                {/* Mini status bar */}
+                {institutes.length > 0 && (
+                  <div style={{ display: 'flex', borderRadius: 4, overflow: 'hidden', height: 5, gap: 1 }}>
+                    {active  > 0 && <div style={{ flex: active,  background: 'var(--teal)',    borderRadius: '3px 0 0 3px' }} />}
+                    {pending > 0 && <div style={{ flex: pending, background: 'var(--warning)' }} />}
+                    {expired > 0 && <div style={{ flex: expired, background: 'var(--error)',   borderRadius: '0 3px 3px 0' }} />}
+                  </div>
+                )}
+              </div>
+            }
             badge={activity?.institutes}
           />
           <KpiCard
             icon="receipt_long" iconBg="var(--error-light)" iconColor="var(--error)"
             label="Missing Tax Clearance" value={missingTax}
             valueColor={missingTax > 0 ? 'var(--error)' : 'var(--teal)'}
-            sub="Institutes without FY 2081/82 record"
+            sub={missingTax > 0 ? `${missingTax} institute${missingTax > 1 ? 's' : ''} without FY 2081/82 record` : 'All institutes have FY 2081/82 record'}
             badge={activity?.tax}
+            onClick={missingTax > 0 ? () => scrollToAlerts('tax') : undefined}
+            highlight={alertFilter === 'tax'}
           />
           <KpiCard
             icon="verified" iconBg="var(--warning-light)" iconColor="var(--warning)"
             label="Expired CTEVT Affiliation" value={expiredAff}
             valueColor={expiredAff > 0 ? 'var(--warning)' : 'var(--teal)'}
-            sub="Institutes with expired programs"
+            sub={expiredAff > 0 ? `${expiredAff} institute${expiredAff > 1 ? 's' : ''} with expired programs` : 'No expired affiliations'}
             badge={activity?.affiliations}
+            onClick={expiredAff > 0 ? () => scrollToAlerts('affiliation') : undefined}
+            highlight={alertFilter === 'affiliation'}
           />
           <KpiCard
             icon="fact_check" iconBg="var(--purple-light)" iconColor="var(--purple)"
             label="NSTB Data Missing" value={missingNSTB}
             valueColor={missingNSTB > 0 ? 'var(--purple)' : 'var(--teal)'}
-            sub="Institutes without FY 2081/82 record"
+            sub={missingNSTB > 0 ? `${missingNSTB} institute${missingNSTB > 1 ? 's' : ''} without FY 2081/82 record` : 'All institutes have FY 2081/82 data'}
             badge={activity?.nstb}
+            onClick={missingNSTB > 0 ? () => scrollToAlerts('nstb') : undefined}
+            highlight={alertFilter === 'nstb'}
           />
         </div>
       </div>
@@ -265,17 +342,60 @@ function Dashboard({ institutes, isEditor, onNavigate }) {
       </div>
 
       {/* ── Alerts & Flags ── */}
-      {alerts.length > 0 && (
-        <div>
-          <SectionHead>Alerts & Flags</SectionHead>
+      {allAlerts.length > 0 && (
+        <div ref={alertsRef}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', margin: '4px 0 10px 2px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text2)', letterSpacing: 0.1 }}>
+                Alerts & Flags
+              </div>
+              <div style={{
+                fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 100,
+                background: 'var(--error-light)', color: 'var(--error)',
+              }}>{allAlerts.length}</div>
+              {alertFilter && (
+                <button
+                  onClick={() => setAlertFilter(null)}
+                  style={{
+                    fontSize: 11, fontWeight: 500, padding: '2px 8px', borderRadius: 100,
+                    background: 'var(--primary-light)', color: 'var(--primary)',
+                    border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 3,
+                  }}
+                >
+                  <span className="material-icons-round" style={{ fontSize: 11 }}>filter_alt</span>
+                  {alertFilter === 'tax' ? 'Tax clearance' : alertFilter === 'affiliation' ? 'Affiliations' : 'NSTB'}
+                  <span className="material-icons-round" style={{ fontSize: 11 }}>close</span>
+                </button>
+              )}
+            </div>
+          </div>
           <div style={{
             background: 'var(--surface)', borderRadius: 20,
             padding: '8px 8px',
             boxShadow: '0 1px 3px rgba(18,38,63,.07)',
           }}>
-            {alerts.map((a, i) => (
-              <AlertRow key={i} type={a.type} msg={a.msg} onClick={() => onNavigate('detail', a.inst, a.tab)} />
+            {visibleAlerts.map((a, i) => (
+              <AlertRow key={`${a.group}-${i}`} type={a.type} msg={a.msg} onClick={() => onNavigate('detail', a.inst, a.tab)} />
             ))}
+            {alerts.length > ALERTS_PAGE && (
+              <button
+                onClick={() => setAlertsExpanded(e => !e)}
+                style={{
+                  width: '100%', padding: '10px 16px', border: 'none',
+                  background: 'transparent', cursor: 'pointer',
+                  fontSize: 12, fontWeight: 500, color: 'var(--primary)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4,
+                  borderRadius: 12, transition: 'background .15s',
+                }}
+                onMouseEnter={e => e.currentTarget.style.background = 'var(--primary-light)'}
+                onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+              >
+                <span className="material-icons-round" style={{ fontSize: 14 }}>
+                  {alertsExpanded ? 'expand_less' : 'expand_more'}
+                </span>
+                {alertsExpanded ? 'Show fewer' : `Show ${alerts.length - ALERTS_PAGE} more`}
+              </button>
+            )}
           </div>
         </div>
       )}
