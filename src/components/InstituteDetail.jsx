@@ -1336,7 +1336,10 @@ function DocumentsTab({ institute, token, canEdit, onUpdate, isShortlistOnly }) 
   const [err, setErr] = useState('');
   const [saved, setSaved] = useState(false);
 
-  useEffect(() => { setFields(fromInst(institute)); setSaved(false); }, [institute.id]);
+  // Re-sync when the institute object is enriched with full data (doc URLs arrive
+  // after the initial list-data render). Track ctevtAffiliation as a proxy for
+  // whether document fields have been loaded yet.
+  useEffect(() => { setFields(fromInst(institute)); setSaved(false); }, [institute.id, institute.ctevtAffiliation, institute.ocrRegistration]);
 
   const set = (k, v) => { setSaved(false); setFields(f => ({...f, [k]: v})); };
 
