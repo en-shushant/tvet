@@ -1196,15 +1196,15 @@ function FileThumb({ src, onRemove }) {
         transition:'box-shadow .15s',
       }}
     >
-      <a href={src} target="_blank" rel="noreferrer" style={{display:'flex', width:'100%', height:'100%', alignItems:'center', justifyContent:'center', flexDirection:'column', gap:2, textDecoration:'none'}}>
-        {/\.pdf($|\?)/i.test(src)
-          ? <>
-              <span className="material-icons-round" style={{fontSize:32, color:'var(--error)'}}>picture_as_pdf</span>
-              <span style={{fontSize:9, fontWeight:700, color:'var(--text2)'}}>PDF</span>
-            </>
-          : <img src={src} alt="" style={{width:'100%', height:'100%', objectFit:'contain', display:'block'}}/>
-        }
-      </a>
+      {/\.pdf($|\?)/i.test(src)
+        ? <a href={src} target="_blank" rel="noreferrer" style={{display:'flex', width:'100%', height:'100%', alignItems:'center', justifyContent:'center', flexDirection:'column', gap:2, textDecoration:'none'}}>
+            <span className="material-icons-round" style={{fontSize:32, color:'var(--error)'}}>picture_as_pdf</span>
+            <span style={{fontSize:9, fontWeight:700, color:'var(--text2)'}}>PDF</span>
+          </a>
+        : <a href={src} target="_blank" rel="noreferrer" style={{display:'block', width:'100%', height:'100%'}}>
+            <img src={src} alt="" style={{width:'100%', height:'100%', objectFit:'contain', display:'block'}}/>
+          </a>
+      }
       {onRemove && hover && (
         confirming ? (
           <div style={{position:'absolute', inset:0, background:'rgba(229,57,53,.88)', display:'flex',
