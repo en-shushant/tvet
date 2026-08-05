@@ -23,6 +23,7 @@ import { BulkAssignmentForm } from './components/BulkDistrictPicker.jsx';
 import { PROVINCES, OCCUPATIONS, FISCAL_YEARS, getAllDistricts } from './constants/data.js';
 import { getNepaliDate } from './constants/nepali.js';
 import { api, normInst, normClient, instToAPI, nstbToAPI } from './utils/api.js';
+import { preloadLogos } from './utils/logoCache.js';
 import { getSession, setSession as setSessionStorage, clearSession } from './utils/auth.js';
 
 // ─── APP ─────────────────────────────────────────────────────────────────────
@@ -130,7 +131,9 @@ function App() {
     try { cached = JSON.parse(sessionStorage.getItem(CACHE_KEY)); } catch {}
 
     const applyData = (insts, cls, occs, locs, fromCache) => {
-      setInstitutes(insts.map(normInst));
+      const normed = insts.map(normInst);
+      setInstitutes(normed);
+      preloadLogos(normed.map(i => i.logo).filter(Boolean));
       setClients(cls.map(normClient));
       OCCUPATIONS.splice(0, OCCUPATIONS.length, ...occs);
       if (locs?.length) {

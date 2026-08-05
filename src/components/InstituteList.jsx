@@ -1,9 +1,20 @@
 import { useState, useEffect, useMemo } from 'react';
+import { useCachedLogo } from '../utils/logoCache.js';
 import StatusBadge from './ui/StatusBadge.jsx';
 import Pagination from './ui/Pagination.jsx';
 import { Btn } from '../md.jsx';
 import { usePagination } from '../utils/hooks.js';
 import { INSTITUTE_TYPES, INSTITUTE_STATUSES } from '../constants/data.js';
+
+function InstLogo({ url }) {
+  const src = useCachedLogo(url);
+  if (!src) return (
+    <div style={{width:44,height:44,borderRadius:8,background:'var(--primary-light)',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
+      <span className="material-icons-round" style={{fontSize:22,color:'var(--primary)'}}>account_balance</span>
+    </div>
+  );
+  return <img src={src} alt="" style={{width:44,height:44,objectFit:'contain',borderRadius:8,border:'1px solid var(--border)',background:'#fff',padding:3,flexShrink:0}}/>;
+}
 
 function InstituteList({institutes, onSelect, onAdd, initialSearch='', isShortlistOnly=false}) {
   const [search, setSearch] = useState(initialSearch);
@@ -63,12 +74,7 @@ function InstituteList({institutes, onSelect, onAdd, initialSearch='', isShortli
             }}/>
             {/* Header row: logo + name + status */}
             <div style={{display:'flex', alignItems:'center', gap:10, marginBottom:6}}>
-              {inst.logo
-                ? <img src={inst.logo} alt="" style={{width:44,height:44,objectFit:'contain',borderRadius:8,border:'1px solid var(--border)',background:'#fff',padding:3,flexShrink:0}}/>
-                : <div style={{width:44,height:44,borderRadius:8,background:'var(--primary-light)',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
-                    <span className="material-icons-round" style={{fontSize:22,color:'var(--primary)'}}>account_balance</span>
-                  </div>
-              }
+              <InstLogo url={inst.logo} />
               <div style={{flex:1, minWidth:0}}>
                 <div style={{fontWeight:700, fontSize:13.5, lineHeight:1.35, color:'var(--text)'}}>{inst.name}</div>
                 <div style={{display:'flex', alignItems:'center', gap:6, marginTop:3, flexWrap:'wrap'}}>

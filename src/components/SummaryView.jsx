@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
+import { useCachedLogo } from '../utils/logoCache.js';
 import { FISCAL_YEARS, OCCUPATIONS, SECTORS, CLIENT_TYPES } from '../constants/data.js';
 import { Btn } from '../md.jsx';
 import { exportSummaryToMD, exportSummaryToPDF, exportSummaryToCSV } from '../utils/export.js';
@@ -20,6 +21,12 @@ const fyToAD = (fy) => {
 function getOccupation(id) {
   const rawId = typeof id === 'string' && id.startsWith('c:') ? parseInt(id.slice(2)) : id;
   return OCCUPATIONS.find(o => o.id === rawId) || {};
+}
+
+function SummLogo({ url }) {
+  const src = useCachedLogo(url);
+  if (!src) return null;
+  return <img src={src} alt="" style={{width:36,height:36,objectFit:'contain',borderRadius:6,border:'1px solid var(--border)',background:'#fff',padding:2,flexShrink:0}}/>;
 }
 
 function SummaryView({institutes, clients}) {
@@ -233,7 +240,7 @@ function SummaryView({institutes, clients}) {
               <div style={{display:'flex',alignItems:'flex-start',justifyContent:'space-between',gap:12,flexWrap:'wrap'}}>
                 <div style={{flex:1,minWidth:0}}>
                   <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:6}}>
-                    {institute.logo && <img src={institute.logo} alt="" style={{width:36,height:36,objectFit:'contain',borderRadius:6,border:'1px solid var(--border)',background:'#fff',padding:2,flexShrink:0}}/>}
+                    <SummLogo url={institute.logo} />
                     <div>
                       <div style={{fontWeight:700,fontSize:15,color:'var(--text)'}}>{institute.name}</div>
                       <div style={{fontSize:11,color:'var(--text3)'}}>{institute.address}{institute.district?` · ${institute.district}`:''}{institute.province?`, ${institute.province}`:''}</div>

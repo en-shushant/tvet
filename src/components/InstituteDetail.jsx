@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { useCachedLogo } from '../utils/logoCache.js';
 import ReactDOM from 'react-dom';
 import Modal from './ui/Modal.jsx';
 import { ErrorBanner } from './ui/Modal.jsx';
@@ -46,6 +47,7 @@ function getOccupation(id) {
 const useMemo2 = useMemo;
 
 function InstituteDetail({institute, clients, onUpdateClients, onBack, onUpdate, onRefresh, onDelete, token, isAdmin, isEditor, isSuperAdmin, isShortlistOnly, jumpToTab, onBulkAdd, onAddNSTB}) {
+  const logoSrc = useCachedLogo(institute.logo);
   const VALID_TABS = ['profile','experience','clients','nstb','tax','affiliation','infrastructure','documents'];
   const tabKey = `inst_tab_${institute.id}`;
   const savedTab = sessionStorage.getItem(tabKey);
@@ -230,7 +232,7 @@ function InstituteDetail({institute, clients, onUpdateClients, onBack, onUpdate,
         <Btn className="btn btn-ghost btn-sm" onClick={onBack}>← Back</Btn>
         <div style={{flex:1}}>
           <div style={{display:'flex', alignItems:'center', gap:10}}>
-            {institute.logo && <img src={institute.logo} alt="" style={{width:40, height:40, objectFit:'contain', borderRadius:6, border:'1px solid var(--border)', background:'#fff', padding:3}}/>}
+            {logoSrc && <img src={logoSrc} alt="" style={{width:40, height:40, objectFit:'contain', borderRadius:6, border:'1px solid var(--border)', background:'#fff', padding:3}}/>}
             <h2 style={{fontSize:18, fontWeight:600}}>{institute.name}</h2>
             {institute.acronym && <span className="badge badge-purple" style={{fontSize:12, fontFamily:'var(--font-mono)'}}>{institute.acronym}</span>}
             {institute.isShortlistingOnly && (
