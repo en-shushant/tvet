@@ -37,7 +37,33 @@ export async function api(method, path, body, token, _retry = 0) {
     const msg = err.error || res.statusText;
     const e = new Error(msg);
     e.status = res.status;
-    if (res.status === 401) {
+    if (res.status === 401 && _retry === 0 && token) {
+      // Try to silently refresh the token once before giving up
+      try {
+        const base = getApiBase();
+        const refreshRes = await fetch((base || '') + API_BASE_PATH + '/auth/refresh', {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${token}` },
+          cache: 'no-store',
+        });
+        if (refreshRes.ok) {
+          const { token: newToken } = await refreshRes.json();
+          // Persist the new token and retry the original request
+          try {
+            const raw = localStorage.getItem('tvettrack_session');
+            if (raw) {
+              const sess = JSON.parse(raw);
+              sess.token = newToken;
+              localStorage.setItem('tvettrack_session', JSON.stringify(sess));
+            }
+          } catch {}
+          return api(method, path, body, newToken, 1);
+        }
+      } catch {}
+      // Refresh failed — session is genuinely invalid
+      try { localStorage.removeItem('tvettrack_session'); } catch {}
+      window.dispatchEvent(new CustomEvent('tvettrack:session-expired'));
+    } else if (res.status === 401 && (_retry > 0 || !token)) {
       try { localStorage.removeItem('tvettrack_session'); } catch {}
       window.dispatchEvent(new CustomEvent('tvettrack:session-expired'));
     }

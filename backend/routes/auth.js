@@ -62,6 +62,14 @@ async function plugin(fastify, opts) {
     return { user: userOut, token: signToken(tokenPayload) };
   });
 
+  fastify.post('/refresh', { preHandler: authenticate }, async (request, reply) => {
+    const { rows } = await pool.query(
+      'SELECT id, name, email, role FROM users WHERE id = $1', [request.user.id]
+    );
+    if (!rows.length) return reply.code(401).send({ error: 'User not found' });
+    return { token: signToken(rows[0]) };
+  });
+
   fastify.get('/me', { preHandler: authenticate }, async (request, reply) => {
     const { rows } = await pool.query(
       'SELECT id, name, email, role, created_at FROM users WHERE id = $1', [request.user.id]

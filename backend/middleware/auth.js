@@ -33,7 +33,8 @@ async function requireWriter(request, reply) {
 }
 
 function signToken(payload) {
-  return jwt.sign(payload, JWT_SECRET, { expiresIn: '7d' });
+  const { iat, exp, ...clean } = payload; // strip old timestamps so jwt re-issues clean
+  return jwt.sign(clean, JWT_SECRET, { expiresIn: '30d' });
 }
 
 module.exports = { authenticate, requireAdmin, requireSuperAdmin, requireWriter, signToken };
