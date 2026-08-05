@@ -1443,14 +1443,25 @@ function ViewDocumentsModal({ instituteId, token, onClose }) {
     return () => { cancelled = true; };
   }, [instituteId, token]);
 
-  const Thumb = ({ src }) => (
-    <a href={src} target="_blank" rel="noreferrer" style={{
-      display:'block', width:64, height:64, borderRadius:8, overflow:'hidden',
-      border:'1.5px solid var(--border)', background:'#fff', flexShrink:0,
-    }}>
-      <img src={src} alt="" style={{width:'100%', height:'100%', objectFit:'contain', display:'block'}}/>
-    </a>
-  );
+  const Thumb = ({ src }) => {
+    const isPdf = src && (src.toLowerCase().includes('.pdf') || src.toLowerCase().includes('application/pdf'));
+    return (
+      <a href={src} target="_blank" rel="noreferrer" style={{
+        display:'flex', alignItems:'center', justifyContent:'center',
+        width:64, height:64, borderRadius:8, overflow:'hidden',
+        border:'1.5px solid var(--border)', background:'#fff', flexShrink:0,
+        textDecoration:'none', gap:4, flexDirection:'column',
+      }}>
+        {isPdf
+          ? <>
+              <span className="material-icons-round" style={{fontSize:28, color:'var(--error)'}}>picture_as_pdf</span>
+              <span style={{fontSize:9, color:'var(--text2)', fontWeight:600}}>PDF</span>
+            </>
+          : <img src={src} alt="" style={{width:'100%', height:'100%', objectFit:'contain', display:'block'}}/>
+        }
+      </a>
+    );
+  };
 
   const Row = ({ label, urls }) => (
     <div style={{display:'flex', alignItems:'center', gap:12, padding:'10px 14px', borderBottom:'1px solid var(--border)'}}>
@@ -1509,6 +1520,7 @@ function LetterOptsModal({ row, token, onClose, onOpenBuilder }) {
   const [inclDocs, setInclDocs]   = useState({});
   const [freshRow, setFreshRow]   = useState(row);
   const [instLoading, setInstLoading] = useState(true);
+  const [instFetchErr, setInstFetchErr] = useState(false);
 
   // The shortlist list query omits the institute's images and document URLs —
   // they're only needed here, and carrying them on every row made #shortlisting
@@ -1548,7 +1560,7 @@ function LetterOptsModal({ row, token, onClose, onOpenBuilder }) {
           institute_tax_clearance_doc:        inst.tax_clearance_doc,
         }));
       })
-      .catch(() => {}) // fall back to whatever the row already carries
+      .catch(() => { if (!cancelled) setInstFetchErr(true); })
       .finally(() => { if (!cancelled) setInstLoading(false); });
     return () => { cancelled = true; };
   }, [row.institute_id, token]);
@@ -1690,10 +1702,14 @@ function LetterOptsModal({ row, token, onClose, onOpenBuilder }) {
             </div>
           </div>
         ) : (
-          <div style={{display:'flex', alignItems:'center', gap:10, padding:'12px 14px', borderRadius:10, border:'1px solid var(--border)', background:'var(--bg)'}}>
-            <span style={{fontSize:18, opacity:.5}}>📄</span>
-            <div style={{fontSize:12, color:'var(--text3)', lineHeight:1.5}}>
-              No documents uploaded for this firm. Upload OCR, VAT, and CTEVT certificates in the firm profile to attach them here.
+          <div style={{display:'flex', alignItems:'center', gap:10, padding:'12px 14px', borderRadius:10, border:`1px solid ${instFetchErr ? 'var(--error)' : 'var(--border)'}`, background: instFetchErr ? 'var(--error-light)' : 'var(--bg)'}}>
+            <span className="material-icons-round" style={{fontSize:18, color: instFetchErr ? 'var(--error)' : 'var(--text3)', opacity: instFetchErr ? 1 : .5}}>
+              {instFetchErr ? 'cloud_off' : 'description'}
+            </span>
+            <div style={{fontSize:12, color: instFetchErr ? 'var(--error)' : 'var(--text3)', lineHeight:1.5}}>
+              {instFetchErr
+                ? 'Could not load institute details — documents may be unavailable. Check your connection and try again.'
+                : 'No documents uploaded for this institute. Upload OCR, VAT, and CTEVT certificates in the institute profile to attach them here.'}
             </div>
           </div>
         )}
