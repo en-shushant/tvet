@@ -605,11 +605,8 @@ async function openShortlistLetter(row, opts = {}) {
   const { default: html2canvas } = await import('html2canvas');
   const { PDFDocument } = await import('pdf-lib');
 
-  // scale:1.5 halves peak canvas memory vs scale:2 (8 MB vs 14 MB).
-  // This matters on low-end PCs where the browser can silently discard
-  // subsequent pdf-lib operations once RAM is exhausted.
   const letterCanvas = await html2canvas(iframeDoc.querySelector('.page'), {
-    scale: 1.5,
+    scale: 2,
     useCORS: true,
     allowTaint: true,
     backgroundColor: '#ffffff',
@@ -618,7 +615,7 @@ async function openShortlistLetter(row, opts = {}) {
     windowWidth: A4_W,
     windowHeight: A4_H,
   });
-  const letterJpegDataUrl = letterCanvas.toDataURL('image/jpeg', 0.92);
+  const letterJpegDataUrl = letterCanvas.toDataURL('image/jpeg', 0.95);
   document.body.removeChild(iframe);
 
   // ── Assemble the final PDF with pdf-lib: letter page + real attachments ──
