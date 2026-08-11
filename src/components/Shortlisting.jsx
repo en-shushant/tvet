@@ -652,20 +652,9 @@ async function openShortlistLetter(row, opts = {}) {
   // Letter page — letterhead (if any) is embedded at native resolution first,
   // then the captured letter content is layered on top as a transparent PNG.
   // This keeps the letterhead sharp regardless of html2canvas scale.
+  // Reserve page slot first so the letter is always page 1, even though
+  // the actual image drawing happens below after embedImageBytes is defined.
   const letterPage = outDoc.addPage([PAGE_W, PAGE_H]);
-  if (useLhBg) {
-    const lhBytes = dataUrlToBytes(firmLetterhead);
-    const lhKind = sniff(lhBytes);
-    const lhImg = lhKind === 'png'
-      ? await outDoc.embedPng(lhBytes)
-      : await outDoc.embedJpg(lhBytes);
-    letterPage.drawImage(lhImg, { x: 0, y: 0, width: PAGE_W, height: PAGE_H });
-    const contentPng = await outDoc.embedPng(dataUrlToBytes(letterContentDataUrl));
-    letterPage.drawImage(contentPng, { x: 0, y: 0, width: PAGE_W, height: PAGE_H });
-  } else {
-    const letterJpg = await outDoc.embedJpg(dataUrlToBytes(letterContentDataUrl));
-    letterPage.drawImage(letterJpg, { x: 0, y: 0, width: PAGE_W, height: PAGE_H });
-  }
 
   const bytesToDataUrl = (bytes, mime) => {
     let bin = '';
@@ -709,6 +698,20 @@ async function openShortlistLetter(row, opts = {}) {
       }
     }
   };
+
+  // Draw the letter content onto the reserved first page. Letterhead (if any)
+  // is embedded at native resolution first; the transparent PNG from html2canvas
+  // is layered on top so the letterhead stays sharp without going through html2canvas.
+  if (useLhBg) {
+    const lhBytes = await fetchBytes(firmLetterhead);
+    const lhImg = await embedImageBytes(lhBytes, 'letterhead');
+    if (lhImg) letterPage.drawImage(lhImg, { x: 0, y: 0, width: PAGE_W, height: PAGE_H });
+    const contentPng = await outDoc.embedPng(dataUrlToBytes(letterContentDataUrl));
+    letterPage.drawImage(contentPng, { x: 0, y: 0, width: PAGE_W, height: PAGE_H });
+  } else {
+    const letterJpg = await outDoc.embedJpg(dataUrlToBytes(letterContentDataUrl));
+    letterPage.drawImage(letterJpg, { x: 0, y: 0, width: PAGE_W, height: PAGE_H });
+  }
 
   // Sign/stamp overlay, embedded once and drawn on every attachment page —
   // matches the overlay that used to be baked into each doc page's HTML.
@@ -1604,6 +1607,7 @@ function LetterOptsModal({ row, token, onClose, onOpenBuilder }) {
 
   const [pdfUrl, setPdfUrl] = useState(null);
   const [generating, setGenerating] = useState(false);
+  const [genError, setGenError] = useState(null);
 
   // Release the blob URL when this modal goes away
   useEffect(() => () => { if (pdfUrl) URL.revokeObjectURL(pdfUrl); }, [pdfUrl]);
@@ -1612,6 +1616,7 @@ function LetterOptsModal({ row, token, onClose, onOpenBuilder }) {
 
   const handleGenerate = async () => {
     setGenerating(true);
+    setGenError(null);
     try {
       const { url, skipped } = await openShortlistLetter(freshRow, {
         includeSign: inclSign, includeStamp: inclStamp, includeLh: inclLh,
@@ -1619,6 +1624,9 @@ function LetterOptsModal({ row, token, onClose, onOpenBuilder }) {
       });
       if (skipped.length) setSkipWarning(skipped);
       setPdfUrl(url);
+    } catch (e) {
+      console.error('[letter] generation failed:', e);
+      setGenError(e?.message || 'Letter generation failed. Check the browser console for details.');
     } finally { setGenerating(false); }
   };
 
@@ -1657,6 +1665,12 @@ function LetterOptsModal({ row, token, onClose, onOpenBuilder }) {
       </Btn>
     </>}>
       <div style={{display:'flex', flexDirection:'column', gap:12}}>
+
+        {genError && (
+          <div style={{padding:'10px 14px', borderRadius:8, background:'rgba(220,38,38,.08)', border:'1px solid rgba(220,38,38,.25)', color:'var(--error,#dc2626)', fontSize:13, lineHeight:1.5}}>
+            <strong>Generation failed:</strong> {genError}
+          </div>
+        )}
 
         {/* Signature toggle */}
         <label style={{display:'flex', alignItems:'center', gap:14, padding:'12px 14px', borderRadius:10, border:'1px solid var(--border)', background:'var(--bg)', cursor:'pointer'}}>
