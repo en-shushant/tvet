@@ -703,9 +703,15 @@ async function openShortlistLetter(row, opts = {}) {
   // is embedded at native resolution first; the transparent PNG from html2canvas
   // is layered on top so the letterhead stays sharp without going through html2canvas.
   if (useLhBg) {
-    const lhBytes = await fetchBytes(firmLetterhead);
-    const lhImg = await embedImageBytes(lhBytes, 'letterhead');
-    if (lhImg) letterPage.drawImage(lhImg, { x: 0, y: 0, width: PAGE_W, height: PAGE_H });
+    // firmLetterhead was already fetched by urlToDataUrl; if it couldn't be
+    // converted to a data URL (CORS / network failure) it will still be a plain
+    // https:// string — fetchBytes would fail again with "Load failed". Only
+    // embed the letterhead if it was successfully loaded as a data URL.
+    if (firmLetterhead.startsWith('data:')) {
+      const lhBytes = dataUrlToBytes(firmLetterhead);
+      const lhImg = await embedImageBytes(lhBytes, 'letterhead');
+      if (lhImg) letterPage.drawImage(lhImg, { x: 0, y: 0, width: PAGE_W, height: PAGE_H });
+    }
     const contentPng = await outDoc.embedPng(dataUrlToBytes(letterContentDataUrl));
     letterPage.drawImage(contentPng, { x: 0, y: 0, width: PAGE_W, height: PAGE_H });
   } else {
