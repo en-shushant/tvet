@@ -215,8 +215,7 @@ function buildNeaLetterHtml({ letterType, dateBS, toTitle, toName, toName2, toAd
   .page {
     width:794px; height:1123px; position:relative; overflow:hidden;
     font-family:'Kalimati','Noto Sans Devanagari','Arial Unicode MS',sans-serif; font-size:13px;
-    background-color:#fff;
-    ${useLhBg ? `background-image:url("${firmLetterhead}");background-repeat:no-repeat;background-position:0 0;background-size:794px 1123px;` : ''}
+    background-color:${useLhBg ? 'transparent' : '#fff'};
   }
   .page-inner { position:relative;z-index:1;padding:${topMm}mm ${lrMm}mm ${bottomMm}mm ${lrMm}mm; }
   .ref-row { display:flex;justify-content:flex-end;margin-bottom:10px;font-size:11pt; }
@@ -395,12 +394,10 @@ async function openShortlistLetter(row, opts = {}) {
     width: 794px;
     height: 1123px;
     flex-shrink: 0;
-    background-color: #fff;
-    ${useLhBg ? `/* longhand: html2canvas drops background-size from the shorthand */
-    background-image: url("${firmLetterhead}");
-    background-repeat: no-repeat;
-    background-position: 0 0;
-    background-size: 794px 1123px;` : ''}
+    /* When a letterhead is used, the page itself is transparent — the
+       letterhead is embedded directly in pdf-lib at native resolution so
+       it never passes through html2canvas (which would upscale/blur it). */
+    background-color: ${useLhBg ? 'transparent' : '#fff'};
     position: relative;
     padding: 0;
     overflow: hidden;
@@ -605,17 +602,23 @@ async function openShortlistLetter(row, opts = {}) {
   const { default: html2canvas } = await import('html2canvas');
   const { PDFDocument } = await import('pdf-lib');
 
+  // When a letterhead is in use, capture with transparent background (PNG) so
+  // pdf-lib can embed the letterhead at its native resolution underneath — no
+  // upscaling through html2canvas, so it stays sharp. Without a letterhead,
+  // JPEG with white background is smaller and sufficient.
   const letterCanvas = await html2canvas(iframeDoc.querySelector('.page'), {
     scale: 2,
     useCORS: true,
     allowTaint: true,
-    backgroundColor: '#ffffff',
+    backgroundColor: useLhBg ? null : '#ffffff',
     width: A4_W,
     height: A4_H,
     windowWidth: A4_W,
     windowHeight: A4_H,
   });
-  const letterJpegDataUrl = letterCanvas.toDataURL('image/jpeg', 0.95);
+  const letterContentDataUrl = useLhBg
+    ? letterCanvas.toDataURL('image/png')
+    : letterCanvas.toDataURL('image/jpeg', 0.95);
   document.body.removeChild(iframe);
 
   // ── Assemble the final PDF with pdf-lib: letter page + real attachments ──
@@ -646,9 +649,23 @@ async function openShortlistLetter(row, opts = {}) {
 
   const outDoc = await PDFDocument.create();
 
-  // Letter page
-  const letterJpg = await outDoc.embedJpg(dataUrlToBytes(letterJpegDataUrl));
-  outDoc.addPage([PAGE_W, PAGE_H]).drawImage(letterJpg, { x: 0, y: 0, width: PAGE_W, height: PAGE_H });
+  // Letter page — letterhead (if any) is embedded at native resolution first,
+  // then the captured letter content is layered on top as a transparent PNG.
+  // This keeps the letterhead sharp regardless of html2canvas scale.
+  const letterPage = outDoc.addPage([PAGE_W, PAGE_H]);
+  if (useLhBg) {
+    const lhBytes = dataUrlToBytes(firmLetterhead);
+    const lhKind = sniff(lhBytes);
+    const lhImg = lhKind === 'png'
+      ? await outDoc.embedPng(lhBytes)
+      : await outDoc.embedJpg(lhBytes);
+    letterPage.drawImage(lhImg, { x: 0, y: 0, width: PAGE_W, height: PAGE_H });
+    const contentPng = await outDoc.embedPng(dataUrlToBytes(letterContentDataUrl));
+    letterPage.drawImage(contentPng, { x: 0, y: 0, width: PAGE_W, height: PAGE_H });
+  } else {
+    const letterJpg = await outDoc.embedJpg(dataUrlToBytes(letterContentDataUrl));
+    letterPage.drawImage(letterJpg, { x: 0, y: 0, width: PAGE_W, height: PAGE_H });
+  }
 
   const bytesToDataUrl = (bytes, mime) => {
     let bin = '';
