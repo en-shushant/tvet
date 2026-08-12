@@ -761,6 +761,7 @@ async function openShortlistLetter(row, opts = {}) {
   // Attachments — merged as real pages, not screenshotted. A PDF source keeps
   // every page (not just the first) and stays vector/text-sharp; an image
   // source is embedded directly, full-bleed, onto its own A4 page.
+  const letterPageCount = outDoc.getPageCount();
   let mergedCount = 0;
   const skippedLabels = [];
   for (const d of activeDocs) {
@@ -778,15 +779,21 @@ async function openShortlistLetter(row, opts = {}) {
       if (kind === 'pdf') {
         try {
           const srcDoc = await PDFDocument.load(bytes, { ignoreEncryption: true, throwOnInvalidObject: false });
-          // Release the raw bytes immediately — pdf-lib has its own copy now.
-          // On low-end PCs this gives GC a chance to free memory before the
-          // next document is loaded, preventing silent OOM failures.
           bytes = null;
-          const copied = await outDoc.copyPages(srcDoc, srcDoc.getPageIndices());
+          // Round-trip validate: copy pages into a temp doc and try saving.
+          // PDFs with Nepali/Unicode metadata store bytes >0x7F in PDFString
+          // objects which pdf-lib can't serialize. If the temp save throws, we
+          // skip this attachment rather than poisoning outDoc.save() later.
+          const validateDoc = await PDFDocument.create();
+          const validatePages = await validateDoc.copyPages(srcDoc, srcDoc.getPageIndices());
+          validatePages.forEach(p => validateDoc.addPage(p));
+          const cleanBytes = await validateDoc.save();
+          const cleanDoc = await PDFDocument.load(cleanBytes);
+          const copied = await outDoc.copyPages(cleanDoc, cleanDoc.getPageIndices());
           copied.forEach(p => { outDoc.addPage(p); drawOverlay(p); });
           docMerged += copied.length;
         } catch (e) {
-          console.warn(`[letter] ${d.label}: PDF failed to load (corrupt or password-protected)`, src, e);
+          console.warn(`[letter] ${d.label}: PDF skipped (contains characters pdf-lib cannot serialize)`, src, e);
         }
       } else if (kind === 'jpeg' || kind === 'png') {
         const embedded = await embedImageBytes(bytes, d.label || 'attachment');
@@ -808,7 +815,18 @@ async function openShortlistLetter(row, opts = {}) {
     if (docMerged === 0 && files.length > 0) skippedLabels.push(d.label);
   }
 
-  const outBytes = await outDoc.save();
+  let outBytes;
+  try {
+    outBytes = await outDoc.save();
+  } catch (e) {
+    // Last-resort fallback: rebuild with only the letter pages (no attachments).
+    console.warn('[letter] outDoc.save() failed — rebuilding letter-only PDF', e);
+    const fallbackDoc = await PDFDocument.create();
+    const letterPages = await fallbackDoc.copyPages(outDoc, outDoc.getPageIndices().slice(0, letterPageCount));
+    letterPages.forEach(p => fallbackDoc.addPage(p));
+    outBytes = await fallbackDoc.save();
+    skippedLabels.push('(attachments — serialization error)');
+  }
   const blob = new Blob([outBytes], { type: 'application/pdf' });
   return { url: URL.createObjectURL(blob), skipped: skippedLabels };
 }
