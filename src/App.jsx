@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useMemo, lazy, Suspense } from 'react';
+import { useState, useEffect, lazy, Suspense } from 'react';
 import LoginPage from './components/LoginPage.jsx';
 import Dashboard from './components/Dashboard.jsx';
 import ShortlistDashboard from './components/ShortlistDashboard.jsx';

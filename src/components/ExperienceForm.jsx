@@ -376,7 +376,7 @@ function ExperienceForm({exp, clients, institute, onSave, onClose, onDuplicate, 
         </label>
         <label style={{display:'flex', alignItems:'center', gap:8, cursor:'pointer', userSelect:'none'}}>
           <input type="checkbox" checked={!!form.isJV} onChange={e=>set('isJV', e.target.checked)}
-            style={{width:16, height:16, accentColor:'var(--orange,#f59e0b)', cursor:'pointer'}}/>
+            style={{width:16, height:16, accentColor:'var(--orange)', cursor:'pointer'}}/>
           <div>
             <div style={{fontSize:13, fontWeight:600}}>JV</div>
             <div style={{fontSize:11, color:'var(--text3)'}}>Joint Venture assignment</div>
@@ -384,7 +384,7 @@ function ExperienceForm({exp, clients, institute, onSave, onClose, onDuplicate, 
         </label>
       </div>
       {form.isJV && (
-        <div style={{display:'flex', gap:16, marginBottom:16, padding:'12px 14px', background:'color-mix(in srgb, var(--orange,#f59e0b) 8%, var(--bg2))', borderRadius:'var(--radius)', border:'1px solid color-mix(in srgb, var(--orange,#f59e0b) 30%, var(--border))'}}>
+        <div style={{display:'flex', gap:16, marginBottom:16, padding:'12px 14px', background:'color-mix(in srgb, var(--orange) 8%, var(--bg2))', borderRadius:'var(--radius)', border:'1px solid color-mix(in srgb, var(--orange) 30%, var(--border))'}}>
           <div style={{flex:1}}>
             <MdSelect label="JV Role" value={form.jvRole} onChange={e=>set('jvRole', e.target.value)}>
               <MdOption value="Lead">Lead</MdOption>
@@ -454,7 +454,7 @@ function ExperienceForm({exp, clients, institute, onSave, onClose, onDuplicate, 
           {form.referenceFile && form.referenceFileName?.match(/\.pdf$/i) && (
             <div style={{width:64, height:64, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', borderRadius:'var(--radius)', border:'1px solid var(--border)', background:'var(--bg2)', fontSize:10, color:'var(--text3)', flexShrink:0, cursor:'pointer'}}
               onClick={()=>{const w=window.open(); w.document.write(`<iframe src="${form.referenceFile}" width="100%" height="100%" style="border:none"/>`)}}>
-              <span style={{fontSize:24}}>📄</span>PDF
+              <span className="material-icons-round" style={{fontSize:24, color:'var(--error)'}}>picture_as_pdf</span>PDF
             </div>
           )}
         </div>
@@ -466,7 +466,7 @@ function ExperienceForm({exp, clients, institute, onSave, onClose, onDuplicate, 
       <div className="sub-section" style={{marginBottom:16}}>
         <button type="button" onClick={()=>setShowReportFields(s=>!s)}
           style={{width:'100%', background:'none', border:'1px solid var(--border)', borderRadius:'var(--radius)', cursor:'pointer', padding:'10px 14px', display:'flex', alignItems:'center', justifyContent:'space-between', fontFamily:'var(--font)'}}>
-          <span style={{fontSize:13, fontWeight:600}}>📋 EOI report details (3A / 3B / 3C)</span>
+          <span style={{fontSize:13, fontWeight:600, display:'flex', alignItems:'center', gap:6}}><span className="material-icons-round" style={{fontSize:16}}>assignment</span> EOI report details (3A / 3B / 3C)</span>
           <span style={{fontSize:11, color:'var(--text3)'}}>{showReportFields ? '▲ Hide' : '▼ Optional — used for generating reports'}</span>
         </button>
         {showReportFields && (

@@ -35,7 +35,7 @@ function DistrictMultiPicker({onAdd, buttonLabel='+ Add districts'}) {
   );
 
   return (
-    <div style={{background:'var(--bg1)', border:'1px solid var(--accent)', borderRadius:8, padding:'10px 12px', marginTop:4, width:'100%'}}>
+    <div style={{background:'var(--surface)', border:'1px solid var(--primary)', borderRadius:8, padding:'10px 12px', marginTop:4, width:'100%'}}>
       <div style={{display:'flex', gap:6, alignItems:'center', marginBottom:8}}>
         <input value={search} onChange={e=>{setSearch(e.target.value);setBrowseProvince('');}}
           placeholder="Search districts across all provinces…" style={{flex:1, fontSize:12}}/>
@@ -183,7 +183,7 @@ function BulkAssignmentForm({instituteName, clients, onSave, onBack}) {
                   <DistrictMultiPicker buttonLabel="+ Districts" onAdd={locs=>setRow(ri,'districts',[...row.districts,...locs.filter(l=>!row.districts.some(d=>d.district===l.district&&d.province===l.province))])}/>
                 </td>
                 <td style={{...tdStyle, textAlign:'center'}}>
-                  {rows.length > 1 && <button onClick={()=>removeRow(ri)} style={{background:'none',border:'none',color:'var(--text3)',cursor:'pointer',fontSize:14}}>🗑</button>}
+                  {rows.length > 1 && <button onClick={()=>removeRow(ri)} style={{background:'none',border:'none',color:'var(--text3)',cursor:'pointer',padding:4,borderRadius:6,display:'inline-flex',alignItems:'center'}} title="Remove row"><span className="material-icons-round" style={{fontSize:16}}>delete</span></button>}
                 </td>
               </tr>
             ))}
@@ -191,7 +191,7 @@ function BulkAssignmentForm({instituteName, clients, onSave, onBack}) {
         </table>
       </div>
       {err && <ErrorBanner msg={err} onDismiss={()=>setErr('')}/>}
-      <div style={{position:'sticky', bottom:0, background:'var(--bg1)', borderTop:'1px solid var(--border)', padding:'12px 0', marginTop:20, display:'flex', justifyContent:'flex-end', gap:8}}>
+      <div style={{position:'sticky', bottom:0, background:'var(--surface)', borderTop:'1px solid var(--border)', padding:'12px 0', marginTop:20, display:'flex', justifyContent:'flex-end', gap:8}}>
         <Btn className="btn btn-ghost" onClick={addRow}>+ Add row</Btn>
         <Btn className="btn btn-secondary" onClick={onBack}>Cancel</Btn>
         <Btn className="btn btn-primary" onClick={handleSave}>Save {rows.length} assignment{rows.length>1?'s':''}</Btn>

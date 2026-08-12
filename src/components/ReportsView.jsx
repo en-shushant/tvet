@@ -919,8 +919,8 @@ function ReportsView({ institutes, clients }) {
                             {family.renderRowCells(exp, clients, report.id, i)}
                             <td style={{fontSize:11}}>
                               {missing.length > 0
-                                ? <span style={{color:'var(--orange,#f59e0b)'}} title={`Missing: ${missing.join(', ')}`}>⚠ {missing.length} field{missing.length !== 1 ? 's' : ''}</span>
-                                : <span style={{color:'var(--green,#22c55e)'}}>✓</span>}
+                                ? <span style={{color:'var(--warning)'}} title={`Missing: ${missing.join(', ')}`}><span className="material-icons-round" style={{fontSize:12,verticalAlign:'middle'}}>warning</span> {missing.length} field{missing.length !== 1 ? 's' : ''}</span>
+                                : <span style={{color:'var(--green)'}}><span className="material-icons-round" style={{fontSize:12,verticalAlign:'middle'}}>check_circle</span></span>}
                             </td>
                           </tr>
                         );

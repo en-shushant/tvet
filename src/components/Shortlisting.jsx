@@ -762,7 +762,7 @@ async function openShortlistLetter(row, opts = {}) {
       const kind = sniff(bytes);
       if (kind === 'pdf') {
         try {
-          const srcDoc = await PDFDocument.load(bytes, { ignoreEncryption: true });
+          const srcDoc = await PDFDocument.load(bytes, { ignoreEncryption: true, throwOnInvalidObject: false });
           // Release the raw bytes immediately — pdf-lib has its own copy now.
           // On low-end PCs this gives GC a chance to free memory before the
           // next document is loaded, preventing silent OOM failures.

@@ -79,7 +79,7 @@ function ProjectCompliance({institutes, clients}) {
 
   const renderOccCells = (r) => selectedOccs.length > 0
     ? r.occBreakdown.map(o => {
-        const affColor = o.affStatus==='Active' ? 'var(--green,#22c55e)' : o.affStatus ? 'var(--text3)' : null;
+        const affColor = o.affStatus==='Active' ? 'var(--green)' : o.affStatus ? 'var(--text3)' : null;
         return (
           <React.Fragment key={o.name}>
             <td className="mono" style={{textAlign:'center', borderLeft:'1px solid var(--border)'}}>

@@ -252,6 +252,10 @@ md-secondary-tab {
   --red-light: var(--error-light);
   --blue: var(--primary-dark);
   --blue-light: var(--primary-light);
+  /* ── Missing token aliases (prevent unresolved var() fallback) ── */
+  --bg1: var(--surface);
+  --green: #0b9b85;
+  --orange: #f59e0b;
 
   /* ── Sizing — M3 shape scale ── */
   --radius:    8px;   /* extra-small */
@@ -1322,6 +1326,9 @@ textarea { resize: vertical; min-height: 80px; }
     --red-light:    var(--error-light);
     --blue:         var(--primary-dark);
     --blue-light:   var(--primary-light);
+    --bg1:          var(--surface);
+    --green:        #13DEB9;
+    --orange:       #fbbf24;
 
     /* Shadows — tinted blue, stronger on dark */
     --shadow:    0 1px 3px rgba(0,0,0,.5), 0 1px 4px 1px rgba(70,108,230,.15);

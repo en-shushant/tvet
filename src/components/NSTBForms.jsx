@@ -174,7 +174,7 @@ function NSTBBulkPage({instituteName, onSave, onBack}) {
             {rows.map((row, idx) => {
               const passRate = (parseInt(row.appeared)>0 && parseInt(row.pass)>=0) ? ((parseInt(row.pass)/parseInt(row.appeared))*100).toFixed(1) : null;
               return (
-                <tr key={row._id} style={{borderBottom:'1px solid var(--border)', background: idx%2===0?'var(--bg1)':'var(--bg2)'}}>
+                <tr key={row._id} style={{borderBottom:'1px solid var(--border)', background: idx%2===0?'var(--surface)':'var(--bg)'}}>
                   <td style={{...tdS, textAlign:'center', color:'var(--text3)', fontSize:11}}>{idx+1}</td>
                   <td style={tdS}>
                     <SearchableSelect value={row.occupation} onChange={v=>setOcc(row._id,'occupation',v)} placeholder="— Select occupation —"
@@ -188,11 +188,11 @@ function NSTBBulkPage({instituteName, onSave, onBack}) {
                   <td style={tdS}><input type="number" value={row.applied} onChange={e=>setOcc(row._id,'applied',e.target.value===''?'':parseInt(e.target.value))} style={{fontSize:11, width:'100%'}}/></td>
                   <td style={tdS}><input type="number" value={row.appeared} onChange={e=>setOcc(row._id,'appeared',e.target.value===''?'':parseInt(e.target.value))} style={{fontSize:11, width:'100%'}}/></td>
                   <td style={tdS}><input type="number" value={row.pass} onChange={e=>setOcc(row._id,'pass',e.target.value===''?'':parseInt(e.target.value))} style={{fontSize:11, width:'100%'}}/></td>
-                  <td style={{...tdS, textAlign:'center', fontWeight:600, color: passRate>70?'var(--green,#16a34a)':passRate>50?'var(--accent)':'var(--red)'}}>
+                  <td style={{...tdS, textAlign:'center', fontWeight:600, color: passRate>70?'var(--green)':passRate>50?'var(--accent)':'var(--red)'}}>
                     {passRate ? passRate+'%' : '—'}
                   </td>
                   <td style={{...tdS, textAlign:'center'}}>
-                    {rows.length > 1 && <button onClick={()=>removeRow(row._id)} style={{background:'none',border:'none',color:'var(--text3)',cursor:'pointer',fontSize:14}}>🗑</button>}
+                    {rows.length > 1 && <button onClick={()=>removeRow(row._id)} style={{background:'none',border:'none',color:'var(--text3)',cursor:'pointer',padding:4,borderRadius:6,display:'flex',alignItems:'center'}} title="Remove row"><span className="material-icons-round" style={{fontSize:16}}>delete</span></button>}
                   </td>
                 </tr>
               );
@@ -202,7 +202,7 @@ function NSTBBulkPage({instituteName, onSave, onBack}) {
       </div>
 
       {err && <ErrorBanner msg={err} onDismiss={()=>setErr('')}/>}
-      <div style={{position:'sticky', bottom:0, background:'var(--bg1)', borderTop:'1px solid var(--border)', padding:'12px 0', marginTop:20, display:'flex', justifyContent:'flex-end', gap:8}}>
+      <div style={{position:'sticky', bottom:0, background:'var(--surface)', borderTop:'1px solid var(--border)', padding:'12px 0', marginTop:20, display:'flex', justifyContent:'flex-end', gap:8}}>
         <Btn className="btn btn-ghost" onClick={addRow}>+ Add row</Btn>
         <Btn className="btn btn-secondary" onClick={onBack}>Cancel</Btn>
         <Btn className="btn btn-primary" onClick={handleSave}>Save {rows.length} record{rows.length>1?'s':''}</Btn>

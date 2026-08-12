@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useCachedLogo } from '../utils/logoCache.js';
 import ReactDOM from 'react-dom';
 import Modal from './ui/Modal.jsx';
@@ -8,7 +8,6 @@ import StatusBadge from './ui/StatusBadge.jsx';
 import Pagination from './ui/Pagination.jsx';
 import InstituteForm from './InstituteForm.jsx';
 import ExperienceForm from './ExperienceForm.jsx';
-import { NSTBEditModal, NSTBBulkPage } from './NSTBForms.jsx';
 import NSTBForm from './NSTBForms.jsx';
 import TaxForm from './TaxForm.jsx';
 import AffiliationForm from './AffiliationForm.jsx';
@@ -44,7 +43,6 @@ function getOccupation(id) {
   return OCCUPATIONS.find(o => o.id === rawId) || {};
 }
 
-const useMemo2 = useMemo;
 
 function InstituteDetail({institute, clients, onUpdateClients, onBack, onUpdate, onRefresh, onDelete, token, isAdmin, isEditor, isSuperAdmin, isShortlistOnly, jumpToTab, onBulkAdd, onAddNSTB}) {
   const logoSrc = useCachedLogo(institute.logo);
@@ -251,9 +249,9 @@ function InstituteDetail({institute, clients, onUpdateClients, onBack, onUpdate,
             tab itself already shows uploaded files to anyone, this just makes
             it easy to find instead of requiring someone to know to click it
             among the other tabs. */}
-        <Btn className="btn btn-secondary btn-sm" onClick={()=>switchTab('documents')}>📄 View Documents</Btn>
-        {canEdit && !isShortlistOnly && <Btn className="btn btn-secondary btn-sm" onClick={()=>setModal({type:'editInstitute'})}>✏ Edit profile</Btn>}
-        {isAdmin && <Btn className="btn btn-danger btn-sm" onClick={()=>setModal({type:'deleteInstitute'})}>🗑 Delete</Btn>}
+        <Btn className="btn btn-secondary btn-sm" onClick={()=>switchTab('documents')}><span className="material-icons-round" style={{fontSize:14}}>description</span> View Documents</Btn>
+        {canEdit && !isShortlistOnly && <Btn className="btn btn-secondary btn-sm" onClick={()=>setModal({type:'editInstitute'})}><span className="material-icons-round" style={{fontSize:14}}>edit</span> Edit profile</Btn>}
+        {isAdmin && <Btn className="btn btn-danger btn-sm" onClick={()=>setModal({type:'deleteInstitute'})}><span className="material-icons-round" style={{fontSize:14}}>delete</span> Delete</Btn>}
       </div>
 
       {/* Tabs */}
@@ -386,7 +384,7 @@ function InstituteDetail({institute, clients, onUpdateClients, onBack, onUpdate,
                   color: expMissingFilter ? '#856404' : 'var(--text2)',
                   fontWeight: expMissingFilter ? 700 : 400}}
                 title="Show only assignments where any occupation is missing level or duration (hrs)">
-                ⚠ Missing level/duration
+                <span className="material-icons-round" style={{fontSize:14,verticalAlign:'middle'}}>warning</span> Missing level/duration
               </button>
             </div>
             {canEdit && <div style={{display:'flex', gap:6}}>
@@ -419,7 +417,7 @@ function InstituteDetail({institute, clients, onUpdateClients, onBack, onUpdate,
             );
           })()}
           {institute.experience.length === 0
-            ? <div className="empty-state"><div className="empty-state-icon">📋</div><div className="empty-state-title">No assignments yet</div><div className="empty-state-sub">Add the first experience / assignment record</div></div>
+            ? <div className="empty-state"><div className="empty-state-icon"><span className="material-icons-round" style={{fontSize:44,opacity:0.3}}>assignment</span></div><div className="empty-state-title">No assignments yet</div><div className="empty-state-sub">Add the first experience / assignment record</div></div>
             : expViewMode === 'fy'
               ? groupByFY(institute.experience.filter(e=>(!expClientFilter || String(e.clientId)===String(expClientFilter)) && (!expOccFilter || (expOccFilter==='__missing__' ? (e.occupations||[]).some(o=>!o.ctevtOccupationId) : (e.occupations||[]).some(o=>(getOccupation(o.ctevtOccupationId).name||o.nameInLetter)===expOccFilter))) && (!expMissingFilter || (e.occupations||[]).some(o=>!o.level || !o.duration)))).map(([fy, items]) => (
                 <div key={fy} className="fy-group">
@@ -487,7 +485,7 @@ function InstituteDetail({institute, clients, onUpdateClients, onBack, onUpdate,
             const lblStyle = {fontSize:10, color:'var(--text3)', textTransform:'uppercase', letterSpacing:'0.5px', marginTop:2};
             return (
               <div style={{display:'flex', gap:0, background:'var(--bg2)', borderRadius:8, border:'1px solid var(--border)', marginBottom:12, padding:'10px 0'}}>
-                {[['Applied', totA,'var(--accent)'],['Appeared', totAp,'var(--blue)'],['Pass', totP,'var(--green,#22c55e)'],['Pass rate', passRate,'var(--purple)']].map(([lbl,val,col],i,arr)=>(
+                {[['Applied', totA,'var(--accent)'],['Appeared', totAp,'var(--blue)'],['Pass', totP,'var(--green)'],['Pass rate', passRate,'var(--purple)']].map(([lbl,val,col],i,arr)=>(
                   <React.Fragment key={lbl}>
                     <div style={{textAlign:'center',flex:1}}>
                       <div style={{...numStyle,color:col}}>{val}</div>
@@ -531,7 +529,7 @@ function InstituteDetail({institute, clients, onUpdateClients, onBack, onUpdate,
                             <td className="text-sm text-muted">{r.letterNo}</td>
                             <td style={{display:'flex', gap:4}}>
                               {canEdit && <Btn className="btn btn-ghost btn-sm" onClick={()=>setModal({type:'editNSTB', data:r})}>✏</Btn>}
-                              {isAdmin && <Btn className="btn btn-danger btn-sm" onClick={()=>deleteNSTB(r.id)}>🗑</Btn>}
+                              {isAdmin && <Btn className="btn btn-danger btn-sm" onClick={()=>deleteNSTB(r.id)}><span className="material-icons-round" style={{fontSize:15}}>delete</span></Btn>}
                             </td>
                           </tr>
                         ))}
@@ -571,7 +569,7 @@ function InstituteDetail({institute, clients, onUpdateClients, onBack, onUpdate,
                         <td className="mono text-sm">{t.karChutaNo}</td>
                         <td style={{display:'flex', gap:4}}>
                           {canEdit && <Btn className="btn btn-ghost btn-sm" onClick={()=>setModal({type:'editTax', data:t})}>✏</Btn>}
-                          {isAdmin && <Btn className="btn btn-danger btn-sm" onClick={()=>deleteTax(t.id)}>🗑</Btn>}
+                          {isAdmin && <Btn className="btn btn-danger btn-sm" onClick={()=>deleteTax(t.id)}><span className="material-icons-round" style={{fontSize:15}}>delete</span></Btn>}
                         </td>
                       </tr>
                     ))}
@@ -605,7 +603,7 @@ function InstituteDetail({institute, clients, onUpdateClients, onBack, onUpdate,
                   <span className={`badge ${aff.status==='Active'?'badge-active':aff.status==='Expired'?'badge-expired':'badge-pending'}`} style={{marginLeft:'auto'}}>{aff.status}</span>
                   <span className="badge badge-gray" style={{marginLeft:8}}>{aff.programs.length} programs</span>
                   {canEdit && <Btn className="btn btn-ghost btn-sm" style={{marginLeft:8}} onClick={e=>{e.stopPropagation();setModal({type:'editAffiliation',data:aff});}}>✏</Btn>}
-                  {isAdmin && <Btn className="btn btn-danger btn-sm" style={{marginLeft:4}} onClick={e=>{e.stopPropagation();deleteAffiliation(aff.id);}}>🗑</Btn>}
+                  {isAdmin && <Btn className="btn btn-danger btn-sm" style={{marginLeft:4}} onClick={e=>{e.stopPropagation();deleteAffiliation(aff.id);}}><span className="material-icons-round" style={{fontSize:15}}>delete</span></Btn>}
                 </button>
                 {expandedFY['aff-'+aff.id] && (
                   <div className="table-wrap">
@@ -774,7 +772,7 @@ function InstituteDetail({institute, clients, onUpdateClients, onBack, onUpdate,
                             <div style={{display:'flex', gap:4, marginTop:2, flexWrap:'wrap'}}>
                               {occ.level && <span style={{fontSize:10, fontWeight:700, padding:'1px 6px', borderRadius:8, background:'var(--purple-light)', color:'var(--purple)', display:'inline-block'}}>{occ.level}</span>}
                               {occ.skillTestProvisioned && <span style={{fontSize:10, fontWeight:700, padding:'1px 6px', borderRadius:8, background:'color-mix(in srgb, var(--blue,#3b82f6) 15%, transparent)', color:'var(--blue,#3b82f6)', display:'inline-block'}}>Skill Test</span>}
-                              {occ.employmentProvisioned && <span style={{fontSize:10, fontWeight:700, padding:'1px 6px', borderRadius:8, background:'color-mix(in srgb, var(--green,#22c55e) 15%, transparent)', color:'var(--green,#22c55e)', display:'inline-block'}}>Employment</span>}
+                              {occ.employmentProvisioned && <span style={{fontSize:10, fontWeight:700, padding:'1px 6px', borderRadius:8, background:'color-mix(in srgb, var(--green) 15%, transparent)', color:'var(--green)', display:'inline-block'}}>Employment</span>}
                             </div>
                           </div>
                           <div style={{display:'flex', gap:16, flexShrink:0, flexWrap:'wrap', justifyContent:'flex-end'}}>
@@ -795,7 +793,7 @@ function InstituteDetail({institute, clients, onUpdateClients, onBack, onUpdate,
                               <div style={{fontSize:10, color:'var(--text3)', fontWeight:600, textTransform:'uppercase', letterSpacing:'0.4px'}}>Pass rate</div>
                             </div>}
                             {occ.employmentProvisioned && <div style={{textAlign:'center'}}>
-                              <div style={{fontWeight:700, fontSize:15, color:'var(--green,#22c55e)'}}>{parseFloat(occ.employmentActual)||0}%</div>
+                              <div style={{fontWeight:700, fontSize:15, color:'var(--green)'}}>{parseFloat(occ.employmentActual)||0}%</div>
                               <div style={{fontSize:10, color:'var(--text3)', fontWeight:600, textTransform:'uppercase', letterSpacing:'0.4px'}}>Employed</div>
                             </div>}
                           </div>
@@ -829,7 +827,7 @@ function InstituteDetail({institute, clients, onUpdateClients, onBack, onUpdate,
                     ) : (
                       <div style={{width:64, height:64, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', borderRadius:6, border:'1px solid var(--border)', background:'var(--bg2)', cursor:'pointer', flexShrink:0}}
                         onClick={()=>{const w=window.open(); w.document.write(`<iframe src="${exp.referenceFile}" width="100%" height="100%" style="border:none"/>`)}}>
-                        <span style={{fontSize:28}}>📄</span>
+                        <span className="material-icons-round" style={{fontSize:28, color:'var(--error)'}}>picture_as_pdf</span>
                         <span style={{fontSize:9, color:'var(--text3)'}}>PDF</span>
                       </div>
                     )}
@@ -1022,7 +1020,7 @@ function InfrastructureTab({ instituteId, token, canEdit }) {
                   <Btn className="btn btn-ghost btn-sm" style={{marginRight:2}} title="Move up" disabled={i===0} onClick={()=>moveRow(row.id,-1)}>↑</Btn>
                   <Btn className="btn btn-ghost btn-sm" style={{marginRight:4}} title="Move down" disabled={i===rows.length-1} onClick={()=>moveRow(row.id,1)}>↓</Btn>
                   <Btn className="btn btn-ghost btn-sm" style={{marginRight:4}} onClick={()=>startEdit(row)}>✏</Btn>
-                  <Btn className="btn btn-danger btn-sm" onClick={()=>deleteRow(row.id)}>🗑</Btn>
+                  <Btn className="btn btn-danger btn-sm" onClick={()=>deleteRow(row.id)}><span className="material-icons-round" style={{fontSize:15}}>delete</span></Btn>
                 </td>}
               </tr>
             ))}
@@ -1335,20 +1333,26 @@ function DocumentsTab({ institute, token, canEdit, onUpdate, isShortlistOnly }) 
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState('');
   const [saved, setSaved] = useState(false);
+  const [dirty, setDirty] = useState(false);
 
-  // Re-sync when the institute object is enriched with full data (doc URLs arrive
-  // after the initial list-data render). Track ctevtAffiliation as a proxy for
-  // whether document fields have been loaded yet.
-  useEffect(() => { setFields(fromInst(institute)); setSaved(false); }, [institute.id, institute.ctevtAffiliation, institute.ocrRegistration]);
+  // Re-sync from server when institute doc fields arrive (e.g. after initial load),
+  // but only if the user hasn't started editing — otherwise uploads would be lost
+  // when another tab's save triggers a parent re-render with a refreshed institute prop.
+  useEffect(() => {
+    if (!dirty) { setFields(fromInst(institute)); setSaved(false); }
+  }, [institute.id, institute.ctevtAffiliation, institute.ocrRegistration]);
 
-  const set = (k, v) => { setSaved(false); setFields(f => ({...f, [k]: v})); };
+  // Always reset when switching to a different institute
+  useEffect(() => { setFields(fromInst(institute)); setSaved(false); setDirty(false); }, [institute.id]);
+
+  const set = (k, v) => { setSaved(false); setDirty(true); setFields(f => ({...f, [k]: v})); };
 
   const handleSave = async () => {
     setSaving(true); setErr('');
     try {
       await api('PUT', `/institutes/${institute.id}`, instToAPI({ ...institute, ...fields }), token);
       if (onUpdate) onUpdate({ ...institute, ...fields });
-      setSaved(true);
+      setSaved(true); setDirty(false);
     } catch(e) { setErr(e.message); }
     finally { setSaving(false); }
   };

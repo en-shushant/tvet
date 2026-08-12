@@ -57,7 +57,7 @@ function ExpCard({exp, clients, showFY, setModal, deleteExperience, canEdit, isA
               <span title={missingOccs.map(o=>getOccupation(o.ctevtOccupationId).name||o.nameInLetter).join(', ') + ' — missing level or duration'}
                 style={{fontSize:10, fontWeight:600, color:'var(--warning)', background:'var(--warning-light)',
                   border:'1px solid rgba(255,174,31,.3)', borderRadius:100, padding:'2px 8px', whiteSpace:'nowrap', alignSelf:'center',
-                }}>⚠ Missing ({missingOccs.length})</span>
+                }}><span className="material-icons-round" style={{fontSize:10,verticalAlign:'middle'}}>warning</span> Missing ({missingOccs.length})</span>
             )}
           </div>
 
