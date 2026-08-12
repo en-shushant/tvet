@@ -573,10 +573,23 @@ async function openShortlistLetter(row, opts = {}) {
 
   const iframeDoc = iframe.contentDocument;
 
-  // html2canvas resolves fonts from the *main* document's FontFaceSet, not
-  // from the srcdoc iframe. Register Kalimati in the main document so the
-  // canvas renderer can find and use it.
+  // html2canvas uses the element's ownerDocument (the iframe) to resolve fonts.
+  // Injecting @font-face via srcdoc CSS is unreliable for large data URIs.
+  // Instead, explicitly construct a FontFace in the iframe's window context
+  // and add it to iframeDoc.fonts — this is the most reliable path.
   if (kalimatiCss) {
+    const dataUrlMatch = kalimatiCss.match(/url\('(data:[^']+)'\)/);
+    if (dataUrlMatch) {
+      try {
+        const IframeFontFace = iframe.contentWindow.FontFace;
+        const ff = new IframeFontFace('Kalimati', `url('${dataUrlMatch[1]}')`);
+        await ff.load();
+        iframeDoc.fonts.add(ff);
+      } catch (e) {
+        console.warn('[letter] Kalimati FontFace inject to iframe failed', e);
+      }
+    }
+    // Also register in the main document as a fallback for some html2canvas builds.
     let kStyle = document.getElementById('__kalimati_font__');
     if (!kStyle) {
       kStyle = document.createElement('style');
