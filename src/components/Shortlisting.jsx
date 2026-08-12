@@ -572,6 +572,21 @@ async function openShortlistLetter(row, opts = {}) {
   });
 
   const iframeDoc = iframe.contentDocument;
+
+  // html2canvas resolves fonts from the *main* document's FontFaceSet, not
+  // from the srcdoc iframe. Register Kalimati in the main document so the
+  // canvas renderer can find and use it.
+  if (kalimatiCss) {
+    let kStyle = document.getElementById('__kalimati_font__');
+    if (!kStyle) {
+      kStyle = document.createElement('style');
+      kStyle.id = '__kalimati_font__';
+      document.head.appendChild(kStyle);
+    }
+    kStyle.textContent = kalimatiCss;
+    await document.fonts.load('1em Kalimati').catch(() => {});
+  }
+
   await Promise.all([
     ...[...iframeDoc.querySelectorAll('img')].map(img =>
       (img.decode ? img.decode() : Promise.resolve()).catch(() => {})
