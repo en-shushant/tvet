@@ -83,6 +83,19 @@ const captionOf = (exp) => {
   return exp.fy ? `Assignment Name: ${name} (FY ${exp.fy})` : `Assignment Name: ${name}`;
 };
 
+/**
+ * Heading identifying whose copy of a section a page holds.
+ *
+ * For a joint venture the first firm selected is taken as the lead applicant and
+ * the rest as partners — sidebar selection order is the only role signal the app
+ * records. A single firm gets no role prefix.
+ */
+const firmLabel = (inst, idx, total) => {
+  const name = inst?.name || '';
+  if (total < 2) return name;
+  return idx === 0 ? `Lead firm: ${name}` : `JV partner: ${name}`;
+};
+
 // ─── 3(B) narrowing ──────────────────────────────────────────────────────────
 // ReportsView hands this family unfiltered assignments (family.selfFilters) so
 // occupation and duration can be scoped to 3(B) rather than every section.
@@ -413,6 +426,36 @@ function renderAggregateTable(inst, exps, clients, reportId, opts = {}) {
   );
 }
 
+/**
+ * On-screen multi-firm view, section-major: every firm's copy of a section is
+ * grouped under that section before the next one begins. Mirrors the printed and
+ * Word ordering so what is reviewed matches what is submitted.
+ */
+function renderMultiAggregate(firms, clients, reportId, opts = {}) {
+  const sections = sectionsFor(reportId);
+  return (
+    <div>
+      {sections.map(s => (
+        <div key={s} style={{marginBottom:34}}>
+          <div style={{fontWeight:600, fontSize:14, marginBottom:2}}>{SECTION_TITLES[s].heading}</div>
+          <div style={{fontSize:11, color:'var(--text3)', fontStyle:'italic', marginBottom:14}}>{SECTION_TITLES[s].note}</div>
+          {firms.map(({ inst, exps }, fi) => (
+            <div key={inst?.id ?? fi} style={{
+              marginBottom:18, paddingLeft:14,
+              borderLeft:'3px solid var(--border)',
+            }}>
+              <div style={{fontWeight:700, fontSize:12.5, marginBottom:10}}>
+                {firmLabel(inst, fi, firms.length)}
+              </div>
+              <SectionBody section={s} inst={inst} exps={exps} clients={clients} opts={opts} />
+            </div>
+          ))}
+        </div>
+      ))}
+    </div>
+  );
+}
+
 // ─── Print / PDF ─────────────────────────────────────────────────────────────
 
 const htmlGrid = (model) => `
@@ -473,17 +516,8 @@ function htmlSection(section, inst, exps, clients, opts) {
     <p class="note-i">(Note: Supporting documents for Average Turnover should be submitted for the above.)</p>`;
 }
 
-function buildPrintHTML(inst, exps, clients, reportId, fyRange, opts = {}) {
-  const sections = sectionsFor(reportId);
-  const body = sections.map(s => `
-    <div class="section">
-      <h2>${esc(SECTION_TITLES[s].heading)}</h2>
-      <p class="sub">${esc(SECTION_TITLES[s].note)}</p>
-      ${htmlSection(s, inst, exps, clients, opts)}
-    </div>`).join('');
-
-  return `<!DOCTYPE html><html><head><meta charset="UTF-8">
-<title>Standard EOI Document — ${esc(inst?.name || '')}</title>
+const printShell = (title, bodyHtml) => `<!DOCTYPE html><html><head><meta charset="UTF-8">
+<title>${esc(title)}</title>
 <style>
   @page { size: A4; margin: 18mm; }
   /* The print window is a bare document: without an explicit light scheme a
@@ -492,7 +526,7 @@ function buildPrintHTML(inst, exps, clients, reportId, fyRange, opts = {}) {
   body { font-family: Arial, Helvetica, sans-serif; font-size: 11px;
          color: #000; background: #fff; margin: 0; }
   .doc-head { text-align: center; font-style: italic; font-weight: bold; font-size: 12px; margin-bottom: 14px; }
-  .firm { font-size: 14px; font-weight: 700; margin-bottom: 2px; }
+  .firm { font-size: 13px; font-weight: 700; margin: 10px 0 12px; }
   .firm-sub { font-size: 11px; color: #555; margin-bottom: 14px; }
   .section { margin-bottom: 22px; page-break-inside: auto; }
   h2 { font-size: 13px; margin: 0 0 2px; }
@@ -524,13 +558,44 @@ function buildPrintHTML(inst, exps, clients, reportId, fyRange, opts = {}) {
   .avg-box { flex: 1; border: 1px solid #000; min-height: 52px; padding: 6px 10px;
              display: flex; align-items: center; justify-content: flex-end; font-weight: bold; }
   .muted { color: #666; }
+  .page-break { page-break-before: always; }
   @media print { body { margin: 0; } }
 </style></head><body>
-  <div class="doc-head">Standard EOI Document</div>
-  <div class="firm">${esc(inst?.name || '')}</div>
-  <div class="firm-sub">${esc(inst?.acronym || '')}${fyRange ? ` · ${esc(fyRange)}` : ''}</div>
-  ${body}
+  ${bodyHtml}
 </body></html>`;
+
+/** One section for one firm, as a print block. */
+const printBlock = (s, inst, exps, clients, opts, heading) => `
+    <div class="section">
+      <div class="doc-head">Standard EOI Document</div>
+      <h2>${esc(SECTION_TITLES[s].heading)}</h2>
+      <p class="sub">${esc(SECTION_TITLES[s].note)}</p>
+      ${heading ? `<div class="firm">${esc(heading)}</div>` : ''}
+      ${htmlSection(s, inst, exps, clients, opts)}
+    </div>`;
+
+function buildPrintHTML(inst, exps, clients, reportId, fyRange, opts = {}) {
+  const body = sectionsFor(reportId)
+    .map(s => printBlock(s, inst, exps, clients, opts, inst?.name || ''))
+    .join('');
+  return printShell(`Standard EOI Document — ${inst?.name || ''}`, body);
+}
+
+/**
+ * Multi-firm print, section-major: all firms' copies of a section are grouped
+ * before the next section starts, each firm's copy on its own page. Matches the
+ * Word export, so the review view and the submitted document agree.
+ */
+function buildMultiPrintHTML(firms, clients, reportId, fyRange, opts = {}) {
+  const blocks = [];
+  sectionsFor(reportId).forEach(s => {
+    firms.forEach(({ inst, exps }, fi) => {
+      blocks.push(printBlock(s, inst, exps, clients, opts, firmLabel(inst, fi, firms.length)));
+    });
+  });
+  const body = blocks.join('<div class="page-break"></div>');
+  const who = firms.length === 1 ? (firms[0].inst?.name || '') : `${firms.length} firms`;
+  return printShell(`Standard EOI Document — ${who}`, body);
 }
 
 // ─── CSV (only reachable if a report is ever made non-aggregate) ─────────────
@@ -729,23 +794,23 @@ async function downloadMultiDOCX(firms, clients, reportId, opts = {}) {
 
   const sections = sectionsFor(reportId);
   const children = [];
+  let first = true;
 
-  firms.forEach(({ inst, exps }, fi) => {
-    if (fi > 0) {
-      children.push(new Paragraph({ pageBreakBefore: true, children: [new TextRun({ text: '', size: 19 })] }));
-    }
-    children.push(p('Standard EOI Document', { bold: true, italic: true, align: AlignmentType.CENTER, size: 22 }));
-    children.push(p(inst?.name || '', { bold: true, size: 26, spacing: { before: 160 } }));
-    if (inst?.acronym) children.push(p(inst.acronym, { size: 18 }));
-    children.push(p(''));
+  // Section-major: every firm's copy of a section is grouped together before the
+  // next section starts, each on its own page. The form is filled separately per
+  // constituent member, so an evaluator reads all the firms' section 2, then all
+  // their 3(A), and so on — not one firm's whole document followed by the next's.
+  sections.forEach(s => {
+    firms.forEach(({ inst, exps }, fi) => {
+      if (!first) children.push(new Paragraph({ pageBreakBefore: true, children: [new TextRun({ text: '', size: 19 })] }));
+      first = false;
 
-    sections.forEach(s => {
-      children.push(p(SECTION_TITLES[s].heading, { bold: true, size: 22, spacing: { before: 240, after: 40 } }));
-      children.push(p(SECTION_TITLES[s].note, { italic: true, size: 17, spacing: { after: 120 } }));
+      children.push(p('Standard EOI Document', { bold: true, italic: true, align: AlignmentType.CENTER, size: 22 }));
+      children.push(p(SECTION_TITLES[s].heading, { bold: true, size: 22, spacing: { before: 200, after: 40 } }));
+      children.push(p(SECTION_TITLES[s].note, { italic: true, size: 17, spacing: { after: 140 } }));
+      children.push(p(firmLabel(inst, fi, firms.length), { bold: true, size: 22, spacing: { after: 140 } }));
       children.push(...docxSection(D, kit, s, inst, exps, clients, opts));
-      children.push(p(''));
     });
-
   });
 
   const doc = new Document({
@@ -790,6 +855,11 @@ const bolpatra = {
   buildCSVRow,
   downloadDOCX,
   downloadMultiDOCX,
+  // Section-major multi-firm variants. ReportsView prefers these when several
+  // firms are selected; without them it would concatenate one whole document per
+  // firm, which is the wrong order for a joint-venture submission.
+  renderMultiAggregate,
+  buildMultiPrintHTML,
 };
 
 export default bolpatra;

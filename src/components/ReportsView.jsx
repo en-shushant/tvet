@@ -773,17 +773,25 @@ function ReportsView({ institutes, clients }) {
                         disabled={fwInstIds.length === 0}>⬇ Word (.docx)</Btn>
                     )}
                     <Btn className="btn btn-primary btn-sm" onClick={() => {
-                      const sections = fwSelectedFirms()
-                        .map(({ inst, exps }) => family.buildPrintHTML(inst, exps, clients, report.id, fyRangeLabel, opts))
-                        .filter(Boolean);
-                      if (!sections.length) return;
-                      const first = sections[0];
-                      const bodyParts = sections.map(html => {
-                        const m = html.match(/<body[^>]*>([\s\S]*)<\/body>/i);
-                        return m ? m[1] : '';
-                      });
-                      const combined = first.replace(/<body[^>]*>[\s\S]*<\/body>/i,
-                        `<body>${bodyParts.join('<div style="page-break-before:always"></div>')}</body>`);
+                      const firms = fwSelectedFirms();
+                      if (!firms.length) return;
+                      let combined;
+                      if (family.buildMultiPrintHTML) {
+                        // Family controls cross-firm ordering (bolpatra groups by
+                        // section, not by firm).
+                        combined = family.buildMultiPrintHTML(firms, clients, report.id, fyRangeLabel, opts);
+                      } else {
+                        const docs = firms
+                          .map(({ inst, exps }) => family.buildPrintHTML(inst, exps, clients, report.id, fyRangeLabel, opts))
+                          .filter(Boolean);
+                        if (!docs.length) return;
+                        const bodyParts = docs.map(html => {
+                          const m = html.match(/<body[^>]*>([\s\S]*)<\/body>/i);
+                          return m ? m[1] : '';
+                        });
+                        combined = docs[0].replace(/<body[^>]*>[\s\S]*<\/body>/i,
+                          `<body>${bodyParts.join('<div style="page-break-before:always"></div>')}</body>`);
+                      }
                       const w = window.open('', '_blank');
                       w.document.write(combined);
                       w.document.close();
@@ -877,8 +885,13 @@ function ReportsView({ institutes, clients }) {
                   );
                 })()}
 
-                {/* Per-firm tables */}
-                {fwInstIds.map(id => {
+                {/* Families that order across firms themselves render one block
+                    covering every selected firm (bolpatra groups by section). */}
+                {family.renderMultiAggregate ? (
+                  <div className="card" style={{padding:20}}>
+                    {family.renderMultiAggregate(fwSelectedFirms(), clients, report.id, opts)}
+                  </div>
+                ) : fwInstIds.map(id => {
                   const inst = fwFullInsts[id];
                   if (!inst) return null;
                   const exps = fwExpsFor(inst);
