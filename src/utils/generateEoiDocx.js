@@ -183,13 +183,13 @@ function buildExpTable(exp, clients, sn) {
       ],
     }),
 
-    // Row 4: Address | Approx. value of firm's services
+    // Row 4: Address | Approx. value of firm's services (falls back to contract value)
     new TableRow({
       children: [
         labelCell('Address', clientAddress),
         labelCell(
           'Approx. value of the services provided by your firm under the contract (in current NRs; US$ or Euro)',
-          fmtNrs(exp.ownServiceValue)
+          fmtNrs(exp.ownServiceValue || exp.contractValue)
         ),
       ],
     }),

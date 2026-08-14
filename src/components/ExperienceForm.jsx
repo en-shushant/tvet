@@ -484,7 +484,7 @@ function ExperienceForm({exp, clients, institute, onSave, onClose, onDuplicate, 
                 <MdTextField type="number" label="Total person-months of assignment" value={form.totalPersonMonths} onChange={e=>set('totalPersonMonths', e.target.value)} placeholder="e.g. 24"/>
               </div>
               <div className="form-group">
-                <MdTextField type="number" label="Value of services by your firm (NPR)" value={form.ownServiceValue} onChange={e=>set('ownServiceValue', e.target.value)} placeholder="If different from total contract value"/>
+                <MdTextField type="number" label="Value of firm's services (NPR) — if different from contract value" value={form.ownServiceValue} onChange={e=>set('ownServiceValue', e.target.value)} placeholder="Leave blank to use contract amount"/>
               </div>
             </div>
             {form.isJV && (
