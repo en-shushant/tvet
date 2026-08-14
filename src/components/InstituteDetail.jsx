@@ -21,6 +21,7 @@ import { NARRATIVE_VARIATIONS, SERVICES_VARIATIONS } from '../utils/specificTemp
 import { getSession } from '../utils/auth.js';
 import { usePagination } from '../utils/hooks.js';
 import { exportSummaryToMD, exportSummaryToPDF, exportSummaryToCSV } from '../utils/export.js';
+import { generateEoiDocx } from '../utils/generateEoiDocx.js';
 
 const fmt = (n) => n ? Number(n).toLocaleString('en-IN') : '—';
 const pct = (n, d) => d > 0 ? ((n/d)*100).toFixed(1) + '%' : '—';
@@ -387,10 +388,26 @@ function InstituteDetail({institute, clients, onUpdateClients, onBack, onUpdate,
                 <span className="material-icons-round" style={{fontSize:14,verticalAlign:'middle'}}>warning</span> Missing level/duration
               </button>
             </div>
-            {canEdit && <div style={{display:'flex', gap:6}}>
-              <Btn className="btn btn-secondary btn-sm" onClick={onBulkAdd}>⊞ Bulk add</Btn>
-              <Btn className="btn btn-primary btn-sm" onClick={()=>setModal({type:'addExp'})}>+ Add assignment</Btn>
-            </div>}
+            <div style={{display:'flex', gap:6}}>
+              {institute.experience.length > 0 && (
+                <Btn className="btn btn-secondary btn-sm" onClick={() => {
+                  const visible = institute.experience.filter(e =>
+                    (!expClientFilter || String(e.clientId) === String(expClientFilter)) &&
+                    (!expOccFilter || (expOccFilter === '__missing__'
+                      ? (e.occupations||[]).some(o => !o.ctevtOccupationId)
+                      : (e.occupations||[]).some(o => (getOccupation(o.ctevtOccupationId).name||o.nameInLetter) === expOccFilter))) &&
+                    (!expMissingFilter || (e.occupations||[]).some(o => !o.level || !o.duration))
+                  );
+                  generateEoiDocx(institute, visible, clients);
+                }}>
+                  <span className="material-icons-round" style={{fontSize:14}}>download</span> EOI Report (.docx)
+                </Btn>
+              )}
+              {canEdit && <>
+                <Btn className="btn btn-secondary btn-sm" onClick={onBulkAdd}>⊞ Bulk add</Btn>
+                <Btn className="btn btn-primary btn-sm" onClick={()=>setModal({type:'addExp'})}>+ Add assignment</Btn>
+              </>}
+            </div>
           </div>
 
           {institute.experience.length > 0 && (() => {
