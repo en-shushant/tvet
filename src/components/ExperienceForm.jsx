@@ -10,26 +10,12 @@ import { BulkDistrictPicker } from './BulkDistrictPicker.jsx';
 import { PROVINCES, FISCAL_YEARS, TRAINING_TYPES, SECTORS, OCCUPATIONS, CLIENT_TYPES, getAllDistricts } from '../constants/data.js';
 import { api } from '../utils/api.js';
 import { getSession } from '../utils/auth.js';
-import { DESCRIPTION_VARIATIONS, fillDescriptionTemplate } from '../utils/descriptionTemplates.js';
+import { fillDescriptionTemplate } from '../utils/descriptionTemplates.js';
 import { fillNarrativeTemplate, fillServicesTemplate } from '../utils/specificTemplates.js';
+import { fyToAD, uid } from '../utils/format.js';
+import { toast } from './ui/Feedback.jsx';
 
-const fmt = (n) => n ? Number(n).toLocaleString('en-IN') : '—';
-const fyToAD = (fy) => {
-  if (!fy) return '';
-  const parts = fy.split('/');
-  if (parts.length !== 2) return '';
-  const y1 = parseInt(parts[0]);
-  if (isNaN(y1)) return '';
-  const ad1 = y1 - 57;
-  const ad2 = ad1 + 1;
-  return `${ad1}/${String(ad2).slice(-2)}`;
-};
-const uid = () => Math.random().toString(36).slice(2,9);
 
-function getOccupation(id) {
-  const rawId = typeof id === 'string' && id.startsWith('c:') ? parseInt(id.slice(2)) : id;
-  return OCCUPATIONS.find(o => o.id === rawId) || {};
-}
 
 function DistrictSearch({ value, onChange }) {
   const [q, setQ] = useState('');
@@ -209,20 +195,10 @@ function ExperienceForm({exp, clients, institute, onSave, onClose, onDuplicate, 
   });
   const removeOccLoc = (oi, li) => setForm(f => ({...f, occupations: f.occupations.map((o,idx)=>idx===oi?{...o,locations:o.locations.filter((_,i)=>i!==li)}:o)}));
 
-  const addLoc = () => set('locations', [...form.locations, {id:uid(), province:'', district:'', localLevel:'', localLevelType:''}]);
-  const setLoc = (i, k, v) => {
-    setForm(f => {
-      const newLocs = f.locations.map((l,idx)=>{
-        if(idx!==i) return l;
-        const updated = {...l,[k]:v};
-        if(k==='province') { updated.district=''; updated.localLevel=''; updated.localLevelType=''; }
-        if(k==='district') { updated.localLevel=''; updated.localLevelType=''; }
-        return updated;
-      });
-      return {...f, locations: newLocs};
-    });
-  };
-  const removeLoc = (i) => setForm(f => ({...f, locations: f.locations.filter((_,idx)=>idx!==i)}));
+  // Assignment-level `form.locations` is carried through save/duplicate untouched so
+  // the /assignments contract and the assignment_locations table keep working, but
+  // it has no editor: districts are captured per occupation (addOccLoc above).
+  // The add/set/remove handlers for it were unreachable and have been removed.
 
   // Namespace custom occ IDs to avoid collision with built-in IDs (both start at 1)
   const toOccValue = (rawId) => {
@@ -232,6 +208,45 @@ function ExperienceForm({exp, clients, institute, onSave, onClose, onDuplicate, 
   const fromOccValue = (v) => {
     if (typeof v === 'string' && v.startsWith('c:')) return parseInt(v.slice(2));
     return v;
+  };
+
+  // Long-text field backed by this firm's auto-fill template. The template text is
+  // derived entirely from data already captured on this form (client, occupations,
+  // trainees, districts), so the button exists to avoid retyping it per assignment.
+  // Firms without a configured template still get a normal textarea.
+  const TemplateField = ({ label, field, templateKey, filler, placeholder, hint, rows = 5, style }) => {
+    const variationId = institute?.[templateKey];
+    return (
+      <div className="form-group" style={style}>
+        <div style={{display:'flex', alignItems:'center', justifyContent:'space-between', gap:8, marginBottom:4}}>
+          <label style={{fontSize:12, fontWeight:500, color:'var(--text2)'}}>{label}</label>
+          <button type="button"
+            disabled={!variationId}
+            onClick={() => set(field, filler(variationId, form, institute, clients))}
+            title={variationId
+              ? 'Generate from this firm’s template using the details already entered above'
+              : 'No template set for this firm — an admin can assign one on the firm’s Overview tab'}
+            style={{display:'flex', alignItems:'center', gap:4, fontSize:11, padding:'3px 9px',
+              borderRadius:6, border:'1px solid var(--border)', fontFamily:'var(--font)',
+              background: variationId ? 'var(--bg2)' : 'transparent',
+              color: variationId ? 'var(--accent)' : 'var(--text3)',
+              cursor: variationId ? 'pointer' : 'not-allowed',
+              opacity: variationId ? 1 : 0.55}}>
+            <span className="material-icons-round" style={{fontSize:13}}>auto_awesome</span> Auto-fill
+          </button>
+        </div>
+        <textarea
+          value={form[field] || ''}
+          onChange={e => set(field, e.target.value)}
+          placeholder={placeholder}
+          rows={rows}
+          style={{width:'100%', padding:'8px 12px', borderRadius:'var(--radius)',
+            border:'1px solid var(--border)', background:'var(--bg2)', color:'var(--text)',
+            fontSize:13, fontFamily:'var(--font)', resize:'vertical', boxSizing:'border-box'}}
+        />
+        {hint && <div className="input-hint">{hint}</div>}
+      </div>
+    );
   };
 
   const getDistricts = (provName) => {
@@ -247,7 +262,7 @@ function ExperienceForm({exp, clients, institute, onSave, onClose, onDuplicate, 
   };
 
   const handleSaveTemplate = () => {
-    if(!templateName.trim()) { alert('Enter a template name.'); return; }
+    if(!templateName.trim()) { toast.error('Enter a template name.'); return; }
     saveTemplate({
       name: templateName,
       clientId: form.clientId,
@@ -259,7 +274,7 @@ function ExperienceForm({exp, clients, institute, onSave, onClose, onDuplicate, 
     setTemplates(getTemplates());
     setTemplateName('');
     setShowSaveTemplate(false);
-    alert('Template saved!');
+    toast.success('Template saved');
   };
 
   const handleLoadTemplate = (tpl) => {
@@ -497,27 +512,31 @@ function ExperienceForm({exp, clients, institute, onSave, onClose, onDuplicate, 
                 </div>
               </div>
             )}
-            <div className="form-group">
-              <label style={{fontSize:12, fontWeight:500, color:'var(--text2)', marginBottom:4, display:'block'}}>Narrative description of Project</label>
-              <textarea
-                value={form.narrativeDescription || ''}
-                onChange={e => set('narrativeDescription', e.target.value)}
-                placeholder="Describe the project scope, objectives, and context. Each line will appear as a separate paragraph in the report."
-                rows={5}
-                style={{width:'100%', padding:'8px 12px', borderRadius:'var(--radius)', border:'1px solid var(--border)', background:'var(--bg2)', color:'var(--text1)', fontSize:13, fontFamily:'var(--font)', resize:'vertical', boxSizing:'border-box'}}
-              />
-              <div className="input-hint">Each new line becomes a separate paragraph in the Word report.</div>
-            </div>
-            <div className="form-group" style={{marginBottom:0}}>
-              <label style={{fontSize:12, fontWeight:500, color:'var(--text2)', marginBottom:4, display:'block'}}>Description of actual services provided in the assignment</label>
-              <textarea
-                value={form.actualServicesDescription || ''}
-                onChange={e => set('actualServicesDescription', e.target.value)}
-                placeholder="Highlight similar services provided by your firm relevant to this EOI assignment."
-                rows={5}
-                style={{width:'100%', padding:'8px 12px', borderRadius:'var(--radius)', border:'1px solid var(--border)', background:'var(--bg2)', color:'var(--text1)', fontSize:13, fontFamily:'var(--font)', resize:'vertical', boxSizing:'border-box'}}
-              />
-            </div>
+            <TemplateField
+              label="Description of work carried out"
+              field="descriptionOfWork"
+              templateKey="descTemplateId"
+              filler={fillDescriptionTemplate}
+              placeholder="Summarise the work delivered under this assignment."
+              hint="Used in 3(A) General Work Experience."
+              rows={3}
+            />
+            <TemplateField
+              label="Narrative description of Project"
+              field="narrativeDescription"
+              templateKey="narrativeTemplateId"
+              filler={fillNarrativeTemplate}
+              placeholder="Describe the project scope, objectives, and context."
+              hint="Each new line becomes a separate paragraph in the Word report."
+            />
+            <TemplateField
+              label="Description of actual services provided in the assignment"
+              field="actualServicesDescription"
+              templateKey="servicesTemplateId"
+              filler={fillServicesTemplate}
+              placeholder="Highlight similar services provided by your firm relevant to this EOI assignment."
+              style={{marginBottom:0}}
+            />
           </div>
         )}
       </div>

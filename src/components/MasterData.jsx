@@ -8,8 +8,9 @@ import LocationsEditor from './LocationsEditor.jsx';
 import { CLIENT_TYPES, TRAINING_TYPES, TRAINING_TYPES_DEFAULT, SECTORS, NSTB_LEVELS, INSTITUTE_TYPES, INSTITUTE_STATUSES, AFFILIATION_TYPES, LOCAL_LEVEL_TYPES, FISCAL_YEARS, OCCUPATIONS, getTrainingTypes, saveTrainingTypes, setTrainingTypesVar, getFiscalYears, saveFiscalYears, setFiscalYearsVar, getCurrentFY, saveCurrentFY } from '../constants/data.js';
 import { api, clientToAPI, normClient } from '../utils/api.js';
 import { getSession } from '../utils/auth.js';
+import { uid } from '../utils/format.js';
+import { confirmDialog, toast } from './ui/Feedback.jsx';
 
-const uid = () => Math.random().toString(36).slice(2,9);
 
 function MasterData({clients, onUpdateClients, token, isAdmin, isEditor, isSuperAdmin}) {
   const [tab, setTab] = useState('clients');
@@ -109,7 +110,7 @@ function MasterData({clients, onUpdateClients, token, isAdmin, isEditor, isSuper
   };
 
   const deleteTool = async (id) => {
-    if (!confirm('Delete this item?')) return;
+    if (!await confirmDialog({ title:'Delete item', message:'This item will be permanently deleted.', confirmLabel:'Delete', danger:true })) return;
     try {
       await api('DELETE', `/occupation-tools/${id}`, null, token);
       setToolsList(prev => prev.filter(t => t.id !== id));
@@ -120,7 +121,7 @@ function MasterData({clients, onUpdateClients, token, isAdmin, isEditor, isSuper
 
   const deleteSelectedTools = async () => {
     if (!toolsSelected.length) return;
-    if (!confirm(`Delete ${toolsSelected.length} selected item${toolsSelected.length!==1?'s':''}?`)) return;
+    if (!await confirmDialog({ title:'Delete selected items', message:`${toolsSelected.length} item${toolsSelected.length!==1?'s':''} will be permanently deleted.`, confirmLabel:'Delete', danger:true })) return;
     for (const id of toolsSelected) {
       try {
         await api('DELETE', `/occupation-tools/${id}`, null, token);
@@ -148,7 +149,7 @@ function MasterData({clients, onUpdateClients, token, isAdmin, isEditor, isSuper
   const addFY = () => {
     const v = fyInput.trim();
     if (!v) return;
-    if (!/^\d{4}\/\d{2}$/.test(v)) { alert('Format must be YYYY/YY e.g. 2083/84'); return; }
+    if (!/^\d{4}\/\d{2}$/.test(v)) { toast.error('Fiscal year must look like 2083/84.'); return; }
     if (fiscalYears.includes(v)) return;
     const sorted = [...fiscalYears, v].sort();
     saveFY(sorted); setFyInput('');
@@ -363,7 +364,7 @@ function MasterData({clients, onUpdateClients, token, isAdmin, isEditor, isSuper
   };
 
   const deleteOccupation = async (occ) => {
-    if (!confirm(`Delete "${occ.name}"?`)) return;
+    if (!await confirmDialog({ title:'Delete occupation', message:`“${occ.name}” will be permanently deleted.`, confirmLabel:'Delete', danger:true })) return;
     setMasterErr('');
     try {
       await api('DELETE', `/occupations/${occ.id}`, null, token);

@@ -8,6 +8,7 @@ import { api, normInst, clientToAPI, normClient } from '../utils/api.js';
 import { API_URL_KEY, getApiBase } from '../utils/api.js';
 import { getSession, setSession, clearSession, loadUsers, saveUsers } from '../utils/auth.js';
 import { INSTITUTE_TYPES, OCCUPATIONS } from '../constants/data.js';
+import { confirmDialog } from './ui/Feedback.jsx';
 
 function LoginPage({ onLogin }) {
   const [email, setEmail] = useState('');
@@ -396,7 +397,7 @@ function UserManagement({institutes, isSuperAdmin}) {
   };
 
   const deleteUser = async (u) => {
-    if (!confirm(`Delete ${u.name}? This cannot be undone.`)) return;
+    if (!await confirmDialog({ title:'Delete user', message:`${u.name} will be permanently deleted. This cannot be undone.`, confirmLabel:'Delete', danger:true })) return;
     setActionErr('');
     try {
       await api('DELETE', `/users/${u.id}`, null, token);

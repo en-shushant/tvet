@@ -4,6 +4,7 @@ import {
 } from 'docx';
 import { saveAs } from 'file-saver';
 import { buildTurnoverData, buildGeneralExpData, buildSpecificOccData, fmt } from './helvetasData.js';
+import { toast } from '../components/ui/Feedback.jsx';
 
 // ── Shared cell builders ──────────────────────────────────────────────────────
 
@@ -216,7 +217,7 @@ export async function downloadHelvetasDOCX(fullInst, activeExps, reportId, opts 
   else if (reportId === 'h2') sections = makeTable2(fullInst, activeExps, occupations, sortBy) || [];
   else if (reportId === 'h3') sections = makeTable3(fullInst, activeExps, selectedOccs, occupations) || [];
   if (!sections.length) {
-    alert('No data to export for the selected filters.');
+    toast.error('No data to export for the selected filters.');
     return;
   }
 

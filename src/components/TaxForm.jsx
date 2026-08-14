@@ -5,15 +5,8 @@ import { useUnsavedGuard } from './ui/UnsavedGuard.jsx';
 import SearchableSelect from './ui/SearchableSelect.jsx';
 import { FISCAL_YEARS } from '../constants/data.js';
 import { Btn, MdTextField } from '../md.jsx';
+import { fyToAD } from '../utils/format.js';
 
-const fyToAD = (fy) => {
-  if (!fy) return '';
-  const parts = fy.split('/');
-  if (parts.length !== 2) return '';
-  const y1 = parseInt(parts[0]);
-  if (isNaN(y1)) return '';
-  return `${y1-57}/${String(y1-57+1).slice(-2)}`;
-};
 
 function TaxForm({record, onSave, onClose}) {
   const [form, setForm] = useState(record || {

@@ -1,6 +1,6 @@
-export const getClient = (clients, id) => (clients || []).find(c => c.id === id) || {};
-
-export const fmt = (n) => n ? Number(n).toLocaleString('en-IN') : '—';
+// Re-exported so report families keep their existing import path while there is
+// only one implementation of each helper.
+export { getClient, fmt } from '../utils/format.js';
 
 export const fyToYear = (fy) => {
   if (!fy) return '';

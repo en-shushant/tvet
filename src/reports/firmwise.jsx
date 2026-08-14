@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
 import { esc, fyYear, fyInRange } from './helpers.js';
-import { buildFirmWiseData, fmt } from './helvetasData.js';
+import { buildFirmWiseData } from './helvetasData.js';
 import {
   Document, Packer, Table, TableRow, TableCell, Paragraph, TextRun,
   WidthType, AlignmentType, VerticalAlign, HeadingLevel,
 } from 'docx';
 import { saveAs } from 'file-saver';
+import { toast } from '../components/ui/Feedback.jsx';
 
 export const REPORTS = [
   {
@@ -335,7 +336,7 @@ function dataCell(text, opts = {}) {
 async function downloadNSTBDOCX(fullInst, activeExps, opts = {}) {
   const { selectedOccs = [] } = opts;
   const { occs, grand, allFYs } = buildNSTBData(fullInst, activeExps, selectedOccs, opts);
-  if (!occs.length) { alert('No NSTB data to export.'); return; }
+  if (!occs.length) { toast.error('No NSTB data to export.'); return; }
   const fyPart = allFYs.length > 1 ? ` (FY ${allFYs[0]} to ${allFYs[allFYs.length - 1]})` : allFYs.length === 1 ? ` (FY ${allFYs[0]})` : '';
   const firmName = fullInst?.name || 'Report';
   const p = (n, d) => d > 0 ? `${Math.round((n / d) * 100)}%` : '—';
@@ -376,7 +377,7 @@ async function downloadDOCX(fullInst, activeExps, reportId, opts = {}) {
   if (reportId === 'fw2') return downloadNSTBDOCX(fullInst, activeExps, opts);
   const { occupations = [], selectedOccs = [] } = opts;
   const { occs, grand, allFYs } = buildFirmWiseData(fullInst, activeExps, occupations, { selectedOccs });
-  if (!occs.length) { alert('No data to export.'); return; }
+  if (!occs.length) { toast.error('No data to export.'); return; }
 
   const fyPart = allFYs.length > 1
     ? ` (FY ${allFYs[0]} to ${allFYs[allFYs.length - 1]})`

@@ -5,8 +5,8 @@ import { useUnsavedGuard } from './ui/UnsavedGuard.jsx';
 import SearchableSelect from './ui/SearchableSelect.jsx';
 import { AFFILIATION_TYPES, OCCUPATIONS } from '../constants/data.js';
 import { Btn, MdTextField, MdSelect, MdOption } from '../md.jsx';
+import { uid } from '../utils/format.js';
 
-const uid = () => Math.random().toString(36).slice(2,9);
 
 function AffiliationForm({record, onSave, onClose}) {
   const [form, setForm] = useState(record || {

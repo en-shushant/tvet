@@ -73,6 +73,40 @@ async function plugin(fastify, opts) {
     return rows;
   });
 
+  // Bulk payload for cross-firm search (Project Compliance). Returns every
+  // institute with just the assignment/occupation/turnover data those filters
+  // read, in three queries — the caller previously fetched GET /:id once per
+  // institute, which was six queries per firm and unbounded in the number of firms.
+  // Declared before '/:id' so "compliance" is never parsed as an id.
+  fastify.get('/compliance', async (request, reply) => {
+    const [insts, assignments, tax] = await Promise.all([
+      pool.query('SELECT id, name, acronym, type, status FROM institutes ORDER BY name'),
+      pool.query(`
+        SELECT a.id, a.institute_id, a.client_id, a.client_name_manual, a.fiscal_year,
+               a.assignment_name, a.contract_amount, a.contract_value,
+               json_agg(
+                 jsonb_build_object(
+                   'id', ao.id,
+                   'ctevt_occupation_id', ao.ctevt_occupation_id,
+                   'name_in_letter', ao.name_in_letter,
+                   'trainees', ao.trainees,
+                   'duration', ao.duration,
+                   'level', ao.level,
+                   'locations', ao.locations
+                 ) ORDER BY ao.sort_order, ao.id
+               ) FILTER (WHERE ao.id IS NOT NULL) AS occupations
+        FROM assignments a
+        LEFT JOIN assignment_occupations ao ON ao.assignment_id = a.id
+        GROUP BY a.id`),
+      pool.query('SELECT institute_id, fiscal_year, turnover FROM tax_clearances'),
+    ]);
+
+    const byInst = new Map(insts.rows.map(i => [i.id, { ...i, experience: [], taxClearance: [] }]));
+    for (const a of assignments.rows) byInst.get(a.institute_id)?.experience.push(a);
+    for (const t of tax.rows) byInst.get(t.institute_id)?.taxClearance.push(t);
+    return [...byInst.values()];
+  });
+
   fastify.get('/:id', async (request, reply) => {
     const { id } = request.params;
     const [inst, assignments, nstb, tax, affiliations, infrastructure] = await Promise.all([

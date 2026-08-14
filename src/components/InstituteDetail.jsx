@@ -13,7 +13,7 @@ import TaxForm from './TaxForm.jsx';
 import AffiliationForm from './AffiliationForm.jsx';
 import ExpCard from './ExpCard.jsx';
 import ClientDocuments from './ClientDocuments.jsx';
-import { FISCAL_YEARS, NSTB_LEVELS, OCCUPATIONS } from '../constants/data.js';
+import { FISCAL_YEARS, NSTB_LEVELS } from '../constants/data.js';
 import { api, instToAPI, expToAPI, nstbToAPI, taxToAPI, affToAPI, clientToAPI, normClient } from '../utils/api.js';
 import { Btn, MdTextField } from '../md.jsx';
 import { DESCRIPTION_VARIATIONS } from '../utils/descriptionTemplates.js';
@@ -22,27 +22,11 @@ import { getSession } from '../utils/auth.js';
 import { usePagination } from '../utils/hooks.js';
 import { exportSummaryToMD, exportSummaryToPDF, exportSummaryToCSV } from '../utils/export.js';
 import { generateEoiDocx } from '../utils/generateEoiDocx.js';
+import { fmt, fyToAD, getClient, getOccupation, pct } from '../utils/format.js';
+import { toast } from './ui/Feedback.jsx';
 
-const fmt = (n) => n ? Number(n).toLocaleString('en-IN') : '—';
-const pct = (n, d) => d > 0 ? ((n/d)*100).toFixed(1) + '%' : '—';
-const uid = () => Math.random().toString(36).slice(2,9);
-const fyToAD = (fy) => {
-  if (!fy) return '';
-  const parts = fy.split('/');
-  if (parts.length !== 2) return '';
-  const y1 = parseInt(parts[0]);
-  if (isNaN(y1)) return '';
-  return `${y1-57}/${String(y1-57+1).slice(-2)}`;
-};
 
-function getClient(clients, id) {
-  return clients.find(c => c.id === id) || {};
-}
 
-function getOccupation(id) {
-  const rawId = typeof id === 'string' && id.startsWith('c:') ? parseInt(id.slice(2)) : id;
-  return OCCUPATIONS.find(o => o.id === rawId) || {};
-}
 
 
 function InstituteDetail({institute, clients, onUpdateClients, onBack, onUpdate, onRefresh, onDelete, token, isAdmin, isEditor, isSuperAdmin, isShortlistOnly, jumpToTab, onBulkAdd, onAddNSTB}) {
@@ -313,12 +297,17 @@ function InstituteDetail({institute, clients, onUpdateClients, onBack, onUpdate,
           </div>
         </div>{/* end grid-2 */}
 
-        {/* Superadmin: description template assignment — hidden until PPMO format is finalized */}
-        {false && getSession()?.role === 'superadmin' && (
+        {/* Per-firm auto-fill templates. Drives the Auto-fill buttons in the
+            assignment form, so this prose is written once per firm rather than
+            retyped for every assignment. */}
+        {isAdmin && (
           <div className="card" style={{marginTop:16}}>
-            <div className="section-title">✨ Auto-fill templates (superadmin)</div>
+            <div className="section-title">
+              <span className="material-icons-round" style={{fontSize:17, verticalAlign:'middle', marginRight:6}}>auto_awesome</span>
+              Auto-fill templates
+            </div>
             <div style={{fontSize:13, color:'var(--text3)', marginBottom:14}}>
-              Assign variation templates for this firm. The matching ✨ Auto-fill button appears in the assignment form when adding or editing assignments.
+              Choose the wording this firm uses for each EOI narrative field. An Auto-fill button then appears on the assignment form, generating the text from the details already entered.
             </div>
             {[
               { label: '3(A) Description of work carried out', key: 'descTemplateId', apiKey: 'desc_template_id', variations: DESCRIPTION_VARIATIONS },
@@ -336,7 +325,7 @@ function InstituteDetail({institute, clients, onUpdateClients, onBack, onUpdate,
                         const updated = {...institute, [slot.key]: val};
                         await api('PUT', `/institutes/${institute.id}`, instToAPI(updated), token);
                         if (onUpdate) onUpdate(updated);
-                      } catch(err) { alert('Failed to save: ' + err.message); }
+                      } catch(err) { toast.error('Failed to save: ' + err.message); }
                     }}>
                     <option value="">— No template —</option>
                     {slot.variations.map(v => <option key={v.id} value={v.id}>{v.label}</option>)}

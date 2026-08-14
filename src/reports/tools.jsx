@@ -7,6 +7,7 @@ import { saveAs } from 'file-saver';
 import { esc } from './helpers.js';
 import { api } from '../utils/api.js';
 import { getSession } from '../utils/auth.js';
+import { toast } from '../components/ui/Feedback.jsx';
 
 const ALL_COLUMNS = [
   { key: 'sn',          label: 'S.N.' },
@@ -258,7 +259,7 @@ async function downloadToolsDOCX(fullInst, activeExps, reportId, opts = {}) {
   const groups = Math.max(1, parseInt(numGroups) || 1);
   const scaledQty = (t) => t.quantity != null ? t.quantity * groups : null;
 
-  if (!toolsOccIds.length || !toolsLevel) { alert('Select occupation and level first.'); return; }
+  if (!toolsOccIds.length || !toolsLevel) { toast.error('Select occupation and level first.'); return; }
 
   const cols = ALL_COLUMNS.filter(c => toolsColumns.includes(c.key));
   const token = getSession()?.token;

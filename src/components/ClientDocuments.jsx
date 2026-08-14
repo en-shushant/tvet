@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { ErrorBanner } from './ui/Modal.jsx';
 import { api } from '../utils/api.js';
 import { Btn } from '../md.jsx';
+import { confirmDialog } from './ui/Feedback.jsx';
 
 function ClientDocuments({ client, instituteId, token, canEdit, isAdmin }) {
   const [docs, setDocs] = useState([]);
@@ -66,7 +67,7 @@ function ClientDocuments({ client, instituteId, token, canEdit, isAdmin }) {
   };
 
   const deleteDoc = async (doc) => {
-    if (!confirm(`Delete "${doc.file_name}"?`)) return;
+    if (!await confirmDialog({ title:'Delete document', message:`“${doc.file_name}” will be permanently deleted.`, confirmLabel:'Delete', danger:true })) return;
     setDocErr('');
     try {
       await api('DELETE', `/documents/${doc.id}`, null, token);

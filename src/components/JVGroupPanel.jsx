@@ -1,14 +1,9 @@
 import { useState, useMemo } from 'react';
-import { FISCAL_YEARS, CLIENT_TYPES, OCCUPATIONS } from '../constants/data.js';
+import { FISCAL_YEARS, CLIENT_TYPES } from '../constants/data.js';
 import { Btn } from '../md.jsx';
+import { getOccupation } from '../utils/format.js';
 
-const pct = (n, d) => d > 0 ? ((n/d)*100).toFixed(1) + '%' : '—';
-const fmt = (n) => n ? Number(n).toLocaleString('en-IN') : '—';
 
-function getOccupation(id) {
-  const rawId = typeof id === 'string' && id.startsWith('c:') ? parseInt(id.slice(2)) : id;
-  return OCCUPATIONS.find(o => o.id === rawId) || {};
-}
 
 function computeInstStats(inst, {selectedFYs, selectedClientTypes, selectedOccs, minDuration, clients}) {
   const occMatch = (occ, soLow) => {

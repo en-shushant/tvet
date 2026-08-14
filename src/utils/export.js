@@ -1,5 +1,6 @@
+import { toast } from '../components/ui/Feedback.jsx';
 export function exportToCSV(rows, filename) {
-  if(!rows || rows.length === 0) { alert('No data to export.'); return; }
+  if(!rows || rows.length === 0) { toast.error('No data to export.'); return; }
   const headers = Object.keys(rows[0]);
   const csv = [
     headers.join(','),

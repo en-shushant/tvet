@@ -1,5 +1,5 @@
 import React from 'react';
-import { getClient, fmt, monthsBetween, districtsOf, esc, fyInRange } from './helpers.js';
+import { getClient, monthsBetween, districtsOf, esc, fyInRange } from './helpers.js';
 import { loadDocx, loadFileSaver } from './docxLazy.js';
 
 // ─── Standard EOI Document (Bolpatra) ────────────────────────────────────────

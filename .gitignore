@@ -22,3 +22,4 @@ proxy.php
 nepal_locations_final.json
 vercel.json
 railway.toml
+dist/

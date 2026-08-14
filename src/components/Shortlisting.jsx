@@ -6,6 +6,8 @@ import { getSession } from '../utils/auth.js';
 import { FISCAL_YEARS, getCurrentFY } from '../constants/data.js';
 import { adToBS, bsToAD, BS_MONTHS, BS_DATA, toNpNum } from '../constants/nepali.js';
 import { loadKalimatiCss } from '../utils/kalimatiFont.js';
+import { fmtDate } from '../utils/format.js';
+import { toast } from './ui/Feedback.jsx';
 
 const LetterBuilderLazy = lazy(() => import('./LetterBuilder.jsx'));
 function LetterBuilderWrapper({ row, onClose, allRows }) {
@@ -77,7 +79,6 @@ function ShortlistDocUpload({ value, onChange, token }) {
   );
 }
 
-const fmt = (d) => d ? new Date(d + 'T00:00:00').toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'numeric' }) : '—';
 
 function adDateToBS(adStr) {
   if (!adStr) return '';
@@ -324,7 +325,7 @@ async function openShortlistLetter(row, opts = {}) {
   const listName  = row.standing_list_name || 'Standing List';
   const fy        = row.fy || '';
   const dateBS    = bsDateLabel(row.shortlist_date);
-  const dateAD    = fmt(row.shortlist_date);
+  const dateAD    = fmtDate(row.shortlist_date);
   const status    = row.status || 'Active';
   const remarks   = row.remarks || '';
   const todayBSStr = todayBS();
@@ -1961,7 +1962,7 @@ function ContractsPanel({ clientId, clientNameManual, groupRows, canEdit, isAdmi
       else await api('POST', '/contracts', payload, token);
       await loadContracts();
       setCModal(null);
-    } catch(e) { alert(e.message || 'Save failed'); }
+    } catch(e) { toast.error(e.message || 'Save failed'); }
     finally { setSaving(false); }
   };
 
@@ -1971,7 +1972,7 @@ function ContractsPanel({ clientId, clientNameManual, groupRows, canEdit, isAdmi
       await api('DELETE', `/contracts/${cModal.data.id}`, null, token);
       await loadContracts();
       setCModal(null);
-    } catch(e) { alert(e.message || 'Delete failed'); }
+    } catch(e) { toast.error(e.message || 'Delete failed'); }
     finally { setSaving(false); }
   };
 
@@ -1983,7 +1984,7 @@ function ContractsPanel({ clientId, clientNameManual, groupRows, canEdit, isAdmi
       else await api('POST', '/quotations', payload, token);
       await loadQuotations(qModal.contractId);
       setQModal(null);
-    } catch(e) { alert(e.message || 'Save failed'); }
+    } catch(e) { toast.error(e.message || 'Save failed'); }
     finally { setSaving(false); }
   };
 
@@ -1993,7 +1994,7 @@ function ContractsPanel({ clientId, clientNameManual, groupRows, canEdit, isAdmi
       await api('DELETE', `/quotations/${qModal.data.id}`, null, token);
       await loadQuotations(qModal.contractId);
       setQModal(null);
-    } catch(e) { alert(e.message || 'Delete failed'); }
+    } catch(e) { toast.error(e.message || 'Delete failed'); }
     finally { setSaving(false); }
   };
 
@@ -2099,7 +2100,7 @@ function ContractsPanel({ clientId, clientNameManual, groupRows, canEdit, isAdmi
                             <span style={{fontSize:11, color:'var(--text3)', marginLeft:6}}>FY {q.shortlist_fy}</span>
                           </div>
                           <div style={{width:110, fontSize:12.5, color:'var(--text2)', flexShrink:0}}>
-                            {fmt(q.quotation_date)}
+                            {fmtDate(q.quotation_date)}
                           </div>
                           <div style={{width:130, fontSize:13, fontWeight:600, color:'var(--text)', flexShrink:0}}>
                             {q.quoted_amount != null ? Number(q.quoted_amount).toLocaleString() : '—'}
@@ -2483,12 +2484,6 @@ function TableHead({ groupBy }) {
 
 // ── Main component ─────────────────────────────────────────────────────────────
 function printShortlistReport(rows, groupBy, filters = {}) {
-  const fmt = (d) => {
-    if (!d) return '—';
-    try { return new Date(d).toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'numeric' }); }
-    catch { return d; }
-  };
-
   // Group rows
   const map = new Map();
   for (const r of rows) {
@@ -2529,8 +2524,8 @@ function printShortlistReport(rows, groupBy, filters = {}) {
         ? [r.institute_acronym ? `[${r.institute_acronym}]` : '', r.institute_name].filter(Boolean).join(' ')
         : (r.client_name || r.client_name_manual || '—');
       const list  = r.standing_list_name || r.client_short || '—';
-      const date  = fmt(r.shortlist_date);
-      const valid = fmt(r.valid_until);
+      const date  = fmtDate(r.shortlist_date);
+      const valid = fmtDate(r.valid_until);
       const fy    = r.fy || '—';
       const amt   = r.contract_amount ? `NPR ${Number(r.contract_amount).toLocaleString()}` : '—';
       const st    = r.status || 'Active';
@@ -2697,7 +2692,7 @@ export default function Shortlisting({ institutes, clients, isAdmin, isEditor, i
       await api('DELETE', `/standing-lists/${list.id}?force=1`, null, token);
       setListModal(null);
       await load();
-    } catch (e) { alert(e.message || 'Delete failed'); }
+    } catch (e) { toast.error(e.message || 'Delete failed'); }
     finally { setSaving(false); }
   };
 
@@ -2759,7 +2754,7 @@ export default function Shortlisting({ institutes, clients, isAdmin, isEditor, i
       }
       await load();
       setModal(null);
-    } catch(e) { alert(e.message || 'Save failed'); }
+    } catch(e) { toast.error(e.message || 'Save failed'); }
     finally { setSaving(false); }
   };
 
@@ -2769,7 +2764,7 @@ export default function Shortlisting({ institutes, clients, isAdmin, isEditor, i
       const existing = rows.find(r => r.id === id);
       await api('PUT', `/shortlists/${id}`, { ...existing, ...patch }, token);
       await load();
-    } catch(e) { alert(e.message || 'Save failed'); }
+    } catch(e) { toast.error(e.message || 'Save failed'); }
     finally { setSaving(false); }
   };
 
@@ -2779,7 +2774,7 @@ export default function Shortlisting({ institutes, clients, isAdmin, isEditor, i
       await api('DELETE', `/shortlists/${modal.data.id}`, null, token);
       await load();
       setModal(null);
-    } catch(e) { alert(e.message || 'Delete failed'); }
+    } catch(e) { toast.error(e.message || 'Delete failed'); }
     finally { setSaving(false); }
   };
 

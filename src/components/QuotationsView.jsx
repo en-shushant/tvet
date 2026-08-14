@@ -9,12 +9,13 @@ import { api } from '../utils/api.js';
 import { getSession } from '../utils/auth.js';
 import { FISCAL_YEARS, getCurrentFY } from '../constants/data.js';
 import { adToBS, bsToAD, BS_MONTHS, BS_DATA, toNpNum } from '../constants/nepali.js';
+import { fmtDate } from '../utils/format.js';
+import { toast } from './ui/Feedback.jsx';
 
 const FYS = [...FISCAL_YEARS].reverse();
 const QUOTE_STATUS = ['Quoted', 'Awarded', 'Rejected'];
 
 // ── helpers ──────────────────────────────────────────────────────────────────
-const fmt = d => d ? new Date(d + 'T00:00:00').toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'numeric' }) : '—';
 const npNum = n => String(n).split('').map(d => '०१२३४५६७८९'[+d] ?? d).join('');
 const fmtNPR = v => v != null ? `NPR ${Number(v).toLocaleString()}` : '—';
 
@@ -142,7 +143,7 @@ function ShortlistTab({ institutes, clients, isAdmin, canEdit, token }) {
     try {
       await api('DELETE', `/shortlists/${modal.data.id}`, null, token);
       await load(); setModal(null);
-    } catch(e) { alert(e.message); }
+    } catch(e) { toast.error(e.message); }
     finally { setSaving(false); }
   };
 
@@ -215,7 +216,7 @@ function ShortlistTab({ institutes, clients, isAdmin, canEdit, token }) {
                 <span style={{ fontSize:11, fontWeight:600, padding:'2px 8px', borderRadius:100, background:'var(--primary-light)', color:'var(--primary-dark)' }}>{r.fy||'—'}</span>
               </div>
               {/* Date */}
-              <div style={{ width:100, fontSize:12, color:'var(--text3)', flexShrink:0 }}>{fmt(r.shortlist_date)}</div>
+              <div style={{ width:100, fontSize:12, color:'var(--text3)', flexShrink:0 }}>{fmtDate(r.shortlist_date)}</div>
               {/* Status */}
               <div style={{ width:80, flexShrink:0 }}>
                 <span style={{ fontSize:11, fontWeight:600, padding:'2px 8px', borderRadius:100, background:c.bg, color:c.cl }}>{r.status}</span>
@@ -329,7 +330,7 @@ function ContractsTab({ isAdmin, canEdit, token }) {
       if (cModal?.data?.id) await api('PUT', `/contracts/${cModal.data.id}`, data, token);
       else await api('POST', '/contracts', data, token);
       await loadContracts(); setCModal(null);
-    } catch(e) { alert(e.message); }
+    } catch(e) { toast.error(e.message); }
     finally { setSaving(false); }
   };
 
@@ -338,7 +339,7 @@ function ContractsTab({ isAdmin, canEdit, token }) {
     try {
       await api('DELETE', `/contracts/${cModal.data.id}`, null, token);
       await loadContracts(); setCModal(null);
-    } catch(e) { alert(e.message); }
+    } catch(e) { toast.error(e.message); }
     finally { setSaving(false); }
   };
 
@@ -348,7 +349,7 @@ function ContractsTab({ isAdmin, canEdit, token }) {
       if (qModal?.data?.id) await api('PUT', `/quotations/${qModal.data.id}`, form, token);
       else await api('POST', '/quotations', { ...form, contract_id: qModal.contractId }, token);
       await loadQ(qModal.contractId); setQModal(null);
-    } catch(e) { alert(e.message); }
+    } catch(e) { toast.error(e.message); }
     finally { setSaving(false); }
   };
 
@@ -357,7 +358,7 @@ function ContractsTab({ isAdmin, canEdit, token }) {
     try {
       await api('DELETE', `/quotations/${qModal.data.id}`, null, token);
       await loadQ(qModal.contractId); setQModal(null);
-    } catch(e) { alert(e.message); }
+    } catch(e) { toast.error(e.message); }
     finally { setSaving(false); }
   };
 
@@ -460,7 +461,7 @@ function ContractsTab({ isAdmin, canEdit, token }) {
                             {q.institute_name}
                             <span style={{ fontSize:10.5, color:'var(--text3)', marginLeft:6 }}>FY {q.shortlist_fy}</span>
                           </div>
-                          <div style={{ width:110, fontSize:12.5, color:'var(--text2)', flexShrink:0 }}>{fmt(q.quotation_date)}</div>
+                          <div style={{ width:110, fontSize:12.5, color:'var(--text2)', flexShrink:0 }}>{fmtDate(q.quotation_date)}</div>
                           <div style={{ width:120, fontSize:13, fontWeight:600, flexShrink:0 }}>{q.quoted_amount!=null?Number(q.quoted_amount).toLocaleString():'—'}</div>
                           <div style={{ width:84, flexShrink:0 }}>
                             <span style={{ fontSize:11, fontWeight:600, padding:'2px 8px', borderRadius:100, background:c2.bg, color:c2.cl }}>{q.status}</span>

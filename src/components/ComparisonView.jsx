@@ -1,19 +1,14 @@
 import { useState, useEffect, useMemo } from 'react';
-import { FISCAL_YEARS, OCCUPATIONS } from '../constants/data.js';
+import { FISCAL_YEARS } from '../constants/data.js';
 import { exportComparisonToCSV } from '../utils/export.js';
 import { Btn } from '../md.jsx';
 import { getSession } from '../utils/auth.js';
 import { api, normInst } from '../utils/api.js';
 import StatusBadge from './ui/StatusBadge.jsx';
 import JVGroupPanel from './JVGroupPanel.jsx';
+import { fmt, getOccupation, pct } from '../utils/format.js';
 
-const fmt = (n) => n ? Number(n).toLocaleString('en-IN') : '—';
-const pct = (n, d) => d > 0 ? ((n/d)*100).toFixed(1) + '%' : '—';
 
-function getOccupation(id) {
-  const rawId = typeof id === 'string' && id.startsWith('c:') ? parseInt(id.slice(2)) : id;
-  return OCCUPATIONS.find(o => o.id === rawId) || {};
-}
 
 function ComparisonView({institutes, clients}) {
   const [selectedInsts, setSelectedInsts] = useState([]);

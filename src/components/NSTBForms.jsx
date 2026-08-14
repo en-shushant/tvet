@@ -5,15 +5,8 @@ import { ErrorBanner } from './ui/Modal.jsx';
 import SearchableSelect from './ui/SearchableSelect.jsx';
 import { FISCAL_YEARS, NSTB_LEVELS, OCCUPATIONS } from '../constants/data.js';
 import { Btn, MdTextField, MdSelect, MdOption } from '../md.jsx';
+import { fyToAD } from '../utils/format.js';
 
-const fyToAD = (fy) => {
-  if (!fy) return '';
-  const parts = fy.split('/');
-  if (parts.length !== 2) return '';
-  const y1 = parseInt(parts[0]);
-  if (isNaN(y1)) return '';
-  return `${y1-57}/${String(y1-57+1).slice(-2)}`;
-};
 
 // ─── NSTB FORM ───────────────────────────────────────────────────────────────
 

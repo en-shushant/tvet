@@ -233,6 +233,10 @@ md-secondary-tab {
   --text: #13202F;
   --text2: #344563;
   --text3: #5E7491;
+  /* Alias: several components (SearchableSelect, form inputs) were authored
+     against --text1. Undefined custom properties resolve to nothing rather than
+     erroring, so those elements silently lost their colour. */
+  --text1: var(--text);
 
   /* ── M3 surface tier aliases (semantic names for bg/bg2/bg3) ── */
   --surface-dim:            var(--bg2);
@@ -1314,6 +1318,7 @@ textarea { resize: vertical; min-height: 80px; }
     --text:    #E8EFF7;
     --text2:   #A8BCCC;
     --text3:   #6E8AA0;
+    --text1:   var(--text);
 
     /* Legacy */
     --accent:       var(--primary-dark);

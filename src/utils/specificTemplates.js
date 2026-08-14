@@ -73,7 +73,7 @@ export const NARRATIVE_VARIATIONS = [
     id: 'n11',
     label: 'N11 — Skill test + employment linkage (bullet points)',
     preview:
-      '• Provide {durationHours} hours\' Level {level} skill training on {occupations} to {totalTrainees} trainees.\n{skillTestLine}\n{employmentLine}\n• Implement the training program within {numDistricts} districts: {locations}.\n• Organize training events following the standards and curricula of {client}.\n• Maintain database records and submit reports within the given timeline.',
+      '• Provide {durationHours} hours\' {level} skill training on {occupations} to {totalTrainees} trainees.\n{skillTestLine}\n{employmentLine}\n• Implement the training program within {numDistricts} districts: {locations}.\n• Organize training events following the standards and curricula of {client}.\n• Maintain database records and submit reports within the given timeline.',
   },
   {
     id: 'n12',
@@ -90,13 +90,13 @@ export const SERVICES_VARIATIONS = [
     id: 's1',
     label: 'S1 — Standard CTEVT curriculum with skill test',
     preview:
-      '• Provided {durationHours} hours\' Level {level} training to {totalTrainees} targeted beneficiaries based on CTEVT curriculum.\n{skillTestLine}\n• Implemented the training program within the districts selected by {client} namely, {locations}.\n• Organized each training event following the standards.\n• Updated required information in the skills database system within the given timeline.\n• Conducted regular monitoring to ensure adequate tools, equipment, and quality training delivery by instructors.',
+      '• Provided {durationHours} hours\' {level} training to {totalTrainees} targeted beneficiaries based on CTEVT curriculum.\n{skillTestLine}\n• Implemented the training program within the districts selected by {client} namely, {locations}.\n• Organized each training event following the standards.\n• Updated required information in the skills database system within the given timeline.\n• Conducted regular monitoring to ensure adequate tools, equipment, and quality training delivery by instructors.',
   },
   {
     id: 's2',
     label: 'S2 — EVENT / Women\'s window with RMA and placement',
     preview:
-      '• Conducted RMA in {numDistricts} project districts to understand most demanded occupational trades and scope of employment after completion of the training.\n• Conducted social marketing and public awareness activities to ensure participation of 40% of female into training activities.\n• Provided {durationHours} hours\' level {level} training to {totalTrainees} targeted beneficiaries based on CTEVT curriculum.\n• Conducted 15hrs Business and Life skill training.\n{skillTestNSTBLine}\n{employmentLine}',
+      '• Conducted RMA in {numDistricts} project districts to understand most demanded occupational trades and scope of employment after completion of the training.\n• Conducted social marketing and public awareness activities to ensure participation of 40% of female into training activities.\n• Provided {durationHours} hours\' {level} training to {totalTrainees} targeted beneficiaries based on CTEVT curriculum.\n• Conducted 15hrs Business and Life skill training.\n{skillTestNSTBLine}\n{employmentLine}',
   },
   {
     id: 's3',
@@ -114,7 +114,7 @@ export const SERVICES_VARIATIONS = [
     id: 's5',
     label: 'S5 — Skill test + employment focused (bullet points)',
     preview:
-      '• Provided {durationHours} hours\' Level {level} training to {totalTrainees} trainees on {occupations} based on approved curriculum.\n{skillTestLine}\n• Arranged certification for successful trainees.\n{employmentLine}\n• Submitted progress reports and maintained records within the given timeline.\n• Conducted regular monitoring and quality assurance of training delivery.',
+      '• Provided {durationHours} hours\' {level} training to {totalTrainees} trainees on {occupations} based on approved curriculum.\n{skillTestLine}\n• Arranged certification for successful trainees.\n{employmentLine}\n• Submitted progress reports and maintained records within the given timeline.\n• Conducted regular monitoring and quality assurance of training delivery.',
   },
   {
     id: 's6',
@@ -126,7 +126,7 @@ export const SERVICES_VARIATIONS = [
     id: 's7',
     label: 'S7 — GESI / social marketing focused',
     preview:
-      '• Conducted social mobilization and awareness activities targeting women and marginalized groups.\n• Provided {durationHours} hours Level {level} training to {totalTrainees} trainees on {occupations}.\n• Conducted GESI-responsive training ensuring 40% female participation.\n{skillTestNSTBLine}\n{employmentLine}\n• Submitted progress reports and updated skills database within the given timeline.',
+      '• Conducted social mobilization and awareness activities targeting women and marginalized groups.\n• Provided {durationHours} hours {level} training to {totalTrainees} trainees on {occupations}.\n• Conducted GESI-responsive training ensuring 40% female participation.\n{skillTestNSTBLine}\n{employmentLine}\n• Submitted progress reports and updated skills database within the given timeline.',
   },
   {
     id: 's8',

@@ -1,23 +1,7 @@
-import { OCCUPATIONS } from '../constants/data.js';
+import { fmt, fyToAD, getClient, getOccupation } from '../utils/format.js';
 
-const fmt = (n) => n ? Number(n).toLocaleString('en-IN') : '—';
-const fyToAD = (fy) => {
-  if (!fy) return '';
-  const parts = fy.split('/');
-  if (parts.length !== 2) return '';
-  const y1 = parseInt(parts[0]);
-  if (isNaN(y1)) return '';
-  return `${y1-57}/${String(y1-57+1).slice(-2)}`;
-};
 
-function getOccupation(id) {
-  const rawId = typeof id === 'string' && id.startsWith('c:') ? parseInt(id.slice(2)) : id;
-  return OCCUPATIONS.find(o => o.id === rawId) || {};
-}
 
-function getClient(clients, id) {
-  return clients.find(c => c.id === id) || {};
-}
 
 function ExpCard({exp, clients, showFY, setModal, deleteExperience, canEdit, isAdmin, idx=0}) {
   const client = getClient(clients, exp.clientId);

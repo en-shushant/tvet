@@ -1,27 +1,13 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useCachedLogo } from '../utils/logoCache.js';
-import { FISCAL_YEARS, OCCUPATIONS, SECTORS, CLIENT_TYPES } from '../constants/data.js';
+import { FISCAL_YEARS, SECTORS, CLIENT_TYPES } from '../constants/data.js';
 import { Btn } from '../md.jsx';
 import { exportSummaryToMD, exportSummaryToPDF, exportSummaryToCSV } from '../utils/export.js';
 import { getSession } from '../utils/auth.js';
 import { api, normInst } from '../utils/api.js';
+import { fmt, getClient, getOccupation, pct } from '../utils/format.js';
 
-const getClient = (clients, id) => (clients || []).find(c => c.id === id) || {};
-const fmt = (n) => n ? Number(n).toLocaleString('en-IN') : '—';
-const pct = (n, d) => d > 0 ? ((n/d)*100).toFixed(1) + '%' : '—';
-const fyToAD = (fy) => {
-  if (!fy) return '';
-  const parts = fy.split('/');
-  if (parts.length !== 2) return '';
-  const y1 = parseInt(parts[0]);
-  if (isNaN(y1)) return '';
-  return `${y1-57}/${String(y1-57+1).slice(-2)}`;
-};
 
-function getOccupation(id) {
-  const rawId = typeof id === 'string' && id.startsWith('c:') ? parseInt(id.slice(2)) : id;
-  return OCCUPATIONS.find(o => o.id === rawId) || {};
-}
 
 function SummLogo({ url }) {
   const src = useCachedLogo(url);

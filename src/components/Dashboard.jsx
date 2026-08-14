@@ -2,8 +2,8 @@ import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { getSession } from '../utils/auth.js';
 import { getNepaliDate } from '../constants/nepali.js';
 import { api } from '../utils/api.js';
+import { fmt } from '../utils/format.js';
 
-const fmt = (n) => n ? Number(n).toLocaleString('en-IN') : '—';
 
 // Animates a numeric value from 0 to `target` over ~600ms using easeOutExpo
 function useCountUp(target, enabled = true) {
