@@ -343,13 +343,16 @@ function SectionBody({ section, inst, exps, clients, opts }) {
                     <div style={{whiteSpace:'pre-wrap'}}>{item.footer.value || '—'}</div>
                   </td>
                 </tr>
+                {/* Borderless row: renders as a line beneath the box, exactly as
+                    printed, but being part of the table it cannot be orphaned onto
+                    the next page when a tall box runs to the bottom of one. */}
+                <tr>
+                  <td colSpan={2} style={{border:'none', padding:'8px 0 0', fontSize:12}}>
+                    Firm&rsquo;s Name: <u>&nbsp;{inst?.name || ''}&nbsp;</u>
+                  </td>
+                </tr>
               </tbody>
             </table>
-            {/* The form carries the firm's name beneath every 3(B) box, since each
-                assignment sheet is submitted as a standalone page. */}
-            <div style={{fontSize:12, marginTop:8}}>
-              Firm&rsquo;s Name: <u>&nbsp;{inst?.name || ''}&nbsp;</u>
-            </div>
           </div>
         ))}
       </div>
@@ -447,8 +450,8 @@ function htmlSection(section, inst, exps, clients, opts) {
             <div class="note">${esc(item.footer.note)}</div>
             <div class="block">${esc(item.footer.value) || '&mdash;'}</div>
           </td></tr>
+          <tr><td colspan="2" class="firm-cell">Firm&rsquo;s Name: <u>&nbsp;${esc(inst?.name || '')}&nbsp;</u></td></tr>
         </table>
-        <div class="firm-line">Firm&rsquo;s Name: <u>&nbsp;${esc(inst?.name || '')}&nbsp;</u></div>
       </div>`).join('');
   }
 
@@ -504,7 +507,9 @@ function buildPrintHTML(inst, exps, clients, reportId, fyRange, opts = {}) {
   .info .val { border: none; border-bottom: 1px solid #000; white-space: pre-wrap; }
   .spec { margin-bottom: 18px; page-break-inside: avoid; }
   .caption { font-size: 12px; margin-bottom: 5px; }
-  .firm-line { font-size: 12px; margin-top: 8px; }
+  /* Sits inside the table so it cannot be split from its box across a page,
+     but is borderless so it reads as a line printed beneath the box. */
+  .firm-cell { border: none !important; padding: 8px 0 0 !important; font-size: 12px; }
   .pair { margin-bottom: 6px; }
   .pair:last-child { margin-bottom: 0; }
   .lbl { color: #222; }
@@ -658,10 +663,15 @@ function docxSection(D, kit, section, inst, exps, clients, opts) {
         ...lines(item.footer.value || '—'),
       ], { colspan: 2, width: CONTENT_W })] }));
 
+      // Firm name as a borderless final row rather than a paragraph after the
+      // table: Word pushes a trailing paragraph onto the next page whenever a
+      // tall box runs to the bottom of one, stranding it away from its box.
+      rows.push(new TableRow({ children: [cell(
+        p(`Firm's Name: ${inst?.name || ''}`),
+        { colspan: 2, width: CONTENT_W, noBorder: true }
+      )] }));
+
       out.push(new Table({ width: { size: CONTENT_W, type: WidthType.DXA }, columnWidths: [HALF, HALF], rows }));
-      // Each 3(B) box is submitted as a standalone sheet, so the firm's name
-      // belongs under every one rather than once at the end of the document.
-      out.push(p(`Firm's Name: ${inst?.name || ''}`, { spacing: { before: 80 }, size: 20 }));
     });
     return out;
   }
