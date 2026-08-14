@@ -427,10 +427,10 @@ function ExperienceForm({exp, clients, institute, onSave, onClose, onDuplicate, 
       </div>
       <div className="form-row form-row-2">
         <div className="form-group">
-          <MdTextField label="Contract start date" value={form.startDate} onChange={e=>set('startDate',e.target.value)} placeholder="YYYY/MM/DD"/>
+          <MdTextField label="Contract start date (BS)" value={form.startDate} onChange={e=>set('startDate',e.target.value)} placeholder="e.g. 2081/04/27"/>
         </div>
         <div className="form-group">
-          <MdTextField label="Contract end date" value={form.endDate} onChange={e=>set('endDate',e.target.value)} placeholder="YYYY/MM/DD"/>
+          <MdTextField label="Contract end date (BS)" value={form.endDate} onChange={e=>set('endDate',e.target.value)} placeholder="e.g. 2082/03/15"/>
         </div>
       </div>
 

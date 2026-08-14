@@ -1,4 +1,8 @@
 export const BS_MONTHS = ['बैशाख','जेठ','असार','साउन','भदौ','असोज','कार्तिक','मंसिर','पुस','माघ','फाल्गुन','चैत'];
+// Romanised Bikram Sambat months, for English-language documents such as the
+// Standard EOI form where dates are still BS but the paperwork is in English.
+export const BS_MONTHS_EN = ['Baishakh','Jestha','Ashadh','Shrawan','Bhadra','Ashwin',
+                             'Kartik','Mangsir','Poush','Magh','Falgun','Chaitra'];
 export const BS_DAYS   = ['आइतबार','सोमबार','मंगलबार','बुधबार','बिहीबार','शुक्रबार','शनिबार'];
 export const NP_DIGITS = ['०','१','२','३','४','५','६','७','८','९'];
 export const toNpNum   = n => String(n).split('').map(d=>NP_DIGITS[+d]||d).join('');

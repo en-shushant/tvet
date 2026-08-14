@@ -1,6 +1,7 @@
 import React from 'react';
 import { getClient, monthsBetween, districtsOf, esc, fyInRange } from './helpers.js';
 import { loadDocx, loadFileSaver } from './docxLazy.js';
+import { BS_MONTHS_EN } from '../constants/nepali.js';
 
 // ─── Standard EOI Document (Bolpatra) ────────────────────────────────────────
 // Mirrors the PPMO/e-GP "Standard EOI Document" form:
@@ -51,16 +52,19 @@ const fmtNrs = (v) => {
   return isNaN(n) ? String(v) : `NRs. ${n.toLocaleString('en-IN', { maximumFractionDigits: 2 })}`;
 };
 
-// "2081/04/27" or "2081-04-27" → "April/2081". Month names only when the month
-// parses; otherwise the raw segment is kept so nothing is silently lost.
-const MONTHS = ['January','February','March','April','May','June',
-                'July','August','September','October','November','December'];
+// "2081/04/27" or "2081-04-27" → "Shrawan/2081".
+//
+// Contract dates are entered in Bikram Sambat (the form's YYYY/MM/DD is a BS
+// date), so month 1 is Baishakh — not January. Mapping these through Gregorian
+// month names mislabels every date by roughly nine months. Names are romanised
+// because the EOI paperwork itself is in English. An unparseable month segment is
+// kept verbatim so nothing is silently lost.
 const fmtMonthYear = (d) => {
   if (!d) return '';
   const parts = String(d).replace(/-/g, '/').split('/');
   if (parts.length < 2) return String(d);
   const m = parseInt(parts[1], 10);
-  return `${MONTHS[m - 1] || parts[1]}/${parts[0]}`;
+  return `${BS_MONTHS_EN[m - 1] || parts[1]}/${parts[0]}`;
 };
 
 const locationOf = (exp) => {
@@ -369,13 +373,20 @@ function SectionBody({ section, inst, exps, clients, opts }) {
             : <tr><td style={TD} colSpan={2}>No turnover records in range.</td></tr>}
         </tbody>
       </table>
-      <div style={{display:'flex', alignItems:'center', gap:14, marginTop:12, maxWidth:520}}>
-        <div style={{fontWeight:600, fontSize:12}}>Average Annual Turnover</div>
-        <div style={{border:'1px solid #8ba3bd', padding:'6px 12px', minWidth:160, fontSize:12, textAlign:'right'}}>
-          {m.average || '—'}
+      {/* Dashed bullet + bold label on the left, tall bordered box on the right,
+          its edges aligned to the turnover table above — as printed on the form. */}
+      <div style={{display:'flex', alignItems:'stretch', marginTop:16, maxWidth:520}}>
+        <div style={{flex:1, display:'flex', alignItems:'center', gap:10, paddingLeft:14}}>
+          <span style={{color:'var(--text2)'}}>-</span>
+          <span style={{fontWeight:700, fontSize:12.5}}>Average Annual Turnover</span>
+        </div>
+        <div style={{flex:1, border:'1px solid #8ba3bd', minHeight:62, display:'flex',
+          alignItems:'center', justifyContent:'flex-end', padding:'8px 12px',
+          fontSize:12.5, fontWeight:600}}>
+          {m.average || ''}
         </div>
       </div>
-      <div style={{fontSize:11, color:'var(--text3)', marginTop:8, fontStyle:'italic'}}>
+      <div style={{fontSize:11.5, color:'var(--text2)', marginTop:12, fontStyle:'italic'}}>
         (Note: Supporting documents for Average Turnover should be submitted for the above.)
       </div>
     </div>
@@ -452,7 +463,10 @@ function htmlSection(section, inst, exps, clients, opts) {
         ? m.rows.map(([y, a]) => `<tr><td>${esc(y)}</td><td class="rt">${esc(a) || '&mdash;'}</td></tr>`).join('')
         : `<tr><td colspan="2">No turnover records in range.</td></tr>`}</tbody>
     </table>
-    <div class="avg"><b>Average Annual Turnover</b><span class="box">${esc(m.average) || '&mdash;'}</span></div>
+    <div class="avg">
+      <div class="avg-label"><span class="dash">-</span><b>Average Annual Turnover</b></div>
+      <div class="avg-box">${esc(m.average)}</div>
+    </div>
     <p class="note-i">(Note: Supporting documents for Average Turnover should be submitted for the above.)</p>`;
 }
 
@@ -498,8 +512,12 @@ function buildPrintHTML(inst, exps, clients, reportId, fyRange, opts = {}) {
   .note { font-weight: bold; margin: 3px 0; }
   .note-i { font-style: italic; font-size: 10.5px; color: #444; }
   .turnover { max-width: 380px; }
-  .avg { display: flex; align-items: center; gap: 14px; margin-top: 10px; }
-  .avg .box { border: 1px solid #000; padding: 5px 12px; min-width: 150px; text-align: right; }
+  /* Label left, tall bordered box right, aligned to the turnover table's edges. */
+  .avg { display: flex; align-items: stretch; margin-top: 14px; max-width: 380px; }
+  .avg-label { flex: 1; display: flex; align-items: center; gap: 10px; padding-left: 14px; }
+  .dash { font-weight: normal; }
+  .avg-box { flex: 1; border: 1px solid #000; min-height: 52px; padding: 6px 10px;
+             display: flex; align-items: center; justify-content: flex-end; font-weight: bold; }
   .muted { color: #666; }
   @media print { body { margin: 0; } }
 </style></head><body>
@@ -587,7 +605,7 @@ function docxKit(D) {
 }
 
 function docxSection(D, kit, section, inst, exps, clients, opts) {
-  const { Table, TableRow, WidthType, AlignmentType } = D;
+  const { Table, TableRow, WidthType, AlignmentType, HeightRule } = D;
   const { p, lines, cell } = kit;
   const out = [];
 
@@ -671,12 +689,17 @@ function docxSection(D, kit, section, inst, exps, clients, opts) {
   }
   out.push(new Table({ width: { size: t4w, type: WidthType.DXA }, columnWidths: w4, rows }));
   out.push(p(''));
+  // Dashed bullet + bold label on the left with no border, tall bordered box on
+  // the right, both aligned to the turnover table above — as printed on the form.
   out.push(new Table({
     width: { size: t4w, type: WidthType.DXA }, columnWidths: w4,
-    rows: [new TableRow({ children: [
-      cell(p('Average Annual Turnover', { bold: true }), { width: half, noBorder: true }),
-      cell(p(m.average || '—', { align: AlignmentType.RIGHT }), { width: half }),
-    ]})],
+    rows: [new TableRow({
+      height: { value: 900, rule: HeightRule.ATLEAST },
+      children: [
+        cell(p('-\tAverage Annual Turnover', { bold: true }), { width: half, noBorder: true }),
+        cell(p(m.average || '', { align: AlignmentType.RIGHT }), { width: half }),
+      ],
+    })],
   }));
   out.push(p('(Note: Supporting documents for Average Turnover should be submitted for the above.)',
     { italic: true, size: 17, spacing: { before: 100 } }));
