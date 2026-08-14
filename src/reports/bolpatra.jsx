@@ -24,9 +24,10 @@ const REPORTS = [
   { id: '3b',   label: '3(B) Specific Experience', aggregate: true, hasOccupationFilter: true },
   { id: '3c',   label: '3(C) Geographic Experience', aggregate: true },
   { id: '4a',   label: '4(A) Financial Capacity', aggregate: true, hasTurnoverFY: true },
+  { id: '4b',   label: '4(B) Infrastructure / Equipment', aggregate: true, hasOccupationFilter: true, hasToolsPicker: true },
 ];
 
-const SECTION_ORDER = ['2', '3a', '3b', '3c', '4a'];
+const SECTION_ORDER = ['2', '3a', '3b', '3c', '4a', '4b'];
 const sectionsFor = (reportId) => reportId === 'full' ? SECTION_ORDER : [reportId];
 
 const SECTION_TITLES = {
@@ -40,6 +41,8 @@ const SECTION_TITLES = {
           note: 'Experience of working in similar geographic region or country' },
   '4a': { heading: '4(A). Financial Capacity',
           note: '(In case of joint venture of two or more firms to be filled separately for each constituent member)' },
+  '4b': { heading: '4(B). Infrastructure/equipment related to the proposed assignment',
+          note: 'Service delivery space, and the tools and equipment available for the proposed occupations.' },
 };
 
 // ─── Value formatting ────────────────────────────────────────────────────────
@@ -84,11 +87,9 @@ const captionOf = (exp) => {
 };
 
 /**
- * Heading identifying whose copy of a section a page holds.
- *
- * For a joint venture the first firm selected is taken as the lead applicant and
- * the rest as partners — sidebar selection order is the only role signal the app
- * records. A single firm gets no role prefix.
+ * Heading identifying whose copy of a section a page holds. Callers pass firms
+ * already ordered lead-first (see fwSelectedFirms in ReportsView), so position 0
+ * is the lead applicant. A single firm gets no role prefix.
  */
 const firmLabel = (inst, idx, total) => {
   const name = inst?.name || '';
@@ -276,6 +277,75 @@ function model4a(inst, opts = {}) {
   };
 }
 
+// Section 4B → { premises, infra: {columns, rows}, occupations: [{ name, groups }] }
+//
+// Two independent sources: the firm's own service-delivery space, and the
+// tools/equipment master list for each occupation being proposed. Tools are
+// fetched by the caller (they need occupation id + level and this builder is
+// synchronous) and handed over in opts.bolpatraTools, keyed by occupation id.
+const TOOL_GROUPS = [
+  { type: 'Safety Tool', label: 'Personal Protective Equipment' },
+  { type: 'Tool',        label: 'Tools and equipment' },
+  { type: 'Consumable',  label: 'Training Consumables' },
+  { type: 'Stationery',  label: 'Stationery' },
+];
+const GROUP_LETTERS = ['A', 'B', 'C', 'D'];
+
+function model4b(inst, opts = {}) {
+  const { selectedOccs = [], occupations = [], bolpatraTools = {} } = opts;
+
+  const infraRows = (inst?.infrastructure || [])
+    .slice()
+    .sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0))
+    .map((r, i) => [
+      String(i + 1),
+      dash(r.particular),
+      dash(r.description),
+      dash(r.size),
+      dash(r.unit),
+      dash(r.ownership),
+      dash(r.remark),
+    ]);
+
+  // Only the occupations the user selected, in master-list order so the document
+  // is stable regardless of the order boxes were ticked.
+  const wanted = selectedOccs.map(s => s.toLowerCase());
+  const chosen = occupations.filter(o => wanted.includes(String(o.name).toLowerCase()));
+
+  const occs = chosen.map(o => {
+    const items = bolpatraTools[o.id] || [];
+    const groups = TOOL_GROUPS
+      .map(g => ({ label: g.label, rows: items.filter(t => t.type === g.type) }))
+      .filter(g => g.rows.length)                       // omit empty groups entirely
+      .map((g, gi) => ({
+        letter: GROUP_LETTERS[gi] || String(gi + 1),
+        label: g.label,
+        rows: g.rows.map((t, i) => [
+          String(i + 1),
+          dash(t.name) || dash(t.description),
+          dash(t.unit),
+          t.quantity != null ? String(t.quantity) : '',
+          dash(t.remarks),
+        ]),
+      }));
+    return { name: o.name, groups };
+  });
+
+  return {
+    premises: inst?.address
+      ? `Office building with training halls at office premise, ${inst.address}`
+      : '',
+    infra: {
+      columns: ['SN', 'Particular', 'Description', 'Size', 'Unit (Number)', 'Ownership', 'Remarks'],
+      widths:  [600, 1900, 2400, 1300, 1200, 1100, 1466],
+      rows: infraRows,
+    },
+    toolColumns: ['S. No', 'Description', 'Unit', 'Quantity', 'Specification/Remarks'],
+    toolWidths:  [800, 4000, 1400, 1400, 2366],
+    occupations: occs,
+  };
+}
+
 // ─── On-screen rendering ─────────────────────────────────────────────────────
 
 const TH = { background:'#dce6f1', border:'1px solid #8ba3bd', padding:'6px 8px',
@@ -368,6 +438,53 @@ function SectionBody({ section, inst, exps, clients, opts }) {
             </table>
           </div>
         ))}
+      </div>
+    );
+  }
+
+  if (section === '4b') {
+    const m = model4b(inst, opts);
+    const Plain = ({ columns, rows, empty }) => rows.length ? (
+      <div style={{overflowX:'auto'}}>
+        <table style={{borderCollapse:'collapse', width:'100%'}}>
+          <thead><tr>{columns.map(c => <th key={c} style={TH}>{c}</th>)}</tr></thead>
+          <tbody>{rows.map((r, i) => (
+            <tr key={i}>{r.map((v, j) => <td key={j} style={TD}>{v || '—'}</td>)}</tr>
+          ))}</tbody>
+        </table>
+      </div>
+    ) : <div style={{fontSize:12, color:'var(--text3)', padding:'6px 0'}}>{empty}</div>;
+
+    return (
+      <div>
+        {m.premises && <div style={{fontSize:12.5, marginBottom:8}}>{m.premises}</div>}
+        <div style={{fontWeight:700, fontSize:12.5, margin:'12px 0 6px'}}>Service Delivery Space</div>
+        <Plain columns={m.infra.columns} rows={m.infra.rows}
+          empty="No infrastructure recorded for this firm." />
+
+        {m.occupations.length === 0
+          ? <div style={{fontSize:12, color:'var(--text3)', marginTop:14}}>
+              Select one or more occupations to list their tools and equipment.
+            </div>
+          : m.occupations.map(o => (
+              <div key={o.name} style={{marginTop:20}}>
+                <div style={{fontWeight:700, fontSize:12.5, marginBottom:6}}>
+                  Tools and Equipment for {o.name} Training
+                </div>
+                {o.groups.length === 0
+                  ? <div style={{fontSize:12, color:'var(--text3)'}}>
+                      No tools recorded for this occupation at the selected level.
+                    </div>
+                  : o.groups.map(g => (
+                      <div key={g.letter} style={{marginBottom:12}}>
+                        <div style={{fontSize:12, fontWeight:600, margin:'8px 0 4px'}}>
+                          {g.letter}. {g.label}
+                        </div>
+                        <Plain columns={m.toolColumns} rows={g.rows} empty="" />
+                      </div>
+                    ))}
+              </div>
+            ))}
       </div>
     );
   }
@@ -498,6 +615,33 @@ function htmlSection(section, inst, exps, clients, opts) {
       </div>`).join('');
   }
 
+  if (section === '4b') {
+    const m = model4b(inst, opts);
+    const grid = (columns, rows, empty) => rows.length ? `
+      <table>
+        <thead><tr>${columns.map(c => `<th>${esc(c)}</th>`).join('')}</tr></thead>
+        <tbody>${rows.map(r => `<tr>${r.map(v => `<td>${esc(v) || '&mdash;'}</td>`).join('')}</tr>`).join('')}</tbody>
+      </table>` : (empty ? `<p class="muted">${esc(empty)}</p>` : '');
+
+    const occHtml = m.occupations.length === 0
+      ? `<p class="muted">Select one or more occupations to list their tools and equipment.</p>`
+      : m.occupations.map(o => `
+          <div class="tool-block">
+            <div class="sub-h">Tools and Equipment for ${esc(o.name)} Training</div>
+            ${o.groups.length === 0
+              ? `<p class="muted">No tools recorded for this occupation at the selected level.</p>`
+              : o.groups.map(g => `
+                  <div class="grp">${esc(g.letter)}. ${esc(g.label)}</div>
+                  ${grid(m.toolColumns, g.rows, '')}`).join('')}
+          </div>`).join('');
+
+    return `
+      ${m.premises ? `<p class="premises">${esc(m.premises)}</p>` : ''}
+      <div class="sub-h">Service Delivery Space</div>
+      ${grid(m.infra.columns, m.infra.rows, 'No infrastructure recorded for this firm.')}
+      ${occHtml}`;
+  }
+
   const m = model4a(inst, opts);
   return `
     <table class="turnover">
@@ -558,6 +702,10 @@ const printShell = (title, bodyHtml) => `<!DOCTYPE html><html><head><meta charse
   .avg-box { flex: 1; border: 1px solid #000; min-height: 52px; padding: 6px 10px;
              display: flex; align-items: center; justify-content: flex-end; font-weight: bold; }
   .muted { color: #666; }
+  .premises { font-size: 12px; margin: 0 0 10px; }
+  .sub-h { font-weight: bold; font-size: 12px; margin: 12px 0 6px; }
+  .grp { font-weight: bold; font-size: 11.5px; margin: 10px 0 4px; }
+  .tool-block { margin-top: 16px; page-break-inside: auto; }
   .page-break { page-break-before: always; }
   @media print { body { margin: 0; } }
 </style></head><body>
@@ -737,6 +885,46 @@ function docxSection(D, kit, section, inst, exps, clients, opts) {
       )] }));
 
       out.push(new Table({ width: { size: CONTENT_W, type: WidthType.DXA }, columnWidths: [HALF, HALF], rows }));
+    });
+    return out;
+  }
+
+  if (section === '4b') {
+    const m = model4b(inst, opts);
+    const grid = (columns, widths, dataRows) => {
+      const w = scaleWidths(widths);
+      const head = new TableRow({
+        tableHeader: true,
+        children: columns.map((c, i) => cell(p(c, { bold: true }), { width: w[i] })),
+      });
+      const body = dataRows.map(r => new TableRow({
+        children: r.map((v, i) => cell(lines(v || '—'), { width: w[i] })),
+      }));
+      return new Table({ width: { size: CONTENT_W, type: WidthType.DXA }, columnWidths: w, rows: [head, ...body] });
+    };
+
+    if (m.premises) out.push(p(m.premises, { spacing: { after: 120 } }));
+    out.push(p('Service Delivery Space', { bold: true, spacing: { before: 120, after: 80 } }));
+    if (m.infra.rows.length) out.push(grid(m.infra.columns, m.infra.widths, m.infra.rows));
+    else out.push(p('No infrastructure recorded for this firm.', { italic: true }));
+
+    if (m.occupations.length === 0) {
+      out.push(p('Select one or more occupations to list their tools and equipment.',
+        { italic: true, spacing: { before: 160 } }));
+      return out;
+    }
+
+    m.occupations.forEach(o => {
+      out.push(p(`Tools and Equipment for ${o.name} Training`,
+        { bold: true, spacing: { before: 260, after: 80 } }));
+      if (!o.groups.length) {
+        out.push(p('No tools recorded for this occupation at the selected level.', { italic: true }));
+        return;
+      }
+      o.groups.forEach(g => {
+        out.push(p(`${g.letter}. ${g.label}`, { bold: true, spacing: { before: 140, after: 60 } }));
+        out.push(grid(m.toolColumns, m.toolWidths, g.rows));
+      });
     });
     return out;
   }

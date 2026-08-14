@@ -124,6 +124,18 @@ export function normInst(r) {
     nstb: (r.nstb || []).map(n => n.fiscal_year !== undefined ? normNSTBR(n) : n),
     taxClearance: (r.taxClearance || r.tax_clearance || []).map(t => t.fiscal_year !== undefined ? normTaxR(t) : t),
     affiliation: (r.affiliation || []).map(a => a.affiliation_date !== undefined ? normAffR(a) : a),
+    // GET /institutes/:id already returns these; they were being dropped here.
+    // Section 4(B) of the EOI report reads them.
+    infrastructure: (r.infrastructure || []).map(x => ({
+      id: x.id,
+      particular: x.particular || '',
+      description: x.description || '',
+      unit: x.unit || '',
+      size: x.size || '',
+      ownership: x.ownership || 'Own',
+      remark: x.remark || '',
+      sortOrder: x.sort_order ?? 0,
+    })),
     totalTrainees: parseInt(r.total_trainees) || 0,
     totalStAppeared: parseInt(r.total_st_appeared) || 0,
     totalClients: parseInt(r.total_clients) || 0,

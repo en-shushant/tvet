@@ -24,7 +24,9 @@ const DEFAULT_COLS = ['sn', 'name', 'description', 'unit', 'quantity', 'ownershi
 
 // ── Aggregate table component ───────────────────────────────────────────────
 
-const TYPE_SECTIONS = [
+// The canonical occupation_tools.type taxonomy. Exported so the Bolpatra 4(B)
+// section groups by the same four types rather than restating them.
+export const TYPE_SECTIONS = [
   { key: 'tools',       type: 'Tool',         label: 'Tools',         bg: '#d1ecf1', fg: '#0c5460', sectionBg: '#e8f0fe' },
   { key: 'consumables', type: 'Consumable',    label: 'Consumables',   bg: '#fef3cd', fg: '#856404', sectionBg: '#fff8e1' },
   { key: 'safety',      type: 'Safety Tool',   label: 'Safety Tools',  bg: '#d4edda', fg: '#155724', sectionBg: '#eaf6ec' },

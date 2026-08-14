@@ -44,6 +44,12 @@ function ReportsView({ institutes, clients }) {
   const [fwFullInsts, setFwFullInsts] = useState({});
   const [fwLoading, setFwLoading] = useState(false);
   const [fwInstSearch, setFwInstSearch] = useState('');
+  // Explicit JV lead. Previously the lead was whichever firm happened to be ticked
+  // first, which was invisible and uncorrectable without starting over.
+  const [fwLeadId, setFwLeadId] = useState(null);
+  // Level for the 4(B) tools tables — occupation_tools are stored per level.
+  const [eoiToolsLevel, setEoiToolsLevel] = useState(f.eoiToolsLevel || 'Level 1');
+  const [eoiTools, setEoiTools] = useState({});
   const [nstbComparative, setNstbComparative] = useState(false);
   const [nstbThreshold, setNstbThreshold] = useState('');
 
@@ -68,8 +74,8 @@ function ReportsView({ institutes, clients }) {
   const [enssureToolsData, setEnssureToolsData] = useState([]);
 
   // Persist key filter state to sessionStorage
-  useEffect(() => { saveFilters({ familyId, selectedInst, reportId, fromFY, toFY, turnFromFY, turnToFY, filterDuration, enssureOccIds, enssureToolsOccId, enssureToolsLevel, enssureEvents }); },
-    [familyId, selectedInst, reportId, fromFY, toFY, turnFromFY, turnToFY, filterDuration, enssureOccIds, enssureToolsOccId, enssureToolsLevel, enssureEvents]);
+  useEffect(() => { saveFilters({ familyId, selectedInst, reportId, fromFY, toFY, turnFromFY, turnToFY, eoiToolsLevel, filterDuration, enssureOccIds, enssureToolsOccId, enssureToolsLevel, enssureEvents }); },
+    [familyId, selectedInst, reportId, fromFY, toFY, turnFromFY, turnToFY, eoiToolsLevel, filterDuration, enssureOccIds, enssureToolsOccId, enssureToolsLevel, enssureEvents]);
 
   // Fetch tools for explicitly selected D2/D3 occupation + level
   useEffect(() => {
@@ -136,7 +142,31 @@ function ReportsView({ institutes, clients }) {
   }, [fwInstIds, isMultiInst]);
 
   const toggleFwInst = (id) =>
-    setFwInstIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
+    setFwInstIds(prev => {
+      const next = prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id];
+      // Keep the lead valid: adopt the first firm when unset, drop it when deselected.
+      setFwLeadId(cur => next.includes(cur) ? cur : (next[0] ?? null));
+      return next;
+    });
+
+  // Tools for 4(B). Fetched here because buildPrintHTML and the DOCX builder are
+  // synchronous over their inputs — same approach as fetchToolsDataForPrint below.
+  const eoiOccIds = useMemo(() => {
+    if (!selectedOccs.length || !occupations.length) return [];
+    const wanted = selectedOccs.map(s => s.toLowerCase());
+    return occupations.filter(o => wanted.includes(String(o.name).toLowerCase())).map(o => o.id);
+  }, [selectedOccs, occupations]);
+
+  useEffect(() => {
+    if (!report.hasToolsPicker || !eoiOccIds.length || !eoiToolsLevel) { setEoiTools({}); return; }
+    let cancelled = false;
+    const token = getSession()?.token;
+    Promise.all(eoiOccIds.map(id =>
+      api('GET', `/occupation-tools/${id}/${encodeURIComponent(eoiToolsLevel)}`, null, token)
+        .then(d => [id, Array.isArray(d) ? d : []]).catch(() => [id, []])
+    )).then(pairs => { if (!cancelled) setEoiTools(Object.fromEntries(pairs)); });
+    return () => { cancelled = true; };
+  }, [eoiOccIds.join(','), eoiToolsLevel, report.hasToolsPicker]);
 
   const experience = fullInst?.experience || [];
 
@@ -285,7 +315,8 @@ function ReportsView({ institutes, clients }) {
     return n;
   }, [familyId, fullInst, activeExps]);
 
-  const opts = { fromFY, toFY, turnoverFromFY: turnFromFY, turnoverToFY: turnToFY, selectedOccs, occupations, sortBy,
+  const opts = { fromFY, toFY, turnoverFromFY: turnFromFY, turnoverToFY: turnToFY,
+    bolpatraTools: eoiTools, eoiToolsLevel, selectedOccs, occupations, sortBy,
     toolsOccIds, toolsLevel, toolsTypeFilter, toolsColumns, toolsLayout, toolsData, numGroups,
     enssureOccs, enssureOccIds, enssureToolsData, enssureToolsOccId, enssureToolsLevel, enssureEvents,
     filterDuration, clients };
@@ -315,8 +346,15 @@ function ReportsView({ institutes, clients }) {
     return exps;
   };
 
-  const fwSelectedFirms = () =>
-    fwInstIds.map(id => fwFullInsts[id]).filter(Boolean).map(inst => ({ inst, exps: fwExpsFor(inst) }));
+  // Lead first, then the rest in selection order — report families take position 0
+  // to be the lead applicant.
+  const fwSelectedFirms = () => {
+    const ordered = fwInstIds.includes(fwLeadId)
+      ? [fwLeadId, ...fwInstIds.filter(id => id !== fwLeadId)]
+      : fwInstIds;
+    return ordered.map(id => fwFullInsts[id]).filter(Boolean)
+      .map(inst => ({ inst, exps: fwExpsFor(inst) }));
+  };
 
   const handlePrint = () => {
     const w = window.open('', '_blank');
@@ -537,16 +575,79 @@ function ReportsView({ institutes, clients }) {
             {/* Multi-institute selector (firm-wise) */}
             {isMultiInst && (
               <div className="filter-section">
-                <div className="filter-label">Firms</div>
+                <div className="filter-label" style={{justifyContent:'space-between'}}>
+                  <span>Firms</span>
+                  {fwInstIds.length > 0 && (
+                    <Btn className="btn btn-ghost btn-sm" style={{fontSize:10, padding:'1px 5px'}}
+                      onClick={() => { setFwInstIds([]); setFwLeadId(null); }}>Clear</Btn>
+                  )}
+                </div>
+
+                {/* Selected firms, with the JV lead chosen explicitly rather than
+                    inferred from which box happened to be ticked first. */}
+                {fwInstIds.length > 0 && (
+                  <div style={{marginBottom:8, border:'1px solid var(--border)', borderRadius:6, overflow:'hidden'}}>
+                    {fwInstIds.length > 1 && (
+                      <div style={{fontSize:10, fontWeight:600, color:'var(--text3)', textTransform:'uppercase',
+                        letterSpacing:'.4px', padding:'5px 8px', background:'var(--bg2)'}}>
+                        Selected — mark the lead firm
+                      </div>
+                    )}
+                    {fwInstIds.map(id => {
+                      const i = institutes.find(x => x.id === id);
+                      if (!i) return null;
+                      const isLead = fwLeadId === id;
+                      return (
+                        <div key={id} style={{display:'flex', alignItems:'center', gap:8, padding:'6px 8px',
+                          borderTop:'1px solid var(--border)', fontSize:12}}>
+                          {fwInstIds.length > 1 && (
+                            <label style={{display:'flex', alignItems:'center', gap:5, cursor:'pointer', whiteSpace:'nowrap'}}
+                              title={isLead ? 'Lead firm' : 'Mark as lead firm'}>
+                              <input type="radio" name="fw-lead" checked={isLead} onChange={() => setFwLeadId(id)}/>
+                              <span style={{fontSize:10, fontWeight:700,
+                                color: isLead ? 'var(--accent)' : 'var(--text3)'}}>
+                                {isLead ? 'LEAD' : 'JV'}
+                              </span>
+                            </label>
+                          )}
+                          <span style={{flex:1, minWidth:0, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap'}}
+                            title={i.name}>{i.acronym || i.name}</span>
+                          <button onClick={() => toggleFwInst(id)} aria-label={`Remove ${i.acronym || i.name}`}
+                            style={{background:'none', border:'none', cursor:'pointer', color:'var(--text3)', padding:0, lineHeight:1}}>
+                            <span className="material-icons-round" style={{fontSize:15}}>close</span>
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+
                 <input className="form-input" value={fwInstSearch} onChange={e => setFwInstSearch(e.target.value)}
-                  placeholder="Search…" style={{fontSize:12, marginBottom:6}}/>
-                <div className="multi-select-list" style={{maxHeight:220, overflowY:'auto'}}>
+                  placeholder="Search to add…" style={{fontSize:12, marginBottom:6}}/>
+                <div className="multi-select-list" style={{maxHeight:200, overflowY:'auto'}}>
                   {institutes.filter(i => !fwInstSearch || i.name.toLowerCase().includes(fwInstSearch.toLowerCase()) || (i.acronym||'').toLowerCase().includes(fwInstSearch.toLowerCase())).map(i => (
                     <label key={i.id} className="multi-select-item">
                       <input type="checkbox" checked={fwInstIds.includes(i.id)} onChange={() => toggleFwInst(i.id)}/>
                       <span>{i.acronym || i.name}</span>
                     </label>
                   ))}
+                </div>
+              </div>
+            )}
+
+            {/* 4(B) tools level — occupation_tools are stored per level, and the
+                occupations themselves come from the shared Occupation filter. */}
+            {report.hasToolsPicker && (
+              <div className="filter-section">
+                <div className="filter-label">Tools level — 4(B)</div>
+                <select className="form-input" value={eoiToolsLevel} onChange={e => setEoiToolsLevel(e.target.value)}>
+                  <option>N/A</option><option>Level 1</option><option>Level 2</option>
+                  <option>Level 3</option><option>Professional</option><option>Technician</option>
+                </select>
+                <div className="input-hint" style={{marginTop:4}}>
+                  {eoiOccIds.length
+                    ? `Tools listed for ${eoiOccIds.length} occupation${eoiOccIds.length !== 1 ? 's' : ''} at this level.`
+                    : 'Pick occupations below to list their tools.'}
                 </div>
               </div>
             )}
