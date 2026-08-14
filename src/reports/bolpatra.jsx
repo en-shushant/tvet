@@ -341,6 +341,11 @@ function SectionBody({ section, inst, exps, clients, opts }) {
                 </tr>
               </tbody>
             </table>
+            {/* The form carries the firm's name beneath every 3(B) box, since each
+                assignment sheet is submitted as a standalone page. */}
+            <div style={{fontSize:12, marginTop:8}}>
+              Firm&rsquo;s Name: <u>&nbsp;{inst?.name || ''}&nbsp;</u>
+            </div>
           </div>
         ))}
       </div>
@@ -390,7 +395,6 @@ function renderAggregateTable(inst, exps, clients, reportId, opts = {}) {
           <SectionBody section={s} inst={inst} exps={exps} clients={clients} opts={opts} />
         </div>
       ))}
-      <div style={{marginTop:20, fontSize:12}}>Firm&rsquo;s Name: <u>&nbsp;{inst?.name || ''}&nbsp;</u></div>
     </div>
   );
 }
@@ -433,6 +437,7 @@ function htmlSection(section, inst, exps, clients, opts) {
             <div class="block">${esc(item.footer.value) || '&mdash;'}</div>
           </td></tr>
         </table>
+        <div class="firm-line">Firm&rsquo;s Name: <u>&nbsp;${esc(inst?.name || '')}&nbsp;</u></div>
       </div>`).join('');
   }
 
@@ -485,6 +490,7 @@ function buildPrintHTML(inst, exps, clients, reportId, fyRange, opts = {}) {
   .info .val { border: none; border-bottom: 1px solid #000; white-space: pre-wrap; }
   .spec { margin-bottom: 18px; page-break-inside: avoid; }
   .caption { font-size: 12px; margin-bottom: 5px; }
+  .firm-line { font-size: 12px; margin-top: 8px; }
   .pair { margin-bottom: 6px; }
   .pair:last-child { margin-bottom: 0; }
   .lbl { color: #222; }
@@ -495,14 +501,12 @@ function buildPrintHTML(inst, exps, clients, reportId, fyRange, opts = {}) {
   .avg { display: flex; align-items: center; gap: 14px; margin-top: 10px; }
   .avg .box { border: 1px solid #000; padding: 5px 12px; min-width: 150px; text-align: right; }
   .muted { color: #666; }
-  .sign { margin-top: 22px; font-size: 12px; }
   @media print { body { margin: 0; } }
 </style></head><body>
   <div class="doc-head">Standard EOI Document</div>
   <div class="firm">${esc(inst?.name || '')}</div>
   <div class="firm-sub">${esc(inst?.acronym || '')}${fyRange ? ` · ${esc(fyRange)}` : ''}</div>
   ${body}
-  <div class="sign">Firm&rsquo;s Name: <u>&nbsp;${esc(inst?.name || '')}&nbsp;</u></div>
 </body></html>`;
 }
 
@@ -637,6 +641,9 @@ function docxSection(D, kit, section, inst, exps, clients, opts) {
       ], { colspan: 2, width: CONTENT_W })] }));
 
       out.push(new Table({ width: { size: CONTENT_W, type: WidthType.DXA }, columnWidths: [HALF, HALF], rows }));
+      // Each 3(B) box is submitted as a standalone sheet, so the firm's name
+      // belongs under every one rather than once at the end of the document.
+      out.push(p(`Firm's Name: ${inst?.name || ''}`, { spacing: { before: 80 }, size: 20 }));
     });
     return out;
   }
@@ -706,7 +713,6 @@ async function downloadMultiDOCX(firms, clients, reportId, opts = {}) {
       children.push(p(''));
     });
 
-    children.push(p(`Firm's Name: ${inst?.name || ''}`, { spacing: { before: 240 }, size: 20 }));
   });
 
   const doc = new Document({
