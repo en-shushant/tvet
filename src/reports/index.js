@@ -1,18 +1,18 @@
-// import ppmo from './ppmo.jsx'; // hidden until PPMO format is finalized
 import helvetas from './helvetas.jsx';
 import firmwise from './firmwise.jsx';
 import tools from './tools.jsx';
 import detailed from './detailed.jsx';
 import enssure from './enssure.jsx';
+import bolpatra from './bolpatra.jsx';
 
-// Add new report families here — each must match the shape in ppmo.js
+// Add new report families here — each must match the shape in bolpatra.jsx
 const REPORT_FAMILIES = [
-  // ppmo,   // hidden until PPMO format is finalized
   helvetas,
   firmwise,
   tools,
   detailed,
   enssure,
+  bolpatra,
   // worldbank,
 ];
 

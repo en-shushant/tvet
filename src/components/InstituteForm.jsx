@@ -2,7 +2,7 @@ import { useState } from 'react';
 import Modal from './ui/Modal.jsx';
 import { ErrorBanner } from './ui/Modal.jsx';
 import { useUnsavedGuard } from './ui/UnsavedGuard.jsx';
-import { INSTITUTE_TYPES, INSTITUTE_STATUSES } from '../constants/data.js';
+import { INSTITUTE_TYPES, INSTITUTE_STATUSES, CONSTITUTION_TYPES } from '../constants/data.js';
 import { Btn, MdTextField, MdSelect, MdOption, MdToggle } from '../md.jsx';
 
 
@@ -15,7 +15,10 @@ function InstituteForm({institute, onSave, onClose, isSuperAdmin}) {
     nameNp: '', addressNp: '', contactPersonNp: '',
     letterhead: null, sign: null, stamp: null,
     letterTopMargin: 15, letterLrPadding: 5, letterBottomPadding: 15,
+    constitutionType:'', fax:'', contactDesignation:'', localAgent:'',
+    orgProfile:'', totalStaff:'', professionalStaff:'',
   });
+  const [showEoi, setShowEoi] = useState(false);
 
   const { handleClose, markDirty, markClean, UnsavedModal } = useUnsavedGuard(onClose);
   const set = (k, v) => { markDirty(); setForm(f => ({...f, [k]: v})); };
@@ -147,6 +150,66 @@ function InstituteForm({institute, onSave, onClose, isSuperAdmin}) {
       <div className="form-group">
         <MdTextField type="textarea" label="Remarks" value={form.remarks}
           onChange={e=>set('remarks',e.target.value)} rows={2}/>
+      </div>
+
+      {/* Bolpatra / Standard EOI — Section 2 (Applicant's Information Form) */}
+      <div style={{marginBottom:16}}>
+        <button type="button" onClick={()=>setShowEoi(s=>!s)}
+          style={{width:'100%', background:'none', border:'1px solid var(--border)', cursor:'pointer',
+            borderRadius: showEoi ? 'var(--radius) var(--radius) 0 0' : 'var(--radius)',
+            padding:'10px 14px', display:'flex', alignItems:'center', justifyContent:'space-between',
+            fontFamily:'var(--font)'}}>
+          <span style={{fontSize:13, fontWeight:600, display:'flex', alignItems:'center', gap:6}}>
+            <span className="material-icons-round" style={{fontSize:16}}>business</span>
+            EOI / Bolpatra profile
+          </span>
+          <span style={{fontSize:11, color:'var(--text3)'}}>
+            {showEoi ? '▲ Hide' : "▼ Show — used in the Applicant's Information Form"}
+          </span>
+        </button>
+        {showEoi && (
+          <div style={{padding:14, border:'1px solid var(--border)', borderTop:'none',
+            borderRadius:'0 0 var(--radius) var(--radius)'}}>
+            <div className="form-row form-row-2">
+              <div className="form-group">
+                <MdSelect label="Type of constitution" value={form.constitutionType||''}
+                  onChange={e=>set('constitutionType',e.target.value)}>
+                  <MdOption value="">—</MdOption>
+                  {CONSTITUTION_TYPES.map(t => <MdOption key={t} value={t}>{t}</MdOption>)}
+                </MdSelect>
+              </div>
+              <div className="form-group">
+                <MdTextField label="Fax number" value={form.fax||''}
+                  onChange={e=>set('fax',e.target.value)} placeholder="Optional"/>
+              </div>
+            </div>
+            <div className="form-row form-row-2">
+              <div className="form-group">
+                <MdTextField label="Contact person designation" value={form.contactDesignation||''}
+                  onChange={e=>set('contactDesignation',e.target.value)} placeholder="e.g. Managing Director"/>
+              </div>
+              <div className="form-group">
+                <MdTextField label="Authorized local agent" value={form.localAgent||''}
+                  onChange={e=>set('localAgent',e.target.value)} placeholder="Name / address / telephone"/>
+              </div>
+            </div>
+            <div className="form-row form-row-2">
+              <div className="form-group">
+                <MdTextField type="number" label="Total number of staff" value={form.totalStaff||''}
+                  onChange={e=>set('totalStaff',e.target.value)} placeholder="e.g. 45"/>
+              </div>
+              <div className="form-group">
+                <MdTextField type="number" label="Regular professional staff" value={form.professionalStaff||''}
+                  onChange={e=>set('professionalStaff',e.target.value)} placeholder="e.g. 12"/>
+              </div>
+            </div>
+            <div className="form-group" style={{marginBottom:0}}>
+              <MdTextField type="textarea" label="Consultant's organization / company profile"
+                value={form.orgProfile||''} onChange={e=>set('orgProfile',e.target.value)} rows={4}
+                placeholder="Background and organization of the consultant"/>
+            </div>
+          </div>
+        )}
       </div>
       {isSuperAdmin && (
         <div style={{

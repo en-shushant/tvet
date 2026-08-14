@@ -137,6 +137,14 @@ export function normInst(r) {
     letterLrPadding: r.letter_lr_padding != null ? Number(r.letter_lr_padding) : null,
     letterBottomPadding: r.letter_bottom_padding != null ? Number(r.letter_bottom_padding) : null,
     serviceType: r.service_type || '',
+    // Bolpatra / Standard EOI — Section 2 (Applicant's Information Form)
+    constitutionType: r.constitution_type || '',
+    fax: r.fax || '',
+    contactDesignation: r.contact_designation || '',
+    localAgent: r.local_agent || '',
+    orgProfile: r.org_profile || '',
+    totalStaff: r.total_staff != null ? String(r.total_staff) : '',
+    professionalStaff: r.professional_staff != null ? String(r.professional_staff) : '',
   };
 }
 
@@ -305,6 +313,14 @@ export function instToAPI(f) {
     letter_lr_padding: f.letterLrPadding != null ? f.letterLrPadding : null,
     letter_bottom_padding: f.letterBottomPadding != null ? f.letterBottomPadding : null,
     service_type: f.serviceType || null,
+    // Bolpatra / Standard EOI — Section 2 (Applicant's Information Form)
+    constitution_type: f.constitutionType || null,
+    fax: f.fax || null,
+    contact_designation: f.contactDesignation || null,
+    local_agent: f.localAgent || null,
+    org_profile: f.orgProfile || null,
+    total_staff: f.totalStaff ? parseInt(f.totalStaff) : null,
+    professional_staff: f.professionalStaff ? parseInt(f.professionalStaff) : null,
   };
 }
 

@@ -286,6 +286,32 @@ function ReportsView({ institutes, clients }) {
     enssureOccs, enssureOccIds, enssureToolsData, enssureToolsOccId, enssureToolsLevel, enssureEvents,
     filterDuration, clients };
 
+  // Assignments for one firm in multi-institute mode, with the sidebar filters
+  // applied. Shared by the per-firm render, the print path and the Word export so
+  // all three always agree on what is included.
+  const fwExpsFor = (inst) => {
+    let exps = (inst.experience || []).filter(e => fyInRange(e.fy, fromFY, toFY));
+    if (filterDonorTypes.length > 0) {
+      exps = exps.filter(e => {
+        const client = (clients || []).find(c => c.id === e.clientId);
+        return filterDonorTypes.includes(client?.type || 'Other');
+      });
+    }
+    if (filterDuration) {
+      exps = exps.filter(e => (e.occupations || []).some(occ => {
+        const d = parseFloat(occ.duration) || 0;
+        if (filterDuration === '160plus') return d >= 160;
+        if (filterDuration === '390plus') return d >= 390;
+        if (filterDuration === '390more') return d > 390;
+        return true;
+      }));
+    }
+    return exps;
+  };
+
+  const fwSelectedFirms = () =>
+    fwInstIds.map(id => fwFullInsts[id]).filter(Boolean).map(inst => ({ inst, exps: fwExpsFor(inst) }));
+
   const handlePrint = () => {
     const w = window.open('', '_blank');
     w.document.write(family.buildPrintHTML(fullInst, activeExps, clients, report.id, fyRangeLabel, opts));
@@ -706,28 +732,15 @@ function ReportsView({ institutes, clients }) {
                         )}
                       </div>
                     )}
+                    {family.downloadMultiDOCX && (
+                      <Btn className="btn btn-secondary btn-sm"
+                        onClick={() => family.downloadMultiDOCX(fwSelectedFirms(), clients, report.id, opts)}
+                        disabled={fwInstIds.length === 0}>⬇ Word (.docx)</Btn>
+                    )}
                     <Btn className="btn btn-primary btn-sm" onClick={() => {
-                      const sections = fwInstIds.map(id => {
-                        const inst = fwFullInsts[id];
-                        if (!inst) return '';
-                        let exps = (inst.experience || []).filter(e => fyInRange(e.fy, fromFY, toFY));
-                        if (filterDonorTypes.length > 0) {
-                          exps = exps.filter(e => {
-                            const client = (clients || []).find(c => c.id === e.clientId);
-                            return filterDonorTypes.includes(client?.type || 'Other');
-                          });
-                        }
-                        if (filterDuration) {
-                          exps = exps.filter(e => (e.occupations || []).some(occ => {
-                            const d = parseFloat(occ.duration) || 0;
-                            if (filterDuration === '160plus') return d >= 160;
-                            if (filterDuration === '390plus') return d >= 390;
-                            if (filterDuration === '390more') return d > 390;
-                            return true;
-                          }));
-                        }
-                        return family.buildPrintHTML(inst, exps, clients, report.id, fyRangeLabel, opts);
-                      }).filter(Boolean);
+                      const sections = fwSelectedFirms()
+                        .map(({ inst, exps }) => family.buildPrintHTML(inst, exps, clients, report.id, fyRangeLabel, opts))
+                        .filter(Boolean);
                       if (!sections.length) return;
                       const first = sections[0];
                       const bodyParts = sections.map(html => {
@@ -833,22 +846,7 @@ function ReportsView({ institutes, clients }) {
                 {fwInstIds.map(id => {
                   const inst = fwFullInsts[id];
                   if (!inst) return null;
-                  let exps = (inst.experience || []).filter(e => fyInRange(e.fy, fromFY, toFY));
-                  if (filterDonorTypes.length > 0) {
-                    exps = exps.filter(e => {
-                      const client = (clients || []).find(c => c.id === e.clientId);
-                      return filterDonorTypes.includes(client?.type || 'Other');
-                    });
-                  }
-                  if (filterDuration) {
-                    exps = exps.filter(e => (e.occupations || []).some(occ => {
-                      const d = parseFloat(occ.duration) || 0;
-                      if (filterDuration === '160plus') return d >= 160;
-                      if (filterDuration === '390plus') return d >= 390;
-                      if (filterDuration === '390more') return d > 390;
-                      return true;
-                    }));
-                  }
+                  const exps = fwExpsFor(inst);
                   return (
                     <div key={id} className="card" style={{padding:20}}>
                       {family.renderAggregateTable(inst, exps, clients, report.id, opts)}

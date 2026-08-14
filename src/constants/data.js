@@ -18,6 +18,10 @@ export function saveCurrentFY(fy) { try { localStorage.setItem(CURRENT_FY_KEY, f
 export const CLIENT_TYPES = ['Government','NGO','INGO','Association','Private Limited','Public Limited','Other'];
 
 export const INSTITUTE_TYPES = ['Private','Government','NGO','INGO'];
+// Bolpatra / Standard EOI — Section 2 item 2 "Type of Constitution".
+// Deliberately separate from INSTITUTE_TYPES: the EOI form uses a legal-constitution
+// taxonomy, not the donor/ownership categories used elsewhere in the app.
+export const CONSTITUTION_TYPES = ['Partnership','Pvt. Ltd','Public Ltd','Public Sector','NGO'];
 export const INSTITUTE_STATUSES = ['Active','Pending Renewal','Expired'];
 
 export const TRAINING_TYPES_DEFAULT = ['Short Term'];

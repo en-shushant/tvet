@@ -92,6 +92,14 @@ async function runMigrations() {
     `ALTER TABLE institutes ADD COLUMN IF NOT EXISTS services_template_id TEXT`,
     `ALTER TABLE assignments ADD COLUMN IF NOT EXISTS num_groups INTEGER`,
     `ALTER TABLE assignments ADD COLUMN IF NOT EXISTS duration_days INTEGER`,
+    // Bolpatra / Standard EOI — Section 2 (Applicant's Information Form) firm profile
+    `ALTER TABLE institutes ADD COLUMN IF NOT EXISTS constitution_type TEXT`,
+    `ALTER TABLE institutes ADD COLUMN IF NOT EXISTS fax TEXT`,
+    `ALTER TABLE institutes ADD COLUMN IF NOT EXISTS contact_designation TEXT`,
+    `ALTER TABLE institutes ADD COLUMN IF NOT EXISTS local_agent TEXT`,
+    `ALTER TABLE institutes ADD COLUMN IF NOT EXISTS org_profile TEXT`,
+    `ALTER TABLE institutes ADD COLUMN IF NOT EXISTS total_staff INTEGER`,
+    `ALTER TABLE institutes ADD COLUMN IF NOT EXISTS professional_staff INTEGER`,
     `CREATE TABLE IF NOT EXISTS occupation_tools (
       id SERIAL PRIMARY KEY,
       occupation_id INTEGER NOT NULL REFERENCES occupations(id) ON DELETE CASCADE,
