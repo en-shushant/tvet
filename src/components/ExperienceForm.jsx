@@ -465,9 +465,9 @@ function ExperienceForm({exp, clients, institute, onSave, onClose, onDuplicate, 
       {/* EOI report details */}
       <div className="sub-section" style={{marginBottom:16}}>
         <button type="button" onClick={()=>setShowReportFields(s=>!s)}
-          style={{width:'100%', background:'none', border:'1px solid var(--border)', borderRadius:'var(--radius)', cursor:'pointer', padding:'10px 14px', display:'flex', alignItems:'center', justifyContent:'space-between', fontFamily:'var(--font)'}}>
-          <span style={{fontSize:13, fontWeight:600, display:'flex', alignItems:'center', gap:6}}><span className="material-icons-round" style={{fontSize:16}}>assignment</span> EOI report details (3A / 3B / 3C)</span>
-          <span style={{fontSize:11, color:'var(--text3)'}}>{showReportFields ? '▲ Hide' : '▼ Optional — used for generating reports'}</span>
+          style={{width:'100%', background:'none', border:'1px solid var(--border)', borderRadius: showReportFields ? 'var(--radius) var(--radius) 0 0' : 'var(--radius)', cursor:'pointer', padding:'10px 14px', display:'flex', alignItems:'center', justifyContent:'space-between', fontFamily:'var(--font)'}}>
+          <span style={{fontSize:13, fontWeight:600, display:'flex', alignItems:'center', gap:6}}><span className="material-icons-round" style={{fontSize:16}}>assignment</span> EOI report details</span>
+          <span style={{fontSize:11, color:'var(--text3)'}}>{showReportFields ? '▲ Hide' : '▼ Show — required for generating EOI report'}</span>
         </button>
         {showReportFields && (
           <div style={{padding:'14px', border:'1px solid var(--border)', borderTop:'none', borderRadius:'0 0 var(--radius) var(--radius)'}}>
@@ -479,13 +479,12 @@ function ExperienceForm({exp, clients, institute, onSave, onClose, onDuplicate, 
                 <MdTextField type="number" label="Duration of assignment (months)" value={form.durationMonths} onChange={e=>set('durationMonths', e.target.value)} placeholder="e.g. 8"/>
               </div>
             </div>
-            {/* PPMO-specific fields — hidden until PPMO format is finalized */}
             <div className="form-row form-row-2">
               <div className="form-group">
                 <MdTextField type="number" label="Total person-months of assignment" value={form.totalPersonMonths} onChange={e=>set('totalPersonMonths', e.target.value)} placeholder="e.g. 24"/>
               </div>
               <div className="form-group">
-                <MdTextField type="number" label="Value of services provided by your firm (NPR/US$)" value={form.ownServiceValue} onChange={e=>set('ownServiceValue', e.target.value)} placeholder="If different from total contract value"/>
+                <MdTextField type="number" label="Value of services by your firm (NPR)" value={form.ownServiceValue} onChange={e=>set('ownServiceValue', e.target.value)} placeholder="If different from total contract value"/>
               </div>
             </div>
             {form.isJV && (
@@ -494,11 +493,31 @@ function ExperienceForm({exp, clients, institute, onSave, onClose, onDuplicate, 
                   <MdTextField label="Name of JV partner(s) / sub-consultants" value={form.jvPartnerNames} onChange={e=>set('jvPartnerNames', e.target.value)} placeholder="e.g. ABC Consultants, XYZ Pvt. Ltd."/>
                 </div>
                 <div className="form-group">
-                  <MdTextField type="number" label="Professional person-months by JV partners" value={form.jvPartnerPersonMonths} onChange={e=>set('jvPartnerPersonMonths', e.target.value)} placeholder="e.g. 10"/>
+                  <MdTextField type="number" label="Person-months by JV partners / sub-consultants" value={form.jvPartnerPersonMonths} onChange={e=>set('jvPartnerPersonMonths', e.target.value)} placeholder="e.g. 10"/>
                 </div>
               </div>
             )}
-            {/* 3A / 3B PPMO fields — hidden until PPMO format is finalized */}
+            <div className="form-group">
+              <label style={{fontSize:12, fontWeight:500, color:'var(--text2)', marginBottom:4, display:'block'}}>Narrative description of Project</label>
+              <textarea
+                value={form.narrativeDescription || ''}
+                onChange={e => set('narrativeDescription', e.target.value)}
+                placeholder="Describe the project scope, objectives, and context. Each line will appear as a separate paragraph in the report."
+                rows={5}
+                style={{width:'100%', padding:'8px 12px', borderRadius:'var(--radius)', border:'1px solid var(--border)', background:'var(--bg2)', color:'var(--text1)', fontSize:13, fontFamily:'var(--font)', resize:'vertical', boxSizing:'border-box'}}
+              />
+              <div className="input-hint">Each new line becomes a separate paragraph in the Word report.</div>
+            </div>
+            <div className="form-group" style={{marginBottom:0}}>
+              <label style={{fontSize:12, fontWeight:500, color:'var(--text2)', marginBottom:4, display:'block'}}>Description of actual services provided in the assignment</label>
+              <textarea
+                value={form.actualServicesDescription || ''}
+                onChange={e => set('actualServicesDescription', e.target.value)}
+                placeholder="Highlight similar services provided by your firm relevant to this EOI assignment."
+                rows={5}
+                style={{width:'100%', padding:'8px 12px', borderRadius:'var(--radius)', border:'1px solid var(--border)', background:'var(--bg2)', color:'var(--text1)', fontSize:13, fontFamily:'var(--font)', resize:'vertical', boxSizing:'border-box'}}
+              />
+            </div>
           </div>
         )}
       </div>
