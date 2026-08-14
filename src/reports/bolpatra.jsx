@@ -12,13 +12,17 @@ import { loadDocx, loadFileSaver } from './docxLazy.js';
 // Every report is `aggregate` because ReportsView's multi-institute branch renders
 // solely through renderAggregateTable — there is no per-row path in that mode.
 
+// 3(A) is "General Work Experience" — everything the firm has done — so the
+// occupation and duration filters deliberately do not narrow it. They apply to
+// 3(B) "Specific Experience", which is by definition the subset of similar
+// assignments relevant to the EOI being bid for.
 const REPORTS = [
-  { id: 'full', label: 'Complete EOI Document', aggregate: true },
+  { id: 'full', label: 'Complete EOI Document', aggregate: true, hasOccupationFilter: true, hasTurnoverFY: true },
   { id: '2',    label: "2. Applicant's Information Form", aggregate: true },
   { id: '3a',   label: '3(A) General Work Experience', aggregate: true },
-  { id: '3b',   label: '3(B) Specific Experience', aggregate: true },
+  { id: '3b',   label: '3(B) Specific Experience', aggregate: true, hasOccupationFilter: true },
   { id: '3c',   label: '3(C) Geographic Experience', aggregate: true },
-  { id: '4a',   label: '4(A) Financial Capacity', aggregate: true },
+  { id: '4a',   label: '4(A) Financial Capacity', aggregate: true, hasTurnoverFY: true },
 ];
 
 const SECTION_ORDER = ['2', '3a', '3b', '3c', '4a'];
@@ -74,6 +78,45 @@ const captionOf = (exp) => {
   const name = exp.assignmentName || '(unnamed assignment)';
   return exp.fy ? `Assignment Name: ${name} (FY ${exp.fy})` : `Assignment Name: ${name}`;
 };
+
+// ─── 3(B) narrowing ──────────────────────────────────────────────────────────
+// ReportsView hands this family unfiltered assignments (family.selfFilters) so
+// occupation and duration can be scoped to 3(B) rather than every section.
+
+/** Display name of an occupation row, resolved through the master list. */
+const occNameOf = (occ, occupations) => {
+  if (occupations?.length && occ.ctevtOccupationId) {
+    const found = occupations.find(o => String(o.id) === String(occ.ctevtOccupationId));
+    if (found) return found.name;
+  }
+  return occ.nameInLetter || '';
+};
+
+const meetsDuration = (occ, filterDuration) => {
+  if (!filterDuration) return true;
+  const d = parseFloat(occ.duration) || 0;
+  if (filterDuration === '160plus') return d >= 160;
+  if (filterDuration === '390plus') return d >= 390;
+  if (filterDuration === '390more') return d > 390;
+  return true;
+};
+
+/**
+ * Assignments qualifying as "similar" for 3(B). An assignment is kept when at
+ * least one of its occupation rows satisfies *both* the occupation and duration
+ * criteria — a 400-hour Electrician row must not qualify the assignment when the
+ * user asked for 400-hour Plumbing.
+ */
+function specificExps(exps, opts = {}) {
+  const { selectedOccs = [], filterDuration = '', occupations = [] } = opts;
+  if (!selectedOccs.length && !filterDuration) return exps;
+  const wanted = selectedOccs.map(s => s.toLowerCase());
+  return exps.filter(exp => (exp.occupations || []).some(occ => {
+    if (!meetsDuration(occ, filterDuration)) return false;
+    if (!wanted.length) return true;
+    return wanted.includes(occNameOf(occ, occupations).toLowerCase());
+  }));
+}
 
 // ─── Section models ──────────────────────────────────────────────────────────
 // Each builder returns a renderer-neutral shape so the JSX, print-HTML and DOCX
@@ -194,8 +237,12 @@ function model3c(exps) {
 }
 
 // Section 4A → { rows: [[year, amount]], average }
+// Uses its own FY range: a bid commonly asks for turnover over a different span
+// than the experience it wants shown (e.g. 3 years of accounts, 7 years of work),
+// so tying both to one selector would make one of them wrong.
 function model4a(inst, opts = {}) {
-  const { fromFY, toFY } = opts;
+  const fromFY = opts.turnoverFromFY ?? '';
+  const toFY   = opts.turnoverToFY ?? '';
   const records = (inst?.taxClearance || [])
     .filter(t => t.fy && (!fromFY && !toFY ? true : fyInRange(t.fy, fromFY, toFY)))
     .slice()
@@ -273,7 +320,7 @@ function SectionBody({ section, inst, exps, clients, opts }) {
   if (section === '3c') return <GridTable model={model3c(exps)} />;
 
   if (section === '3b') {
-    const items = model3b(exps, clients);
+    const items = model3b(specificExps(exps, opts), clients);
     if (!items.length) return <div style={{fontSize:12, color:'var(--text3)'}}>No assignments in range.</div>;
     return (
       <div style={{display:'flex', flexDirection:'column', gap:22}}>
@@ -373,7 +420,7 @@ function htmlSection(section, inst, exps, clients, opts) {
   if (section === '3c') return htmlGrid(model3c(exps));
 
   if (section === '3b') {
-    const items = model3b(exps, clients);
+    const items = model3b(specificExps(exps, opts), clients);
     if (!items.length) return `<p class="muted">No assignments in range.</p>`;
     return items.map(item => `
       <div class="spec">
@@ -570,7 +617,7 @@ function docxSection(D, kit, section, inst, exps, clients, opts) {
   }
 
   if (section === '3b') {
-    const items = model3b(exps, clients);
+    const items = model3b(specificExps(exps, opts), clients);
     if (!items.length) { out.push(p('No assignments in range.')); return out; }
     items.forEach((item, idx) => {
       // Caption sits above and outside the bordered table.
@@ -694,6 +741,10 @@ const bolpatra = {
   id: 'bolpatra',
   label: 'Bolpatra (Standard EOI)',
   multiInstitute: true,
+  // Receive assignments filtered only by FY. Occupation and duration are applied
+  // here instead, so they narrow 3(B) Specific Experience without also stripping
+  // rows out of 3(A) General Work Experience.
+  selfFilters: true,
   reports: REPORTS,
   renderAggregateTable,
   buildPrintHTML,

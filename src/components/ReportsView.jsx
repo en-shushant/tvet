@@ -27,6 +27,10 @@ function ReportsView({ institutes, clients }) {
   const [selectedIds, setSelectedIds]   = useState(null); // null = all
   const [fromFY, setFromFY]             = useState(f.fromFY || '');
   const [toFY, setToFY]                 = useState(f.toFY || '');
+  // Turnover years are chosen independently of the experience years — bids often
+  // ask for a different span of accounts than of work (see bolpatra 4(A)).
+  const [turnFromFY, setTurnFromFY]     = useState(f.turnFromFY || '');
+  const [turnToFY, setTurnToFY]         = useState(f.turnToFY || '');
   const [selectedOccs, setSelectedOccs] = useState([]); // for Table 3 occupation filter
   const [occupations, setOccupations]   = useState([]);
   const [sortBy, setSortBy]             = useState('default'); // for Table 2 occupation sort
@@ -64,8 +68,8 @@ function ReportsView({ institutes, clients }) {
   const [enssureToolsData, setEnssureToolsData] = useState([]);
 
   // Persist key filter state to sessionStorage
-  useEffect(() => { saveFilters({ familyId, selectedInst, reportId, fromFY, toFY, filterDuration, enssureOccIds, enssureToolsOccId, enssureToolsLevel, enssureEvents }); },
-    [familyId, selectedInst, reportId, fromFY, toFY, filterDuration, enssureOccIds, enssureToolsOccId, enssureToolsLevel, enssureEvents]);
+  useEffect(() => { saveFilters({ familyId, selectedInst, reportId, fromFY, toFY, turnFromFY, turnToFY, filterDuration, enssureOccIds, enssureToolsOccId, enssureToolsLevel, enssureEvents }); },
+    [familyId, selectedInst, reportId, fromFY, toFY, turnFromFY, turnToFY, filterDuration, enssureOccIds, enssureToolsOccId, enssureToolsLevel, enssureEvents]);
 
   // Fetch tools for explicitly selected D2/D3 occupation + level
   useEffect(() => {
@@ -281,7 +285,7 @@ function ReportsView({ institutes, clients }) {
     return n;
   }, [familyId, fullInst, activeExps]);
 
-  const opts = { fromFY, toFY, selectedOccs, occupations, sortBy,
+  const opts = { fromFY, toFY, turnoverFromFY: turnFromFY, turnoverToFY: turnToFY, selectedOccs, occupations, sortBy,
     toolsOccIds, toolsLevel, toolsTypeFilter, toolsColumns, toolsLayout, toolsData, numGroups,
     enssureOccs, enssureOccIds, enssureToolsData, enssureToolsOccId, enssureToolsLevel, enssureEvents,
     filterDuration, clients };
@@ -297,7 +301,9 @@ function ReportsView({ institutes, clients }) {
         return filterDonorTypes.includes(client?.type || 'Other');
       });
     }
-    if (filterDuration) {
+    // Families that declare selfFilters apply duration themselves, so they can
+    // scope it to one section instead of the whole document.
+    if (filterDuration && !family.selfFilters) {
       exps = exps.filter(e => (e.occupations || []).some(occ => {
         const d = parseFloat(occ.duration) || 0;
         if (filterDuration === '160plus') return d >= 160;
@@ -402,7 +408,10 @@ function ReportsView({ institutes, clients }) {
         <div className="card" style={{padding:'10px 18px', display:'flex', alignItems:'center', gap:16, flexWrap:'wrap'}}>
           {allFYs.length > 0 && (
             <div style={{display:'flex', alignItems:'center', gap:8}}>
-              <span style={{fontSize:11, fontWeight:600, color:'var(--text3)', whiteSpace:'nowrap'}}>FY RANGE</span>
+              <span style={{fontSize:11, fontWeight:600, color:'var(--text3)', whiteSpace:'nowrap'}}
+                title={report.hasTurnoverFY ? 'Fiscal years of the assignments shown in the experience sections' : undefined}>
+                {report.hasTurnoverFY ? 'EXPERIENCE FY' : 'FY RANGE'}
+              </span>
               <select className="form-input" style={{width:'auto', minWidth:90, padding:'4px 8px', fontSize:12}} value={fromFY} onChange={e => { setFromFY(e.target.value); setSelectedIds(null); }}>
                 <option value="">From</option>
                 {allFYs.map(fy => <option key={fy} value={fy}>{fy}</option>)}
@@ -418,9 +427,35 @@ function ReportsView({ institutes, clients }) {
               )}
             </div>
           )}
+
+          {/* Turnover years, independent of the experience years above. */}
+          {report.hasTurnoverFY && allFYs.length > 0 && (
+            <>
+              <div style={{width:1, height:24, background:'var(--border)'}}/>
+              <div style={{display:'flex', alignItems:'center', gap:8}}>
+                <span style={{fontSize:11, fontWeight:600, color:'var(--text3)', whiteSpace:'nowrap'}}
+                  title="Fiscal years of the turnover rows in 4(A) Financial Capacity">TURNOVER FY</span>
+                <select className="form-input" style={{width:'auto', minWidth:90, padding:'4px 8px', fontSize:12}} value={turnFromFY} onChange={e => setTurnFromFY(e.target.value)}>
+                  <option value="">From</option>
+                  {allFYs.map(fy => <option key={fy} value={fy}>{fy}</option>)}
+                </select>
+                <span style={{color:'var(--text3)', fontSize:12}}>→</span>
+                <select className="form-input" style={{width:'auto', minWidth:90, padding:'4px 8px', fontSize:12}} value={turnToFY} onChange={e => setTurnToFY(e.target.value)}>
+                  <option value="">To</option>
+                  {allFYs.map(fy => <option key={fy} value={fy}>{fy}</option>)}
+                </select>
+                {(turnFromFY || turnToFY) && (
+                  <Btn className="btn btn-ghost btn-sm" style={{fontSize:10, padding:'2px 6px'}}
+                    onClick={() => { setTurnFromFY(''); setTurnToFY(''); }}>✕</Btn>
+                )}
+              </div>
+            </>
+          )}
+
           <div style={{width:1, height:24, background:'var(--border)'}}/>
           <div style={{display:'flex', alignItems:'center', gap:8}}>
-            <span style={{fontSize:11, fontWeight:600, color:'var(--text3)', whiteSpace:'nowrap'}}>DURATION</span>
+            <span style={{fontSize:11, fontWeight:600, color:'var(--text3)', whiteSpace:'nowrap'}}
+              title={family.selfFilters ? 'Narrows 3(B) Specific Experience only' : undefined}>DURATION</span>
             <select className="form-input" style={{width:'auto', minWidth:140, padding:'4px 8px', fontSize:12}} value={filterDuration} onChange={e => setFilterDuration(e.target.value)}>
               <option value="">All trainings</option>
               <option value="160plus">160 hours or more</option>
