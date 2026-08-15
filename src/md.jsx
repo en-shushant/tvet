@@ -117,7 +117,10 @@ export function Btn({ className = '', children, style, ...rest }) {
 
   if (danger)  return <_TonalBtn  className={['danger', cls].filter(Boolean).join(' ')} style={style} {...rest}>{children}</_TonalBtn>;
   if (ghost)   return <_TextBtn   className={cls} style={style} {...rest}>{children}</_TextBtn>;
-  if (second)  return <_TonalBtn  className={cls} style={style} {...rest}>{children}</_TonalBtn>;
+  // Secondary reads as white-with-a-thin-border, so the hierarchy against a
+  // filled primary is visible. It was a tonal fill, which made primary and
+  // secondary look like the same button in two shades.
+  if (second)  return <_OutlBtn   className={cls} style={style} {...rest}>{children}</_OutlBtn>;
   if (success) return <_FilledBtn className={['success', cls].filter(Boolean).join(' ')} style={style} {...rest}>{children}</_FilledBtn>;
   if (warning) return <_FilledBtn className={['warning', cls].filter(Boolean).join(' ')} style={style} {...rest}>{children}</_FilledBtn>;
   // primary (default)

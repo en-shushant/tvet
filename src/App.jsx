@@ -11,6 +11,8 @@ import JVGroupPanel from './components/JVGroupPanel.jsx';
 import ProjectCompliance from './components/ProjectCompliance.jsx';
 import ComparisonView from './components/ComparisonView.jsx';
 import MasterData from './components/MasterData.jsx';
+// Design-system reference, reachable at #styleguide. Not in navigation.
+const StyleGuide = lazy(() => import('./components/StyleGuide.jsx'));
 const ReportsView = lazy(() => import('./components/ReportsView.jsx'));
 const Shortlisting = lazy(() => import('./components/Shortlisting.jsx'));
 import NepalMap from './components/NepalMap.jsx';
@@ -597,6 +599,7 @@ function App() {
               <div style={{fontSize:13}}>Admin role required to manage master data.</div>
             </div>
           )}
+          {screen === 'styleguide' && <Suspense fallback={<div style={{padding:40}}/>}><StyleGuide/></Suspense>}
           {screen === 'users' && isAdmin && <UserManagement institutes={institutes} isSuperAdmin={isSuperAdmin}/>}
           {screen === 'users' && !isAdmin && (
             <div style={{display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',height:'60%',gap:12,color:'var(--text3)'}}>
