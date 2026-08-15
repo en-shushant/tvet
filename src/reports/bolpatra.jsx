@@ -560,16 +560,14 @@ function SectionBody({ section, inst, exps, clients, opts }) {
                     <div style={{whiteSpace:'pre-wrap'}}>{item.footer.value || '—'}</div>
                   </td>
                 </tr>
-                {/* Borderless row: renders as a line beneath the box, exactly as
-                    printed, but being part of the table it cannot be orphaned onto
-                    the next page when a tall box runs to the bottom of one. */}
-                <tr>
-                  <td colSpan={2} style={{border:'none', padding:'8px 0 0', fontSize:12}}>
-                    Firm&rsquo;s Name: <u>&nbsp;{inst?.name || ''}&nbsp;</u>
-                  </td>
-                </tr>
               </tbody>
             </table>
+            {/* Outside the border, as printed on the form. The wrapper carries
+                page-break-inside: avoid so it still cannot be stranded from its
+                box across a page. */}
+            <div style={{fontSize:12, marginTop:8}}>
+              Firm&rsquo;s Name: <u>&nbsp;{inst?.name || ''}&nbsp;</u>
+            </div>
           </div>
         ))}
       </div>
@@ -745,8 +743,8 @@ function htmlSection(section, inst, exps, clients, opts) {
             <div class="note">${esc(item.footer.note)}</div>
             <div class="block">${esc(item.footer.value) || '&mdash;'}</div>
           </td></tr>
-          <tr><td colspan="2" class="firm-cell">Firm&rsquo;s Name: <u>&nbsp;${esc(inst?.name || '')}&nbsp;</u></td></tr>
         </table>
+        <div class="firm-line">Firm&rsquo;s Name: <u>&nbsp;${esc(inst?.name || '')}&nbsp;</u></div>
       </div>`).join('');
   }
 
@@ -801,7 +799,7 @@ const printShell = (title, bodyHtml) => `<!DOCTYPE html><html><head><meta charse
   .caption { font-size: 12px; margin-bottom: 5px; }
   /* Sits inside the table so it cannot be split from its box across a page,
      but is borderless so it reads as a line printed beneath the box. */
-  .firm-cell { border: none !important; padding: 8px 0 0 !important; font-size: 12px; }
+  .firm-line { font-size: 12px; margin-top: 8px; }
   .pair { margin-bottom: 6px; }
   .pair:last-child { margin-bottom: 0; }
   .lbl { color: #222; }
@@ -922,6 +920,7 @@ function docxKit(D) {
   const p = (text, o = {}) => new Paragraph({
     alignment: o.align,
     spacing: o.spacing,
+    keepNext: o.keepNext,
     children: [new TextRun({
       text: String(text ?? ''), bold: !!o.bold, italics: !!o.italic,
       size: o.size || 19, font: 'Arial', underline: o.underline ? {} : undefined,
@@ -1049,20 +1048,17 @@ function docxSection(D, kit, section, inst, exps, clients, opts) {
       }));
 
       rows.push(new TableRow({ children: [cell([
-        p(`${item.footer.label}:`),
-        p(item.footer.note, { bold: true }),
-        ...lines(item.footer.value || '—'),
+        p(`${item.footer.label}:`, { keepNext: true }),
+        p(item.footer.note, { bold: true, keepNext: true }),
+        ...lines(item.footer.value || '—').map(par => par),
       ], { colspan: 2, width: CONTENT_W })] }));
 
-      // Firm name as a borderless final row rather than a paragraph after the
-      // table: Word pushes a trailing paragraph onto the next page whenever a
-      // tall box runs to the bottom of one, stranding it away from its box.
-      rows.push(new TableRow({ children: [cell(
-        p(`Firm's Name: ${inst?.name || ''}`),
-        { colspan: 2, width: CONTENT_W, noBorder: true }
-      )] }));
-
       out.push(new Table({ width: { size: CONTENT_W, type: WidthType.DXA }, columnWidths: [HALF, HALF], rows }));
+      // Outside the table, as printed on the form. keepNext on the preceding
+      // paragraphs binds the table's last row to this line, so a tall box
+      // running to the foot of a page takes the firm name with it rather than
+      // stranding it at the top of the next.
+      out.push(p(`Firm's Name: ${inst?.name || ''}`, { spacing: { before: 80 }, size: 20 }));
     });
     return out;
   }
