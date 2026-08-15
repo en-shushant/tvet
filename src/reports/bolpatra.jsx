@@ -20,7 +20,7 @@ import { fillNarrativeTemplate, fillServicesTemplate } from '../utils/specificTe
 // 3(B) "Specific Experience", which is by definition the subset of similar
 // assignments relevant to the EOI being bid for.
 const REPORTS = [
-  { id: 'full', label: 'Complete EOI Document', aggregate: true, hasOccupationFilter: true, hasTurnoverFY: true },
+  { id: 'full', label: 'Complete EOI Document', aggregate: true, hasOccupationFilter: true, hasTurnoverFY: true, hasToolsPicker: true },
   { id: '2',    label: "2. Applicant's Information Form", aggregate: true },
   { id: '3a',   label: '3(A) General Work Experience', aggregate: true },
   { id: '3b',   label: '3(B) Specific Experience', aggregate: true, hasOccupationFilter: true },
@@ -30,6 +30,10 @@ const REPORTS = [
 ];
 
 const SECTION_ORDER = ['2', '3a', '3b', '3c', '4a', '4b'];
+// 4(B) covers the whole applicant: every firm's office setup, then one tools
+// list. Tools are master data per occupation and level — identical for every
+// firm — so repeating them per member would pad the document with duplicates.
+const FIRM_SPANNING = new Set(['4b']);
 const sectionsFor = (reportId) => reportId === 'full' ? SECTION_ORDER : [reportId];
 
 const SECTION_TITLES = {
@@ -314,58 +318,62 @@ const TOOL_GROUPS = [
 ];
 const GROUP_LETTERS = ['A', 'B', 'C', 'D'];
 
-function model4b(inst, opts = {}) {
-  const { selectedOccs = [], occupations = [], bolpatraTools = {} } = opts;
-
-  const infraRows = (inst?.infrastructure || [])
-    .slice()
-    .sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0))
-    .map((r, i) => [
-      String(i + 1),
-      dash(r.particular),
-      dash(r.description),
-      dash(r.size),
-      dash(r.unit),
-      dash(r.ownership),
-      dash(r.remark),
-    ]);
-
-  // Only the occupations the user selected, in master-list order so the document
-  // is stable regardless of the order boxes were ticked.
-  const wanted = selectedOccs.map(s => s.toLowerCase());
-  const chosen = occupations.filter(o => wanted.includes(String(o.name).toLowerCase()));
-
-  const occs = chosen.map(o => {
-    const items = bolpatraTools[o.id] || [];
-    const groups = TOOL_GROUPS
-      .map(g => ({ label: g.label, rows: items.filter(t => t.type === g.type) }))
-      .filter(g => g.rows.length)                       // omit empty groups entirely
-      .map((g, gi) => ({
-        letter: GROUP_LETTERS[gi] || String(gi + 1),
-        label: g.label,
-        rows: g.rows.map((t, i) => [
-          String(i + 1),
-          dash(t.name) || dash(t.description),
-          dash(t.unit),
-          t.quantity != null ? String(t.quantity) : '',
-          dash(t.remarks),
-        ]),
-      }));
-    return { name: o.name, groups };
-  });
-
+/** One firm's service delivery space. */
+function model4bInfra(inst) {
   return {
     premises: inst?.address
       ? `Office building with training halls at office premise, ${inst.address}`
       : '',
-    infra: {
-      columns: ['SN', 'Particular', 'Description', 'Size', 'Unit (Number)', 'Ownership', 'Remarks'],
-      widths:  [600, 1900, 2400, 1300, 1200, 1100, 1466],
-      rows: infraRows,
-    },
-    toolColumns: ['S. No', 'Description', 'Unit', 'Quantity', 'Specification/Remarks'],
-    toolWidths:  [800, 4000, 1400, 1400, 2366],
-    occupations: occs,
+    columns: ['SN', 'Particular', 'Description', 'Size', 'Unit (Number)', 'Ownership', 'Remarks'],
+    widths:  [600, 1900, 2400, 1300, 1200, 1100, 1466],
+    rows: (inst?.infrastructure || [])
+      .slice()
+      .sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0))
+      .map((r, i) => [
+        String(i + 1), dash(r.particular), dash(r.description),
+        dash(r.size), dash(r.unit), dash(r.ownership), dash(r.remark),
+      ]),
+  };
+}
+
+/**
+ * Tools and equipment for the selected occupations — shared across all firms,
+ * since occupation_tools is master data keyed by occupation and level.
+ *
+ * Quantities are multiplied by the number of training events: the stored figure
+ * is what one event consumes, so a bid running six events needs six times the
+ * consumables.
+ */
+function model4bTools(opts = {}) {
+  const { selectedOccs = [], occupations = [], bolpatraTools = {}, eoiEvents = 1 } = opts;
+  const events = Math.max(1, parseInt(eoiEvents) || 1);
+
+  const wanted = selectedOccs.map(s => s.toLowerCase());
+  const chosen = occupations.filter(o => wanted.includes(String(o.name).toLowerCase()));
+
+  return {
+    events,
+    level: opts.eoiToolsLevel || '',
+    columns: ['S. No', 'Description', 'Unit', 'Quantity', 'Specification/Remarks'],
+    widths:  [800, 4000, 1400, 1400, 2366],
+    occupations: chosen.map(o => {
+      const items = bolpatraTools[o.id] || [];
+      const groups = TOOL_GROUPS
+        .map(g => ({ label: g.label, rows: items.filter(t => t.type === g.type) }))
+        .filter(g => g.rows.length)
+        .map((g, gi) => ({
+          letter: GROUP_LETTERS[gi] || String(gi + 1),
+          label: g.label,
+          rows: g.rows.map((t, i) => [
+            String(i + 1),
+            dash(t.name) || dash(t.description),
+            dash(t.unit),
+            t.quantity != null ? String(t.quantity * events) : '',
+            dash(t.remarks),
+          ]),
+        }));
+      return { name: o.name, groups };
+    }),
   };
 }
 
@@ -406,6 +414,74 @@ function Cell({ pairs }) {
         </div>
       ))}
     </td>
+  );
+}
+
+/**
+ * 4(B) for the whole applicant: each firm's office setup in turn — lead first —
+ * followed by a single occupation-wise tools list, since tools are master data
+ * shared by every member of a joint venture.
+ */
+function Section4B({ firms, opts = {} }) {
+  const tools = model4bTools(opts);
+  const Plain = ({ columns, rows, empty }) => rows.length ? (
+    <div style={{overflowX:'auto'}}>
+      <table style={{borderCollapse:'collapse', width:'100%'}}>
+        <thead><tr>{columns.map(c => <th key={c} style={TH}>{c}</th>)}</tr></thead>
+        <tbody>{rows.map((r, i) => (
+          <tr key={i}>{r.map((v, j) => <td key={j} style={TD}>{v || '—'}</td>)}</tr>
+        ))}</tbody>
+      </table>
+    </div>
+  ) : <div style={{fontSize:12, color:'var(--text3)', padding:'6px 0'}}>{empty}</div>;
+
+  return (
+    <div>
+      {firms.map(({ inst }, fi) => {
+        const infra = model4bInfra(inst);
+        return (
+          <div key={inst?.id ?? fi} style={{marginBottom:22}}>
+            <div style={{fontWeight:700, fontSize:12.5, marginBottom:4}}>
+              {firms.length > 1
+                ? `${fi === 0 ? 'Lead firm' : 'JV partner'} — ${inst?.name || ''}: office setup`
+                : 'Service Delivery Space'}
+            </div>
+            {infra.premises && <div style={{fontSize:12, marginBottom:8}}>{infra.premises}</div>}
+            <Plain columns={infra.columns} rows={infra.rows}
+              empty="No infrastructure recorded for this firm." />
+          </div>
+        );
+      })}
+
+      <div style={{fontWeight:700, fontSize:12.5, margin:'20px 0 6px'}}>
+        Tools and Equipment
+        {tools.level ? ` — ${tools.level}` : ''}
+        {tools.events > 1 ? ` — quantities for ${tools.events} training events` : ''}
+      </div>
+      {tools.occupations.length === 0
+        ? <div style={{fontSize:12, color:'var(--text3)'}}>
+            Select one or more occupations to list their tools and equipment.
+          </div>
+        : tools.occupations.map(o => (
+            <div key={o.name} style={{marginTop:16}}>
+              <div style={{fontWeight:600, fontSize:12.5, marginBottom:6}}>
+                Tools and Equipment for {o.name} Training
+              </div>
+              {o.groups.length === 0
+                ? <div style={{fontSize:12, color:'var(--text3)'}}>
+                    No tools recorded for this occupation at the selected level.
+                  </div>
+                : o.groups.map(g => (
+                    <div key={g.letter} style={{marginBottom:12}}>
+                      <div style={{fontSize:12, fontWeight:600, margin:'8px 0 4px'}}>
+                        {g.letter}. {g.label}
+                      </div>
+                      <Plain columns={tools.columns} rows={g.rows} empty="" />
+                    </div>
+                  ))}
+            </div>
+          ))}
+    </div>
   );
 }
 
@@ -465,52 +541,9 @@ function SectionBody({ section, inst, exps, clients, opts }) {
     );
   }
 
-  if (section === '4b') {
-    const m = model4b(inst, opts);
-    const Plain = ({ columns, rows, empty }) => rows.length ? (
-      <div style={{overflowX:'auto'}}>
-        <table style={{borderCollapse:'collapse', width:'100%'}}>
-          <thead><tr>{columns.map(c => <th key={c} style={TH}>{c}</th>)}</tr></thead>
-          <tbody>{rows.map((r, i) => (
-            <tr key={i}>{r.map((v, j) => <td key={j} style={TD}>{v || '—'}</td>)}</tr>
-          ))}</tbody>
-        </table>
-      </div>
-    ) : <div style={{fontSize:12, color:'var(--text3)', padding:'6px 0'}}>{empty}</div>;
-
-    return (
-      <div>
-        {m.premises && <div style={{fontSize:12.5, marginBottom:8}}>{m.premises}</div>}
-        <div style={{fontWeight:700, fontSize:12.5, margin:'12px 0 6px'}}>Service Delivery Space</div>
-        <Plain columns={m.infra.columns} rows={m.infra.rows}
-          empty="No infrastructure recorded for this firm." />
-
-        {m.occupations.length === 0
-          ? <div style={{fontSize:12, color:'var(--text3)', marginTop:14}}>
-              Select one or more occupations to list their tools and equipment.
-            </div>
-          : m.occupations.map(o => (
-              <div key={o.name} style={{marginTop:20}}>
-                <div style={{fontWeight:700, fontSize:12.5, marginBottom:6}}>
-                  Tools and Equipment for {o.name} Training
-                </div>
-                {o.groups.length === 0
-                  ? <div style={{fontSize:12, color:'var(--text3)'}}>
-                      No tools recorded for this occupation at the selected level.
-                    </div>
-                  : o.groups.map(g => (
-                      <div key={g.letter} style={{marginBottom:12}}>
-                        <div style={{fontSize:12, fontWeight:600, margin:'8px 0 4px'}}>
-                          {g.letter}. {g.label}
-                        </div>
-                        <Plain columns={m.toolColumns} rows={g.rows} empty="" />
-                      </div>
-                    ))}
-              </div>
-            ))}
-      </div>
-    );
-  }
+  // 4(B) is rendered by Section4B, which spans every firm; SectionBody is only
+  // reached for a single-firm document.
+  if (section === '4b') return <Section4B firms={[{ inst }]} opts={opts} />;
 
   // 4a
   const m = model4a(inst, opts);
@@ -579,17 +612,19 @@ function renderMultiAggregate(firms, clients, reportId, opts = {}) {
         <div key={s} style={{marginBottom:34}}>
           <div style={{fontWeight:600, fontSize:14, marginBottom:2}}>{SECTION_TITLES[s].heading}</div>
           <div style={{fontSize:11, color:'var(--text3)', fontStyle:'italic', marginBottom:14}}>{SECTION_TITLES[s].note}</div>
-          {firms.map(({ inst, exps }, fi) => (
-            <div key={inst?.id ?? fi} style={{
-              marginBottom:18, paddingLeft:14,
-              borderLeft:'3px solid var(--border)',
-            }}>
-              <div style={{fontWeight:700, fontSize:12.5, marginBottom:10}}>
-                {firmLabel(inst, fi, firms.length)}
-              </div>
-              <SectionBody section={s} inst={inst} exps={exps} clients={clients} opts={opts} />
-            </div>
-          ))}
+          {FIRM_SPANNING.has(s)
+            ? <Section4B firms={firms} opts={opts} />
+            : firms.map(({ inst, exps }, fi) => (
+                <div key={inst?.id ?? fi} style={{
+                  marginBottom:18, paddingLeft:14,
+                  borderLeft:'3px solid var(--border)',
+                }}>
+                  <div style={{fontWeight:700, fontSize:12.5, marginBottom:10}}>
+                    {firmLabel(inst, fi, firms.length)}
+                  </div>
+                  <SectionBody section={s} inst={inst} exps={exps} clients={clients} opts={opts} />
+                </div>
+              ))}
         </div>
       ))}
     </div>
@@ -610,6 +645,46 @@ const htmlCell = (pairs) => `<td>${pairs.map(p =>
   `<div class="pair"><span class="lbl">${esc(p.label)}:</span> ${
     p.block ? `<div class="block">${esc(p.value) || '&mdash;'}</div>` : `<b>${esc(p.value) || '&mdash;'}</b>`
   }</div>`).join('')}</td>`;
+
+const htmlGridPlain = (columns, rows, empty) => rows.length ? `
+  <table>
+    <thead><tr>${columns.map(c => `<th>${esc(c)}</th>`).join('')}</tr></thead>
+    <tbody>${rows.map(r => `<tr>${r.map(v => `<td>${esc(v) || '&mdash;'}</td>`).join('')}</tr>`).join('')}</tbody>
+  </table>` : (empty ? `<p class="muted">${esc(empty)}</p>` : '');
+
+/** 4(B): every firm's office setup, then one shared tools list. */
+function html4B(firms, opts = {}) {
+  const tools = model4bTools(opts);
+  const offices = firms.map(({ inst }, fi) => {
+    const infra = model4bInfra(inst);
+    const heading = firms.length > 1
+      ? `${fi === 0 ? 'Lead firm' : 'JV partner'} — ${inst?.name || ''}: office setup`
+      : 'Service Delivery Space';
+    return `
+      <div class="office-block">
+        <div class="sub-h">${esc(heading)}</div>
+        ${infra.premises ? `<p class="premises">${esc(infra.premises)}</p>` : ''}
+        ${htmlGridPlain(infra.columns, infra.rows, 'No infrastructure recorded for this firm.')}
+      </div>`;
+  }).join('');
+
+  const toolsHeading = `Tools and Equipment${tools.level ? ` — ${tools.level}` : ''}`
+    + (tools.events > 1 ? ` — quantities for ${tools.events} training events` : '');
+
+  const occHtml = tools.occupations.length === 0
+    ? `<p class="muted">Select one or more occupations to list their tools and equipment.</p>`
+    : tools.occupations.map(o => `
+        <div class="tool-block">
+          <div class="grp">Tools and Equipment for ${esc(o.name)} Training</div>
+          ${o.groups.length === 0
+            ? `<p class="muted">No tools recorded for this occupation at the selected level.</p>`
+            : o.groups.map(g => `
+                <div class="grp">${esc(g.letter)}. ${esc(g.label)}</div>
+                ${htmlGridPlain(tools.columns, g.rows, '')}`).join('')}
+        </div>`).join('');
+
+  return `${offices}<div class="sub-h" style="margin-top:18px">${esc(toolsHeading)}</div>${occHtml}`;
+}
 
 function htmlSection(section, inst, exps, clients, opts) {
   if (section === '2') {
@@ -638,32 +713,8 @@ function htmlSection(section, inst, exps, clients, opts) {
       </div>`).join('');
   }
 
-  if (section === '4b') {
-    const m = model4b(inst, opts);
-    const grid = (columns, rows, empty) => rows.length ? `
-      <table>
-        <thead><tr>${columns.map(c => `<th>${esc(c)}</th>`).join('')}</tr></thead>
-        <tbody>${rows.map(r => `<tr>${r.map(v => `<td>${esc(v) || '&mdash;'}</td>`).join('')}</tr>`).join('')}</tbody>
-      </table>` : (empty ? `<p class="muted">${esc(empty)}</p>` : '');
-
-    const occHtml = m.occupations.length === 0
-      ? `<p class="muted">Select one or more occupations to list their tools and equipment.</p>`
-      : m.occupations.map(o => `
-          <div class="tool-block">
-            <div class="sub-h">Tools and Equipment for ${esc(o.name)} Training</div>
-            ${o.groups.length === 0
-              ? `<p class="muted">No tools recorded for this occupation at the selected level.</p>`
-              : o.groups.map(g => `
-                  <div class="grp">${esc(g.letter)}. ${esc(g.label)}</div>
-                  ${grid(m.toolColumns, g.rows, '')}`).join('')}
-          </div>`).join('');
-
-    return `
-      ${m.premises ? `<p class="premises">${esc(m.premises)}</p>` : ''}
-      <div class="sub-h">Service Delivery Space</div>
-      ${grid(m.infra.columns, m.infra.rows, 'No infrastructure recorded for this firm.')}
-      ${occHtml}`;
-  }
+  // 4(B) spans every firm — see html4B; this path is the single-firm case.
+  if (section === '4b') return html4B([{ inst }], opts);
 
   const m = model4a(inst, opts);
   return `
@@ -729,6 +780,7 @@ const printShell = (title, bodyHtml) => `<!DOCTYPE html><html><head><meta charse
   .sub-h { font-weight: bold; font-size: 12px; margin: 12px 0 6px; }
   .grp { font-weight: bold; font-size: 11.5px; margin: 10px 0 4px; }
   .tool-block { margin-top: 16px; page-break-inside: auto; }
+  .office-block { margin-bottom: 18px; }
   .page-break { page-break-before: always; }
   @media print { body { margin: 0; } }
 </style></head><body>
@@ -760,6 +812,17 @@ function buildPrintHTML(inst, exps, clients, reportId, fyRange, opts = {}) {
 function buildMultiPrintHTML(firms, clients, reportId, fyRange, opts = {}) {
   const blocks = [];
   sectionsFor(reportId).forEach(s => {
+    if (FIRM_SPANNING.has(s)) {
+      // One block covering every firm, rather than one page per member.
+      blocks.push(`
+    <div class="section">
+      <div class="doc-head">Standard EOI Document</div>
+      <h2>${esc(SECTION_TITLES[s].heading)}</h2>
+      <p class="sub">${esc(SECTION_TITLES[s].note)}</p>
+      ${html4B(firms, opts)}
+    </div>`);
+      return;
+    }
     firms.forEach(({ inst, exps }, fi) => {
       blocks.push(printBlock(s, inst, exps, clients, opts, firmLabel(inst, fi, firms.length)));
     });
@@ -845,6 +908,60 @@ function docxKit(D) {
   return { p, lines, cell, BORDERS };
 }
 
+/** 4(B) for Word: every firm's office setup, then one shared tools list. */
+function docx4B(D, kit, firms, opts = {}) {
+  const { Table, TableRow, WidthType } = D;
+  const { p, lines, cell } = kit;
+  const out = [];
+
+  const grid = (columns, widths, dataRows) => {
+    const w = scaleWidths(widths);
+    const head = new TableRow({
+      tableHeader: true,
+      children: columns.map((c, i) => cell(p(c, { bold: true }), { width: w[i] })),
+    });
+    const body = dataRows.map(r => new TableRow({
+      children: r.map((v, i) => cell(lines(v || '—'), { width: w[i] })),
+    }));
+    return new Table({ width: { size: CONTENT_W, type: WidthType.DXA }, columnWidths: w, rows: [head, ...body] });
+  };
+
+  firms.forEach(({ inst }, fi) => {
+    const infra = model4bInfra(inst);
+    const heading = firms.length > 1
+      ? `${fi === 0 ? 'Lead firm' : 'JV partner'} — ${inst?.name || ''}: office setup`
+      : 'Service Delivery Space';
+    out.push(p(heading, { bold: true, spacing: { before: fi === 0 ? 60 : 240, after: 80 } }));
+    if (infra.premises) out.push(p(infra.premises, { spacing: { after: 100 } }));
+    if (infra.rows.length) out.push(grid(infra.columns, infra.widths, infra.rows));
+    else out.push(p('No infrastructure recorded for this firm.', { italic: true }));
+  });
+
+  const tools = model4bTools(opts);
+  out.push(p(`Tools and Equipment${tools.level ? ` — ${tools.level}` : ''}`
+    + (tools.events > 1 ? ` — quantities for ${tools.events} training events` : ''),
+    { bold: true, spacing: { before: 300, after: 80 } }));
+
+  if (!tools.occupations.length) {
+    out.push(p('Select one or more occupations to list their tools and equipment.', { italic: true }));
+    return out;
+  }
+
+  tools.occupations.forEach(o => {
+    out.push(p(`Tools and Equipment for ${o.name} Training`,
+      { bold: true, spacing: { before: 260, after: 80 } }));
+    if (!o.groups.length) {
+      out.push(p('No tools recorded for this occupation at the selected level.', { italic: true }));
+      return;
+    }
+    o.groups.forEach(g => {
+      out.push(p(`${g.letter}. ${g.label}`, { bold: true, spacing: { before: 140, after: 60 } }));
+      out.push(grid(tools.columns, tools.widths, g.rows));
+    });
+  });
+  return out;
+}
+
 function docxSection(D, kit, section, inst, exps, clients, opts) {
   const { Table, TableRow, WidthType, AlignmentType, HeightRule } = D;
   const { p, lines, cell } = kit;
@@ -912,45 +1029,8 @@ function docxSection(D, kit, section, inst, exps, clients, opts) {
     return out;
   }
 
-  if (section === '4b') {
-    const m = model4b(inst, opts);
-    const grid = (columns, widths, dataRows) => {
-      const w = scaleWidths(widths);
-      const head = new TableRow({
-        tableHeader: true,
-        children: columns.map((c, i) => cell(p(c, { bold: true }), { width: w[i] })),
-      });
-      const body = dataRows.map(r => new TableRow({
-        children: r.map((v, i) => cell(lines(v || '—'), { width: w[i] })),
-      }));
-      return new Table({ width: { size: CONTENT_W, type: WidthType.DXA }, columnWidths: w, rows: [head, ...body] });
-    };
-
-    if (m.premises) out.push(p(m.premises, { spacing: { after: 120 } }));
-    out.push(p('Service Delivery Space', { bold: true, spacing: { before: 120, after: 80 } }));
-    if (m.infra.rows.length) out.push(grid(m.infra.columns, m.infra.widths, m.infra.rows));
-    else out.push(p('No infrastructure recorded for this firm.', { italic: true }));
-
-    if (m.occupations.length === 0) {
-      out.push(p('Select one or more occupations to list their tools and equipment.',
-        { italic: true, spacing: { before: 160 } }));
-      return out;
-    }
-
-    m.occupations.forEach(o => {
-      out.push(p(`Tools and Equipment for ${o.name} Training`,
-        { bold: true, spacing: { before: 260, after: 80 } }));
-      if (!o.groups.length) {
-        out.push(p('No tools recorded for this occupation at the selected level.', { italic: true }));
-        return;
-      }
-      o.groups.forEach(g => {
-        out.push(p(`${g.letter}. ${g.label}`, { bold: true, spacing: { before: 140, after: 60 } }));
-        out.push(grid(m.toolColumns, m.toolWidths, g.rows));
-      });
-    });
-    return out;
-  }
+  // 4(B) spans every firm — see docx4B; this path is the single-firm case.
+  if (section === '4b') return docx4B(D, kit, [{ inst }], opts);
 
   // 4a
   const m = model4a(inst, opts);
@@ -1012,6 +1092,15 @@ async function downloadMultiDOCX(firms, clients, reportId, opts = {}) {
   // constituent member, so an evaluator reads all the firms' section 2, then all
   // their 3(A), and so on — not one firm's whole document followed by the next's.
   sections.forEach(s => {
+    if (FIRM_SPANNING.has(s)) {
+      if (!first) children.push(new Paragraph({ pageBreakBefore: true, children: [new TextRun({ text: '', size: 19 })] }));
+      first = false;
+      children.push(p('Standard EOI Document', { bold: true, italic: true, align: AlignmentType.CENTER, size: 22 }));
+      children.push(p(SECTION_TITLES[s].heading, { bold: true, size: 22, spacing: { before: 200, after: 40 } }));
+      children.push(p(SECTION_TITLES[s].note, { italic: true, size: 17, spacing: { after: 140 } }));
+      children.push(...docx4B(D, kit, firms, opts));
+      return;
+    }
     firms.forEach(({ inst, exps }, fi) => {
       if (!first) children.push(new Paragraph({ pageBreakBefore: true, children: [new TextRun({ text: '', size: 19 })] }));
       first = false;

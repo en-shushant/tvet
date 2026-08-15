@@ -50,6 +50,9 @@ function ReportsView({ institutes, clients }) {
   // Level for the 4(B) tools tables — occupation_tools are stored per level.
   const [eoiToolsLevel, setEoiToolsLevel] = useState(f.eoiToolsLevel || 'Level 1');
   const [eoiTools, setEoiTools] = useState({});
+  // Stored tool quantities are per training event; a bid running several
+  // events needs them scaled up.
+  const [eoiEvents, setEoiEvents] = useState(f.eoiEvents || 1);
   const [nstbComparative, setNstbComparative] = useState(false);
   const [nstbThreshold, setNstbThreshold] = useState('');
 
@@ -74,8 +77,8 @@ function ReportsView({ institutes, clients }) {
   const [enssureToolsData, setEnssureToolsData] = useState([]);
 
   // Persist key filter state to sessionStorage
-  useEffect(() => { saveFilters({ familyId, selectedInst, reportId, fromFY, toFY, turnFromFY, turnToFY, eoiToolsLevel, filterDuration, enssureOccIds, enssureToolsOccId, enssureToolsLevel, enssureEvents }); },
-    [familyId, selectedInst, reportId, fromFY, toFY, turnFromFY, turnToFY, eoiToolsLevel, filterDuration, enssureOccIds, enssureToolsOccId, enssureToolsLevel, enssureEvents]);
+  useEffect(() => { saveFilters({ familyId, selectedInst, reportId, fromFY, toFY, turnFromFY, turnToFY, eoiToolsLevel, eoiEvents, filterDuration, enssureOccIds, enssureToolsOccId, enssureToolsLevel, enssureEvents }); },
+    [familyId, selectedInst, reportId, fromFY, toFY, turnFromFY, turnToFY, eoiToolsLevel, eoiEvents, filterDuration, enssureOccIds, enssureToolsOccId, enssureToolsLevel, enssureEvents]);
 
   // Fetch tools for explicitly selected D2/D3 occupation + level
   useEffect(() => {
@@ -316,7 +319,7 @@ function ReportsView({ institutes, clients }) {
   }, [familyId, fullInst, activeExps]);
 
   const opts = { fromFY, toFY, turnoverFromFY: turnFromFY, turnoverToFY: turnToFY,
-    bolpatraTools: eoiTools, eoiToolsLevel, selectedOccs, occupations, sortBy,
+    bolpatraTools: eoiTools, eoiToolsLevel, eoiEvents, selectedOccs, occupations, sortBy,
     toolsOccIds, toolsLevel, toolsTypeFilter, toolsColumns, toolsLayout, toolsData, numGroups,
     enssureOccs, enssureOccIds, enssureToolsData, enssureToolsOccId, enssureToolsLevel, enssureEvents,
     filterDuration, clients };
@@ -644,9 +647,13 @@ function ReportsView({ institutes, clients }) {
                   <option>N/A</option><option>Level 1</option><option>Level 2</option>
                   <option>Level 3</option><option>Professional</option><option>Technician</option>
                 </select>
+                <div className="filter-label" style={{marginTop:10}}>Number of training events</div>
+                <input type="number" min="1" className="form-input" value={eoiEvents}
+                  onChange={e => setEoiEvents(Math.max(1, parseInt(e.target.value) || 1))}/>
                 <div className="input-hint" style={{marginTop:4}}>
                   {eoiOccIds.length
-                    ? `Tools listed for ${eoiOccIds.length} occupation${eoiOccIds.length !== 1 ? 's' : ''} at this level.`
+                    ? `Tools listed for ${eoiOccIds.length} occupation${eoiOccIds.length !== 1 ? 's' : ''} at this level`
+                      + (eoiEvents > 1 ? `, quantities \u00d7 ${eoiEvents}.` : '.')
                     : 'Pick occupations below to list their tools.'}
                 </div>
               </div>
