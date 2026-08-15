@@ -108,3 +108,12 @@ export function getNepaliDate() {
     enDay: ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'][dayIndex],
   };
 }
+
+/**
+ * Every Bikram Sambat year the calendar data covers, ascending.
+ *
+ * Was derived independently in Shortlisting.jsx and QuotationsView.jsx from the
+ * same BS_DATA; a third copy was about to appear when the date picker moved to
+ * its own module.
+ */
+export const BS_YEARS = Object.keys(BS_DATA).map(Number).sort((a, b) => a - b);

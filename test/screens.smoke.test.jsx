@@ -42,6 +42,9 @@ import QuotationsView from '../src/components/QuotationsView.jsx';
 import ReportsView from '../src/components/ReportsView.jsx';
 import CommandPalette from '../src/components/CommandPalette.jsx';
 import StyleGuide from '../src/components/StyleGuide.jsx';
+import Shortlisting from '../src/components/Shortlisting.jsx';
+import { ContractsPanel } from '../src/components/shortlisting/ContractsPanel.jsx';
+import { NepaliDatePicker, ConfirmModal } from '../src/components/shortlisting/common.jsx';
 
 const noop = () => {};
 const token = 'test-token';
@@ -105,6 +108,15 @@ const SCREENS = {
   'Reports':            <ReportsView institutes={institutes} clients={clients} />,
   'Command palette':    <CommandPalette open onClose={noop} institutes={institutes} clients={clients} actions={[]} />,
   'Style guide':        <StyleGuide />,
+  // Lazy-loaded behind Suspense in App.jsx, which is why it was missing here.
+  'Shortlisting':       <Shortlisting institutes={institutes} clients={clients} isAdmin
+                          isEditor={false} isShortlistOnly={false} isSuperAdmin token={token} />,
+  // Extracted out of Shortlisting.jsx, and only rendered there once a group is
+  // expanded — mounted directly so the split is actually covered.
+  'Contracts panel':    <ContractsPanel clientId={1} clientNameManual="" groupRows={[]}
+                          canEdit isAdmin token={token} />,
+  'Nepali date picker': <NepaliDatePicker label="Date" value="" onChange={noop} />,
+  'Confirm dialog':     <ConfirmModal message="Delete this?" onConfirm={noop} onClose={noop} saving={false} />,
 };
 
 describe('every screen mounts', () => {
@@ -133,6 +145,8 @@ describe('screens survive empty data', () => {
     'Summary':            <SummaryView institutes={[]} clients={[]} />,
     'Comparison':         <ComparisonView institutes={[]} clients={[]} />,
     'Reports':            <ReportsView institutes={[]} clients={[]} />,
+    'Shortlisting':       <Shortlisting institutes={[]} clients={[]} isAdmin
+                            isEditor={false} isShortlistOnly={false} isSuperAdmin token={token} />,
   };
   for (const [name, element] of Object.entries(EMPTY)) {
     it(`${name} renders with no records`, async () => {

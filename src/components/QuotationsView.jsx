@@ -8,7 +8,7 @@ import { Btn, MdTextField, MdSelect, MdOption } from '../md.jsx';
 import { api } from '../utils/api.js';
 import { getSession } from '../utils/auth.js';
 import { FISCAL_YEARS, getCurrentFY } from '../constants/data.js';
-import { adToBS, bsToAD, BS_MONTHS, BS_DATA, toNpNum } from '../constants/nepali.js';
+import { adToBS, bsToAD, BS_MONTHS, BS_DATA, toNpNum, BS_YEARS } from '../constants/nepali.js';
 import { fmtDate } from '../utils/format.js';
 import { toast } from './ui/Feedback.jsx';
 
@@ -19,7 +19,6 @@ const QUOTE_STATUS = ['Quoted', 'Awarded', 'Rejected'];
 const npNum = n => String(n).split('').map(d => '०१२३४५६७८९'[+d] ?? d).join('');
 const fmtNPR = v => v != null ? `NPR ${Number(v).toLocaleString()}` : '—';
 
-const BS_YEARS = Object.keys(BS_DATA).map(Number).sort((a,b)=>a-b);
 
 function NepaliDatePicker({ label, value, onChange, required }) {
   const parsed = useMemo(() => {
