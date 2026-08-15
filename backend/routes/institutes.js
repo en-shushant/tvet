@@ -90,7 +90,11 @@ async function plugin(fastify, opts) {
                    'ctevt_occupation_id', ao.ctevt_occupation_id,
                    'name_in_letter', ao.name_in_letter,
                    'trainees', ao.trainees,
-                   'duration', ao.duration,
+                   -- Column is duration_hours; the key stays 'duration' because
+                   -- JVGroupPanel.computeInstStats reads occ.duration. Selecting
+                   -- ao.duration made this whole endpoint 500 with "column
+                   -- ao.duration does not exist", taking Project Compliance down.
+                   'duration', ao.duration_hours,
                    'level', ao.level,
                    'locations', ao.locations
                  ) ORDER BY ao.sort_order, ao.id
