@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { PROVINCES, setProvinces, LOCAL_LEVEL_TYPES } from '../constants/data.js';
+import { PROVINCES, setProvinces, LOCAL_LEVEL_TYPES, notifyMasterData } from '../constants/data.js';
 import { api } from '../utils/api.js';
 import Modal from './ui/Modal.jsx';
 import { ErrorBanner } from './ui/Modal.jsx';
@@ -29,6 +29,7 @@ function LocationsEditor({token}) {
             local_levels: (d.local_levels||[]).map(ll => ({name: ll.name, type: ll.type}))
           }))
         }));
+        notifyMasterData();
       })
       .catch(e => { setErr(e.message); setLoading(false); });
   };

@@ -26,7 +26,7 @@ import { UserManagement } from './components/LoginPage.jsx';
 import { ErrorBanner } from './components/ui/Modal.jsx';
 import StatusBadge from './components/ui/StatusBadge.jsx';
 import { BulkAssignmentForm } from './components/BulkDistrictPicker.jsx';
-import { PROVINCES, OCCUPATIONS, FISCAL_YEARS, getAllDistricts } from './constants/data.js';
+import { PROVINCES, OCCUPATIONS, FISCAL_YEARS, getAllDistricts, notifyMasterData } from './constants/data.js';
 import { getNepaliDate } from './constants/nepali.js';
 import { api, normInst, normClient, instToAPI, nstbToAPI } from './utils/api.js';
 import { preloadLogos } from './utils/logoCache.js';
@@ -172,6 +172,8 @@ function App() {
           }))
         }));
       }
+      // Both arrays were just replaced wholesale; tell subscribers once.
+      notifyMasterData();
       if (!fromCache) {
         try { sessionStorage.setItem(CACHE_KEY, JSON.stringify({ insts, cls, occs, locs, ts: Date.now() })); } catch {}
       }
@@ -284,7 +286,7 @@ function App() {
         <div style={{fontSize:18,fontWeight:700,color:'var(--text)'}}>Could not connect</div>
         <div style={{fontSize:13,color:'var(--text3)',maxWidth:380,textAlign:'center'}}>{apiError}</div>
         <div style={{display:'flex',gap:10,marginTop:4}}>
-          <button className="btn btn-primary" onClick={() => { setApiError(''); setLoading(true); Promise.all([api('GET','/institutes',null,token),api('GET','/clients',null,token),api('GET','/occupations',null,token).catch(()=>[])]).then(([i,c,o])=>{setInstitutes(i.map(normInst));setClients(c.map(normClient));OCCUPATIONS.splice(0,OCCUPATIONS.length,...o);setLoading(false);}).catch(e=>{setApiError(e.message);setLoading(false);}); }}>
+          <button className="btn btn-primary" onClick={() => { setApiError(''); setLoading(true); Promise.all([api('GET','/institutes',null,token),api('GET','/clients',null,token),api('GET','/occupations',null,token).catch(()=>[])]).then(([i,c,o])=>{setInstitutes(i.map(normInst));setClients(c.map(normClient));OCCUPATIONS.splice(0,OCCUPATIONS.length,...o);notifyMasterData();setLoading(false);}).catch(e=>{setApiError(e.message);setLoading(false);}); }}>
             <span className="material-icons-round" style={{fontSize:16}}>refresh</span> Retry
           </button>
           <button className="btn btn-secondary" onClick={() => { clearSession(); setSession(null); setApiError(''); }}>

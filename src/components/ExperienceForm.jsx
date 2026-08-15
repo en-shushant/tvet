@@ -7,13 +7,14 @@ import SearchableSelect from './ui/SearchableSelect.jsx';
 import { DropdownPanel } from './ui/SearchableSelect.jsx';
 import { Btn, MdTextField, MdSelect, MdOption, MdToggle } from '../md.jsx';
 import { BulkDistrictPicker } from './BulkDistrictPicker.jsx';
-import { PROVINCES, FISCAL_YEARS, TRAINING_TYPES, SECTORS, OCCUPATIONS, CLIENT_TYPES, getAllDistricts } from '../constants/data.js';
+import { PROVINCES, FISCAL_YEARS, TRAINING_TYPES, SECTORS, OCCUPATIONS, CLIENT_TYPES, getAllDistricts, notifyMasterData } from '../constants/data.js';
 import { api } from '../utils/api.js';
 import { getSession } from '../utils/auth.js';
 import { fillDescriptionTemplate } from '../utils/descriptionTemplates.js';
 import { fillNarrativeTemplate, fillServicesTemplate } from '../utils/specificTemplates.js';
 import { fyToAD, uid } from '../utils/format.js';
 import { toast } from './ui/Feedback.jsx';
+import { useOccupations } from '../utils/useMasterData.js';
 
 
 
@@ -100,6 +101,7 @@ function QuickAddOccupationModal({name, onSave, onClose}) {
       const saved = await api('POST', '/occupations', {name:form.name, sector:form.sector, level:form.level||null}, token);
       OCCUPATIONS.push(saved);
       OCCUPATIONS.sort((a,b)=>a.name.localeCompare(b.name));
+      notifyMasterData();
       onSave(saved);
     } catch(e) { setErr(e.message); }
   };
@@ -254,6 +256,9 @@ function ExperienceForm({exp, clients, institute, onSave, onClose, onDuplicate, 
   const token = _sess?.token;
   const canManageOccs = _sess?.role === 'admin' || _sess?.role === 'editor' || _sess?.role === 'superadmin';
   const [quickAddOcc, setQuickAddOcc] = useState(null); // {name, occIdx}
+  // Subscribed rather than read directly, so an occupation added through the
+  // quick-add modal appears in this dropdown without remounting the form.
+  const occupationOptions = useOccupations();
   // One occupation's locations open at a time — keeps the table scannable.
   const [expandedOcc, setExpandedOcc] = useState(null);
   const [saveClientModal, setSaveClientModal] = useState(null);
@@ -286,7 +291,7 @@ function ExperienceForm({exp, clients, institute, onSave, onClose, onDuplicate, 
    */
   const pickOccupation = (i, id) => setForm(f => ({...f, occupations: f.occupations.map((o, idx) => {
     if (idx !== i) return o;
-    const master = OCCUPATIONS.find(x => String(x.id) === String(id));
+    const master = occupationOptions.find(x => String(x.id) === String(id));
     return {
       ...o,
       ctevtOccupationId: id,
@@ -809,7 +814,7 @@ function ExperienceForm({exp, clients, institute, onSave, onClose, onDuplicate, 
                   onChange={v => pickOccupation(i, fromOccValue(v))}
                   placeholder="— Select —"
                   options={[
-                    ...OCCUPATIONS.map(o => ({ value: o.id, label: o.name })),
+                    ...occupationOptions.map(o => ({ value: o.id, label: o.name })),
                   ]}
                   onAddNew={canManageOccs ? (name => setQuickAddOcc({name, occIdx:i})) : undefined}
                 />

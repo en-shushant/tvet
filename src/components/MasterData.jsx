@@ -5,12 +5,13 @@ import Modal from './ui/Modal.jsx';
 import { ErrorBanner } from './ui/Modal.jsx';
 import { Btn, MdTextField, MdSelect, MdOption } from '../md.jsx';
 import LocationsEditor from './LocationsEditor.jsx';
-import { CLIENT_TYPES, TRAINING_TYPES, TRAINING_TYPES_DEFAULT, SECTORS, NSTB_LEVELS, INSTITUTE_TYPES, INSTITUTE_STATUSES, AFFILIATION_TYPES, LOCAL_LEVEL_TYPES, FISCAL_YEARS, OCCUPATIONS, getTrainingTypes, saveTrainingTypes, setTrainingTypesVar, getFiscalYears, saveFiscalYears, setFiscalYearsVar, getCurrentFY, saveCurrentFY } from '../constants/data.js';
+import { CLIENT_TYPES, TRAINING_TYPES, TRAINING_TYPES_DEFAULT, SECTORS, NSTB_LEVELS, INSTITUTE_TYPES, INSTITUTE_STATUSES, AFFILIATION_TYPES, LOCAL_LEVEL_TYPES, FISCAL_YEARS, OCCUPATIONS, getTrainingTypes, saveTrainingTypes, setTrainingTypesVar, getFiscalYears, saveFiscalYears, setFiscalYearsVar, getCurrentFY, saveCurrentFY, notifyMasterData } from '../constants/data.js';
 import { api, clientToAPI, normClient } from '../utils/api.js';
 import { getSession } from '../utils/auth.js';
 import { uid } from '../utils/format.js';
 import { confirmDialog, toast } from './ui/Feedback.jsx';
 import { PageHeader, PillTabs } from './ui/primitives.jsx';
+import { useOccupations } from '../utils/useMasterData.js';
 
 
 function MasterData({clients, onUpdateClients, token, isAdmin, isEditor, isSuperAdmin, onGoToClients}) {
@@ -372,6 +373,7 @@ function MasterData({clients, onUpdateClients, token, isAdmin, isEditor, isSuper
         const created = await api('POST', '/occupations', body, token);
         OCCUPATIONS.push(created);
       }
+      notifyMasterData();
       setOccModal(null);
     } catch(err) { setMasterErr('Failed to save: ' + err.message); }
   };
@@ -383,11 +385,16 @@ function MasterData({clients, onUpdateClients, token, isAdmin, isEditor, isSuper
       await api('DELETE', `/occupations/${occ.id}`, null, token);
       const idx = OCCUPATIONS.findIndex(o => o.id === occ.id);
       if (idx >= 0) OCCUPATIONS.splice(idx, 1);
+      notifyMasterData();
       setOccModal(null);
     } catch(err) { setMasterErr('Failed to delete: ' + err.message); }
   };
 
-  const allDisplayOccs = OCCUPATIONS.filter(o => {
+  // Was OCCUPATIONS read directly: the list refreshed only because saving also
+  // closed the modal, so a mutation with no accompanying state change was
+  // invisible.
+  const occupations = useOccupations();
+  const allDisplayOccs = occupations.filter(o => {
     const matchSearch = !search || o.name.toLowerCase().includes(search.toLowerCase());
     const matchSector = !sectorFilter || o.sector === sectorFilter;
     return matchSearch && matchSector;
@@ -419,7 +426,7 @@ function MasterData({clients, onUpdateClients, token, isAdmin, isEditor, isSuper
       <PillTabs
         tabs={[
           { id:'clients',        label:'Clients',            badge:clients.length },
-          { id:'occupations',    label:'Occupations',        badge:OCCUPATIONS.length },
+          { id:'occupations',    label:'Occupations',        badge:occupations.length },
           { id:'tools',          label:'Tools / consumables' },
           { id:'training_types', label:'Training types',     badge:trainingTypes.length },
           ...(isSuperAdmin ? [

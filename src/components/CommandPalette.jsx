@@ -8,11 +8,12 @@
  */
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { OCCUPATIONS } from '../constants/data.js';
+import { useOccupations } from '../utils/useMasterData.js';
 
 const MAX_PER_GROUP = 5;
 
 export default function CommandPalette({ open, onClose, institutes = [], clients = [], actions = [] }) {
+  const OCCUPATIONS = useOccupations();
   const [q, setQ] = useState('');
   const [active, setActive] = useState(0);
   const inputRef = useRef(null);
@@ -69,7 +70,7 @@ export default function CommandPalette({ open, onClose, institutes = [], clients
     if (acts.length) out.push({ key: 'actions', label: 'Actions', items: acts });
 
     return out;
-  }, [q, institutes, clients, actions]);
+  }, [q, institutes, clients, actions, OCCUPATIONS]);
 
   // Flattened for keyboard traversal across group boundaries.
   const flat = useMemo(() => groups.flatMap(g => g.items), [groups]);

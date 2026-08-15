@@ -218,3 +218,37 @@ export const DOC_KEYS = [
   { key:'ctevtAffiliation',       column:'ctevt_affiliation',        label:'CTEVT सम्बन्धन',       en:'CTEVT affiliation' },
   { key:'ctevtRenewal',           column:'ctevt_renewal',            label:'CTEVT नवीकरण',        en:'CTEVT renewal' },
 ];
+
+/* ── Master-data change notification ──────────────────────────────────────
+ *
+ * OCCUPATIONS and PROVINCES are module-level arrays mutated in place, and a
+ * mutation is invisible to React: adding an occupation in Master data left the
+ * assignment editor's dropdown, the command palette and every other mounted
+ * consumer showing a stale list until the page was reloaded. Master data's own
+ * list appeared to work only because saving also closed a modal, which happened
+ * to re-render it.
+ *
+ * The arrays stay the source of truth — utils/format.js, utils/api.js and the
+ * report families read them directly and are not React — so instead of moving
+ * the data, mutations announce themselves and components subscribe via
+ * useSyncExternalStore. See utils/useMasterData.js.
+ */
+let masterDataVersion = 0;
+const masterDataListeners = new Set();
+
+/** Subscribe to master-data mutations. Returns an unsubscribe function. */
+export function subscribeMasterData(listener) {
+  masterDataListeners.add(listener);
+  return () => masterDataListeners.delete(listener);
+}
+
+/** Snapshot for useSyncExternalStore: a number, so identity is stable. */
+export function getMasterDataVersion() {
+  return masterDataVersion;
+}
+
+/** Call after mutating OCCUPATIONS or PROVINCES. */
+export function notifyMasterData() {
+  masterDataVersion += 1;
+  for (const listener of masterDataListeners) listener();
+}
