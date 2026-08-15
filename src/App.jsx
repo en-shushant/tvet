@@ -6,10 +6,9 @@ import QuotationsView from './components/QuotationsView.jsx';
 import InstituteList from './components/InstituteList.jsx';
 import InstituteDetail from './components/InstituteDetail.jsx';
 import InstituteForm from './components/InstituteForm.jsx';
-import SummaryView from './components/SummaryView.jsx';
+import AnalyticsView from './components/AnalyticsView.jsx';
 import JVGroupPanel from './components/JVGroupPanel.jsx';
 import ProjectCompliance from './components/ProjectCompliance.jsx';
-import ComparisonView from './components/ComparisonView.jsx';
 import MasterData from './components/MasterData.jsx';
 // Design-system reference, reachable at #styleguide. Not in navigation.
 const StyleGuide = lazy(() => import('./components/StyleGuide.jsx'));
@@ -293,8 +292,9 @@ function App() {
   const navItems = [
     {id:'dashboard', icon:'dashboard', label:'Dashboard', group:'Main'},
     {id:'institutes', icon:'account_balance', label:'Institutes', group:'Main'},
-    {id:'summary', icon:'bar_chart', label:'Summary View', group:'Analytics', editorHidden: true, shortlistHidden: true},
-    {id:'comparison', icon:'compare_arrows', label:'Comparison', group:'Analytics', editorHidden: true, shortlistHidden: true},
+    // Summary and Comparison share this entry; the screen id stays whichever
+    // tab is open, so their hashes and role gating are untouched.
+    {id:'summary', icon:'insights', label:'Analytics', group:'Analytics', editorHidden: true, shortlistHidden: true},
     {id:'reports', icon:'description', label:'Reports', group:'Analytics', shortlistHidden: true},
     {id:'compliance', icon:'fact_check', label:'Project Compliance', group:'Operations', editorHidden: true, shortlistHidden: true},
     {id:'shortlisting', icon:'playlist_add_check', label:'Shortlisting', group:'Operations'},
@@ -373,8 +373,8 @@ function App() {
     detail: selectedInstitute?.name,
     bulkAdd: 'Bulk Add Assignments',
     nstbAdd: 'Add NSTB Records',
-    summary: 'Summary view',
-    comparison: 'Comparison view',
+    summary: 'Analytics',
+    comparison: 'Analytics',
     shortlisting: 'Shortlisting',
     quotations: 'Quotations',
     reports: 'Reports',
@@ -413,7 +413,7 @@ function App() {
                 {items.map(item => (
                   <button
                     key={item.id}
-                    className={`nav-item ${screen===item.id || (screen==='detail' && item.id==='institutes')?'active':''}`}
+                    className={`nav-item ${screen===item.id || (screen==='detail' && item.id==='institutes') || (screen==='comparison' && item.id==='summary')?'active':''}`}
                     onClick={() => handleNavigate(item.id)}
                     title={sidebarCollapsed ? item.label : ''}
                   >
@@ -564,8 +564,9 @@ function App() {
               onBack={()=>{ window.location.hash=`detail/${nstbAddInstitute.id}`; setScreen('detail'); }}
             />
           )}
-          {screen === 'summary' && <SummaryView institutes={institutes} clients={clients}/>}
-          {screen === 'comparison' && <ComparisonView institutes={institutes} clients={clients}/>}
+          {(screen === 'summary' || screen === 'comparison') && (
+            <AnalyticsView tab={screen} onTab={handleNavigate} institutes={institutes} clients={clients}/>
+          )}
           {screen === 'compliance' && <ProjectCompliance institutes={institutes} clients={clients}/>}
           {screen === 'shortlisting' && <Suspense fallback={<div style={{padding:40,textAlign:'center',color:'var(--text3)'}}>Loading…</div>}><Shortlisting institutes={institutes} clients={clients} isAdmin={isAdmin} isEditor={isEditor} isShortlistOnly={isShortlistOnly} isSuperAdmin={isSuperAdmin} token={token}/></Suspense>}
           {screen === 'quotations' && <QuotationsView institutes={institutes} clients={clients} isAdmin={isAdmin} isEditor={isEditor} isShortlistOnly={isShortlistOnly}/>}
