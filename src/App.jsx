@@ -17,6 +17,7 @@ const ReportsView = lazy(() => import('./components/ReportsView.jsx'));
 const Shortlisting = lazy(() => import('./components/Shortlisting.jsx'));
 import NepalMap from './components/NepalMap.jsx';
 import ChangePasswordModal from './components/ChangePasswordModal.jsx';
+import CommandPalette from './components/CommandPalette.jsx';
 import { NSTBBulkPage } from './components/NSTBForms.jsx';
 import { UserManagement } from './components/LoginPage.jsx';
 import { ErrorBanner } from './components/ui/Modal.jsx';
@@ -74,6 +75,7 @@ function App() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [showChangePwd, setShowChangePwd] = useState(false);
+  const [paletteOpen, setPaletteOpen] = useState(false);
 
 
   const isSuperAdmin = session?.role === 'superadmin';
@@ -89,6 +91,25 @@ function App() {
       clearSession();
       setSession(null);
     }
+  }, []);
+
+  // Bridges the command palette calls when a result is chosen.
+  useEffect(() => {
+    window.__paletteGo = (id) => handleNavigate(id);
+    window.__paletteOpenInstitute = (inst) => handleSelectInstitute(inst);
+    return () => { delete window.__paletteGo; delete window.__paletteOpenInstitute; };
+  });
+
+  // ⌘K / Ctrl-K opens global search from anywhere.
+  useEffect(() => {
+    const onKey = (e) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        setPaletteOpen(o => !o);
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
   }, []);
 
   // Listen for session-expired events from the api() helper (401 responses)
@@ -267,18 +288,23 @@ function App() {
     setMobileSidebarOpen(false);
   };
 
+  // Grouped so the rail reads in clusters rather than one long list. Ids, icons
+  // and role gating are unchanged — only presentation and order.
   const navItems = [
-    {id:'dashboard', icon:'dashboard', label:'Dashboard'},
-    {id:'institutes', icon:'account_balance', label:'Institutes'},
-    {id:'summary', icon:'bar_chart', label:'Summary View', editorHidden: true, shortlistHidden: true},
-    {id:'comparison', icon:'compare_arrows', label:'Comparison', editorHidden: true, shortlistHidden: true},
-    {id:'compliance', icon:'fact_check', label:'Project Compliance', editorHidden: true, shortlistHidden: true},
-    {id:'shortlisting', icon:'playlist_add_check', label:'Shortlisting'},
-    {id:'quotations', icon:'gavel', label:'Quotations'},
-    {id:'reports', icon:'description', label:'Reports', shortlistHidden: true},
-    {id:'master', icon:'category', label:'Master Data', adminOnly: false, editorHidden: false, shortlistHidden: true},
-    {id:'users', icon:'manage_accounts', label:'User Management', adminOnly: true, shortlistHidden: true},
+    {id:'dashboard', icon:'dashboard', label:'Dashboard', group:'Main'},
+    {id:'institutes', icon:'account_balance', label:'Institutes', group:'Main'},
+    {id:'summary', icon:'bar_chart', label:'Summary View', group:'Analytics', editorHidden: true, shortlistHidden: true},
+    {id:'comparison', icon:'compare_arrows', label:'Comparison', group:'Analytics', editorHidden: true, shortlistHidden: true},
+    {id:'reports', icon:'description', label:'Reports', group:'Analytics', shortlistHidden: true},
+    {id:'compliance', icon:'fact_check', label:'Project Compliance', group:'Operations', editorHidden: true, shortlistHidden: true},
+    {id:'shortlisting', icon:'playlist_add_check', label:'Shortlisting', group:'Operations'},
+    {id:'quotations', icon:'gavel', label:'Quotations', group:'Operations'},
+    {id:'master', icon:'category', label:'Master Data', group:'System', adminOnly: false, editorHidden: false, shortlistHidden: true},
+    {id:'users', icon:'manage_accounts', label:'User Management', group:'System', adminOnly: true, shortlistHidden: true},
   ];
+  const NAV_GROUPS = ['Main', 'Analytics', 'Operations', 'System'];
+  const visibleNav = navItems.filter(item =>
+    (!item.adminOnly || isAdmin) && (!item.editorHidden || !isEditor) && (!item.shortlistHidden || !isShortlistOnly));
 
   const handleSelectInstitute = async (inst) => {
     // Show immediately if we already have full data (has experience array)
@@ -378,83 +404,36 @@ function App() {
           )}
         </div>
         <nav className="sidebar-nav">
-          <div className="nav-section-label">Main Menu</div>
-          {navItems.filter(item => (!item.adminOnly || isAdmin) && (!item.editorHidden || !isEditor) && (!item.shortlistHidden || !isShortlistOnly)).map(item => (
-            <button
-              key={item.id}
-              className={`nav-item ${screen===item.id || (screen==='detail' && item.id==='institutes')?'active':''}`}
-              onClick={() => handleNavigate(item.id)}
-              title={sidebarCollapsed ? item.label : ''}
-            >
-              <span className="nav-icon material-icons-round">{item.icon}</span>
-              <span className="nav-label">{item.label}</span>
+          {NAV_GROUPS.map(group => {
+            const items = visibleNav.filter(i => i.group === group);
+            if (!items.length) return null;
+            return (
+              <div key={group} className="nav-group">
+                <div className="nav-section-label">{group}</div>
+                {items.map(item => (
+                  <button
+                    key={item.id}
+                    className={`nav-item ${screen===item.id || (screen==='detail' && item.id==='institutes')?'active':''}`}
+                    onClick={() => handleNavigate(item.id)}
+                    title={sidebarCollapsed ? item.label : ''}
+                  >
+                    <span className="nav-icon material-icons-round">{item.icon}</span>
+                    <span className="nav-label">{item.label}</span>
+                  </button>
+                ))}
+              </div>
+            );
+          })}
+          <div className="search-section" style={{padding:'0 2px', marginTop:4}}>
+            <button className="nav-item" onClick={() => setPaletteOpen(true)}
+              title={sidebarCollapsed ? 'Search  (\u2318K)' : ''}>
+              <span className="nav-icon material-icons-round">search</span>
+              <span className="nav-label" style={{display:'flex', alignItems:'center', justifyContent:'space-between', width:'100%'}}>
+                Search
+                <kbd style={{fontSize:10, opacity:.55, border:'1px solid rgba(255,255,255,.22)',
+                  borderRadius:5, padding:'1px 5px'}}>{'\u2318K'}</kbd>
+              </span>
             </button>
-          ))}
-          {(isAdmin||isEditor) && <div className="search-section" style={{padding:'0 2px', marginTop:8}}>
-            <button className="nav-item sidebar-quick-btn"
-              onClick={()=>{ window.location.hash='master'; setScreen('master'); setTimeout(()=>window.__masterOpenOccForm&&window.__masterOpenOccForm(), 100); }}
-              title={sidebarCollapsed?'Add Occupation':''}>
-              <span className="nav-icon material-icons-round" style={{fontSize:18}}>add_circle</span>
-              <span className="nav-label">Add Occupation</span>
-            </button>
-          </div>}
-          <div className="nav-section-label search-section" style={{marginTop:8}}>Quick Search</div>
-          <div className="search-section" style={{padding:'0 2px', position:'relative'}}>
-            <div className="search-wrap">
-              <span className="material-icons-round search-icon" style={{fontSize:17, color:'rgba(255,255,255,0.35)'}}>search</span>
-              <input
-                className="sidebar-search-input"
-                placeholder="Find institute..."
-                value={globalSearch}
-                onChange={e => setGlobalSearch(e.target.value)}
-                onFocus={() => setSearchFocused(true)}
-                onBlur={() => setTimeout(() => setSearchFocused(false), 200)}
-              />
-            </div>
-            {searchFocused && globalSearch.length > 0 && (() => {
-              const results = institutes.filter(i =>
-                i.name.toLowerCase().includes(globalSearch.toLowerCase()) ||
-                (i.acronym && i.acronym.toLowerCase().includes(globalSearch.toLowerCase())) ||
-                i.regNo.toLowerCase().includes(globalSearch.toLowerCase()) ||
-                (i.pan && i.pan.includes(globalSearch))
-              ).slice(0, 6);
-              return results.length > 0 ? (
-                <div style={{
-                  position:'absolute', top:'100%', left:4, right:4, zIndex:1000,
-                  background:'var(--surface)', border:'1px solid var(--border)',
-                  borderRadius:'var(--radius-lg)', boxShadow:'var(--shadow-md)',
-                  overflow:'hidden', marginTop:4
-                }}>
-                  {results.map(inst => (
-                    <div key={inst.id}
-                      style={{padding:'10px 12px', cursor:'pointer', borderBottom:'1px solid var(--border)', transition:'background 0.1s'}}
-                      onMouseOver={e => e.currentTarget.style.background='var(--bg2)'}
-                      onMouseOut={e => e.currentTarget.style.background='transparent'}
-                      onClick={() => { handleSelectInstitute(inst); setGlobalSearch(''); setSearchFocused(false); }}>
-                      <div style={{display:'flex', alignItems:'center', gap:6}}>
-                        {inst.acronym && <span style={{fontFamily:'var(--font-mono)', fontSize:10, color:'var(--accent)', background:'var(--accent-light)', padding:'1px 5px', borderRadius:3}}>{inst.acronym}</span>}
-                        <span style={{fontSize:12, fontWeight:500, color:'var(--text)'}}>{inst.name}</span>
-                      </div>
-                      <div style={{fontSize:11, color:'var(--text3)', marginTop:2, display:'flex', gap:8}}>
-                        <span>{inst.regNo}</span>
-                        <StatusBadge status={inst.status}/>
-                      </div>
-                    </div>
-                  ))}
-                  <div style={{padding:'8px 12px', fontSize:11, color:'var(--text3)', textAlign:'center', cursor:'pointer', background:'var(--bg2)'}}
-                    onClick={() => { window.location.hash='institutes'; setScreen('institutes'); setGlobalSearch(globalSearch); setSearchFocused(false); }}>
-                    See all results →
-                  </div>
-                </div>
-              ) : (
-                <div style={{
-                  position:'absolute', top:'100%', left:4, right:4, zIndex:1000,
-                  background:'var(--surface)', border:'1px solid var(--border)',
-                  borderRadius:'var(--radius-lg)', boxShadow:'var(--shadow-md)',
-                  padding:'12px', fontSize:12, color:'var(--text3)', textAlign:'center', marginTop:4
-                }}>No institutes found</div>
-              );
-            })()}
           </div>
         </nav>
         <div className="sidebar-footer">
@@ -616,6 +595,24 @@ function App() {
         <InstituteForm onSave={handleAddInstitute} onClose={()=>setShowAddInstitute(false)} isSuperAdmin={isAdmin}/>
       )}
       {showChangePwd && <ChangePasswordModal onClose={()=>setShowChangePwd(false)}/>}
+      {/* Bridged through window rather than props so the palette stays decoupled
+          from this component's navigation internals. */}
+      <CommandPalette
+        open={paletteOpen}
+        onClose={()=>setPaletteOpen(false)}
+        institutes={institutes}
+        clients={clients}
+        actions={[
+          ...((isAdmin || isShortlistOnly) ? [{ id:'a-inst', label:'Add institute', icon:'add_business',
+            run:()=>setShowAddInstitute(true) }] : []),
+          { id:'a-dash',    label:'Go to Dashboard',   icon:'dashboard',          run:()=>handleNavigate('dashboard') },
+          { id:'a-insts',   label:'Go to Institutes',  icon:'account_balance',    run:()=>handleNavigate('institutes') },
+          ...(!isShortlistOnly ? [{ id:'a-reports', label:'Generate a report', icon:'description',
+            run:()=>handleNavigate('reports') }] : []),
+          ...((isAdmin || isEditor) ? [{ id:'a-master', label:'Open Master data', icon:'category',
+            run:()=>handleNavigate('master') }] : []),
+        ]}
+      />
     </div>
     </>
   );

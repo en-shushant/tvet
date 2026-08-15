@@ -1118,6 +1118,17 @@ md-filled-button.on-ink, md-filled-tonal-button.on-ink {
   --md-filled-button-pressed-label-text-color: var(--ink);
 }
 
+/* Navigation groups — clusters separated by whitespace rather than rules, so
+   the rail reads as sections without extra chrome. */
+.nav-group + .nav-group { margin-top: 14px; }
+.sidebar.collapsed .nav-group + .nav-group {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(255,255,255,.08);
+}
+/* Collapsed rail hides the group captions; the divider carries the grouping. */
+.sidebar.collapsed .nav-section-label { display: none; }
+
 /* ── Skeleton placeholders ──────────────────────────────────
    Shown instead of a spinner so the page keeps its shape while loading. */
 .skeleton {
