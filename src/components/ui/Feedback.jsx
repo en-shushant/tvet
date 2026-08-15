@@ -101,7 +101,7 @@ export function FeedbackHost() {
         <Modal title={ask.title} compact onClose={() => settle(false)}
           footer={<>
             <Btn className="btn btn-secondary" onClick={() => settle(false)}>Cancel</Btn>
-            <Btn className={ask.danger ? 'btn btn-danger' : 'btn btn-primary'} onClick={() => settle(true)}>
+            <Btn className={ask.danger ? 'btn btn-danger-strong' : 'btn btn-primary'} onClick={() => settle(true)}>
               {ask.confirmLabel}
             </Btn>
           </>}>

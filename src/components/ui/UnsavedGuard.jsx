@@ -19,7 +19,7 @@ export function useUnsavedGuard(onClose) {
     <Modal title="Unsaved Changes" onClose={() => setShow(false)}
       footer={<>
         <Btn className="btn btn-secondary" onClick={() => setShow(false)}>Keep editing</Btn>
-        <Btn className="btn btn-danger" onClick={() => { setShow(false); onClose(); }}>Discard &amp; close</Btn>
+        <Btn className="btn btn-danger-strong" onClick={() => { setShow(false); onClose(); }}>Discard &amp; close</Btn>
       </>}>
       <p style={{ margin: 0, color: 'var(--text1)' }}>You have unsaved changes. Are you sure you want to close without saving?</p>
     </Modal>

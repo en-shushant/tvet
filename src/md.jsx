@@ -102,7 +102,12 @@ export function Btn({ className = '', children, style, ...rest }) {
   const sm      = has('btn-sm');
   const xs      = has('btn-xs');
   const isIcon  = has('btn-icon');
-  const danger  = has('btn-danger');
+  // A destructive action sitting beside Edit/Documents is a peer of them, so it
+  // takes the same outlined shape and is distinguished by colour alone. It used
+  // to render as a filled tonal button next to outlined siblings, which is why
+  // Delete looked like a different kind of control.
+  const dangerStrong = has('btn-danger-strong');
+  const danger  = has('btn-danger') && !dangerStrong;
   const ghost   = has('btn-ghost');
   const second  = has('btn-secondary');
   const success = has('btn-success');
@@ -115,7 +120,10 @@ export function Btn({ className = '', children, style, ...rest }) {
 
   if (isIcon) return <_IconBtn className={extra || undefined} style={style} {...rest}>{children}</_IconBtn>;
 
-  if (danger)  return <_TonalBtn  className={['danger', cls].filter(Boolean).join(' ')} style={style} {...rest}>{children}</_TonalBtn>;
+  // Prominent destructive: the confirm action in a dialog, where it is the
+  // primary and needs to outweigh Cancel.
+  if (dangerStrong) return <_TonalBtn className={['danger', cls].filter(Boolean).join(' ')} style={style} {...rest}>{children}</_TonalBtn>;
+  if (danger)  return <_OutlBtn   className={['danger', cls].filter(Boolean).join(' ')} style={style} {...rest}>{children}</_OutlBtn>;
   if (ghost)   return <_TextBtn   className={cls} style={style} {...rest}>{children}</_TextBtn>;
   // Secondary reads as white-with-a-thin-border, so the hierarchy against a
   // filled primary is visible. It was a tonal fill, which made primary and
