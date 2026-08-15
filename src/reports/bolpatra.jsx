@@ -2,6 +2,8 @@ import React from 'react';
 import { getClient, monthsBetween, districtsOf, esc, fyInRange } from './helpers.js';
 import { loadDocx, loadFileSaver } from './docxLazy.js';
 import { BS_MONTHS_EN } from '../constants/nepali.js';
+import { fillDescriptionTemplate } from '../utils/descriptionTemplates.js';
+import { fillNarrativeTemplate, fillServicesTemplate } from '../utils/specificTemplates.js';
 
 // ─── Standard EOI Document (Bolpatra) ────────────────────────────────────────
 // Mirrors the PPMO/e-GP "Standard EOI Document" form:
@@ -80,6 +82,27 @@ const clientNameOf = (exp, clients) => {
   const c = getClient(clients, exp.clientId);
   return c.fullName || exp.clientName || '';
 };
+
+/**
+ * Narrative text for one of the three auto-filled fields.
+ *
+ * Anything typed on the assignment wins; otherwise the text is generated from
+ * the firm's assigned template. Generating at render time rather than storing
+ * means the prose always reflects the current trainee counts and districts —
+ * a value written once and saved goes stale the moment those are corrected.
+ */
+function narrativeFor(exp, inst, clients, slot) {
+  const stored = (exp[slot.field] || '').trim();
+  if (stored) return stored;
+  const variationId = inst?.[slot.templateKey];
+  if (!variationId) return '';
+  try { return slot.fill(variationId, exp, inst, clients) || ''; }
+  catch { return ''; }
+}
+
+const DESCRIPTION_SLOT = { field: 'descriptionOfWork',          templateKey: 'descTemplateId',      fill: fillDescriptionTemplate };
+const NARRATIVE_SLOT   = { field: 'narrativeDescription',       templateKey: 'narrativeTemplateId', fill: fillNarrativeTemplate };
+const SERVICES_SLOT    = { field: 'actualServicesDescription',  templateKey: 'servicesTemplateId',  fill: fillServicesTemplate };
 
 const captionOf = (exp) => {
   const name = exp.assignmentName || '(unnamed assignment)';
@@ -168,7 +191,7 @@ function model2(inst) {
 }
 
 // Section 3A → { columns, widths, rows }
-function model3a(exps, clients) {
+function model3a(exps, clients, inst) {
   return {
     columns: ['S. N.', 'Name of assignment', 'Location', 'Value of Contract', 'Year Completed', 'Client', 'Description of work carried out'],
     widths:  [600, 2200, 1400, 1200, 900, 1400, 1938],
@@ -179,7 +202,7 @@ function model3a(exps, clients) {
       fmtNrs(exp.contractValue),
       dash(exp.endFY || exp.fy),
       clientNameOf(exp, clients),
-      dash(exp.descriptionOfWork),
+      narrativeFor(exp, inst, clients, DESCRIPTION_SLOT),
     ]),
   };
 }
@@ -187,7 +210,7 @@ function model3a(exps, clients) {
 // Section 3B → [{ caption, rows: [[leftCell, rightCell]], footer }]
 // A "cell" is an array of { label, value } pairs so the stacked cells in the
 // original form (Country + Location, Start + Completion) render correctly.
-function model3b(exps, clients) {
+function model3b(exps, clients, inst) {
   return exps.map(exp => {
     const client = getClient(clients, exp.clientId);
     const jv = !!exp.isJV;
@@ -222,12 +245,12 @@ function model3b(exps, clients) {
         [
           [{ label: 'Name of joint venture partner or sub-Consultants, if any',
              value: jv ? dash(exp.jvPartnerNames) : 'NA' }],
-          [{ label: 'Narrative description of Project', value: dash(exp.narrativeDescription), block: true }],
+          [{ label: 'Narrative description of Project', value: narrativeFor(exp, inst, clients, NARRATIVE_SLOT), block: true }],
         ],
       ],
       footer: {
         label: 'Description of actual services provided in the assignment',
-        value: dash(exp.actualServicesDescription),
+        value: narrativeFor(exp, inst, clients, SERVICES_SLOT),
         note: 'Note: Provide highlight on similar services provided by the consultant as required by the EOI assignment.',
       },
     };
@@ -403,11 +426,11 @@ function SectionBody({ section, inst, exps, clients, opts }) {
     );
   }
 
-  if (section === '3a') return <GridTable model={model3a(exps, clients)} />;
+  if (section === '3a') return <GridTable model={model3a(exps, clients, inst)} />;
   if (section === '3c') return <GridTable model={model3c(exps)} />;
 
   if (section === '3b') {
-    const items = model3b(specificExps(exps, opts), clients);
+    const items = model3b(specificExps(exps, opts), clients, inst);
     if (!items.length) return <div style={{fontSize:12, color:'var(--text3)'}}>No assignments in range.</div>;
     return (
       <div style={{display:'flex', flexDirection:'column', gap:22}}>
@@ -594,11 +617,11 @@ function htmlSection(section, inst, exps, clients, opts) {
       <tr><td class="no">${it.no}.</td><td class="lbl">${esc(it.label)}:</td>
       <td class="val">${esc(it.value) || '&mdash;'}</td></tr>`).join('')}</table>`;
   }
-  if (section === '3a') return htmlGrid(model3a(exps, clients));
+  if (section === '3a') return htmlGrid(model3a(exps, clients, inst));
   if (section === '3c') return htmlGrid(model3c(exps));
 
   if (section === '3b') {
-    const items = model3b(specificExps(exps, opts), clients);
+    const items = model3b(specificExps(exps, opts), clients, inst);
     if (!items.length) return `<p class="muted">No assignments in range.</p>`;
     return items.map(item => `
       <div class="spec">
@@ -843,7 +866,7 @@ function docxSection(D, kit, section, inst, exps, clients, opts) {
   }
 
   if (section === '3a' || section === '3c') {
-    const m = section === '3a' ? model3a(exps, clients) : model3c(exps);
+    const m = section === '3a' ? model3a(exps, clients, inst) : model3c(exps);
     const w = scaleWidths(m.widths);
     const header = new TableRow({
       tableHeader: true,
@@ -857,7 +880,7 @@ function docxSection(D, kit, section, inst, exps, clients, opts) {
   }
 
   if (section === '3b') {
-    const items = model3b(specificExps(exps, opts), clients);
+    const items = model3b(specificExps(exps, opts), clients, inst);
     if (!items.length) { out.push(p('No assignments in range.')); return out; }
     items.forEach((item, idx) => {
       // Caption sits above and outside the bordered table.

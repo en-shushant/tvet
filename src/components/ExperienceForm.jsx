@@ -154,6 +154,7 @@ function ExperienceForm({exp, clients, institute, onSave, onClose, onDuplicate, 
     return exp ? {...defaults, ...exp} : defaults;
   });
   const [showReportFields, setShowReportFields] = useState(false);
+  const [showOverrides, setShowOverrides] = useState(false);
   const { handleClose, markDirty, markClean, UnsavedModal } = useUnsavedGuard(onClose);
 
   // Mark dirty whenever form changes after initial render
@@ -512,31 +513,57 @@ function ExperienceForm({exp, clients, institute, onSave, onClose, onDuplicate, 
                 </div>
               </div>
             )}
-            <TemplateField
-              label="Description of work carried out"
-              field="descriptionOfWork"
-              templateKey="descTemplateId"
-              filler={fillDescriptionTemplate}
-              placeholder="Summarise the work delivered under this assignment."
-              hint="Used in 3(A) General Work Experience."
-              rows={3}
-            />
-            <TemplateField
-              label="Narrative description of Project"
-              field="narrativeDescription"
-              templateKey="narrativeTemplateId"
-              filler={fillNarrativeTemplate}
-              placeholder="Describe the project scope, objectives, and context."
-              hint="Each new line becomes a separate paragraph in the Word report."
-            />
-            <TemplateField
-              label="Description of actual services provided in the assignment"
-              field="actualServicesDescription"
-              templateKey="servicesTemplateId"
-              filler={fillServicesTemplate}
-              placeholder="Highlight similar services provided by your firm relevant to this EOI assignment."
-              style={{marginBottom:0}}
-            />
+            {/* The report writes these three from the firm's assigned template
+                using the details above, so they normally need no input at all.
+                Filling one here overrides the generated text for this assignment
+                only — kept for the occasional case a template cannot express. */}
+            {(() => {
+              const OVERRIDES = [
+                { label:'Description of work carried out — 3(A)', field:'descriptionOfWork',
+                  templateKey:'descTemplateId', filler:fillDescriptionTemplate, rows:3,
+                  placeholder:'Leave empty to use the firm’s template.' },
+                { label:'Narrative description of Project — 3(B)', field:'narrativeDescription',
+                  templateKey:'narrativeTemplateId', filler:fillNarrativeTemplate,
+                  placeholder:'Leave empty to use the firm’s template.',
+                  hint:'Each new line becomes a separate paragraph in the Word report.' },
+                { label:'Description of actual services provided — 3(B)', field:'actualServicesDescription',
+                  templateKey:'servicesTemplateId', filler:fillServicesTemplate,
+                  placeholder:'Leave empty to use the firm’s template.', style:{marginBottom:0} },
+              ];
+              const setCount = OVERRIDES.filter(o => (form[o.field] || '').trim()).length;
+              return (
+                <div style={{marginTop:4}}>
+                  <button type="button" onClick={()=>setShowOverrides(s=>!s)}
+                    style={{width:'100%', background:'none', cursor:'pointer', fontFamily:'var(--font)',
+                      border:'1px solid var(--border)', padding:'9px 12px',
+                      borderRadius: showOverrides ? 'var(--radius) var(--radius) 0 0' : 'var(--radius)',
+                      display:'flex', alignItems:'center', justifyContent:'space-between', gap:8}}>
+                    <span style={{fontSize:12.5, fontWeight:600, display:'flex', alignItems:'center', gap:6}}>
+                      <span className="material-icons-round" style={{fontSize:15}}>edit_note</span>
+                      Narrative text
+                      {setCount > 0 && (
+                        <span style={{fontSize:10, fontWeight:700, background:'var(--accent)', color:'#fff',
+                          borderRadius:10, padding:'1px 7px'}}>{setCount} overridden</span>
+                      )}
+                    </span>
+                    <span style={{fontSize:11, color:'var(--text3)'}}>
+                      {showOverrides ? '▲ Hide' : '▼ Written automatically — open to override'}
+                    </span>
+                  </button>
+                  {showOverrides && (
+                    <div style={{padding:14, border:'1px solid var(--border)', borderTop:'none',
+                      borderRadius:'0 0 var(--radius) var(--radius)'}}>
+                      <div style={{fontSize:11.5, color:'var(--text3)', marginBottom:12, lineHeight:1.5}}>
+                        The report generates all three from this firm’s template and the details entered above,
+                        and keeps them current as those details change. Fill a box only to override it for this
+                        assignment; Auto-fill drops in the generated text so you can edit from it.
+                      </div>
+                      {OVERRIDES.map(o => <TemplateField key={o.field} {...o} />)}
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
           </div>
         )}
       </div>
