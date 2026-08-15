@@ -1993,3 +1993,21 @@ md-outlined-button.danger {
 }
 .gap-structural-title { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; color: var(--text3); margin-bottom: 6px; }
 .gap-structural-row { font-size: 12.5px; color: var(--text2); padding: 2px 0; }
+
+/* ── EOI details panel ──────────────────────────────────────────────────── */
+.gap-head { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin-bottom: 14px; }
+.gap-toggle { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text3); white-space: nowrap; margin: 0; }
+.gap-toggle input { width: auto; margin: 0; }
+.gap-section { font-size: 10.5px; font-weight: 500; color: var(--text3); letter-spacing: .2px; }
+/* A missing field is marked by a rule down its edge as well as by being listed,
+   so it stays findable when every field is shown. */
+.gap-field-missing { border-left: 2px solid var(--warning); padding-left: 12px; margin-left: -14px; }
+.gap-linkbtn {
+  margin-top: 6px; padding: 0; border: none; background: none;
+  color: var(--primary); font-family: var(--font); font-size: 11.5px; cursor: pointer;
+}
+.gap-linkbtn:hover { text-decoration: underline; }
+.gap-note { font-size: 12.5px; color: var(--text3); padding: 8px 0; }
+.gap-occ-row { display: flex; align-items: center; gap: 12px; padding: 5px 0; }
+.gap-occ-name { flex: 0 0 40%; font-size: 12.5px; color: var(--text2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.gap-occ-district { flex: 1; min-width: 0; }

@@ -934,7 +934,7 @@ function InstituteDetail({institute, clients, onUpdateClients, onBack, onUpdate,
         );
       })()}
       {modal?.type === 'bolpatraGaps' && (
-        <BolpatraGapsModal exp={modal.data} institute={institute}
+        <BolpatraGapsModal exp={modal.data} institute={institute} clients={clients}
           onSave={async (updated) => { await saveExperience(updated); }}
           onClose={()=>setModal(null)}/>
       )}
