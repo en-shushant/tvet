@@ -781,10 +781,6 @@ function InstituteDetail({institute, clients, onUpdateClients, onBack, onUpdate,
         const client = getClient(clients, exp.clientId);
         const allLocs = exp.occupations.flatMap(o=>(o.locations||[]));
         const districts = [...new Set(allLocs.map(l=>l.district).filter(Boolean))];
-        const totalTrainees = exp.occupations.reduce((s,o)=>s+(parseInt(o.trainees)||0),0);
-        const totalSTA = exp.occupations.reduce((s,o)=>s+(parseInt(o.skillTestAppeared)||0),0);
-        const totalSTP = exp.occupations.reduce((s,o)=>s+(parseInt(o.skillTestPass)||0),0);
-        const passRate = totalSTA > 0 ? Math.round(totalSTP/totalSTA*100) : null;
         return ReactDOM.createPortal(
           <div className="modal-overlay" onClick={()=>setModal(null)}>
             <div className="modal modal-lg" onClick={e=>e.stopPropagation()} style={{maxHeight:'90vh'}}>
@@ -798,6 +794,11 @@ function InstituteDetail({institute, clients, onUpdateClients, onBack, onUpdate,
                     {exp.trainingType && <span style={{background:'rgba(255,255,255,0.12)', color:'rgba(255,255,255,0.8)', fontSize:11, fontWeight:600, padding:'2px 10px', borderRadius:20}}>{exp.trainingType}</span>}
                     {exp.isGesi && <span style={{background:'rgba(168,85,247,0.25)', color:'#d8b4fe', fontSize:11, fontWeight:700, padding:'2px 10px', borderRadius:20}}>GESI</span>}
                     {exp.isResidential && <span style={{background:'rgba(59,130,246,0.25)', color:'#93c5fd', fontSize:11, fontWeight:700, padding:'2px 10px', borderRadius:20}}>Residential</span>}
+                    {exp.contractValue && (
+                      <span style={{background:'rgba(255,255,255,0.12)', color:'rgba(255,255,255,0.85)', fontSize:11, fontWeight:700, padding:'2px 10px', borderRadius:20}}>
+                        NPR {parseInt(exp.contractValue).toLocaleString()}
+                      </span>
+                    )}
                   </div>
                   <div style={{fontSize:20, fontWeight:800, color:'#fff', lineHeight:1.3}}>{exp.assignmentName}</div>
                   <div style={{fontSize:13, color:'rgba(255,255,255,0.65)', marginTop:5}}>
@@ -811,26 +812,6 @@ function InstituteDetail({institute, clients, onUpdateClients, onBack, onUpdate,
               </div>
 
               <div className="modal-body" style={{padding:'24px 28px'}}>
-                {/* KPI strip */}
-                <div style={{display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:12, marginBottom:24}}>
-                  {[
-                    {label:'Total Trainees', value:totalTrainees.toLocaleString(), icon:'groups', color:'var(--primary)', bg:'var(--primary-light)'},
-                    {label:'ST Appeared', value:totalSTA||'—', icon:'quiz', color:'var(--warning)', bg:'var(--warning-light)'},
-                    {label:'Pass Rate', value:passRate!==null?`${passRate}%`:'—', icon:'verified', color:passRate>=70?'var(--success)':'var(--error)', bg:passRate>=70?'var(--success-light)':'var(--error-light)'},
-                    {label:'Contract Value', value:exp.contractValue?`NPR ${parseInt(exp.contractValue).toLocaleString()}`:'—', icon:'payments', color:'var(--purple)', bg:'var(--purple-light)'},
-                  ].map(k=>(
-                    <div key={k.label} style={{background:'var(--bg)', borderRadius:10, padding:'14px 16px', border:'1px solid var(--border)'}}>
-                      <div style={{display:'flex', alignItems:'center', gap:8, marginBottom:8}}>
-                        <div style={{width:32, height:32, borderRadius:8, background:k.bg, display:'flex', alignItems:'center', justifyContent:'center'}}>
-                          <span className="material-icons-round" style={{fontSize:16, color:k.color}}>{k.icon}</span>
-                        </div>
-                      </div>
-                      <div style={{fontSize:20, fontWeight:800, color:'var(--text)', lineHeight:1}}>{k.value}</div>
-                      <div style={{fontSize:11, color:'var(--text3)', textTransform:'uppercase', letterSpacing:'0.6px', marginTop:4, fontWeight:600}}>{k.label}</div>
-                    </div>
-                  ))}
-                </div>
-
                 {/* Meta row */}
                 {(exp.startFY || exp.endFY) && (
                   <div style={{display:'flex', alignItems:'center', gap:8, marginBottom:20, padding:'10px 14px', background:'var(--primary-light)', borderRadius:8, border:'1px solid var(--primary-mid)'}}>
