@@ -241,8 +241,8 @@ function InstituteDetail({institute, clients, onUpdateClients, onBack, onUpdate,
         {/* Always present now: without a logo the header used to start with the
             name alone, so the page looked different depending on whether an
             unrelated file had been uploaded. */}
-        <InstituteAvatar src={logoSrc} name={institute.name} acronym={institute.acronym}
-          size={52} radius={14}/>
+        <InstituteAvatar src={logoSrc} fallbackSrc={institute.logo}
+          name={institute.name} acronym={institute.acronym} size={52} radius={14}/>
         <div style={{flex:1, minWidth:240}}>
           <h1 style={{fontSize:'var(--fs-title)', fontWeight:800, lineHeight:1.25,
             letterSpacing:'-0.01em', color:'var(--text)', margin:0}}>{institute.name}</h1>

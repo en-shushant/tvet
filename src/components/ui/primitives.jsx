@@ -273,17 +273,30 @@ function tintFor(key = '') {
  * Initials are at least identifying, and the tint is derived from the name so a
  * firm keeps the same colour everywhere it appears.
  *
- * A logo URL that 404s falls back to the same initials rather than leaving the
- * browser's broken-image glyph — `useCachedLogo` hands back the original URL
- * when it cannot fetch, so a failure only surfaces at render.
+ * A logo that genuinely 404s falls back to the same initials rather than
+ * leaving the browser's broken-image glyph.
+ *
+ * Failure is tracked per-URL, not as a boolean. `useCachedLogo` renders the raw
+ * URL first and swaps in a cached object URL once one is ready, so a boolean
+ * would latch on the first source and permanently hide a logo that loads fine
+ * from the second. `fallbackSrc` is that raw URL: if the cached copy is stale or
+ * unreadable we retry the original before giving up on the logo entirely.
  */
-export function InstituteAvatar({ src, name = '', acronym = '', size = 42, radius = 12 }) {
-  const [failed, setFailed] = useState(false);
-  const showImage = src && !failed;
+export function InstituteAvatar({ src, fallbackSrc, name = '', acronym = '', size = 42, radius = 12 }) {
+  const [failedSrcs, setFailedSrcs] = useState(() => new Set());
+  const noteFailure = (bad) => setFailedSrcs(prev => {
+    if (prev.has(bad)) return prev;
+    const next = new Set(prev);
+    next.add(bad);
+    return next;
+  });
 
-  if (showImage) {
+  // First source that has not already failed for this institute.
+  const candidate = [src, fallbackSrc].find(u => u && !failedSrcs.has(u));
+
+  if (candidate) {
     return (
-      <img src={src} alt="" onError={() => setFailed(true)}
+      <img key={candidate} src={candidate} alt="" onError={() => noteFailure(candidate)}
         style={{width:size, height:size, objectFit:'contain', borderRadius:radius,
           background:'#fff', padding:Math.max(2, Math.round(size * 0.07)), flexShrink:0}}/>
     );

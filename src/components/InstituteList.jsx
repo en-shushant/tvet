@@ -56,7 +56,10 @@ function RenewalNote({ renewalDue }) {
 /** Logo where the institute has one, its own initials where it does not. */
 function InstLogo({ inst, size = 42 }) {
   const src = useCachedLogo(inst.logo);
-  return <InstituteAvatar src={src} name={inst.name} acronym={inst.acronym} size={size}/>;
+  // fallbackSrc is the raw URL: the cache layer may hand back an object URL that
+  // is stale or unreadable, and the original usually still loads.
+  return <InstituteAvatar src={src} fallbackSrc={inst.logo}
+    name={inst.name} acronym={inst.acronym} size={size}/>;
 }
 
 /* ── Card ────────────────────────────────────────────────────────────────── */
