@@ -1489,3 +1489,80 @@ md-filled-button.on-ink, md-filled-tonal-button.on-ink {
   /* Modal scrim stronger on dark */
   .modal-overlay { background: rgba(0,0,0,0.65); }
 }
+
+/* ── Assignment editor: occupation table ────────────────────────────────
+   Occupations used to be full-width stacked cards; five of them ran well
+   past a screen and made the numbers impossible to compare. One row each
+   now, with locations and the provisioning toggles behind a disclosure. */
+.occ-table-wrap { overflow-x: auto; }
+/* `.modal-body table { display:block }` above turns tables into block boxes to
+   make them scroll on narrow screens. That also discards table layout, so the
+   declared column widths were ignored and Hours/Level collapsed to a few pixels.
+   The wrapper does the scrolling here instead, so the table stays a table. */
+.occ-table {
+  display: table !important;
+  table-layout: fixed;
+  overflow: visible !important;
+  width: 100%;
+  min-width: 1040px;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+.occ-table th {
+  text-align: left;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: .5px;
+  text-transform: uppercase;
+  color: var(--text3);
+  padding: 0 6px 6px;
+  /* Two-word headers wrap rather than colliding with the next column. */
+  line-height: 1.25;
+}
+.occ-table td {
+  padding: 4px 6px;
+  vertical-align: top;
+  border-top: 1px solid var(--border);
+}
+.occ-row:first-child td { border-top: none; }
+
+/* Compact controls. The tall Material fields belong in the single-column
+   sections above; in a table they would triple every row's height. */
+.occ-table .occ-in {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 6px 8px;
+  font-size: 13px;
+  font-family: var(--font);
+  color: var(--text);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  margin: 0;
+}
+.occ-table .occ-in:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--primary) 18%, transparent);
+}
+/* Digits line up down the column for comparison. */
+.occ-table .occ-num { text-align: right; font-variant-numeric: tabular-nums; }
+.occ-derived { font-size: 10.5px; color: var(--text3); text-align: right; padding: 2px 2px 0 0; }
+
+.occ-loc-btn {
+  display: inline-flex; align-items: center; gap: 4px;
+  background: var(--bg2); border: none; border-radius: 6px;
+  padding: 6px 8px; font-size: 12px; font-family: var(--font);
+  color: var(--text2); cursor: pointer; width: 100%;
+  text-align: left;
+}
+.occ-loc-btn:hover { color: var(--primary); }
+.occ-table .occ-remove { position: static; }
+
+/* A row that fails a check is tinted rather than only annotated, so it is
+   findable when the table is long. */
+.occ-row-invalid td { background: color-mix(in srgb, var(--red, #d33) 6%, transparent); }
+.occ-issue-row td { border-top: none; padding-top: 0; }
+.occ-issue { font-size: 11.5px; color: var(--red, #d33); padding: 2px 6px; }
+.occ-detail-row td { border-top: none; background: var(--bg2); border-radius: 8px; }
+.occ-empty { font-size: 12.5px; color: var(--text3); padding: 10px 2px; }

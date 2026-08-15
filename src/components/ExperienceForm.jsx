@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useMemo } from 'react';
+import { useState, useRef, useEffect, useMemo, Fragment } from 'react';
 import ReactDOM from 'react-dom';
 import Modal from './ui/Modal.jsx';
 import { ErrorBanner } from './ui/Modal.jsx';
@@ -131,11 +131,52 @@ function QuickAddOccupationModal({name, onSave, onClose}) {
   );
 }
 
+/** Blank and non-numeric both mean "not recorded", not zero. */
+const num = (v) => {
+  if (v === '' || v == null) return null;
+  const n = parseFloat(v);
+  return Number.isFinite(n) ? n : null;
+};
+
+/**
+ * Row-level consistency checks, surfaced as you type rather than on save.
+ *
+ * Note `employmentActual` is stored as `employment_actual_pct` — a percentage,
+ * not a headcount — so it is bounded to 0–100 rather than compared to trainees.
+ */
+function occIssues(occ) {
+  const out = [];
+  const trainees = num(occ.trainees);
+  const appeared = num(occ.skillTestAppeared);
+  const passed = num(occ.skillTestPass);
+  const emp = num(occ.employmentActual);
+  if (trainees != null && appeared != null && appeared > trainees)
+    out.push(`Skill test appeared (${appeared}) is more than trainees (${trainees}).`);
+  if (appeared != null && passed != null && passed > appeared)
+    out.push(`Skill test passed (${passed}) is more than appeared (${appeared}).`);
+  if (passed != null && appeared == null && trainees != null && passed > trainees)
+    out.push(`Skill test passed (${passed}) is more than trainees (${trainees}).`);
+  if (emp != null && (emp < 0 || emp > 100))
+    out.push(`Employment is a percentage, so it must be between 0 and 100.`);
+  [['trainees', trainees], ['duration', num(occ.duration)], ['skillTestAppeared', appeared], ['skillTestPass', passed]]
+    .forEach(([k, v]) => { if (v != null && v < 0) out.push(`${k === 'duration' ? 'Hours' : 'Counts'} cannot be negative.`); });
+  return [...new Set(out)];
+}
+
+/** Derived, never typed — the brief's rule that percentages follow from counts. */
+function passRate(occ) {
+  const appeared = num(occ.skillTestAppeared), passed = num(occ.skillTestPass);
+  if (!appeared || passed == null) return '';
+  return `${Math.round((passed / appeared) * 100)}%`;
+}
+
 function ExperienceForm({exp, clients, institute, onSave, onClose, onDuplicate, onSaveClient}) {
   const _sess = getSession();
   const token = _sess?.token;
   const canManageOccs = _sess?.role === 'admin' || _sess?.role === 'editor' || _sess?.role === 'superadmin';
   const [quickAddOcc, setQuickAddOcc] = useState(null); // {name, occIdx}
+  // One occupation's locations open at a time — keeps the table scannable.
+  const [expandedOcc, setExpandedOcc] = useState(null);
   const [saveClientModal, setSaveClientModal] = useState(null);
   const [saveClientErr, setSaveClientErr] = useState('');
   const [formErr, setFormErr] = useState('');
@@ -166,6 +207,22 @@ function ExperienceForm({exp, clients, institute, onSave, onClose, onDuplicate, 
 
   const addOcc = () => set('occupations', [...form.occupations, {id:uid(), nameInLetter:'', ctevtOccupationId:'', trainees:'', duration:'', level:'', skillTestProvisioned:false, skillTestAppeared:'', skillTestPass:'', employmentProvisioned:false, employmentActual:'', locations:[]}]);
   const setOcc = (i, k, v) => setForm(f => ({...f, occupations: f.occupations.map((o,idx)=>idx===i?{...o,[k]:v}:o)}));
+
+  /**
+   * Selecting an occupation pulls its level and standard hours from master data.
+   * Only fills blanks — a value already typed for this assignment is deliberate
+   * and outranks the default, so it is never overwritten.
+   */
+  const pickOccupation = (i, id) => setForm(f => ({...f, occupations: f.occupations.map((o, idx) => {
+    if (idx !== i) return o;
+    const master = OCCUPATIONS.find(x => String(x.id) === String(id));
+    return {
+      ...o,
+      ctevtOccupationId: id,
+      level: o.level || master?.level || '',
+      duration: (o.duration === '' || o.duration == null) ? (master?.duration ?? '') : o.duration,
+    };
+  })}));
   const removeOcc = (i) => setForm(f => ({...f, occupations: f.occupations.filter((_,idx)=>idx!==i)}));
   const addOccLoc = (oi) => setForm(f => ({...f, occupations: f.occupations.map((o,idx)=>idx===oi?{...o,locations:[...(o.locations||[]),{id:uid(),province:'',district:'',localLevels:[]}]}:o)}));
   const setOccLoc = (oi, li, k, v) => {
@@ -308,10 +365,10 @@ function ExperienceForm({exp, clients, institute, onSave, onClose, onDuplicate, 
 
   return (
     <>
-    <Modal title={exp ? 'Edit Assignment' : 'Add Assignment'} onClose={handleClose} size="lg"
+    <Modal title={exp ? 'Edit Assignment' : 'Add Assignment'} onClose={handleClose} size="xl"
       footer={<>
         <Btn className="btn btn-secondary" onClick={handleClose}>Cancel</Btn>
-        <Btn className="btn btn-primary" onClick={async()=>{setFormErr('');if(form.occupations.some(o=>!o.ctevtOccupationId)){setFormErr('Please select an occupation for all occupation rows.');return;}try{markClean();await onSave(form);}catch(e){markDirty();setFormErr(e.message||'Failed to save');}}}>Save assignment</Btn>
+        <Btn className="btn btn-primary" onClick={async()=>{setFormErr('');if(form.occupations.some(o=>!o.ctevtOccupationId)){setFormErr('Please select an occupation for all occupation rows.');return;}const bad=form.occupations.flatMap(occIssues);if(bad.length){setFormErr(bad[0]);return;}try{markClean();await onSave(form);}catch(e){markDirty();setFormErr(e.message||'Failed to save');}}}>Save assignment</Btn>
       </>}>
       <ErrorBanner msg={formErr} onDismiss={()=>setFormErr('')}/>
 
@@ -568,47 +625,91 @@ function ExperienceForm({exp, clients, institute, onSave, onClose, onDuplicate, 
         )}
       </div>
 
-      {/* Occupations */}
+      {/* Occupations
+          One table row per occupation rather than a stack of full-width cards:
+          five occupations used to run past a screen and a half, which made the
+          numbers impossible to compare against each other. Locations stay
+          per-occupation but collapse to a district summary until opened. */}
       <div className="sub-section">
-        <div className="sub-section-title">Occupation rows</div>
-        {form.occupations.map((occ, i) => (
-          <div className="repeatable-row" key={occ.id||i}>
-            <button className="remove-btn" tabIndex={-1} onClick={()=>removeOcc(i)}>✕</button>
-            <div className="form-row form-row-2" style={{marginBottom:8}}>
-              <div className="form-group" style={{marginBottom:0}}>
-                <MdTextField label="Occupation name in letter" value={occ.nameInLetter} onChange={e=>setOcc(i,'nameInLetter',e.target.value)} placeholder="As written by client"/>
-              </div>
-              <div className="form-group" style={{marginBottom:0}}>
-                <label>Occupation *</label>
+        <div className="sub-section-title">Occupations</div>
+        <div className="occ-table-wrap">
+          <table className="occ-table">
+            <thead>
+              <tr>
+                <th style={{width:'22%'}}>Occupation *</th>
+                <th style={{width:'18%'}}>Name in letter</th>
+                <th style={{width:110}}>Level</th>
+                <th style={{width:70}}>Hours</th>
+                {/* Reads as a funnel left to right: how many trained, how many
+                    sat the skill test, how many passed, how many got work. */}
+                <th style={{width:84}}>Trainees</th>
+                <th style={{width:88}}>Appeared</th>
+                <th style={{width:80}}>Passed</th>
+                <th style={{width:92}}>Employed&nbsp;%</th>
+                <th style={{width:120}}>Districts</th>
+                <th style={{width:32}} aria-label="Remove"></th>
+              </tr>
+            </thead>
+            <tbody>
+        {form.occupations.map((occ, i) => {
+          const issues = occIssues(occ);
+          const open = expandedOcc === (occ.id || i);
+          const districts = (occ.locations||[]).map(l => l.district).filter(Boolean);
+          return (
+          <Fragment key={occ.id||i}>
+            <tr className={issues.length ? 'occ-row occ-row-invalid' : 'occ-row'}>
+              <td>
                 <SearchableSelect
                   value={toOccValue(occ.ctevtOccupationId)}
-                  onChange={v => setOcc(i,'ctevtOccupationId', fromOccValue(v))}
+                  onChange={v => pickOccupation(i, fromOccValue(v))}
                   placeholder="— Select —"
                   options={[
                     ...OCCUPATIONS.map(o => ({ value: o.id, label: o.name })),
                   ]}
                   onAddNew={canManageOccs ? (name => setQuickAddOcc({name, occIdx:i})) : undefined}
                 />
-              </div>
-            </div>
-            <div className="form-row" style={{gridTemplateColumns:'1fr 1fr 1fr 1fr 1fr 1fr', gap:8, marginBottom:8}}>
-              <div><MdTextField type="number" label="Duration (hrs)" value={occ.duration} onChange={e=>setOcc(i,'duration',e.target.value)}/></div>
-              <div>
-                <MdSelect label="Level" value={occ.level||''} onChange={e=>setOcc(i,'level',e.target.value)}>
-                  <MdOption value="">—</MdOption>
-                  <MdOption value="N/A">N/A</MdOption>
-                  <MdOption value="Level 1">Level 1</MdOption>
-                  <MdOption value="Level 2">Level 2</MdOption>
-                  <MdOption value="Level 3">Level 3</MdOption>
-                  <MdOption value="Professional">Professional</MdOption>
-                </MdSelect>
-              </div>
-              <div><MdTextField type="number" label="Trainees" value={occ.trainees} onChange={e=>setOcc(i,'trainees',e.target.value)}/></div>
-              <div><MdTextField type="number" label="ST Appeared" value={occ.skillTestAppeared} onChange={e=>setOcc(i,'skillTestAppeared',e.target.value)} placeholder="Optional"/></div>
-              <div><MdTextField type="number" label="ST Pass" value={occ.skillTestPass} onChange={e=>setOcc(i,'skillTestPass',e.target.value)} placeholder="Optional"/></div>
-              <div><MdTextField type="number" label="Employ%" value={occ.employmentActual} onChange={e=>setOcc(i,'employmentActual',e.target.value)} placeholder="Optional"/></div>
-            </div>
-            <div style={{display:'flex', gap:16, marginBottom:8}}>
+              </td>
+              <td><input className="occ-in" value={occ.nameInLetter} placeholder="As written by client"
+                onChange={e=>setOcc(i,'nameInLetter',e.target.value)}/></td>
+              <td>
+                <select className="occ-in" value={occ.level||''} onChange={e=>setOcc(i,'level',e.target.value)}>
+                  <option value="">—</option>
+                  <option value="N/A">N/A</option>
+                  <option value="Level 1">Level 1</option>
+                  <option value="Level 2">Level 2</option>
+                  <option value="Level 3">Level 3</option>
+                  <option value="Professional">Professional</option>
+                </select>
+              </td>
+              <td><input className="occ-in occ-num" type="number" value={occ.duration} onChange={e=>setOcc(i,'duration',e.target.value)}/></td>
+              <td><input className="occ-in occ-num" type="number" value={occ.trainees} onChange={e=>setOcc(i,'trainees',e.target.value)}/></td>
+              <td><input className="occ-in occ-num" type="number" value={occ.skillTestAppeared} onChange={e=>setOcc(i,'skillTestAppeared',e.target.value)}/></td>
+              <td>
+                <input className="occ-in occ-num" type="number" value={occ.skillTestPass} onChange={e=>setOcc(i,'skillTestPass',e.target.value)}/>
+                {passRate(occ) && <div className="occ-derived">{passRate(occ)} pass</div>}
+              </td>
+              <td><input className="occ-in occ-num" type="number" value={occ.employmentActual} onChange={e=>setOcc(i,'employmentActual',e.target.value)}/></td>
+              <td>
+                <button type="button" className="occ-loc-btn" aria-expanded={open}
+                  onClick={()=>setExpandedOcc(open ? null : (occ.id || i))}>
+                  {districts.length === 0 ? 'Add districts'
+                    : districts.length === 1 ? districts[0]
+                    : `${districts.length} districts`}
+                  <span aria-hidden="true">{open ? '▾' : '▸'}</span>
+                </button>
+              </td>
+              <td><button className="remove-btn occ-remove" tabIndex={-1} title="Remove occupation" onClick={()=>removeOcc(i)}>✕</button></td>
+            </tr>
+
+            {issues.length > 0 && (
+              <tr className="occ-issue-row"><td colSpan={10}>
+                {issues.map(m => <div key={m} className="occ-issue">{m}</div>)}
+              </td></tr>
+            )}
+
+            {open && (
+            <tr className="occ-detail-row"><td colSpan={10}>
+            <div style={{display:'flex', gap:16, marginBottom:10, flexWrap:'wrap'}}>
               <label className="toggle-wrap">
                 <MdToggle selected={occ.skillTestProvisioned} onChange={()=>setOcc(i,'skillTestProvisioned',!occ.skillTestProvisioned)}/>
                 Skill test provisioned
@@ -657,9 +758,18 @@ function ExperienceForm({exp, clients, institute, onSave, onClose, onDuplicate, 
                 <BulkDistrictPicker onAdd={(locs)=>setOcc(i,'locations',[...(occ.locations||[]),...locs.map(l=>({id:uid(),...l}))])}/>
               </div>
             </div>
-          </div>
-        ))}
-        <button className="add-row-btn" onClick={addOcc}>+ Add occupation row</button>
+            </td></tr>
+            )}
+          </Fragment>
+          );
+        })}
+            </tbody>
+          </table>
+        </div>
+        {form.occupations.length === 0 && (
+          <div className="occ-empty">No occupations yet. Add one to record trainees, skill tests and districts.</div>
+        )}
+        <button className="add-row-btn" onClick={addOcc}>+ Add occupation</button>
       </div>
     </Modal>
     {UnsavedModal}
@@ -702,7 +812,7 @@ function ExperienceForm({exp, clients, institute, onSave, onClose, onDuplicate, 
         </div>
       </Modal>
     )}
-    {quickAddOcc && <QuickAddOccupationModal name={quickAddOcc.name} onSave={saved=>{setOcc(quickAddOcc.occIdx,'ctevtOccupationId',saved.id);setQuickAddOcc(null);}} onClose={()=>setQuickAddOcc(null)}/>}
+    {quickAddOcc && <QuickAddOccupationModal name={quickAddOcc.name} onSave={saved=>{pickOccupation(quickAddOcc.occIdx,saved.id);setQuickAddOcc(null);}} onClose={()=>setQuickAddOcc(null)}/>}
     </>
   );
 }
