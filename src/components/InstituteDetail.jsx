@@ -113,7 +113,9 @@ function InstituteDetail({institute, clients, onUpdateClients, onBack, onUpdate,
     return newClient;
   };
 
-  const saveExperience = withSave(async (form) => {
+  // `keepOpen` backs "Save & add another": persist and refresh, but leave the
+  // form mounted so the next assignment can be entered without reopening it.
+  const saveExperience = withSave(async (form, opts = {}) => {
     if(!form.manualClient && !form.clientId) throw new Error('Please select a client or use manual entry.');
     if(form.manualClient && !form.clientName?.trim()) throw new Error('Please enter a client name.');
     if(!form.assignmentName.trim()) throw new Error('Assignment name is required.');
@@ -123,7 +125,7 @@ function InstituteDetail({institute, clients, onUpdateClients, onBack, onUpdate,
       await api('POST', '/assignments', expToAPI(form, institute.id), token);
     }
     await onRefresh(institute.id);
-    setModal(null);
+    if (!opts.keepOpen) setModal(null);
   });
 
   const deleteExperience = (id) => setConfirmModal({

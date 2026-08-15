@@ -1566,3 +1566,88 @@ md-filled-button.on-ink, md-filled-tonal-button.on-ink {
 .occ-issue { font-size: 11.5px; color: var(--red, #d33); padding: 2px 6px; }
 .occ-detail-row td { border-top: none; background: var(--bg2); border-radius: 8px; }
 .occ-empty { font-size: 12.5px; color: var(--text3); padding: 10px 2px; }
+
+/* ── Assignment editor: step navigation ─────────────────────────────────── */
+.step-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  /* Stays put while a step's content scrolls, so which step you are on and
+     which ones still need attention are always answerable. */
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  margin: 0 0 18px;
+  padding: 4px 0 14px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+}
+.step-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 7px 14px;
+  border: none;
+  border-radius: var(--radius-pill, 999px);
+  background: var(--bg2);
+  color: var(--text2);
+  font-family: var(--font);
+  font-size: 12.5px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 160ms ease, color 160ms ease;
+}
+.step-pill:hover { color: var(--text); }
+.step-pill-active { background: var(--text); color: var(--surface); }
+.step-pill-n {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 17px; height: 17px; border-radius: 50%;
+  background: color-mix(in srgb, currentColor 16%, transparent);
+  font-size: 10.5px; font-weight: 700;
+}
+.step-pill-badge {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-width: 16px; height: 16px; padding: 0 4px; border-radius: 999px;
+  background: var(--red); color: #fff; font-size: 10px; font-weight: 700;
+}
+
+/* ── Assignment editor: review step ─────────────────────────────────────── */
+/* Same reason as .occ-table: the global `.modal-body table { display: block }`
+   would collapse this to its content width and cut the row rules short. */
+.review-table {
+  display: table !important;
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 18px;
+}
+.review-table th {
+  width: 190px; text-align: left; vertical-align: top;
+  font-size: 12px; font-weight: 500; color: var(--text3);
+  padding: 8px 12px 8px 0; text-transform: none; letter-spacing: 0;
+}
+.review-table td {
+  font-size: 13.5px; color: var(--text); padding: 8px 0;
+  border-bottom: 1px solid var(--border);
+}
+.review-ok {
+  font-size: 13px; color: var(--text2);
+  background: var(--bg2); border-radius: var(--radius-card, 12px); padding: 14px 16px;
+}
+.review-problems {
+  background: color-mix(in srgb, var(--red) 7%, transparent);
+  border-radius: var(--radius-card, 12px); padding: 14px 16px;
+}
+.review-problems-title {
+  font-size: 12.5px; font-weight: 600; color: var(--red); margin-bottom: 8px;
+}
+/* Each problem is a link back to the step that owns it. */
+.review-problem {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  width: 100%; text-align: left; background: none; border: none;
+  border-top: 1px solid color-mix(in srgb, var(--red) 18%, transparent);
+  padding: 9px 0; cursor: pointer;
+  font-family: var(--font); font-size: 12.5px; color: var(--text);
+}
+.review-problem:first-of-type { border-top: none; }
+.review-problem:hover .review-problem-step { color: var(--primary); }
+.review-problem-step { font-size: 11.5px; color: var(--text3); white-space: nowrap; }

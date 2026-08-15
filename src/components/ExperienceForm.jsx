@@ -131,6 +131,85 @@ function QuickAddOccupationModal({name, onSave, onClose}) {
   );
 }
 
+const BLANK_ASSIGNMENT = {
+  clientId:'', clientName:'', manualClient:false,
+  fy:'2081/82', assignmentName:'', trainingType:'Short Term',
+  contractValue:'', startDate:'', endDate:'', startFY:'', endFY:'', remarks:'',
+  isGesi:false, isResidential:false, isJV:false, jvRole:'Lead', jvPartners:'',
+  occupations:[], locations:[], referenceFile:null, referenceFileName:'',
+  country:'Nepal', descriptionOfWork:'', durationMonths:'', totalPersonMonths:'',
+  ownServiceValue:'', jvPartnerNames:'', jvPartnerPersonMonths:'',
+  narrativeDescription:'', actualServicesDescription:'',
+  numGroups:'', durationDays:''
+};
+
+/**
+ * The form is long enough that everything at once buries the occupation table,
+ * which is the part people actually come here for. Steps are navigable in any
+ * order rather than a locked wizard: most visits are edits to one field, and
+ * making someone click through five screens to fix a typo would be worse than
+ * the scroll it replaces.
+ */
+const STEPS = [
+  { id:'basic',  label:'Basic information' },
+  { id:'occ',    label:'Occupations' },
+  { id:'docs',   label:'Documents' },
+  { id:'eoi',    label:'EOI details' },
+  { id:'review', label:'Review' },
+];
+
+/**
+ * Last stop before saving: what is about to be written, and what is still
+ * wrong. Every problem links back to the step that owns it, so the review is
+ * a way through rather than a dead end.
+ */
+function ReviewStep({ form, clients, problems, onGoTo }) {
+  const client = clients.find(c => String(c.id) === String(form.clientId));
+  const trainees = form.occupations.reduce((n, o) => n + (parseInt(o.trainees) || 0), 0);
+  const districts = new Set(
+    form.occupations.flatMap(o => (o.locations || []).map(l => l.district)).filter(Boolean)
+  );
+  const total = Object.values(problems).reduce((n, list) => n + list.length, 0);
+
+  const rows = [
+    ['Client', form.manualClient ? (form.clientName || '—') : (client?.fullName || client?.shortName || '—')],
+    ['Assignment', form.assignmentName || '—'],
+    ['Fiscal year', form.fy || '—'],
+    ['Training type', form.trainingType || '—'],
+    ['Occupations', form.occupations.length || '—'],
+    ['Total trainees', trainees || '—'],
+    ['Districts', districts.size ? [...districts].join(', ') : '—'],
+    ['Reference document', form.referenceFileName || 'None attached'],
+  ];
+
+  return (
+    <div>
+      <div className="sub-section-title">Review</div>
+      <table className="review-table"><tbody>
+        {rows.map(([k, v]) => (
+          <tr key={k}><th scope="row">{k}</th><td>{v}</td></tr>
+        ))}
+      </tbody></table>
+
+      {total === 0 ? (
+        <div className="review-ok">Nothing outstanding — ready to save.</div>
+      ) : (
+        <div className="review-problems">
+          <div className="review-problems-title">
+            {total === 1 ? '1 thing needs attention' : `${total} things need attention`}
+          </div>
+          {STEPS.map((st, i) => (problems[st.id] || []).map(msg => (
+            <button key={st.id + msg} type="button" className="review-problem" onClick={() => onGoTo(i)}>
+              <span>{msg}</span>
+              <span className="review-problem-step">{st.label} &rsaquo;</span>
+            </button>
+          )))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 /** Blank and non-numeric both mean "not recorded", not zero. */
 const num = (v) => {
   if (v === '' || v == null) return null;
@@ -180,20 +259,12 @@ function ExperienceForm({exp, clients, institute, onSave, onClose, onDuplicate, 
   const [saveClientModal, setSaveClientModal] = useState(null);
   const [saveClientErr, setSaveClientErr] = useState('');
   const [formErr, setFormErr] = useState('');
-  const [form, setForm] = useState(() => {
-    const defaults = {
-      clientId:'', clientName:'', manualClient:false,
-      fy:'2081/82', assignmentName:'', trainingType:'Short Term',
-      contractValue:'', startDate:'', endDate:'', startFY:'', endFY:'', remarks:'',
-      isGesi:false, isResidential:false, isJV:false, jvRole:'Lead', jvPartners:'',
-      occupations:[], locations:[], referenceFile:null, referenceFileName:'',
-      country:'Nepal', descriptionOfWork:'', durationMonths:'', totalPersonMonths:'',
-      ownServiceValue:'', jvPartnerNames:'', jvPartnerPersonMonths:'',
-      narrativeDescription:'', actualServicesDescription:'',
-      numGroups:'', durationDays:''
-    };
-    return exp ? {...defaults, ...exp} : defaults;
-  });
+  const [form, setForm] = useState(() => exp ? {...BLANK_ASSIGNMENT, ...exp} : {...BLANK_ASSIGNMENT});
+  const [step, setStep] = useState(0);
+  const bodyRef = useRef(null);
+  // Switching step while scrolled halfway down would otherwise drop you into
+  // the middle of the next one.
+  useEffect(() => { bodyRef.current?.closest('.modal-body')?.scrollTo({ top: 0 }); }, [step]);
   const [showReportFields, setShowReportFields] = useState(false);
   const [showOverrides, setShowOverrides] = useState(false);
   const { handleClose, markDirty, markClean, UnsavedModal } = useUnsavedGuard(onClose);
@@ -223,6 +294,45 @@ function ExperienceForm({exp, clients, institute, onSave, onClose, onDuplicate, 
       duration: (o.duration === '' || o.duration == null) ? (master?.duration ?? '') : o.duration,
     };
   })}));
+  /**
+   * Grouped by the step that can fix them, which drives both the nav badges
+   * and the review list. Mirrors the parent's own save-time checks so nothing
+   * is reported here that would not actually block, and vice versa.
+   */
+  const problems = useMemo(() => {
+    const basic = [];
+    if (!form.manualClient && !form.clientId) basic.push('Select a client, or switch to manual entry.');
+    if (form.manualClient && !form.clientName?.trim()) basic.push('Enter the client name.');
+    if (!form.assignmentName?.trim()) basic.push('Assignment name is required.');
+
+    const occ = [];
+    if (form.occupations.some(o => !o.ctevtOccupationId)) occ.push('Every occupation row needs an occupation selected.');
+    form.occupations.forEach(o => occIssues(o).forEach(m => occ.push(m)));
+
+    return { basic, occ, docs: [], eoi: [], review: [] };
+  }, [form]);
+
+  const saveAssignment = async (keepOpen) => {
+    setFormErr('');
+    const first = [...problems.basic, ...problems.occ][0];
+    if (first) { setFormErr(first); return; }
+    try {
+      markClean();
+      await onSave(form, { keepOpen });
+      if (keepOpen) {
+        // Carry over the context that is almost always shared between sibling
+        // assignments; clear what is specific to the one just saved.
+        setForm(f => ({
+          ...BLANK_ASSIGNMENT,
+          clientId: f.clientId, clientName: f.clientName, manualClient: f.manualClient,
+          fy: f.fy, trainingType: f.trainingType,
+        }));
+        setStep(0);
+        toast('Assignment saved. Starting the next one.');
+      }
+    } catch (e) { markDirty(); setFormErr(e.message || 'Failed to save'); }
+  };
+
   const removeOcc = (i) => setForm(f => ({...f, occupations: f.occupations.filter((_,idx)=>idx!==i)}));
   const addOccLoc = (oi) => setForm(f => ({...f, occupations: f.occupations.map((o,idx)=>idx===oi?{...o,locations:[...(o.locations||[]),{id:uid(),province:'',district:'',localLevels:[]}]}:o)}));
   const setOccLoc = (oi, li, k, v) => {
@@ -368,10 +478,36 @@ function ExperienceForm({exp, clients, institute, onSave, onClose, onDuplicate, 
     <Modal title={exp ? 'Edit Assignment' : 'Add Assignment'} onClose={handleClose} size="xl"
       footer={<>
         <Btn className="btn btn-secondary" onClick={handleClose}>Cancel</Btn>
-        <Btn className="btn btn-primary" onClick={async()=>{setFormErr('');if(form.occupations.some(o=>!o.ctevtOccupationId)){setFormErr('Please select an occupation for all occupation rows.');return;}const bad=form.occupations.flatMap(occIssues);if(bad.length){setFormErr(bad[0]);return;}try{markClean();await onSave(form);}catch(e){markDirty();setFormErr(e.message||'Failed to save');}}}>Save assignment</Btn>
+        <span style={{flex:1}}/>
+        <Btn className="btn btn-secondary" disabled={step === 0}
+          onClick={()=>setStep(s=>Math.max(0, s-1))}>Back</Btn>
+        {step < STEPS.length - 1 && (
+          <Btn className="btn btn-secondary" onClick={()=>setStep(s=>Math.min(STEPS.length-1, s+1))}>Next</Btn>
+        )}
+        {/* Saving is reachable from every step: most visits are a one-field
+            edit, and forcing a walk to the last step to commit it would be
+            worse than the scrolling this replaces. */}
+        {!exp && <Btn className="btn btn-secondary" onClick={()=>saveAssignment(true)}>Save &amp; add another</Btn>}
+        <Btn className="btn btn-primary" onClick={()=>saveAssignment(false)}>Save assignment</Btn>
       </>}>
       <ErrorBanner msg={formErr} onDismiss={()=>setFormErr('')}/>
 
+      <nav ref={bodyRef} className="step-nav" aria-label="Assignment sections">
+        {STEPS.map((st, i) => {
+          const n = (problems[st.id] || []).length;
+          return (
+            <button key={st.id} type="button" onClick={()=>setStep(i)}
+              className={`step-pill${i === step ? ' step-pill-active' : ''}`}
+              aria-current={i === step ? 'step' : undefined}>
+              <span className="step-pill-n">{i + 1}</span>
+              {st.label}
+              {n > 0 && <span className="step-pill-badge" title={`${n} need attention`}>{n}</span>}
+            </button>
+          );
+        })}
+      </nav>
+
+      {step === 0 && (<div>
       {/* Assignment level */}
       <div className="form-row form-row-2">
         <div className="form-group">
@@ -492,6 +628,9 @@ function ExperienceForm({exp, clients, institute, onSave, onClose, onDuplicate, 
         </div>
       </div>
 
+      </div>)}
+
+      {step === 2 && (<div>
       {/* Reference letter upload */}
       <div className="form-group">
         <label>Reference letter / document</label>
@@ -535,6 +674,9 @@ function ExperienceForm({exp, clients, institute, onSave, onClose, onDuplicate, 
         <div className="input-hint">Attach the scanned experience letter (PDF or image) and set a display label</div>
       </div>
 
+      </div>)}
+
+      {step === 3 && (<div>
       {/* EOI report details */}
       <div className="sub-section" style={{marginBottom:16}}>
         <button type="button" onClick={()=>setShowReportFields(s=>!s)}
@@ -625,6 +767,9 @@ function ExperienceForm({exp, clients, institute, onSave, onClose, onDuplicate, 
         )}
       </div>
 
+      </div>)}
+
+      {step === 1 && (<div>
       {/* Occupations
           One table row per occupation rather than a stack of full-width cards:
           five occupations used to run past a screen and a half, which made the
@@ -771,6 +916,9 @@ function ExperienceForm({exp, clients, institute, onSave, onClose, onDuplicate, 
         )}
         <button className="add-row-btn" onClick={addOcc}>+ Add occupation</button>
       </div>
+      </div>)}
+
+      {step === 4 && <ReviewStep form={form} clients={clients} problems={problems} onGoTo={setStep}/>}
     </Modal>
     {UnsavedModal}
     {saveClientModal && (
