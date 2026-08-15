@@ -3,6 +3,7 @@ import { useCachedLogo } from '../utils/logoCache.js';
 import Pagination from './ui/Pagination.jsx';
 import { Btn } from '../md.jsx';
 import { usePagination } from '../utils/hooks.js';
+import { exportToCSV } from '../utils/export.js';
 import { fmt, daysUntilRenewal } from '../utils/format.js';
 import { PageHeader, StatusBadge, EmptyState, InstituteAvatar } from './ui/primitives.jsx';
 
@@ -93,7 +94,7 @@ function InstituteCard({ inst, onSelect, showStats }) {
 
 /* ── Table ───────────────────────────────────────────────────────────────── */
 
-function InstituteTable({ rows, onSelect, showStats }) {
+function InstituteTable({ rows, onSelect, showStats, selected, onToggle, onToggleAll }) {
   const TH = { textAlign:'left', fontSize:11, fontWeight:700, letterSpacing:'.4px',
     textTransform:'uppercase', color:'var(--text3)', padding:'10px 12px', whiteSpace:'nowrap' };
   const TD = { padding:'11px 12px', fontSize:'var(--fs-body)', color:'var(--text2)',
@@ -104,6 +105,16 @@ function InstituteTable({ rows, onSelect, showStats }) {
         <table style={{width:'100%', borderCollapse:'collapse', minWidth:720}}>
           <thead>
             <tr>
+              {onToggle && (
+                <th style={{...TH, width:36, paddingRight:0}}>
+                  <input type="checkbox" aria-label="Select all on this page"
+                    checked={rows.length > 0 && rows.every(r => selected.has(r.id))}
+                    // Indeterminate cannot be expressed as an attribute.
+                    ref={el => { if (el) el.indeterminate =
+                      rows.some(r => selected.has(r.id)) && !rows.every(r => selected.has(r.id)); }}
+                    onChange={() => onToggleAll(rows)}/>
+                </th>
+              )}
               <th style={TH}>Institute</th>
               <th style={TH}>Status</th>
               {showStats && <th style={{...TH, textAlign:'right'}}>Trainees</th>}
@@ -117,6 +128,14 @@ function InstituteTable({ rows, onSelect, showStats }) {
               <tr key={inst.id} onClick={() => onSelect(inst)} style={{cursor:'pointer'}}
                 onMouseEnter={e => e.currentTarget.style.background = 'var(--bg2)'}
                 onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+                {onToggle && (
+                  // stopPropagation so ticking a row does not also open it.
+                  <td style={{...TD, paddingRight:0}} onClick={e => e.stopPropagation()}>
+                    <input type="checkbox" checked={selected.has(inst.id)}
+                      aria-label={`Select ${inst.name}`}
+                      onChange={() => onToggle(inst.id)}/>
+                  </td>
+                )}
                 <td style={TD}>
                   <div style={{display:'flex', alignItems:'center', gap:10}}>
                     <InstLogo inst={inst} size={30}/>
@@ -156,6 +175,53 @@ function InstituteList({ institutes, onSelect, onAdd, initialSearch = '', isShor
 
   useEffect(() => { if (initialSearch) setSearch(initialSearch); }, [initialSearch]);
 
+  /**
+   * Bulk selection, table view only — picking rows out of a card grid is
+   * awkward, and this is administrative work, which is what the table is for.
+   *
+   * Selection is by id and survives paging and filtering, so you can tick a few
+   * on page one, search for another, and still export all of them. It is
+   * cleared explicitly rather than silently on filter change, because silently
+   * dropping a selection someone spent a minute building is worse than an
+   * unexpected count.
+   */
+  const [selected, setSelected] = useState(() => new Set());
+  const toggle = (id) => setSelected(prev => {
+    const next = new Set(prev);
+    next.has(id) ? next.delete(id) : next.add(id);
+    return next;
+  });
+  const toggleAll = (rows) => setSelected(prev => {
+    const next = new Set(prev);
+    const allOn = rows.every(r => next.has(r.id));
+    rows.forEach(r => allOn ? next.delete(r.id) : next.add(r.id));
+    return next;
+  });
+  // Everything ticked, whether or not the current filter still shows it:
+  // filtering is how you find rows to tick, not a constraint on ones already
+  // ticked, so narrowing the search must not quietly shrink the export.
+  const selectedRows = useMemo(
+    () => institutes.filter(i => selected.has(i.id)), [institutes, selected]);
+
+  const exportSelected = () => {
+    exportToCSV(selectedRows.map(i => ({
+      Name: i.name,
+      Acronym: i.acronym || '',
+      'Registration no': i.regNo || '',
+      PAN: i.pan || '',
+      Type: i.type || '',
+      Status: i.status || '',
+      Address: i.address || '',
+      'Contact person': i.contactPerson || '',
+      Phone: i.phone || i.mobile || '',
+      Email: i.email || '',
+      'Renewal due (BS)': i.renewalDue || '',
+      Trainees: i.totalTrainees || 0,
+      Clients: i.totalClients || 0,
+      Programs: i.totalAffPrograms || 0,
+    })), `institutes-${selectedRows.length}.csv`);
+  };
+
   // Matching is unchanged: name, registration number, acronym, PAN.
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -168,6 +234,12 @@ function InstituteList({ institutes, onSelect, onAdd, initialSearch = '', isShor
       return matchSearch && (statusFilter === 'All' || i.status === statusFilter);
     });
   }, [institutes, search, statusFilter]);
+
+  // Ticked but filtered out of view. Worth saying, because otherwise the bar
+  // reads "5 selected" above four rows and looks broken.
+  const hiddenCount = useMemo(
+    () => selectedRows.filter(i => !filtered.some(f => f.id === i.id)).length,
+    [selectedRows, filtered]);
 
   const { paged, page, setPage, totalPages, total, start, end } = usePagination(filtered, view === 'table' ? 25 : 12);
   const showStats = !isShortlistOnly;
@@ -254,7 +326,23 @@ function InstituteList({ institutes, onSelect, onAdd, initialSearch = '', isShor
               ))}
             </div>
           ) : (
-            <InstituteTable rows={paged} onSelect={onSelect} showStats={showStats}/>
+            <>
+              {selected.size > 0 && (
+                <div className="bulk-bar" role="region" aria-label="Selected institutes">
+                  <span className="bulk-count">
+                    {selected.size} selected
+                    {hiddenCount > 0 && (
+                      <span className="bulk-note"> · {hiddenCount} hidden by the current filters</span>
+                    )}
+                  </span>
+                  <Btn className="btn btn-secondary btn-sm" onClick={exportSelected}
+                    disabled={selectedRows.length === 0}>Export CSV</Btn>
+                  <Btn className="btn btn-ghost btn-sm" onClick={() => setSelected(new Set())}>Clear</Btn>
+                </div>
+              )}
+              <InstituteTable rows={paged} onSelect={onSelect} showStats={showStats}
+                selected={selected} onToggle={toggle} onToggleAll={toggleAll}/>
+            </>
           )}
           <Pagination page={page} setPage={setPage} totalPages={totalPages}
             total={total} start={start} end={end} label="institutes"/>
