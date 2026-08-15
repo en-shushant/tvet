@@ -45,6 +45,8 @@ import StyleGuide from '../src/components/StyleGuide.jsx';
 import Shortlisting from '../src/components/Shortlisting.jsx';
 import { ContractsPanel } from '../src/components/shortlisting/ContractsPanel.jsx';
 import { NepaliDatePicker, ConfirmModal } from '../src/components/shortlisting/common.jsx';
+import { ShortlistRow, GroupHeader, TableHead, printShortlistReport } from '../src/components/shortlisting/table.jsx';
+import { StandingListModal, AssignFirmsModal, ViewDocumentsModal, BillModal, LetterOptsModal } from '../src/components/shortlisting/modals.jsx';
 
 const noop = () => {};
 const token = 'test-token';
@@ -224,6 +226,71 @@ describe('interactive surfaces open without error', () => {
   it('compliance and documents filters switch', async () => {
     await mount(SCREENS['Renewals & Compliance']);
     await clickAll('[role="tab"]');
+    assertNoConsoleErrors();
+  });
+});
+
+/**
+ * The modules split out of Shortlisting.jsx.
+ *
+ * Mounted directly rather than through the parent screen. The modals only open
+ * on a click deep in the results table and the row only renders once data has
+ * loaded, so the shallow mount above touches almost none of this — which is how
+ * an extraction that references a name left behind in the parent ships quietly.
+ * Two such faults were caught this way on the previous split.
+ */
+describe('extracted shortlisting modules mount', () => {
+  const row = {
+    id: 1, institute_id: 1, institute_name: 'CEMECA Human Resource Academy Private Limited',
+    institute_acronym: 'CEMECA', client_name: 'Nepal Electricity Authority',
+    client_name_manual: null, client_short: 'NEA', standing_list_name: 'NEA SSEMD 2081/82',
+    fy: '2081/82', status: 'Active', contract_amount: '2500000', shortlist_doc: null,
+  };
+
+  const CASES = {
+    // Despite the names, these render divs and buttons — the results "table" is
+    // a flex layout, so wrapping them in <table> is what produces a DOM-nesting
+    // warning, not the components.
+    'ShortlistRow':        <ShortlistRow row={row} idx={0} canEdit isAdmin
+                             isSuperAdmin onEdit={noop} onDelete={noop} onBillSave={noop}
+                             saving={false} token={token} />,
+    'GroupHeader':         <GroupHeader label="NEA" sub="2081/82" count={3}
+                             expanded onToggle={noop} isCurrent />,
+    'TableHead':           <TableHead groupBy="org" />,
+    'StandingListModal':   <StandingListModal list={null} onSave={noop} onClose={noop} saving={false} />,
+    'AssignFirmsModal':    <AssignFirmsModal list={{ id: 1, name: 'NEA SSEMD' }} institutes={institutes}
+                             assignedIds={[]} onSave={noop} onClose={noop} saving={false} />,
+    'ViewDocumentsModal':  <ViewDocumentsModal instituteId={1} token={token} onClose={noop} />,
+    'BillModal':           <BillModal row={row} token={token} onSave={noop} onClose={noop} saving={false} />,
+    'LetterOptsModal':     <LetterOptsModal row={row} token={token} onClose={noop} onOpenBuilder={noop} />,
+  };
+
+  for (const [name, element] of Object.entries(CASES)) {
+    it(`${name} renders`, async () => {
+      await mount(element);
+      expect(document.body.textContent.trim().length, `${name} rendered nothing`).toBeGreaterThan(0);
+      assertNoConsoleErrors();
+    });
+  }
+
+  it('printShortlistReport writes a report containing the rows', () => {
+    // It opens a window and writes into it rather than returning a string, so
+    // the window is stubbed and the written HTML captured. jsdom has no real
+    // window.open, which is why calling this straight logs "Not implemented".
+    let written = '';
+    const realOpen = window.open;
+    window.open = () => ({
+      document: { write: (html) => { written += html; }, close: () => {} },
+    });
+    try {
+      // groupBy is 'fy' | 'org' | 'firm'. 'org' groups by client and lists the
+      // firms under it, so the institute name is what appears in the rows.
+      printShortlistReport([row], 'org', {});
+    } finally {
+      window.open = realOpen;
+    }
+    expect(written).toContain('CEMECA');
+    expect(written).toContain('Nepal Electricity Authority');
     assertNoConsoleErrors();
   });
 });

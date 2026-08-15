@@ -6,10 +6,11 @@
  * contracts panel could not be extracted while it still reached back into its
  * parent for a date picker and a confirmation dialog.
  */
-import { useState, useEffect } from 'react';
+import { useState, useEffect, lazy, Suspense } from 'react';
 import Modal from '../ui/Modal.jsx';
 import { Btn } from '../../md.jsx';
 import { adToBS, bsToAD, BS_MONTHS, BS_DATA, toNpNum, BS_YEARS } from '../../constants/nepali.js';
+import { FISCAL_YEARS } from '../../constants/data.js';
 
 export function statusColor(s) {
   if (s === 'Active')  return { bg: 'var(--success-light)', color: '#0b9b85' };
@@ -97,3 +98,18 @@ export function ConfirmModal({ message, onConfirm, onClose, saving }) {
 }
 
 // ── Bill Upload Modal ──────────────────────────────────────────────────────────
+
+/* Shared with the results table and the screen itself. */
+const LetterBuilderLazy = lazy(() => import('../LetterBuilder.jsx'));
+export function LetterBuilderWrapper({ row, onClose, allRows }) {
+  return (
+    <Suspense fallback={null}>
+      <LetterBuilderLazy row={row} token={getSession()?.token} onClose={onClose} allRows={allRows}/>
+    </Suspense>
+  );
+}
+
+/** File picker filter for scanned documents. */
+export const ACCEPT = 'image/*';
+
+export const FYS = [...FISCAL_YEARS].reverse(); // newest first
