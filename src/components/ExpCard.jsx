@@ -120,49 +120,29 @@ function ExpCard({exp, clients, showFY, setModal, deleteExperience, canEdit, isA
           )}
         </div>
 
-        {/* Right: action buttons */}
+        {/* Right: action buttons.
+            Hover lives in CSS. These previously set inline styles from
+            onMouseEnter/onMouseLeave, and a missed mouseleave — a modal opening
+            over the button, or the row re-rendering mid-hover — left the grey
+            circle stuck on, so some rows looked highlighted and others did not. */}
         <div style={{display:'flex', gap:4, flexShrink:0, alignItems:'flex-start'}}>
-          <button
-            title="View details"
-            onClick={()=>setModal({type:'viewExp', data:exp})}
-            style={{
-              display:'inline-flex', alignItems:'center', justifyContent:'center',
-              width:32, height:32, borderRadius:50, border:'none', background:'transparent',
-              color:'var(--text3)', cursor:'pointer', transition:'background .12s, color .12s',
-            }}
-            onMouseEnter={e=>{e.currentTarget.style.background='var(--bg2)'; e.currentTarget.style.color='var(--primary)';}}
-            onMouseLeave={e=>{e.currentTarget.style.background=''; e.currentTarget.style.color='var(--text3)';}}
-          >
-            <span className="material-icons-round" style={{fontSize:16}}>visibility</span>
+          <button type="button" className="icon-btn icon-btn-primary"
+            title="View details" aria-label="View assignment details"
+            onClick={()=>setModal({type:'viewExp', data:exp})}>
+            <span className="material-icons-round" aria-hidden="true">visibility</span>
           </button>
           {canEdit && (
-            <button
-              title="Edit"
-              onClick={()=>setModal({type:'editExp', data:exp})}
-              style={{
-                display:'inline-flex', alignItems:'center', justifyContent:'center',
-                width:32, height:32, borderRadius:50, border:'none', background:'transparent',
-                color:'var(--text3)', cursor:'pointer', transition:'background .12s, color .12s',
-              }}
-              onMouseEnter={e=>{e.currentTarget.style.background='var(--bg2)'; e.currentTarget.style.color='var(--text)';}}
-              onMouseLeave={e=>{e.currentTarget.style.background=''; e.currentTarget.style.color='var(--text3)';}}
-            >
-              <span className="material-icons-round" style={{fontSize:16}}>edit</span>
+            <button type="button" className="icon-btn"
+              title="Edit" aria-label="Edit assignment"
+              onClick={()=>setModal({type:'editExp', data:exp})}>
+              <span className="material-icons-round" aria-hidden="true">edit</span>
             </button>
           )}
           {isAdmin && (
-            <button
-              title="Delete"
-              onClick={()=>deleteExperience(exp.id)}
-              style={{
-                display:'inline-flex', alignItems:'center', justifyContent:'center',
-                width:32, height:32, borderRadius:50, border:'none', background:'transparent',
-                color:'var(--text3)', cursor:'pointer', transition:'background .12s, color .12s',
-              }}
-              onMouseEnter={e=>{e.currentTarget.style.background='var(--error-light)'; e.currentTarget.style.color='var(--error)';}}
-              onMouseLeave={e=>{e.currentTarget.style.background=''; e.currentTarget.style.color='var(--text3)';}}
-            >
-              <span className="material-icons-round" style={{fontSize:16}}>delete</span>
+            <button type="button" className="icon-btn icon-btn-danger"
+              title="Delete" aria-label="Delete assignment"
+              onClick={()=>deleteExperience(exp.id)}>
+              <span className="material-icons-round" aria-hidden="true">delete</span>
             </button>
           )}
         </div>

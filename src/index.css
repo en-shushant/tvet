@@ -1849,3 +1849,50 @@ md-filled-button.on-ink, md-filled-tonal-button.on-ink {
   font-size: 13px;
   user-select: none;
 }
+
+/* ── Native select styling ──────────────────────────────────────────────────
+   Without appearance:none the browser draws its own control, so these rendered
+   as macOS double-chevron widgets sitting next to Material fields and custom
+   pills. Same box as every other input now, with one chevron drawn in a grey
+   that reads on both themes — --text3 is #5E7491 light and #6E8AA0 dark, so a
+   single mid-tone avoids needing a per-theme override. */
+select {
+  appearance: none;
+  -webkit-appearance: none;
+  padding-right: 34px;
+  background-image: url("data:image/svg+xml;charset=UTF-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1.5 6 6.5 11 1.5' fill='none' stroke='%237a8ca5' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  cursor: pointer;
+}
+select:disabled { cursor: not-allowed; opacity: .6; }
+/* The list itself is drawn by the OS; force readable colours in dark mode. */
+select option { background: var(--surface); color: var(--text); }
+
+/* ── Icon buttons ───────────────────────────────────────────────────────────
+   Hover belongs in CSS. These were driven by onMouseEnter/onMouseLeave writing
+   inline styles, and onMouseLeave does not always fire — the pointer can leave
+   through a modal opening over the button, or the row can re-render mid-hover —
+   which left the highlight stuck on. That is why some rows showed a grey circle
+   behind their icons and others did not. */
+.icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--text3);
+  cursor: pointer;
+  transition: background 120ms ease, color 120ms ease;
+}
+.icon-btn .material-icons-round { font-size: 16px; }
+.icon-btn:hover { background: var(--bg2); color: var(--text2); }
+.icon-btn:focus-visible { outline: 2px solid var(--primary); outline-offset: 1px; }
+.icon-btn:disabled { opacity: .45; cursor: not-allowed; }
+.icon-btn:disabled:hover { background: transparent; color: var(--text3); }
+.icon-btn-primary:hover { background: var(--bg2); color: var(--primary); }
+.icon-btn-danger:hover  { background: var(--error-light); color: var(--error); }
