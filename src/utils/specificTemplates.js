@@ -158,6 +158,15 @@ export const SERVICES_VARIATIONS = [
     preview:
       '{firm} Provided {durationHours} Hours Training to {totalTrainees} Trainees in {occupations}.\n{skillTestNSTBLine}\n• Implemented training across {numDistricts} districts: {locations}.\n• Submitted all required reports and database updates to {client} within the given timeline.',
   },
+  {
+    id: 's13',
+    label: 'S13 — Full service narrative with skill test & placement outcomes',
+    // The closing clause is assembled in buildValues: it names the skill-test
+    // count and the aggregate placement rate only when the assignment recorded
+    // them, and collapses to nothing when it recorded neither.
+    preview:
+      'We conducted awareness programs, selected motivated participants, and managed suitable training venues in targeted areas. Participants received practical training in proposed occupations, along with soft skills, employability skills, health and safety, and entrepreneurship. Gender sensitivity orientation was provided{outcomeClause}.',
+  },
 ];
 
 // ── Shared fill function ───────────────────────────────────────────────────────
@@ -177,6 +186,38 @@ function buildValues(form, institute, clients) {
   const hasEmployment = occs.some(o => o.employmentProvisioned);
   const t = totalTrainees || '—';
 
+  // How many actually sat the skill test. Falls back to the trainee count when
+  // only the provision is recorded and no attendance figure was entered.
+  const appeared = occs.reduce((s, o) => s + (parseInt(o.skillTestAppeared) || 0), 0);
+  const skillTestCount = appeared || (hasSkillTest ? (totalTrainees || 0) : 0);
+
+  // employmentActual is employment_actual_pct — a percentage per occupation, so
+  // aggregating means weighting by cohort size. Averaging the percentages of a
+  // 200-trainee and a 20-trainee occupation would overstate the small one.
+  let weighted = 0, covered = 0;
+  const plainPcts = [];
+  for (const o of occs) {
+    const pct = parseFloat(o.employmentActual);
+    if (isNaN(pct)) continue;
+    plainPcts.push(pct);
+    const tr = parseInt(o.trainees) || 0;
+    if (tr > 0) { weighted += pct * tr; covered += tr; }
+  }
+  const placementPct = covered > 0
+    ? Math.round(weighted / covered)
+    : plainPcts.length
+      // No trainee counts to weight by — fall back to a flat average.
+      ? Math.round(plainPcts.reduce((s, n) => s + n, 0) / plainPcts.length)
+      : null;
+
+  // Assembled rather than substituted, so the sentence stays grammatical when
+  // one or both figures are absent — a bare "{x}" placeholder would leave a
+  // dangling ", and" on assignments that recorded neither.
+  const outcomes = [];
+  if (skillTestCount) outcomes.push(`skill test was conducted for ${skillTestCount}`);
+  if (placementPct != null) outcomes.push(`achieved (${placementPct}%) of verified employment placement`);
+  const outcomeClause = outcomes.length ? `, and ${outcomes.join(' and ')}` : '';
+
   return {
     firm,
     client: client.shortName || client.fullName || form.clientName || '',
@@ -193,6 +234,7 @@ function buildValues(form, institute, clients) {
     skillTestLine:     hasSkillTest  ? `• Conducted Skill Test for all ${t} trainees.` : '',
     skillTestNSTBLine: hasSkillTest  ? '• Arranged and managed skills testing together with NSTB.' : '',
     employmentLine:    hasEmployment ? '• Provided Job placement and business start-up support to the training graduates.' : '',
+    outcomeClause,
   };
 }
 
