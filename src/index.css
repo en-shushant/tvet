@@ -1770,3 +1770,82 @@ md-filled-button.on-ink, md-filled-tonal-button.on-ink {
 }
 .bulk-count { font-size: 13px; font-weight: 600; color: var(--on-pastel); margin-right: auto; }
 .bulk-note  { font-weight: 400; color: var(--on-pastel-muted); }
+
+/* ── Pagination ─────────────────────────────────────────────────────────── */
+.pagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-top: 18px;
+  padding-top: 14px;
+  border-top: 1px solid var(--border);
+}
+.pagination-summary { margin: 0; font-size: 12.5px; color: var(--text3); }
+.pagination-summary strong { color: var(--text2); font-weight: 600; font-variant-numeric: tabular-nums; }
+
+.pagination-controls { display: flex; align-items: center; gap: 6px; }
+
+/* One shared box for every control, so they cannot disagree on height or
+   alignment the way a Material button and a plain button did. */
+.page-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  height: 34px;
+  padding: 0 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-pill, 999px);
+  background: var(--surface);
+  color: var(--text2);
+  font-family: var(--font);
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1;
+  cursor: pointer;
+  transition: background 140ms ease, color 140ms ease, border-color 140ms ease;
+}
+.page-btn .material-icons-round { font-size: 16px; }
+
+/* Square footprint, so single and double digits are the same width and the row
+   does not shift as you page through. */
+.page-btn-num {
+  min-width: 34px;
+  padding: 0 8px;
+  font-variant-numeric: tabular-nums;
+}
+
+.page-btn:hover:not(:disabled):not(.is-active) {
+  background: var(--bg2);
+  color: var(--text);
+  border-color: var(--text3);
+}
+.page-btn:active:not(:disabled) { transform: translateY(1px); }
+.page-btn:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+
+.page-btn.is-active {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: #fff;
+  font-weight: 700;
+  cursor: default;
+}
+
+/* Disabled reads as unavailable rather than merely dimmer: the border goes too,
+   so it no longer looks like a button you could press. */
+.page-btn:disabled {
+  background: transparent;
+  border-color: transparent;
+  color: var(--text3);
+  opacity: .55;
+  cursor: not-allowed;
+}
+
+.page-gap {
+  padding: 0 2px;
+  color: var(--text3);
+  font-size: 13px;
+  user-select: none;
+}
