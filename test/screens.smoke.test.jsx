@@ -196,6 +196,17 @@ describe('interactive surfaces open without error', () => {
     assertNoConsoleErrors();
   });
 
+  it('master data: every section renders', async () => {
+    // Six sections behind tabs, including two that are superadmin-only. The
+    // mount-only test above sees just the first.
+    await mount(<MasterData clients={clients} onUpdateClients={noop} token={token}
+      isAdmin isEditor={false} isSuperAdmin onGoToClients={noop} />);
+    const tabs = document.querySelectorAll('[role="tab"]');
+    expect(tabs.length, 'expected the master data tabs').toBeGreaterThanOrEqual(6);
+    await clickAll('[role="tab"]');
+    assertNoConsoleErrors();
+  });
+
   it('compliance and documents filters switch', async () => {
     await mount(SCREENS['Renewals & Compliance']);
     await clickAll('[role="tab"]');

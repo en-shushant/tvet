@@ -628,7 +628,7 @@ function App() {
           {screen === 'shortlisting' && <Suspense fallback={<div style={{padding:40,textAlign:'center',color:'var(--text3)'}}>Loading…</div>}><Shortlisting institutes={institutes} clients={clients} isAdmin={isAdmin} isEditor={isEditor} isShortlistOnly={isShortlistOnly} isSuperAdmin={isSuperAdmin} token={token}/></Suspense>}
           {screen === 'quotations' && <QuotationsView institutes={institutes} clients={clients} isAdmin={isAdmin} isEditor={isEditor} isShortlistOnly={isShortlistOnly}/>}
           {screen === 'reports' && <Suspense fallback={<div style={{padding:40,textAlign:'center',color:'var(--text3)'}}>Loading reports…</div>}><ReportsView institutes={institutes} clients={clients}/></Suspense>}
-          {screen === 'master' && (isAdmin || isEditor) && <MasterData clients={clients} onUpdateClients={handleUpdateClients} token={token} isAdmin={isAdmin} isEditor={isEditor} isSuperAdmin={isSuperAdmin}/>}
+          {screen === 'master' && (isAdmin || isEditor) && <MasterData onGoToClients={()=>handleNavigate('clients')} clients={clients} onUpdateClients={handleUpdateClients} token={token} isAdmin={isAdmin} isEditor={isEditor} isSuperAdmin={isSuperAdmin}/>}
           {screen === 'master' && !isAdmin && !isEditor && (
             <div style={{display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',height:'60%',gap:12,color:'var(--text3)'}}>
               <div style={{fontSize:40}}>🔒</div>

@@ -10,9 +10,10 @@ import { api, clientToAPI, normClient } from '../utils/api.js';
 import { getSession } from '../utils/auth.js';
 import { uid } from '../utils/format.js';
 import { confirmDialog, toast } from './ui/Feedback.jsx';
+import { PageHeader, PillTabs } from './ui/primitives.jsx';
 
 
-function MasterData({clients, onUpdateClients, token, isAdmin, isEditor, isSuperAdmin}) {
+function MasterData({clients, onUpdateClients, token, isAdmin, isEditor, isSuperAdmin, onGoToClients}) {
   const [tab, setTab] = useState('clients');
   const [clientModal, setClientModal] = useState(null);
   const [search, setSearch] = useState('');
@@ -407,14 +408,26 @@ function MasterData({clients, onUpdateClients, token, isAdmin, isEditor, isSuper
   return (
     <div className="fade-in">
       {masterErr && <ErrorBanner msg={masterErr} onDismiss={()=>setMasterErr('')}/>}
-      <div className="tabs">
-        <button className={`tab ${tab==='clients'?'active':''}`} onClick={()=>setTab('clients')}>Clients ({clients.length})</button>
-        <button className={`tab ${tab==='occupations'?'active':''}`} onClick={()=>setTab('occupations')}>Occupations ({OCCUPATIONS.length})</button>
-        <button className={`tab ${tab==='tools'?'active':''}`} onClick={()=>setTab('tools')}>Tools / Consumables</button>
-        <button className={`tab ${tab==='training_types'?'active':''}`} onClick={()=>setTab('training_types')}>Training Types ({trainingTypes.length})</button>
-        {isSuperAdmin && <button className={`tab ${tab==='fiscal_years'?'active':''}`} onClick={()=>setTab('fiscal_years')}>Fiscal Years ({fiscalYears.length})</button>}
-        {isSuperAdmin && <button className={`tab ${tab==='locations'?'active':''}`} onClick={()=>setTab('locations')}>Locations</button>}
-      </div>
+
+      <PageHeader title="Master data"
+        sub="Reference records the rest of the registry is built from"/>
+
+      {/* Was the app's last screen on the old .tab markup, while every other
+          screen had moved to pill tabs. Same component now, so the counts and
+          the active state look the same everywhere. Locations and fiscal years
+          stay superadmin-only — the tab list is filtered, not just hidden. */}
+      <PillTabs
+        tabs={[
+          { id:'clients',        label:'Clients',            badge:clients.length },
+          { id:'occupations',    label:'Occupations',        badge:OCCUPATIONS.length },
+          { id:'tools',          label:'Tools / consumables' },
+          { id:'training_types', label:'Training types',     badge:trainingTypes.length },
+          ...(isSuperAdmin ? [
+            { id:'fiscal_years', label:'Fiscal years',       badge:fiscalYears.length },
+            { id:'locations',    label:'Locations' },
+          ] : []),
+        ]}
+        value={tab} onChange={setTab} ariaLabel="Master data sections"/>
 
       {tab==='clients' && (
         <>
@@ -423,6 +436,11 @@ function MasterData({clients, onUpdateClients, token, isAdmin, isEditor, isSuper
               <span className="search-icon">🔍</span>
               <input value={clientSearch} onChange={e=>setClientSearch(e.target.value)} placeholder="Search clients by name, acronym or type..."/>
             </div>
+            {onGoToClients && (
+              // Editing lives here; engagement history lives on the Clients
+              // screen. Linking beats rebuilding it in a second place.
+              <Btn className="btn btn-secondary btn-sm" onClick={onGoToClients}>View engagement</Btn>
+            )}
             <Btn className="btn btn-primary btn-sm" onClick={()=>setClientModal({type:'add'})}>+ Add client</Btn>
           </div>
           <div className="card" style={{padding:0, overflow:'hidden'}}>
