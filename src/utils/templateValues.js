@@ -72,6 +72,22 @@ export function buildTemplateValues(form, institute, clients) {
   // and ENSSURE — so it is driven by a flag on the client rather than assumed.
   const hasOjt = !!client.includesOjt;
 
+  // Same three steps in scope voice, gathered into one list so a single sentence
+  // covers whichever of them apply, in canonical order.
+  const scopeItems = [], scopeBullets = [];
+  if (hasOjt) {
+    scopeItems.push('on-the-job training with relevant enterprises');
+    scopeBullets.push('• Arrange on-the-job training with relevant enterprises.');
+  }
+  if (skillTestCount) {
+    scopeItems.push(`skill testing for ${skillTestCount} trainees`);
+    scopeBullets.push(`• Conduct skill test for ${skillTestCount} trainees.`);
+  }
+  if (placementPct != null) {
+    scopeItems.push(`verified employment placement of ${placementPct}%`);
+    scopeBullets.push(`• Achieve verified employment placement of ${placementPct}%.`);
+  }
+
   const districtsPhrase = allDistricts.length ? allDistricts.join(', ') : 'targeted areas';
   const occupationsWithCounts = occs.length
     ? listAnd(occs.map(o => {
@@ -111,6 +127,13 @@ export function buildTemplateValues(form, institute, clients) {
     ojtClauseTrailing: hasOjt ? ', followed by on-the-job training with relevant enterprises' : '',
     ojtBullet:         hasOjt ? '\n• Arranged on-the-job training with relevant enterprises.' : '',
     ojtTerse:          hasOjt ? ', followed by on-the-job training' : '',
+
+    // Scope framing for the "Narrative description of Project" field, which
+    // describes what the assignment called for rather than what was done. Steps
+    // 5–7 collapse into one clause so the sentence reads correctly whichever
+    // combination of them applies.
+    scopeTail: scopeItems.length ? ` The scope also included ${listAnd(scopeItems)}.` : '',
+    scopeBullets: scopeBullets.length ? `\n${scopeBullets.join('\n')}` : '',
   };
 }
 

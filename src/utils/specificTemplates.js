@@ -83,6 +83,41 @@ export const NARRATIVE_VARIATIONS = [
     preview:
       '{firm} provided short-term vocational training on various trades including {occupations} to {totalTrainees} trainees from {locations} under the {assignmentName} project of {client}. The training followed the approved curricula and included skill testing and employment support for graduates.',
   },
+  // ── Firm-assignable, paired 1:1 with V13–V17 and S13–S17 ───────────────────
+  // Same seven-step sequence and the same five voices, but in scope framing:
+  // this field describes what the assignment called for, where the services
+  // field describes what was delivered. Assign N13 to the firm using V13/S13.
+  {
+    id: 'n13',
+    label: 'N13 — Sequence, direct (pairs with V13/S13)',
+    preview:
+      'The assignment covered social marketing and awareness programs in {districtsPhrase} and the selection of motivated participants, followed by {occupationsWithCounts} together with soft skills, employability skills, health and safety, entrepreneurship and gender sensitivity orientation.{scopeTail}',
+  },
+  {
+    id: 'n14',
+    label: 'N14 — Sequence, formal (pairs with V14/S14)',
+    preview:
+      'Social marketing and awareness campaigns were to be carried out across {districtsPhrase}, from which motivated participants were to be selected. The project comprised {occupationsWithCounts}, each supplemented with soft skills, employability skills, occupational health and safety, entrepreneurship and gender sensitivity orientation.{scopeTail}',
+  },
+  {
+    id: 'n15',
+    label: 'N15 — Sequence, explicit stages (pairs with V15/S15)',
+    preview:
+      'The project was structured in stages: social marketing and awareness across {districtsPhrase}, selection of motivated participants, and delivery of {occupationsWithCounts}, with soft skills, employability skills, health and safety, entrepreneurship and gender sensitivity orientation provided alongside.{scopeTail}',
+  },
+  {
+    id: 'n16',
+    label: 'N16 — Sequence, bulleted (pairs with V16/S16)',
+    preview:
+      '• Carry out social marketing and awareness programs in {districtsPhrase}.\n• Select motivated participants from the communities reached.\n• Deliver {occupationsWithCounts}.\n• Provide soft skills, employability skills, health and safety, entrepreneurship and gender sensitivity orientation to all {totalTrainees} participants.{scopeBullets}',
+  },
+  {
+    id: 'n17',
+    label: 'N17 — Sequence, concise (pairs with V17/S17)',
+    preview:
+      'Following social marketing and awareness across {districtsPhrase}, the project provided for the selection of motivated participants and the delivery of {occupationsWithCounts}, with soft skills, employability skills, health and safety, entrepreneurship and gender sensitivity orientation.{scopeTail}',
+  }
+
 ];
 
 // ── Description of Actual Services Provided ───────────────────────────────────
