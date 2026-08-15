@@ -43,6 +43,7 @@ import ReportsView from '../src/components/ReportsView.jsx';
 import CommandPalette from '../src/components/CommandPalette.jsx';
 import StyleGuide from '../src/components/StyleGuide.jsx';
 import Shortlisting from '../src/components/Shortlisting.jsx';
+import BolpatraGapsModal from '../src/components/institute/BolpatraGapsModal.jsx';
 import { ContractsPanel } from '../src/components/shortlisting/ContractsPanel.jsx';
 import { NepaliDatePicker, ConfirmModal } from '../src/components/shortlisting/common.jsx';
 import { ShortlistRow, GroupHeader, TableHead, printShortlistReport } from '../src/components/shortlisting/table.jsx';
@@ -117,6 +118,9 @@ const SCREENS = {
   // expanded — mounted directly so the split is actually covered.
   'Contracts panel':    <ContractsPanel clientId={1} clientNameManual="" groupRows={[]}
                           canEdit isAdmin token={token} />,
+  // Opened from a flagged assignment row, so the parent screen never renders it.
+  'Bolpatra gaps':      <BolpatraGapsModal exp={institutes[1].experience[0]}
+                          institute={institutes[1]} onSave={noop} onClose={noop} />,
   'Nepali date picker': <NepaliDatePicker label="Date" value="" onChange={noop} />,
   'Confirm dialog':     <ConfirmModal message="Delete this?" onConfirm={noop} onClose={noop} saving={false} />,
 };

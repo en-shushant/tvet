@@ -1953,3 +1953,43 @@ md-outlined-button.danger {
 
 /* Hint under a step's section heading. */
 .eoi-hint { margin: -4px 0 12px; font-size: 12px; color: var(--text3); line-height: 1.5; }
+
+/* ── Bolpatra gap filter and flag ───────────────────────────────────────── */
+.gap-chip {
+  font-size: 12px;
+  padding: 4px 10px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--bg2);
+  color: var(--text2);
+  font-family: var(--font);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 140ms ease, color 140ms ease;
+}
+.gap-chip:hover { color: var(--text); }
+.gap-chip-on {
+  background: var(--warning-light);
+  color: #8A5A00;
+  border-color: color-mix(in srgb, var(--warning) 45%, transparent);
+  font-weight: 700;
+}
+/* Per-row flag. Carries a count as well as colour, so it says how much is
+   missing rather than only that something is. */
+.icon-btn.gap-flag { width: auto; padding: 0 8px; gap: 4px; border-radius: 999px; color: var(--warning); }
+.icon-btn.gap-flag:hover { background: var(--warning-light); color: #8A5A00; }
+.gap-flag-count { font-size: 11px; font-weight: 700; font-variant-numeric: tabular-nums; }
+
+/* ── Gap-filling modal ──────────────────────────────────────────────────── */
+.gap-intro { margin: 0 0 16px; font-size: 13px; color: var(--text2); }
+.gap-clear { padding: 18px; border-radius: var(--radius-card); background: var(--bg2); font-size: 13px; color: var(--text2); }
+.gap-error { margin-bottom: 12px; padding: 10px 14px; border-radius: 8px; background: var(--error-light); color: var(--error); font-size: 13px; }
+.gap-field { margin-bottom: 16px; }
+.gap-field label { display: block; font-size: 12.5px; font-weight: 600; color: var(--text); margin-bottom: 2px; }
+.gap-hint { margin: 0 0 6px; font-size: 11.5px; color: var(--text3); line-height: 1.45; }
+.gap-structural {
+  margin-top: 18px; padding: 12px 14px;
+  border-radius: var(--radius-card); background: var(--bg2);
+}
+.gap-structural-title { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; color: var(--text3); margin-bottom: 6px; }
+.gap-structural-row { font-size: 12.5px; color: var(--text2); padding: 2px 0; }

@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useCachedLogo } from '../utils/logoCache.js';
 import { InstituteAvatar } from './ui/primitives.jsx';
+import { missingBolpatraFields } from '../utils/bolpatraGaps.js';
+import BolpatraGapsModal from './institute/BolpatraGapsModal.jsx';
 import { InfrastructureTab } from './institute/InfrastructureTab.jsx';
 import { DocumentsTab } from './institute/DocumentsTab.jsx';
 import ReactDOM from 'react-dom';
@@ -83,6 +85,12 @@ function InstituteDetail({institute, clients, onUpdateClients, onBack, onUpdate,
         || institute.totalAffPrograms || 0,
     };
   }, [institute]);
+
+  // How many assignments would print with a gap — shown on the chip so the
+  // number is visible without having to filter first.
+  const bolpatraGapCount = useMemo(
+    () => (institute.experience || []).filter(e => missingBolpatraFields(e, institute).length > 0).length,
+    [institute]);
 
   const instituteClients = useMemo(() => {
     const seen = new Map();
@@ -245,6 +253,8 @@ function InstituteDetail({institute, clients, onUpdateClients, onBack, onUpdate,
   const [expOccFilter, setExpOccFilter] = useState('');
   const [expViewMode, setExpViewMode] = useState('fy'); // 'fy' | 'client'
   const [expMissingFilter, setExpMissingFilter] = useState(false);
+  // Assignments the EOI report would print with blanks in them.
+  const [expBolpatraFilter, setExpBolpatraFilter] = useState(false);
 
   // Auto-expand all FY/client groups when institute loads or experience changes,
   // so users don't see a "blank" Experience tab with collapsed groups.
@@ -482,6 +492,13 @@ function InstituteDetail({institute, clients, onUpdateClients, onBack, onUpdate,
                 title="Show only assignments where any occupation is missing level or duration (hrs)">
                 <span className="material-icons-round" style={{fontSize:14,verticalAlign:'middle'}}>warning</span> Missing level/duration
               </button>
+              <button
+                onClick={()=>setExpBolpatraFilter(v=>!v)}
+                className={`gap-chip${expBolpatraFilter ? ' gap-chip-on' : ''}`}
+                title="Show only assignments the EOI (Bolpatra) report would print with blank fields">
+                <span className="material-icons-round" style={{fontSize:14,verticalAlign:'middle'}}>assignment_late</span>
+                {' '}Bolpatra incomplete{bolpatraGapCount > 0 ? ` (${bolpatraGapCount})` : ''}
+              </button>
             </div>
             <div style={{display:'flex', gap:6}}>
               {canEdit && (
@@ -493,7 +510,7 @@ function InstituteDetail({institute, clients, onUpdateClients, onBack, onUpdate,
           {institute.experience.length === 0
             ? <div className="empty-state"><div className="empty-state-icon"><span className="material-icons-round" style={{fontSize:44,opacity:0.3}}>assignment</span></div><div className="empty-state-title">No assignments yet</div><div className="empty-state-sub">Add the first experience / assignment record</div></div>
             : expViewMode === 'fy'
-              ? groupByFY(institute.experience.filter(e=>(!expClientFilter || String(e.clientId)===String(expClientFilter)) && (!expOccFilter || (expOccFilter==='__missing__' ? (e.occupations||[]).some(o=>!o.ctevtOccupationId) : (e.occupations||[]).some(o=>(getOccupation(o.ctevtOccupationId).name||o.nameInLetter)===expOccFilter))) && (!expMissingFilter || (e.occupations||[]).some(o=>!o.level || !o.duration)))).map(([fy, items]) => (
+              ? groupByFY(institute.experience.filter(e=>(!expClientFilter || String(e.clientId)===String(expClientFilter)) && (!expOccFilter || (expOccFilter==='__missing__' ? (e.occupations||[]).some(o=>!o.ctevtOccupationId) : (e.occupations||[]).some(o=>(getOccupation(o.ctevtOccupationId).name||o.nameInLetter)===expOccFilter))) && (!expMissingFilter || (e.occupations||[]).some(o=>!o.level || !o.duration)) && (!expBolpatraFilter || missingBolpatraFields(e, institute).length > 0))).map(([fy, items]) => (
                 <div key={fy} className="fy-group">
                   <button className="fy-header" onClick={()=>toggleFY('exp-'+fy)}>
                     <span>{expandedFY['exp-'+fy] ? '▼' : '▶'}</span>
@@ -502,7 +519,7 @@ function InstituteDetail({institute, clients, onUpdateClients, onBack, onUpdate,
                   </button>
                   {expandedFY['exp-'+fy] && (
                     <div className="fy-body">
-                      {items.map((exp,i) => <ExpCard key={exp.id} idx={i} exp={exp} clients={clients} showFY={false} setModal={setModal} deleteExperience={deleteExperience} canEdit={canEdit} isAdmin={isAdmin}/>)}
+                      {items.map((exp,i) => <ExpCard key={exp.id} idx={i} exp={exp} clients={clients} institute={institute} showFY={false} setModal={setModal} deleteExperience={deleteExperience} canEdit={canEdit} isAdmin={isAdmin}/>)}
                     </div>
                   )}
                 </div>
@@ -510,7 +527,7 @@ function InstituteDetail({institute, clients, onUpdateClients, onBack, onUpdate,
               : (() => {
                   // Group by client
                   const clientMap = new Map();
-                  institute.experience.filter(exp => (!expClientFilter || String(exp.clientId)===String(expClientFilter)) && (!expOccFilter || (exp.occupations||[]).some(o=>(getOccupation(o.ctevtOccupationId).name||o.nameInLetter)===expOccFilter)) && (!expMissingFilter || (exp.occupations||[]).some(o=>!o.level || !o.duration))).forEach(exp => {
+                  institute.experience.filter(exp => (!expClientFilter || String(exp.clientId)===String(expClientFilter)) && (!expOccFilter || (exp.occupations||[]).some(o=>(getOccupation(o.ctevtOccupationId).name||o.nameInLetter)===expOccFilter)) && (!expMissingFilter || (exp.occupations||[]).some(o=>!o.level || !o.duration)) && (!expBolpatraFilter || missingBolpatraFields(exp, institute).length > 0)).forEach(exp => {
                     const key = exp.clientId || ('manual:' + (exp.clientName||'Unknown'));
                     if (!clientMap.has(key)) clientMap.set(key, []);
                     clientMap.get(key).push(exp);
@@ -533,7 +550,7 @@ function InstituteDetail({institute, clients, onUpdateClients, onBack, onUpdate,
                         </button>
                         {expandedFY['client-'+key] && (
                           <div className="fy-body">
-                            {exps.sort((a,b)=>a.fy.localeCompare(b.fy)).map((exp,i) => <ExpCard key={exp.id} idx={i} exp={exp} clients={clients} showFY={true} setModal={setModal} deleteExperience={deleteExperience} canEdit={canEdit} isAdmin={isAdmin}/>)}
+                            {exps.sort((a,b)=>a.fy.localeCompare(b.fy)).map((exp,i) => <ExpCard key={exp.id} idx={i} exp={exp} clients={clients} institute={institute} showFY={true} setModal={setModal} deleteExperience={deleteExperience} canEdit={canEdit} isAdmin={isAdmin}/>)}
                           </div>
                         )}
                       </div>
@@ -916,6 +933,11 @@ function InstituteDetail({institute, clients, onUpdateClients, onBack, onUpdate,
           document.body
         );
       })()}
+      {modal?.type === 'bolpatraGaps' && (
+        <BolpatraGapsModal exp={modal.data} institute={institute}
+          onSave={async (updated) => { await saveExperience(updated); }}
+          onClose={()=>setModal(null)}/>
+      )}
       {modal?.type === 'editNSTB' && <NSTBForm record={modal.data} onSave={saveNSTB} onClose={()=>setModal(null)}/>}
       {modal?.type === 'addTax' && <TaxForm onSave={saveTax} onClose={()=>setModal(null)}/>}
       {modal?.type === 'editTax' && <TaxForm record={modal.data} onSave={saveTax} onClose={()=>setModal(null)}/>}

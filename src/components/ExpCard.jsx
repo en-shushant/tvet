@@ -1,9 +1,13 @@
 import { fmt, fyToAD, getClient, getOccupation } from '../utils/format.js';
+import { missingBolpatraFields } from '../utils/bolpatraGaps.js';
 
 
 
 
-function ExpCard({exp, clients, showFY, setModal, deleteExperience, canEdit, isAdmin, idx=0}) {
+function ExpCard({exp, clients, institute, showFY, setModal, deleteExperience, canEdit, isAdmin, idx=0}) {
+  // Only meaningful once the institute is known — the narrative checks depend
+  // on which templates the firm has assigned.
+  const bolpatraGaps = institute ? missingBolpatraFields(exp, institute) : [];
   const client = getClient(clients, exp.clientId);
   const allLocs = exp.occupations.flatMap(o=>(o.locations||[]));
   const districts = [...new Set(allLocs.map(l=>l.district).filter(Boolean))];
@@ -119,6 +123,15 @@ function ExpCard({exp, clients, showFY, setModal, deleteExperience, canEdit, isA
             over the button, or the row re-rendering mid-hover — left the grey
             circle stuck on, so some rows looked highlighted and others did not. */}
         <div style={{display:'flex', gap:4, flexShrink:0, alignItems:'flex-start'}}>
+          {canEdit && bolpatraGaps.length > 0 && (
+            <button type="button" className="icon-btn gap-flag"
+              title={`Missing for the EOI report: ${bolpatraGaps.map(g=>g.label).join(', ')}`}
+              aria-label={`Complete EOI details — ${bolpatraGaps.length} missing`}
+              onClick={()=>setModal({type:'bolpatraGaps', data:exp})}>
+              <span className="material-icons-round" aria-hidden="true">assignment_late</span>
+              <span className="gap-flag-count">{bolpatraGaps.length}</span>
+            </button>
+          )}
           <button type="button" className="icon-btn icon-btn-primary"
             title="View details" aria-label="View assignment details"
             onClick={()=>setModal({type:'viewExp', data:exp})}>
