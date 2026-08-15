@@ -11,20 +11,13 @@ function ExpCard({exp, clients, showFY, setModal, deleteExperience, canEdit, isA
   const missingOccs = (exp.occupations||[]).filter(o => !o.level || !o.duration);
   const totalTrainees = exp.occupations.reduce((s,o)=>s+(parseInt(o.trainees)||0),0);
 
-  const altBg = idx % 2 === 1 ? 'var(--bg)' : 'var(--surface)';
-  const hoverBg = idx % 2 === 1 ? 'var(--bg2)' : 'var(--bg)';
-
+  // Striping and hover both live in CSS. Driving them from mouseenter/mouseleave
+  // meant a missed mouseleave — and clicking any of the row's buttons opens a
+  // modal over it, so that happens routinely — left the row wearing its hover
+  // colour. Since the stripe alternates, a stuck even row then looked exactly
+  // like an odd one, which is why the list appeared to shade rows at random.
   return (
-    <div style={{
-      padding: '16px 20px',
-      borderBottom: '1px solid var(--border)',
-      background: altBg,
-      transition: 'background .12s',
-      position: 'relative',
-    }}
-      onMouseEnter={e => e.currentTarget.style.background = hoverBg}
-      onMouseLeave={e => e.currentTarget.style.background = altBg}
-    >
+    <div className={`exp-card${idx % 2 === 1 ? ' exp-card-alt' : ''}`}>
       <div style={{display:'flex', justifyContent:'space-between', alignItems:'flex-start', gap:16}}>
         {/* Left: content */}
         <div style={{flex:1, minWidth:0}}>

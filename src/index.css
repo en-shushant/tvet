@@ -1896,3 +1896,15 @@ select option { background: var(--surface); color: var(--text); }
 .icon-btn:disabled:hover { background: transparent; color: var(--text3); }
 .icon-btn-primary:hover { background: var(--bg2); color: var(--primary); }
 .icon-btn-danger:hover  { background: var(--error-light); color: var(--error); }
+
+/* ── Assignment rows ────────────────────────────────────────────────────── */
+.exp-card {
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+  transition: background 120ms ease;
+  position: relative;
+}
+.exp-card-alt { background: var(--bg); }
+.exp-card:hover { background: var(--bg); }
+.exp-card-alt:hover { background: var(--bg2); }
