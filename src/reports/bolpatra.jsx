@@ -37,7 +37,7 @@ const FIRM_SPANNING = new Set(['4b']);
 const sectionsFor = (reportId) => reportId === 'full' ? SECTION_ORDER : [reportId];
 
 const SECTION_TITLES = {
-  '2':  { heading: "2.  Applicant's Information Form",
+  '2':  { heading: "2.  Applicant's Information Form", centered: true,
           note: '(In case of joint venture of two or more firms to be filled separately for each constituent member)' },
   '3a': { heading: '3(A). General Work Experience',
           note: '(Details of assignments undertaken. Each consultant or member of a JV must fill in this form.)' },
@@ -181,18 +181,25 @@ function model2(inst) {
 
   return [
     { no: 1,  label: 'Name of Firm/Company',                                  value: dash(i.name) },
-    { no: 2,  label: 'Type of Constitution',                                  value: dash(i.constitutionType) },
-    { no: 3,  label: 'Date of Registration / Commencement of Business',       value: dash(i.regDate) },
+    { no: 2,  label: 'Type of Constitution (Partnership/ Pvt. Ltd/Public Ltd/ Public Sector/ NGO)',
+                                                                              value: dash(i.constitutionType) },
+    { no: 3,  label: 'Date of Registration / Commencement of Business (Please specify)',
+                                                                              value: dash(i.regDate) },
     { no: 4,  label: 'Country of Registration',                               value: 'Nepal' },
     { no: 5,  label: 'Registered Office/Place of Business',                   value: dash(i.address) },
     { no: 6,  label: 'Telephone No; Fax No; E-Mail Address',                  value: comms },
-    { no: 7,  label: 'Name of Authorized Contact Person / Designation / Address / Telephone', value: contact },
-    { no: 8,  label: 'Name of Authorized Local Agent / Address / Telephone',  value: dash(i.localAgent) },
+    { no: 7,  label: 'Name of Authorized Contact Person / Designation/ Address/Telephone', value: contact },
+    { no: 8,  label: 'Name of Authorized Local Agent /Address/Telephone',     value: dash(i.localAgent) },
     { no: 9,  label: "Consultant's Organization",                             value: dash(i.orgProfile) },
     { no: 10, label: 'Total number of staff',                                 value: dash(i.totalStaff) },
     { no: 11, label: 'Number of regular professional staff',                  value: dash(i.professionalStaff) },
   ];
 }
+
+/** Closing instruction printed under section 2 on the form. */
+const SECTION2_NOTE = '(Provide Company Profile with description of the background and '
+  + 'organization of the Consultant and, if applicable, for each joint venture partner for '
+  + 'this assignment.)';
 
 // Section 3A → { columns, widths, rows }
 function model3a(exps, clients, inst) {
@@ -516,17 +523,17 @@ function Section4B({ firms, opts = {} }) {
 function SectionBody({ section, inst, exps, clients, opts }) {
   if (section === '2') {
     return (
-      <table style={{borderCollapse:'collapse', width:'100%'}}>
-        <tbody>
+      <div>
+        <ol style={{margin:'0 0 14px 22px', padding:0, fontSize:12}}>
           {model2(inst).map(item => (
-            <tr key={item.no}>
-              <td style={{...TD, width:36, textAlign:'right'}}>{item.no}.</td>
-              <td style={{...TD, width:'42%', color:'var(--text2)'}}>{item.label}:</td>
-              <td style={{...TD, whiteSpace:'pre-wrap'}}>{item.value || '—'}</td>
-            </tr>
+            <li key={item.no} style={{marginBottom:10, paddingLeft:4, lineHeight:1.5}}>
+              <span style={{color:'var(--text2)'}}>{item.label}:</span>{' '}
+              <span style={{fontWeight:700, whiteSpace:'pre-wrap'}}>{item.value}</span>
+            </li>
           ))}
-        </tbody>
-      </table>
+        </ol>
+        <div style={{fontSize:11.5, fontStyle:'italic', color:'var(--text3)'}}>{SECTION2_NOTE}</div>
+      </div>
     );
   }
 
@@ -618,7 +625,9 @@ function renderAggregateTable(inst, exps, clients, reportId, opts = {}) {
       {inst?.acronym && <div style={{fontSize:11, color:'var(--text3)', marginBottom:14}}>{inst.acronym}</div>}
       {sections.map(s => (
         <div key={s} style={{marginBottom:26}}>
-          <div style={{fontWeight:600, fontSize:13, marginBottom:2}}>{SECTION_TITLES[s].heading}</div>
+          <div style={{fontWeight:700, marginBottom:2,
+            fontSize: SECTION_TITLES[s].centered ? 15 : 13,
+            textAlign: SECTION_TITLES[s].centered ? 'center' : 'left'}}>{SECTION_TITLES[s].heading}</div>
           <div style={{fontSize:11, color:'var(--text3)', fontStyle:'italic', marginBottom:10}}>{SECTION_TITLES[s].note}</div>
           <SectionBody section={s} inst={inst} exps={exps} clients={clients} opts={opts} />
         </div>
@@ -638,7 +647,9 @@ function renderMultiAggregate(firms, clients, reportId, opts = {}) {
     <div>
       {sections.map(s => (
         <div key={s} style={{marginBottom:34}}>
-          <div style={{fontWeight:600, fontSize:14, marginBottom:2}}>{SECTION_TITLES[s].heading}</div>
+          <div style={{fontWeight:700, marginBottom:2,
+            fontSize: SECTION_TITLES[s].centered ? 16 : 14,
+            textAlign: SECTION_TITLES[s].centered ? 'center' : 'left'}}>{SECTION_TITLES[s].heading}</div>
           <div style={{fontSize:11, color:'var(--text3)', fontStyle:'italic', marginBottom:14}}>{SECTION_TITLES[s].note}</div>
           {FIRM_SPANNING.has(s)
             ? <Section4B firms={firms} opts={opts} />
@@ -713,9 +724,10 @@ function html4B(firms, opts = {}) {
 
 function htmlSection(section, inst, exps, clients, opts) {
   if (section === '2') {
-    return `<table class="info">${model2(inst).map(it => `
-      <tr><td class="no">${it.no}.</td><td class="lbl">${esc(it.label)}:</td>
-      <td class="val">${esc(it.value) || '&mdash;'}</td></tr>`).join('')}</table>`;
+    // The form prints this as a plain numbered list — no table, no rules.
+    return `<ol class="info">${model2(inst).map(it => `
+      <li><span class="lbl">${esc(it.label)}:</span> <span class="val">${esc(it.value)}</span></li>`).join('')}
+      </ol><p class="note-i">${esc(SECTION2_NOTE)}</p>`;
   }
   if (section === '3a') return htmlGrid(model3a(exps, clients, inst));
   if (section === '3c') return htmlGrid(model3c(exps));
@@ -743,6 +755,7 @@ function htmlSection(section, inst, exps, clients, opts) {
 
   const m = model4a(inst, opts);
   return `
+    <div class="cap-head">4.  Capacity</div>
     <table class="turnover">
       <thead>
         <tr><th colspan="2" class="ctr">Annual Turnover</th></tr>
@@ -773,15 +786,17 @@ const printShell = (title, bodyHtml) => `<!DOCTYPE html><html><head><meta charse
   .firm-sub { font-size: 11px; color: #555; margin-bottom: 14px; }
   .section { margin-bottom: 22px; page-break-inside: auto; }
   h2 { font-size: 13px; margin: 0 0 2px; }
+  h2.h2-center { text-align: center; font-size: 15px; margin-bottom: 6px; }
   .sub { font-size: 11px; font-style: italic; color: #444; margin: 0 0 8px; }
   table { border-collapse: collapse; width: 100%; table-layout: fixed; }
   th, td { border: 1px solid #000; padding: 5px 7px; vertical-align: top;
            font-size: 11px; word-wrap: break-word; overflow-wrap: break-word; }
   th { font-weight: bold; text-align: left; }
   .ctr { text-align: center; } .rt { text-align: right; }
-  .info .no { width: 26px; text-align: right; border: none; }
-  .info .lbl { width: 42%; border: none; }
-  .info .val { border: none; border-bottom: 1px solid #000; white-space: pre-wrap; }
+  .info { margin: 0 0 14px 22px; padding: 0; }
+  .info li { margin-bottom: 12px; padding-left: 4px; line-height: 1.5; }
+  .info .val { white-space: pre-wrap; font-weight: bold; }
+  .cap-head { text-align: center; font-weight: bold; font-size: 14px; margin-bottom: 12px; }
   .spec { margin-bottom: 18px; page-break-inside: avoid; }
   .caption { font-size: 12px; margin-bottom: 5px; }
   /* Sits inside the table so it cannot be split from its box across a page,
@@ -816,7 +831,7 @@ const printShell = (title, bodyHtml) => `<!DOCTYPE html><html><head><meta charse
 const printBlock = (s, inst, exps, clients, opts, heading) => `
     <div class="section">
       <div class="doc-head">Standard EOI Document</div>
-      <h2>${esc(SECTION_TITLES[s].heading)}</h2>
+      <h2 class="${SECTION_TITLES[s].centered ? 'h2-center' : ''}">${esc(SECTION_TITLES[s].heading)}</h2>
       <p class="sub">${esc(SECTION_TITLES[s].note)}</p>
       ${heading ? `<div class="firm">${esc(heading)}</div>` : ''}
       ${htmlSection(s, inst, exps, clients, opts)}
@@ -842,7 +857,7 @@ function buildMultiPrintHTML(firms, clients, reportId, fyRange, opts = {}) {
       blocks.push(`
     <div class="section">
       <div class="doc-head">Standard EOI Document</div>
-      <h2>${esc(SECTION_TITLES[s].heading)}</h2>
+      <h2 class="${SECTION_TITLES[s].centered ? 'h2-center' : ''}">${esc(SECTION_TITLES[s].heading)}</h2>
       <p class="sub">${esc(SECTION_TITLES[s].note)}</p>
       ${html4B(firms, opts)}
     </div>`);
@@ -990,17 +1005,18 @@ function docxSection(D, kit, section, inst, exps, clients, opts) {
   const out = [];
 
   if (section === '2') {
+    // Numbered list, matching the form — not a table.
     model2(inst).forEach(it => {
-      out.push(new Table({
-        width: { size: CONTENT_W, type: WidthType.DXA },
-        columnWidths: [500, Math.round(CONTENT_W * 0.42), CONTENT_W - 500 - Math.round(CONTENT_W * 0.42)],
-        rows: [new TableRow({ children: [
-          cell(p(`${it.no}.`), { width: 500, noBorder: true }),
-          cell(p(`${it.label}:`), { width: Math.round(CONTENT_W * 0.42), noBorder: true }),
-          cell(lines(it.value || '—'), { width: CONTENT_W - 500 - Math.round(CONTENT_W * 0.42), noBorder: true }),
-        ]})],
+      out.push(new D.Paragraph({
+        numbering: { reference: 'eoi-info', level: 0 },
+        spacing: { after: 140 },
+        children: [
+          new D.TextRun({ text: `${it.label}: `, size: 19, font: 'Arial' }),
+          new D.TextRun({ text: String(it.value ?? ''), size: 19, font: 'Arial', bold: true }),
+        ],
       }));
     });
+    out.push(p(SECTION2_NOTE, { italic: true, size: 18, spacing: { before: 160 } }));
     return out;
   }
 
@@ -1056,6 +1072,7 @@ function docxSection(D, kit, section, inst, exps, clients, opts) {
 
   // 4a
   const m = model4a(inst, opts);
+  out.push(p('4.  Capacity', { bold: true, size: 24, align: D.AlignmentType.CENTER, spacing: { after: 160 } }));
   const half = Math.round(CONTENT_W * 0.28);
   const w4 = [half, half];
   const t4w = half * 2;
@@ -1118,7 +1135,10 @@ async function downloadMultiDOCX(firms, clients, reportId, opts = {}) {
       if (!first) children.push(new Paragraph({ pageBreakBefore: true, children: [new TextRun({ text: '', size: 19 })] }));
       first = false;
       children.push(p('Standard EOI Document', { bold: true, italic: true, align: AlignmentType.CENTER, size: 22 }));
-      children.push(p(SECTION_TITLES[s].heading, { bold: true, size: 22, spacing: { before: 200, after: 40 } }));
+      children.push(p(SECTION_TITLES[s].heading, { bold: true,
+        size: SECTION_TITLES[s].centered ? 26 : 22,
+        align: SECTION_TITLES[s].centered ? AlignmentType.CENTER : undefined,
+        spacing: { before: 200, after: 40 } }));
       children.push(p(SECTION_TITLES[s].note, { italic: true, size: 17, spacing: { after: 140 } }));
       children.push(...docx4B(D, kit, firms, opts));
       return;
@@ -1128,7 +1148,10 @@ async function downloadMultiDOCX(firms, clients, reportId, opts = {}) {
       first = false;
 
       children.push(p('Standard EOI Document', { bold: true, italic: true, align: AlignmentType.CENTER, size: 22 }));
-      children.push(p(SECTION_TITLES[s].heading, { bold: true, size: 22, spacing: { before: 200, after: 40 } }));
+      children.push(p(SECTION_TITLES[s].heading, { bold: true,
+        size: SECTION_TITLES[s].centered ? 26 : 22,
+        align: SECTION_TITLES[s].centered ? AlignmentType.CENTER : undefined,
+        spacing: { before: 200, after: 40 } }));
       children.push(p(SECTION_TITLES[s].note, { italic: true, size: 17, spacing: { after: 140 } }));
       children.push(p(firmLabel(inst, fi, firms.length), { bold: true, size: 22, spacing: { after: 140 } }));
       children.push(...docxSection(D, kit, s, inst, exps, clients, opts));
@@ -1137,6 +1160,20 @@ async function downloadMultiDOCX(firms, clients, reportId, opts = {}) {
 
   const doc = new Document({
     styles: { default: { document: { run: { font: 'Arial', size: 19 } } } },
+    // Word needs an explicit numbering definition; a bare `numbering` reference
+    // on a paragraph renders unnumbered without one.
+    numbering: {
+      config: [{
+        reference: 'eoi-info',
+        levels: [{
+          level: 0,
+          format: D.LevelFormat.DECIMAL,
+          text: '%1.',
+          alignment: D.AlignmentType.LEFT,
+          style: { paragraph: { indent: { left: 460, hanging: 320 } } },
+        }],
+      }],
+    },
     sections: [{
       properties: {
         page: {
