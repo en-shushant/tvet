@@ -270,7 +270,6 @@ function ExperienceForm({exp, clients, institute, onSave, onClose, onDuplicate, 
   // Switching step while scrolled halfway down would otherwise drop you into
   // the middle of the next one.
   useEffect(() => { bodyRef.current?.closest('.modal-body')?.scrollTo({ top: 0 }); }, [step]);
-  const [showReportFields, setShowReportFields] = useState(false);
   const [showOverrides, setShowOverrides] = useState(false);
   const { handleClose, markDirty, markClean, UnsavedModal } = useUnsavedGuard(onClose);
 
@@ -649,15 +648,21 @@ function ExperienceForm({exp, clients, institute, onSave, onClose, onDuplicate, 
       </div>)}
 
       {step === 3 && (<div>
-      {/* EOI report details */}
+      {/* EOI report details.
+          These used to sit behind a Show/Hide disclosure, which made sense when
+          the whole form was one scroll and this was optional bulk near the
+          bottom. As step 4 of 5, named "EOI details", the step is the
+          disclosure — collapsing it again just put the content two clicks away
+          from a tab whose only purpose is to show it. */}
       <div className="sub-section" style={{marginBottom:16}}>
-        <button type="button" onClick={()=>setShowReportFields(s=>!s)}
-          style={{width:'100%', background:'none', border:'1px solid var(--border)', borderRadius: showReportFields ? 'var(--radius) var(--radius) 0 0' : 'var(--radius)', cursor:'pointer', padding:'10px 14px', display:'flex', alignItems:'center', justifyContent:'space-between', fontFamily:'var(--font)'}}>
-          <span style={{fontSize:13, fontWeight:600, display:'flex', alignItems:'center', gap:6}}><span className="material-icons-round" style={{fontSize:16}}>assignment</span> EOI report details</span>
-          <span style={{fontSize:11, color:'var(--text3)'}}>{showReportFields ? '▲ Hide' : '▼ Show — required for generating EOI report'}</span>
-        </button>
-        {showReportFields && (
-          <div style={{padding:'14px', border:'1px solid var(--border)', borderTop:'none', borderRadius:'0 0 var(--radius) var(--radius)'}}>
+        <div className="sub-section-title">
+          <span className="material-icons-round" aria-hidden="true"
+            style={{fontSize:16, verticalAlign:'-3px', marginRight:6}}>assignment</span>
+          EOI report details
+        </div>
+        <p className="eoi-hint">Required for generating the EOI report. Every field is optional here —
+          anything left blank is written from the firm&rsquo;s assigned template.</p>
+          <div>
             <div className="form-row form-row-2">
               <div className="form-group">
                 <MdTextField label="Country" value={form.country} onChange={e=>set('country', e.target.value)} placeholder="Nepal"/>
@@ -736,7 +741,6 @@ function ExperienceForm({exp, clients, institute, onSave, onClose, onDuplicate, 
               );
             })()}
           </div>
-        )}
       </div>
 
       </div>)}

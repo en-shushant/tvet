@@ -1950,3 +1950,6 @@ md-outlined-button.danger {
 }
 /* Light against bold in one line — the emphasis the display face carries. */
 .page-title strong { font-weight: 700; }
+
+/* Hint under a step's section heading. */
+.eoi-hint { margin: -4px 0 12px; font-size: 12px; color: var(--text3); line-height: 1.5; }
