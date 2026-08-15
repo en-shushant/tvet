@@ -5,7 +5,7 @@ import { Btn } from '../md.jsx';
 import { usePagination } from '../utils/hooks.js';
 import { bsToAD } from '../constants/nepali.js';
 import { fmt } from '../utils/format.js';
-import { PageHeader, StatusBadge, EmptyState } from './ui/primitives.jsx';
+import { PageHeader, StatusBadge, EmptyState, InstituteAvatar } from './ui/primitives.jsx';
 
 const VIEW_KEY = 'tvettrack_institutes_view';
 
@@ -53,16 +53,10 @@ function RenewalNote({ renewalDue }) {
   );
 }
 
-function InstLogo({ url, size = 42 }) {
-  const src = useCachedLogo(url);
-  if (!src) return (
-    <div style={{width:size, height:size, borderRadius:12, background:'var(--pastel-periwinkle)',
-      display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0}}>
-      <span className="material-icons-round" style={{fontSize:size*0.5, color:'var(--primary)'}}>account_balance</span>
-    </div>
-  );
-  return <img src={src} alt="" style={{width:size, height:size, objectFit:'contain', borderRadius:12,
-    background:'#fff', padding:3, flexShrink:0}}/>;
+/** Logo where the institute has one, its own initials where it does not. */
+function InstLogo({ inst, size = 42 }) {
+  const src = useCachedLogo(inst.logo);
+  return <InstituteAvatar src={src} name={inst.name} acronym={inst.acronym} size={size}/>;
 }
 
 /* ── Card ────────────────────────────────────────────────────────────────── */
@@ -80,7 +74,7 @@ function InstituteCard({ inst, onSelect, showStats }) {
         boxShadow: hover ? 'var(--shadow-hover)' : 'var(--shadow-flat)'}}>
 
       <div style={{display:'flex', alignItems:'flex-start', gap:12, marginBottom:14}}>
-        <InstLogo url={inst.logo}/>
+        <InstLogo inst={inst}/>
         <div style={{flex:1, minWidth:0}}>
           <div style={{fontSize:'var(--fs-card)', fontWeight:700, lineHeight:1.3, color:'var(--text)'}}>
             {inst.name}
@@ -148,7 +142,7 @@ function InstituteTable({ rows, onSelect, showStats }) {
                 onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
                 <td style={TD}>
                   <div style={{display:'flex', alignItems:'center', gap:10}}>
-                    <InstLogo url={inst.logo} size={30}/>
+                    <InstLogo inst={inst} size={30}/>
                     <div style={{minWidth:0}}>
                       <div style={{fontWeight:600, color:'var(--text)', overflow:'hidden',
                         textOverflow:'ellipsis', whiteSpace:'nowrap', maxWidth:340}}>{inst.name}</div>

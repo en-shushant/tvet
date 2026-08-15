@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useCachedLogo } from '../utils/logoCache.js';
+import { InstituteAvatar } from './ui/primitives.jsx';
 import ReactDOM from 'react-dom';
 import Modal from './ui/Modal.jsx';
 import { ErrorBanner } from './ui/Modal.jsx';
@@ -237,10 +238,11 @@ function InstituteDetail({institute, clients, onUpdateClients, onBack, onUpdate,
       </button>
 
       <div style={{display:'flex', alignItems:'flex-start', gap:16, flexWrap:'wrap', marginBottom:18}}>
-        {logoSrc && (
-          <img src={logoSrc} alt="" style={{width:52, height:52, objectFit:'contain',
-            borderRadius:14, background:'#fff', padding:4, flexShrink:0}}/>
-        )}
+        {/* Always present now: without a logo the header used to start with the
+            name alone, so the page looked different depending on whether an
+            unrelated file had been uploaded. */}
+        <InstituteAvatar src={logoSrc} name={institute.name} acronym={institute.acronym}
+          size={52} radius={14}/>
         <div style={{flex:1, minWidth:240}}>
           <h1 style={{fontSize:'var(--fs-title)', fontWeight:800, lineHeight:1.25,
             letterSpacing:'-0.01em', color:'var(--text)', margin:0}}>{institute.name}</h1>

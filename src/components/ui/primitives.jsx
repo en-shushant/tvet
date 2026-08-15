@@ -221,3 +221,82 @@ export function SkeletonTable({ rows = 5, cols = 4 }) {
     </div>
   );
 }
+
+/* ── Institute avatar ────────────────────────────────────────────────────── */
+
+/** Corporate suffixes carry no identity, so they never contribute an initial. */
+const NOISE_WORDS = new Set([
+  'pvt', 'pvt.', 'private', 'ltd', 'ltd.', 'limited', 'company', 'co', 'co.',
+  'and', 'of', 'the', '&',
+]);
+
+/**
+ * Two letters, preferring the acronym people actually use for the institute.
+ * Falls back to the initials of the first meaningful words in the name.
+ */
+export function initialsFor(name = '', acronym = '') {
+  const acr = acronym.replace(/[^A-Za-z]/g, '');
+  if (acr.length >= 2) return acr.slice(0, 2).toUpperCase();
+
+  const words = name.split(/\s+/)
+    .map(w => w.replace(/[^A-Za-z.]/g, ''))
+    .filter(w => w && !NOISE_WORDS.has(w.toLowerCase()));
+  if (words.length === 0) return (acr || name.trim().slice(0, 2) || '?').slice(0, 2).toUpperCase();
+  if (words.length === 1) return words[0].slice(0, 2).toUpperCase();
+  return (words[0][0] + words[1][0]).toUpperCase();
+}
+
+/**
+ * Only the fill varies; the letters stay near-black (and near-white in dark
+ * mode) rather than taking the tint's own hue. Semantic colours like --warning
+ * are tuned for icons on white and drop well below a readable contrast ratio
+ * against a pale surface, and colouring an avatar green or red would also imply
+ * a status the institute does not have.
+ */
+const AVATAR_TINTS = [
+  '--pastel-periwinkle', '--pastel-blue', '--pastel-mint',
+  '--pastel-pink', '--pastel-cream', '--pastel-lilac',
+];
+
+/** Stable per-institute tint, so the same firm looks the same on every screen. */
+function tintFor(key = '') {
+  let h = 0;
+  for (let i = 0; i < key.length; i++) h = (h * 31 + key.charCodeAt(i)) >>> 0;
+  return AVATAR_TINTS[h % AVATAR_TINTS.length];
+}
+
+/**
+ * The institute's logo where one exists, its initials where one does not.
+ *
+ * The previous fallback was a generic bank icon, identical for all 25
+ * institutes, so it occupied avatar-sized space while carrying no information.
+ * Initials are at least identifying, and the tint is derived from the name so a
+ * firm keeps the same colour everywhere it appears.
+ *
+ * A logo URL that 404s falls back to the same initials rather than leaving the
+ * browser's broken-image glyph — `useCachedLogo` hands back the original URL
+ * when it cannot fetch, so a failure only surfaces at render.
+ */
+export function InstituteAvatar({ src, name = '', acronym = '', size = 42, radius = 12 }) {
+  const [failed, setFailed] = useState(false);
+  const showImage = src && !failed;
+
+  if (showImage) {
+    return (
+      <img src={src} alt="" onError={() => setFailed(true)}
+        style={{width:size, height:size, objectFit:'contain', borderRadius:radius,
+          background:'#fff', padding:Math.max(2, Math.round(size * 0.07)), flexShrink:0}}/>
+    );
+  }
+
+  const bg = tintFor(name || acronym);
+  return (
+    <div aria-hidden="true"
+      style={{width:size, height:size, borderRadius:radius, background:`var(${bg})`,
+        display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0,
+        color:'var(--text)', fontWeight:700, letterSpacing:'.02em',
+        fontSize:Math.round(size * 0.38), fontFamily:'var(--font)', userSelect:'none'}}>
+      {initialsFor(name, acronym)}
+    </div>
+  );
+}
