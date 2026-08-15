@@ -1,125 +1,294 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useCachedLogo } from '../utils/logoCache.js';
-import StatusBadge from './ui/StatusBadge.jsx';
 import Pagination from './ui/Pagination.jsx';
 import { Btn } from '../md.jsx';
 import { usePagination } from '../utils/hooks.js';
-import { INSTITUTE_TYPES, INSTITUTE_STATUSES } from '../constants/data.js';
+import { bsToAD } from '../constants/nepali.js';
+import { fmt } from '../utils/format.js';
+import { PageHeader, StatusBadge, EmptyState } from './ui/primitives.jsx';
 
-function InstLogo({ url }) {
-  const src = useCachedLogo(url);
-  if (!src) return (
-    <div style={{width:44,height:44,borderRadius:8,background:'var(--primary-light)',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
-      <span className="material-icons-round" style={{fontSize:22,color:'var(--primary)'}}>account_balance</span>
-    </div>
-  );
-  return <img src={src} alt="" style={{width:44,height:44,objectFit:'contain',borderRadius:8,border:'1px solid var(--border)',background:'#fff',padding:3,flexShrink:0}}/>;
+const VIEW_KEY = 'tvettrack_institutes_view';
+
+const STATUS_TONE = {
+  'Active': 'success',
+  'Pending Renewal': 'warning',
+  'Expired': 'error',
+};
+
+/**
+ * Days until an institute's renewal falls due.
+ *
+ * renewalDue is a Bikram Sambat date, so it has to be converted before it can
+ * be compared with today — treating "2083/04/15" as a Gregorian date would put
+ * it ~57 years out. Returns null when the date is absent or unparseable rather
+ * than guessing.
+ */
+function daysUntilRenewal(renewalDue) {
+  if (!renewalDue) return null;
+  const parts = String(renewalDue).replace(/-/g, '/').split('/').map(n => parseInt(n, 10));
+  if (parts.length !== 3 || parts.some(isNaN)) return null;
+  try {
+    // bsToAD returns a "YYYY-MM-DD" string, not a Date.
+    const iso = bsToAD(parts[0], parts[1], parts[2]);
+    if (!iso) return null;
+    const due = new Date(`${iso}T00:00:00`);
+    if (isNaN(due.getTime())) return null;
+    // Compare date to date, so a renewal later today reads as 0 rather than -1.
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    return Math.round((due - today) / 86400000);
+  } catch { return null; }
 }
 
-function InstituteList({institutes, onSelect, onAdd, initialSearch='', isShortlistOnly=false}) {
+function RenewalNote({ renewalDue }) {
+  const days = daysUntilRenewal(renewalDue);
+  if (days == null) {
+    return <span style={{fontSize:'var(--fs-meta)', color:'var(--text3)'}}>Renewal date not set</span>;
+  }
+  const overdue = days < 0;
+  return (
+    <span style={{fontSize:'var(--fs-meta)', color: overdue ? 'var(--error)' : days <= 60 ? 'var(--warning)' : 'var(--text3)'}}>
+      {overdue ? `Renewal overdue by ${Math.abs(days)} days` : `Renewal in ${days} days`}
+    </span>
+  );
+}
+
+function InstLogo({ url, size = 42 }) {
+  const src = useCachedLogo(url);
+  if (!src) return (
+    <div style={{width:size, height:size, borderRadius:12, background:'var(--pastel-periwinkle)',
+      display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0}}>
+      <span className="material-icons-round" style={{fontSize:size*0.5, color:'var(--primary)'}}>account_balance</span>
+    </div>
+  );
+  return <img src={src} alt="" style={{width:size, height:size, objectFit:'contain', borderRadius:12,
+    background:'#fff', padding:3, flexShrink:0}}/>;
+}
+
+/* ── Card ────────────────────────────────────────────────────────────────── */
+
+function InstituteCard({ inst, onSelect, showStats }) {
+  const [hover, setHover] = useState(false);
+  return (
+    <div onClick={() => onSelect(inst)}
+      onMouseEnter={() => setHover(true)} onMouseLeave={() => setHover(false)}
+      role="button" tabIndex={0}
+      onKeyDown={e => { if (e.key === 'Enter') onSelect(inst); }}
+      style={{background:'var(--canvas-card)', borderRadius:'var(--radius-card)', padding:'18px 20px',
+        cursor:'pointer', transition:'transform .16s, box-shadow .16s',
+        transform: hover ? 'translateY(-2px)' : 'none',
+        boxShadow: hover ? 'var(--shadow-hover)' : 'var(--shadow-flat)'}}>
+
+      <div style={{display:'flex', alignItems:'flex-start', gap:12, marginBottom:14}}>
+        <InstLogo url={inst.logo}/>
+        <div style={{flex:1, minWidth:0}}>
+          <div style={{fontSize:'var(--fs-card)', fontWeight:700, lineHeight:1.3, color:'var(--text)'}}>
+            {inst.name}
+          </div>
+          <div style={{display:'flex', alignItems:'center', gap:8, marginTop:6, flexWrap:'wrap'}}>
+            {inst.acronym && (
+              <span style={{fontSize:'var(--fs-meta)', fontWeight:700, color:'var(--text3)'}}>{inst.acronym}</span>
+            )}
+            <StatusBadge tone={STATUS_TONE[inst.status] || 'neutral'}>{inst.status}</StatusBadge>
+          </div>
+        </div>
+      </div>
+
+      <div style={{fontSize:'var(--fs-meta)', color:'var(--text3)', lineHeight:1.7, marginBottom:showStats ? 14 : 10}}>
+        <div style={{overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap'}}>{inst.address || '—'}</div>
+        <div>Reg. {inst.regNo || '—'}</div>
+      </div>
+
+      {showStats && (
+        <div style={{display:'flex', gap:18, paddingTop:14, borderTop:'1px solid var(--border)'}}>
+          {[
+            ['Trainees', fmt(inst.totalTrainees)],
+            ['Clients', inst.totalClients || 0],
+            ['Programs', inst.totalAffPrograms || 0],
+          ].map(([label, value]) => (
+            <div key={label} style={{minWidth:0}}>
+              <div style={{fontSize:17, fontWeight:800, color:'var(--text)', letterSpacing:'-0.02em'}}>{value}</div>
+              <div style={{fontSize:11, color:'var(--text3)', marginTop:1}}>{label}</div>
+            </div>
+          ))}
+          <div style={{marginLeft:'auto', alignSelf:'flex-end', textAlign:'right'}}>
+            <RenewalNote renewalDue={inst.renewalDue}/>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ── Table ───────────────────────────────────────────────────────────────── */
+
+function InstituteTable({ rows, onSelect, showStats }) {
+  const TH = { textAlign:'left', fontSize:11, fontWeight:700, letterSpacing:'.4px',
+    textTransform:'uppercase', color:'var(--text3)', padding:'10px 12px', whiteSpace:'nowrap' };
+  const TD = { padding:'11px 12px', fontSize:'var(--fs-body)', color:'var(--text2)',
+    borderTop:'1px solid var(--border)' };
+  return (
+    <div style={{background:'var(--canvas-card)', borderRadius:'var(--radius-card)', overflow:'hidden'}}>
+      <div style={{overflowX:'auto'}}>
+        <table style={{width:'100%', borderCollapse:'collapse', minWidth:720}}>
+          <thead>
+            <tr>
+              <th style={TH}>Institute</th>
+              <th style={TH}>Status</th>
+              {showStats && <th style={{...TH, textAlign:'right'}}>Trainees</th>}
+              {showStats && <th style={{...TH, textAlign:'right'}}>Clients</th>}
+              {showStats && <th style={{...TH, textAlign:'right'}}>Programs</th>}
+              <th style={TH}>Renewal</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map(inst => (
+              <tr key={inst.id} onClick={() => onSelect(inst)} style={{cursor:'pointer'}}
+                onMouseEnter={e => e.currentTarget.style.background = 'var(--bg2)'}
+                onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+                <td style={TD}>
+                  <div style={{display:'flex', alignItems:'center', gap:10}}>
+                    <InstLogo url={inst.logo} size={30}/>
+                    <div style={{minWidth:0}}>
+                      <div style={{fontWeight:600, color:'var(--text)', overflow:'hidden',
+                        textOverflow:'ellipsis', whiteSpace:'nowrap', maxWidth:340}}>{inst.name}</div>
+                      <div style={{fontSize:11, color:'var(--text3)'}}>
+                        {[inst.acronym, inst.regNo && `Reg. ${inst.regNo}`].filter(Boolean).join(' · ')}
+                      </div>
+                    </div>
+                  </div>
+                </td>
+                <td style={TD}><StatusBadge tone={STATUS_TONE[inst.status] || 'neutral'}>{inst.status}</StatusBadge></td>
+                {showStats && <td style={{...TD, textAlign:'right', fontVariantNumeric:'tabular-nums'}}>{fmt(inst.totalTrainees)}</td>}
+                {showStats && <td style={{...TD, textAlign:'right', fontVariantNumeric:'tabular-nums'}}>{inst.totalClients || 0}</td>}
+                {showStats && <td style={{...TD, textAlign:'right', fontVariantNumeric:'tabular-nums'}}>{inst.totalAffPrograms || 0}</td>}
+                <td style={TD}><RenewalNote renewalDue={inst.renewalDue}/></td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+/* ── List ────────────────────────────────────────────────────────────────── */
+
+function InstituteList({ institutes, onSelect, onAdd, initialSearch = '', isShortlistOnly = false }) {
   const [search, setSearch] = useState(initialSearch);
   const [statusFilter, setStatusFilter] = useState('All');
-
-  // Sync if initialSearch changes (from sidebar)
-  useEffect(() => { if(initialSearch) setSearch(initialSearch); }, [initialSearch]);
-
-  const filtered = institutes.filter(i => {
-    const matchSearch = !search ||
-      i.name.toLowerCase().includes(search.toLowerCase()) ||
-      i.regNo.toLowerCase().includes(search.toLowerCase()) ||
-      (i.acronym && i.acronym.toLowerCase().includes(search.toLowerCase())) ||
-      (i.pan && i.pan.includes(search));
-    const matchStatus = statusFilter === 'All' || i.status === statusFilter;
-    return matchSearch && matchStatus;
+  // Remembered, because browsing and administrative work want different views.
+  const [view, setView] = useState(() => {
+    try { return localStorage.getItem(VIEW_KEY) || 'cards'; } catch { return 'cards'; }
   });
+  useEffect(() => { try { localStorage.setItem(VIEW_KEY, view); } catch {} }, [view]);
 
-  const { paged, page, setPage, totalPages, total, start, end } = usePagination(filtered, 12);
+  useEffect(() => { if (initialSearch) setSearch(initialSearch); }, [initialSearch]);
+
+  // Matching is unchanged: name, registration number, acronym, PAN.
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return institutes.filter(i => {
+      const matchSearch = !q ||
+        i.name.toLowerCase().includes(q) ||
+        (i.regNo || '').toLowerCase().includes(q) ||
+        (i.acronym && i.acronym.toLowerCase().includes(q)) ||
+        (i.pan && i.pan.includes(search.trim()));
+      return matchSearch && (statusFilter === 'All' || i.status === statusFilter);
+    });
+  }, [institutes, search, statusFilter]);
+
+  const { paged, page, setPage, totalPages, total, start, end } = usePagination(filtered, view === 'table' ? 25 : 12);
+  const showStats = !isShortlistOnly;
+
+  const counts = useMemo(() => ({
+    All: institutes.length,
+    'Active': institutes.filter(i => i.status === 'Active').length,
+    'Pending Renewal': institutes.filter(i => i.status === 'Pending Renewal').length,
+    'Expired': institutes.filter(i => i.status === 'Expired').length,
+  }), [institutes]);
 
   return (
     <div className="fade-in">
-      {/* Page header */}
-      <div className="page-header mb-6">
-        <div>
-          <div className="page-header-title">Institutes</div>
-          <div className="page-header-sub">{filtered.length} of {institutes.length} institutes</div>
-        </div>
-        {onAdd && (
+      <PageHeader
+        title="Institutes"
+        sub={`${filtered.length} of ${institutes.length}`}
+        actions={onAdd && (
           <Btn className="btn btn-primary" onClick={onAdd}>
-            <span className="material-icons-round" style={{fontSize:16}}>add</span>
-            Add Institute
+            <span className="material-icons-round" style={{fontSize:16}}>add</span> Add institute
           </Btn>
         )}
-      </div>
+      />
 
-      {/* Search + filter bar */}
-      <div className="card" style={{padding:'16px 20px', marginBottom:24}}>
-        <div style={{display:'flex', gap:12, flexWrap:'wrap', alignItems:'center'}}>
-          <div className="search-wrap" style={{flex:1, minWidth:240}}>
-            <span className="material-icons-round search-icon" style={{fontSize:18}}>search</span>
-            <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search by name, acronym or registration number…"/>
-          </div>
-          <div style={{display:'flex', gap:6, alignItems:'center', flexWrap:'wrap'}}>
-            {['All','Active','Pending Renewal','Expired'].map(s=>(
-              <button key={s} className={`chip ${statusFilter===s?'active':''}`} onClick={()=>setStatusFilter(s)}>{s}</button>
-            ))}
-          </div>
+      <div style={{display:'flex', gap:12, flexWrap:'wrap', alignItems:'center', marginBottom:18}}>
+        <div className="search-wrap" style={{flex:1, minWidth:240, maxWidth:420}}>
+          <span className="material-icons-round search-icon" style={{fontSize:18}}>search</span>
+          <input value={search} onChange={e => setSearch(e.target.value)}
+            placeholder="Search name, acronym, registration or PAN…"
+            aria-label="Search institutes"/>
+        </div>
+
+        <div style={{display:'flex', gap:6, flexWrap:'wrap'}}>
+          {['All','Active','Pending Renewal','Expired'].map(sf => {
+            const active = statusFilter === sf;
+            return (
+              <button key={sf} onClick={() => { setStatusFilter(sf); setPage(1); }}
+                style={{display:'inline-flex', alignItems:'center', gap:6, border:'none',
+                  background: active ? 'var(--ink)' : 'var(--bg2)',
+                  color: active ? 'var(--on-ink)' : 'var(--text2)',
+                  borderRadius:'var(--radius-pill)', padding:'7px 14px',
+                  fontSize:'var(--fs-body)', fontWeight: active ? 700 : 500,
+                  fontFamily:'var(--font)', cursor:'pointer', transition:'background .16s'}}>
+                {sf}
+                <span style={{fontSize:11, opacity:.6}}>{counts[sf]}</span>
+              </button>
+            );
+          })}
+        </div>
+
+        <div style={{display:'flex', background:'var(--bg2)', borderRadius:'var(--radius-pill)', padding:3, marginLeft:'auto'}}>
+          {[['cards','grid_view','Cards'], ['table','view_list','Table']].map(([id, icon, label]) => (
+            <button key={id} onClick={() => { setView(id); setPage(1); }}
+              aria-label={`${label} view`} aria-pressed={view === id} title={`${label} view`}
+              style={{display:'flex', alignItems:'center', gap:6, border:'none', cursor:'pointer',
+                background: view === id ? 'var(--canvas-card)' : 'transparent',
+                color: view === id ? 'var(--text)' : 'var(--text3)',
+                borderRadius:'var(--radius-pill)', padding:'6px 13px',
+                fontSize:'var(--fs-meta)', fontWeight:600, fontFamily:'var(--font)',
+                boxShadow: view === id ? 'var(--shadow-flat)' : 'none', transition:'background .14s'}}>
+              <span className="material-icons-round" style={{fontSize:16}}>{icon}</span>{label}
+            </button>
+          ))}
         </div>
       </div>
 
-      <div className="grid-2">
-        {paged.map(inst => (
-          <div key={inst.id} className="institute-card" onClick={()=>onSelect(inst)}>
-            <div className="card-accent" style={{
-              background: inst.status==='Active'?'var(--success)':inst.status==='Pending Renewal'?'var(--warning)':'var(--error)'
-            }}/>
-            {/* Header row: logo + name + status */}
-            <div style={{display:'flex', alignItems:'center', gap:10, marginBottom:6}}>
-              <InstLogo url={inst.logo} />
-              <div style={{flex:1, minWidth:0}}>
-                <div style={{fontWeight:700, fontSize:13.5, lineHeight:1.35, color:'var(--text)'}}>{inst.name}</div>
-                <div style={{display:'flex', alignItems:'center', gap:6, marginTop:3, flexWrap:'wrap'}}>
-                  {inst.acronym && <span className="badge badge-info" style={{fontSize:10.5}}>{inst.acronym}</span>}
-                  <StatusBadge status={inst.status}/>
-                </div>
-              </div>
-            </div>
-            {/* Meta row */}
-            <div style={{fontSize:12, color:'var(--text2)', marginBottom:3, display:'flex', alignItems:'center', gap:4}}>
-              <span className="material-icons-round" style={{fontSize:12}}>badge</span>
-              <span className="mono">{inst.regNo}</span>
-              <span style={{color:'var(--border2)'}}>·</span>
-              <span>{inst.type}</span>
-            </div>
-            <div style={{fontSize:12, color:'var(--text2)', marginBottom:10, display:'flex', alignItems:'center', gap:4}}>
-              <span className="material-icons-round" style={{fontSize:12}}>location_on</span>
-              <span style={{overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap'}}>{inst.address}</span>
-            </div>
-            {/* Stats row */}
-            {!isShortlistOnly && <div style={{display:'flex', gap:0, borderTop:'1px solid var(--border)', paddingTop:8}}>
-              {[
-                {label:'Trainees', value:inst.totalTrainees.toLocaleString(), color:'var(--primary)'},
-                {label:'ST Appeared', value:inst.totalStAppeared.toLocaleString(), color:'var(--success)'},
-                {label:'Clients', value:inst.totalClients, color:'var(--secondary)'},
-                {label:'Affiliations', value:inst.totalAffPrograms, color:'var(--purple)'},
-              ].map((m,i,arr)=>(
-                <div key={m.label} style={{flex:1, textAlign:'center', borderRight: i<arr.length-1 ? '1px solid var(--border)' : 'none', padding:'0 4px'}}>
-                  <div style={{fontWeight:700, fontSize:14, color:m.color}}>{m.value}</div>
-                  <div style={{fontSize:10, color:'var(--text2)', textTransform:'uppercase', letterSpacing:'0.4px', marginTop:1, fontWeight:600}}>{m.label}</div>
-                </div>
+      {filtered.length === 0 ? (
+        <div style={{background:'var(--canvas-card)', borderRadius:'var(--radius-card)'}}>
+          <EmptyState icon="account_balance"
+            title={search || statusFilter !== 'All' ? 'No institutes match' : 'No institutes yet'}
+            body={search || statusFilter !== 'All'
+              ? 'Try a different search term, or clear the status filter.'
+              : 'Institutes you add will be listed here.'}
+            action={search || statusFilter !== 'All'
+              ? <Btn className="btn btn-secondary btn-sm"
+                  onClick={() => { setSearch(''); setStatusFilter('All'); }}>Clear filters</Btn>
+              : onAdd && <Btn className="btn btn-primary btn-sm" onClick={onAdd}>Add institute</Btn>}/>
+        </div>
+      ) : (
+        <>
+          {view === 'cards' ? (
+            <div style={{display:'grid', gap:14, gridTemplateColumns:'repeat(auto-fill, minmax(330px, 1fr))'}}>
+              {paged.map(inst => (
+                <InstituteCard key={inst.id} inst={inst} onSelect={onSelect} showStats={showStats}/>
               ))}
-            </div>}
-          </div>
-        ))}
-      </div>
-
-      {filtered.length === 0
-        ? <div className="empty-state">
-            <div className="empty-state-icon"><span className="material-icons-round" style={{fontSize:48}}>account_balance</span></div>
-            <div className="empty-state-title">No institutes found</div>
-            <div className="empty-state-sub">{search ? 'Try a different search term' : 'Add your first institute to get started'}</div>
-          </div>
-        : <Pagination page={page} setPage={setPage} totalPages={totalPages} total={total} start={start} end={end} label="institutes"/>
-      }
+            </div>
+          ) : (
+            <InstituteTable rows={paged} onSelect={onSelect} showStats={showStats}/>
+          )}
+          <Pagination page={page} setPage={setPage} totalPages={totalPages}
+            total={total} start={start} end={end} label="institutes"/>
+        </>
+      )}
     </div>
   );
 }
