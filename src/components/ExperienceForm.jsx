@@ -434,39 +434,6 @@ function ExperienceForm({exp, clients, institute, onSave, onClose, onDuplicate, 
     return dist ? dist.local_levels : [];
   };
 
-  const handleSaveTemplate = () => {
-    if(!templateName.trim()) { toast.error('Enter a template name.'); return; }
-    saveTemplate({
-      name: templateName,
-      clientId: form.clientId,
-      assignmentName: form.assignmentName,
-      trainingType: form.trainingType,
-      occupations: form.occupations.map(o => ({...o, trainees:'', skillTestAppeared:'', skillTestPass:'', employmentActual:'', id:uid()})),
-      locations: form.locations.map(l => ({...l, id:uid()})),
-    });
-    setTemplates(getTemplates());
-    setTemplateName('');
-    setShowSaveTemplate(false);
-    toast.success('Template saved');
-  };
-
-  const handleLoadTemplate = (tpl) => {
-    setForm(f => ({
-      ...f,
-      clientId: tpl.clientId || f.clientId,
-      assignmentName: tpl.assignmentName,
-      trainingType: tpl.trainingType,
-      occupations: tpl.occupations.map(o => ({...o, id:uid()})),
-      locations: tpl.locations.map(l => ({...l, id:uid()})),
-    }));
-    setShowTemplates(false);
-  };
-
-  const handleDeleteTemplate = (id) => {
-    deleteTemplate(id);
-    setTemplates(getTemplates());
-  };
-
   const handleFileChange = (e) => {
     const file = e.target.files[0];
     if(!file) return;

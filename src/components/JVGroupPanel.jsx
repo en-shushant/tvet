@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react';
 import { FISCAL_YEARS, CLIENT_TYPES } from '../constants/data.js';
 import { Btn } from '../md.jsx';
-import { getOccupation } from '../utils/format.js';
+import { getOccupation, getClient } from '../utils/format.js';
 
 
 

@@ -5,13 +5,13 @@
  * service types and letter types below, and are only ever reached from the
  * results table.
  */
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import Modal from '../ui/Modal.jsx';
 import { Btn, MdTextField, MdSelect, MdOption, MdToggle } from '../../md.jsx';
 import { api } from '../../utils/api.js';
 import { getCurrentFY } from '../../constants/data.js';
 import { openShortlistLetter } from '../../utils/neaLetter.js';
-import { parseDocUrls, FYS, ACCEPT } from './common.jsx';
+import { parseDocUrls, FYS, ACCEPT, uploadToR2 } from './common.jsx';
 
 function LetterPreviewModal({ url, filename, onClose }) {
   const frameRef = useRef(null);
@@ -68,7 +68,7 @@ const SERVICE_TYPES = [
 
 // Create / edit a standing list. Firms are assigned separately, so a list can
 // exist before any firm is on it.
-const LETTER_TYPES = [
+export const LETTER_TYPES = [
   { value: 'basic',     label: 'Basic Shortlisting' },
   { value: 'nea_ssemd', label: 'NEA SSEMD' },
   { value: 'nea_essd',  label: 'NEA ESSD' },
@@ -546,8 +546,8 @@ export function LetterOptsModal({ row, token, onClose, onOpenBuilder }) {
 
 // ── Contracts & Quotations ────────────────────────────────────────────────────
 
-const QUOTE_STATUS = ['Quoted', 'Awarded', 'Rejected'];
-const statusColor2 = s => s === 'Awarded' ? {bg:'var(--success-light)',color:'var(--success)'} : s === 'Rejected' ? {bg:'var(--error-light)',color:'var(--error)'} : {bg:'var(--primary-light)',color:'var(--primary-dark)'};
+export const QUOTE_STATUS = ['Quoted', 'Awarded', 'Rejected'];
+export const statusColor2 = s => s === 'Awarded' ? {bg:'var(--success-light)',color:'var(--success)'} : s === 'Rejected' ? {bg:'var(--error-light)',color:'var(--error)'} : {bg:'var(--primary-light)',color:'var(--primary-dark)'};
 
 // Upload button for agreement PDFs or images
 export function BillModal({ row, token, onSave, onClose, saving }) {

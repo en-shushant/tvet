@@ -12,6 +12,7 @@
  */
 import { adToBS, BS_MONTHS, toNpNum } from '../constants/nepali.js';
 import { loadKalimatiCss } from './kalimatiFont.js';
+import { fmtDate } from './format.js';
 
 function adDateToBS(adStr) {
   if (!adStr) return '';

@@ -28,6 +28,7 @@ import StatusBadge from './components/ui/StatusBadge.jsx';
 import { BulkAssignmentForm } from './components/BulkDistrictPicker.jsx';
 import { PROVINCES, OCCUPATIONS, FISCAL_YEARS, getAllDistricts, notifyMasterData } from './constants/data.js';
 import { getNepaliDate } from './constants/nepali.js';
+import { getOccupation } from './utils/format.js';
 import { api, normInst, normClient, instToAPI, nstbToAPI } from './utils/api.js';
 import { preloadLogos } from './utils/logoCache.js';
 import { getSession, setSession as setSessionStorage, clearSession } from './utils/auth.js';

@@ -11,6 +11,7 @@ import Modal from '../ui/Modal.jsx';
 import { Btn } from '../../md.jsx';
 import { adToBS, bsToAD, BS_MONTHS, BS_DATA, toNpNum, BS_YEARS } from '../../constants/nepali.js';
 import { FISCAL_YEARS } from '../../constants/data.js';
+import { getSession } from '../../utils/auth.js';
 
 export function statusColor(s) {
   if (s === 'Active')  return { bg: 'var(--success-light)', color: '#0b9b85' };
@@ -113,3 +114,17 @@ export function LetterBuilderWrapper({ row, onClose, allRows }) {
 export const ACCEPT = 'image/*';
 
 export const FYS = [...FISCAL_YEARS].reverse(); // newest first
+
+/** Uploads a file and returns its stored URL. Shared by the modals and the
+ *  contracts panel, both of which accept scanned documents. */
+export async function uploadToR2(file, token) {
+  const fd = new FormData();
+  fd.append('file', file);
+  const res = await fetch('/api/upload', { method: 'POST', headers: { Authorization: `Bearer ${token}` }, body: fd });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    if (err.error === 'blank_page') throw new Error('Blank page detected — skipped.');
+    throw new Error(err.message || err.error || 'Upload failed');
+  }
+  return (await res.json()).url;
+}

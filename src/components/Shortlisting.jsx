@@ -6,23 +6,12 @@ import { getSession } from '../utils/auth.js';
 import { getCurrentFY } from '../constants/data.js';
 
 import { toast } from './ui/Feedback.jsx';
-import { NepaliDatePicker, ConfirmModal, LetterBuilderWrapper, FYS, ACCEPT } from './shortlisting/common.jsx';
-import { StandingListModal, AssignFirmsModal, LetterOptsModal, BillModal } from './shortlisting/modals.jsx';
+import { NepaliDatePicker, ConfirmModal, LetterBuilderWrapper, FYS, ACCEPT, uploadToR2 } from './shortlisting/common.jsx';
+import { StandingListModal, AssignFirmsModal, LetterOptsModal, BillModal, LETTER_TYPES } from './shortlisting/modals.jsx';
 import { ShortlistRow, GroupHeader, TableHead, printShortlistReport } from './shortlisting/table.jsx';
 import { ContractsPanel } from './shortlisting/ContractsPanel.jsx';
 import { bsDateLabel } from '../utils/neaLetter.js';
 
-async function uploadToR2(file, token) {
-  const fd = new FormData();
-  fd.append('file', file);
-  const res = await fetch('/api/upload', { method: 'POST', headers: { Authorization: `Bearer ${token}` }, body: fd });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    if (err.error === 'blank_page') throw new Error('Blank page detected — skipped.');
-    throw new Error(err.message || err.error || 'Upload failed');
-  }
-  return (await res.json()).url;
-}
 function ShortlistDocUpload({ value, onChange, token }) {
   const [uploading, setUploading] = useState(false);
   const [err, setErr] = useState('');
