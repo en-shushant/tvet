@@ -616,13 +616,14 @@ function ReportsView({ institutes, clients }) {
                 {/* Selected firms, with the JV lead chosen explicitly rather than
                     inferred from which box happened to be ticked first. */}
                 {fwInstIds.length > 0 && (
-                  <div style={{marginBottom:8, border:'1px solid var(--border)', borderRadius:6, overflow:'hidden'}}>
-                    {fwInstIds.length > 1 && (
-                      <div style={{fontSize:10, fontWeight:600, color:'var(--text3)', textTransform:'uppercase',
-                        letterSpacing:'.4px', padding:'5px 8px', background:'var(--bg2)'}}>
-                        Selected — mark the lead firm
-                      </div>
-                    )}
+                  <div style={{marginBottom:8, border:'1px solid var(--border)', borderRadius:6, overflow:'hidden',
+                    background:'var(--surface)'}}>
+                    <div style={{fontSize:10, fontWeight:600, color:'var(--text3)', textTransform:'uppercase',
+                      letterSpacing:'.4px', padding:'5px 8px', background:'var(--bg2)'}}>
+                      {fwInstIds.length > 1
+                        ? `Selected (${fwInstIds.length}) — mark the lead firm`
+                        : 'Selected (1)'}
+                    </div>
                     {fwInstIds.map(id => {
                       const i = institutes.find(x => x.id === id);
                       if (!i) return null;
@@ -705,7 +706,12 @@ function ReportsView({ institutes, clients }) {
                   </>
                 )}
 
-                <div className="filter-label" style={{marginTop:12}}>Include types</div>
+              </div>
+            )}
+
+            {report.hasToolsPicker && (
+              <div className="filter-section">
+                <div className="filter-label">Include types</div>
                 <div className="multi-select-list">
                   {TOOL_TYPE_OPTIONS.map(t => (
                     <label key={t} className="multi-select-item">
@@ -722,7 +728,12 @@ function ReportsView({ institutes, clients }) {
                   ))}
                 </div>
 
-                <div className="filter-label" style={{marginTop:12}}>Columns</div>
+              </div>
+            )}
+
+            {report.hasToolsPicker && (
+              <div className="filter-section">
+                <div className="filter-label">Columns</div>
                 <div className="multi-select-list">
                   {TOOL_COLUMN_OPTIONS.map(c => (
                     <label key={c.key} className="multi-select-item">
@@ -917,7 +928,9 @@ function ReportsView({ institutes, clients }) {
               <div className="empty-state" style={{background:'var(--surface)', border:'1px solid var(--border)', borderRadius:'var(--radius-lg)'}}>
                 <div className="empty-state-icon">📊</div>
                 <div className="empty-state-title">Select firms</div>
-                <div className="empty-state-sub">Check one or more firms in the sidebar, set the filters, then show the report</div>
+                <div className="empty-state-sub">
+                  Pick one or more firms {filtersOnTop ? 'above' : 'in the sidebar'}, set the filters, then show the report
+                </div>
               </div>
             ) : fwLoading ? (
               <div className="empty-state" style={{background:'var(--surface)', border:'1px solid var(--border)', borderRadius:'var(--radius-lg)'}}>
@@ -933,7 +946,7 @@ function ReportsView({ institutes, clients }) {
                 <div className="empty-state-title">Ready when you are</div>
                 <div className="empty-state-sub" style={{marginBottom:16}}>
                   {fwInstIds.length} firm{fwInstIds.length !== 1 ? 's' : ''} selected.
-                  Finish setting the filters on the left, then build the document.
+                  Finish setting the filters {filtersOnTop ? 'above' : 'on the left'}, then build the document.
                 </div>
                 <Btn className="btn btn-primary" onClick={showReport}>Show report</Btn>
               </div>
