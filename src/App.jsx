@@ -8,6 +8,8 @@ import InstituteDetail from './components/InstituteDetail.jsx';
 import InstituteForm from './components/InstituteForm.jsx';
 import AnalyticsView from './components/AnalyticsView.jsx';
 import ComplianceCentre from './components/ComplianceCentre.jsx';
+import DocumentsCentre from './components/DocumentsCentre.jsx';
+import DataQuality from './components/DataQuality.jsx';
 import JVGroupPanel from './components/JVGroupPanel.jsx';
 import ProjectCompliance from './components/ProjectCompliance.jsx';
 import MasterData from './components/MasterData.jsx';
@@ -303,7 +305,7 @@ function App() {
   };
 
   const handleNavigate = (id) => {
-    if (isShortlistOnly && id !== 'shortlisting' && id !== 'quotations' && id !== 'dashboard' && id !== 'institutes' && id !== 'detail') return;
+    if (isShortlistOnly && id !== 'shortlisting' && id !== 'quotations' && id !== 'dashboard' && id !== 'institutes' && id !== 'detail' && id !== 'documents') return;
     if (id === 'master' && !isAdmin && !isEditor) return;
     if (id === 'users' && !isAdmin) return;
     if ((id === 'summary' || id === 'comparison' || id === 'compliance') && isEditor) return;
@@ -323,6 +325,8 @@ function App() {
     {id:'summary', icon:'insights', label:'Analytics', group:'Analytics', editorHidden: true, shortlistHidden: true},
     {id:'reports', icon:'description', label:'Reports', group:'Analytics', shortlistHidden: true},
     {id:'renewals', icon:'event_repeat', label:'Renewals & Compliance', group:'Operations', shortlistHidden: true},
+    {id:'documents', icon:'folder_shared', label:'Documents', group:'Operations'},
+    {id:'quality', icon:'rule', label:'Data Quality', group:'System', shortlistHidden: true},
     {id:'compliance', icon:'fact_check', label:'Project Compliance', group:'Operations', editorHidden: true, shortlistHidden: true},
     {id:'shortlisting', icon:'playlist_add_check', label:'Shortlisting', group:'Operations'},
     {id:'quotations', icon:'gavel', label:'Quotations', group:'Operations'},
@@ -405,6 +409,8 @@ function App() {
     shortlisting: 'Shortlisting',
     quotations: 'Quotations',
     renewals: 'Renewals & Compliance',
+    documents: 'Documents',
+    quality: 'Data Quality',
     reports: 'Reports',
     master: 'Master data',
     users: 'User management',
@@ -599,6 +605,17 @@ function App() {
             <ComplianceCentre
               institutes={isAdmin ? institutes : institutes.filter(i => !i.isShortlistingOnly)}
               onOpenInstitute={handleSelectInstitute}/>
+          )}
+          {screen === 'documents' && (
+            <DocumentsCentre
+              institutes={isShortlistOnly ? institutes : isAdmin ? institutes : institutes.filter(i => !i.isShortlistingOnly)}
+              token={token}
+              onOpenInstitute={(inst, t) => handleSelectInstitute(inst).then(() => { if (t) setJumpToTab(t); })}/>
+          )}
+          {screen === 'quality' && (
+            <DataQuality
+              institutes={isAdmin ? institutes : institutes.filter(i => !i.isShortlistingOnly)}
+              onOpenInstitute={(inst, t) => handleSelectInstitute(inst).then(() => { if (t) setJumpToTab(t); })}/>
           )}
           {screen === 'compliance' && <ProjectCompliance institutes={institutes} clients={clients}/>}
           {screen === 'shortlisting' && <Suspense fallback={<div style={{padding:40,textAlign:'center',color:'var(--text3)'}}>Loading…</div>}><Shortlisting institutes={institutes} clients={clients} isAdmin={isAdmin} isEditor={isEditor} isShortlistOnly={isShortlistOnly} isSuperAdmin={isSuperAdmin} token={token}/></Suspense>}

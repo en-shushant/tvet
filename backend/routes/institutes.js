@@ -150,6 +150,44 @@ async function plugin(fastify, opts) {
     return rows;
   });
 
+  /**
+   * Which statutory documents each institute holds — presence only.
+   *
+   * These columns store base64 uploads, so selecting them for all 25 institutes
+   * would move megabytes to answer a yes/no question. Booleans instead: enough
+   * to show who is missing what, and the file itself is still fetched only when
+   * someone opens that institute.
+   */
+  fastify.get('/documents', async (request, reply) => {
+    let q = `SELECT i.id,
+        (i.ocr_registration IS NOT NULL AND i.ocr_registration <> '') AS ocr_registration,
+        (i.ocr_renewal IS NOT NULL AND i.ocr_renewal <> '') AS ocr_renewal,
+        (i.local_level_registration IS NOT NULL AND i.local_level_registration <> '') AS local_level_registration,
+        (i.local_level_renewal IS NOT NULL AND i.local_level_renewal <> '') AS local_level_renewal,
+        (i.vat_registration IS NOT NULL AND i.vat_registration <> '') AS vat_registration,
+        (i.vat_extension IS NOT NULL AND i.vat_extension <> '') AS vat_extension,
+        (i.tax_clearance_doc IS NOT NULL AND i.tax_clearance_doc <> '') AS tax_clearance_doc,
+        (i.ctevt_affiliation IS NOT NULL AND i.ctevt_affiliation <> '') AS ctevt_affiliation,
+        (i.ctevt_renewal IS NOT NULL AND i.ctevt_renewal <> '') AS ctevt_renewal
+      FROM institutes i WHERE 1=1`;
+    const params = [];
+    if (request.user.role === 'editor') {
+      params.push(request.user.id);
+      q += ` AND i.id IN (SELECT institute_id FROM user_institutes WHERE user_id=$${params.length})`;
+    }
+    if (request.user.role === 'shortlist') {
+      params.push(request.user.id);
+      q += ` AND (i.created_by=$${params.length} OR i.id IN (SELECT institute_id FROM user_institutes WHERE user_id=$${params.length}))`;
+    }
+    if (request.user.role !== 'admin' && request.user.role !== 'superadmin') {
+      params.push(request.user.id);
+      q += ` AND (i.is_shortlisting_only IS NULL OR i.is_shortlisting_only = false
+        OR i.id IN (SELECT institute_id FROM user_institutes WHERE user_id=$${params.length}))`;
+    }
+    const { rows } = await pool.query(q, params);
+    return rows;
+  });
+
   fastify.get('/:id', async (request, reply) => {
     const { id } = request.params;
     const [inst, assignments, nstb, tax, affiliations, infrastructure] = await Promise.all([

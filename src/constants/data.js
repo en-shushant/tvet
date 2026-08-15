@@ -198,3 +198,23 @@ export const INITIAL_INSTITUTES = [
  * being redeclared per component.
  */
 export const COMPLIANCE_FY = '2081/82';
+
+/**
+ * The statutory documents held against every institute.
+ *
+ * `key` is the camelCase field on a normalised institute; `column` is the
+ * database column, needed by the documents endpoint. This list was previously
+ * written out separately in ShortlistDashboard and InstituteDetail, which is
+ * how they came to disagree on labels for the same file.
+ */
+export const DOC_KEYS = [
+  { key:'ocrRegistration',        column:'ocr_registration',         label:'OCR दर्ता',            en:'OCR registration' },
+  { key:'ocrRenewal',             column:'ocr_renewal',              label:'OCR नवीकरण',          en:'OCR renewal' },
+  { key:'localLevelRegistration', column:'local_level_registration', label:'स्थानीय तह दर्ता',      en:'Local level registration' },
+  { key:'localLevelRenewal',      column:'local_level_renewal',      label:'स्थानीय तह नवीकरण',    en:'Local level renewal' },
+  { key:'vatRegistration',        column:'vat_registration',         label:'भ्याट दर्ता',           en:'VAT registration' },
+  { key:'vatExtension',           column:'vat_extension',            label:'भ्याट म्याद थप',        en:'VAT extension' },
+  { key:'taxClearanceDoc',        column:'tax_clearance_doc',        label:'कर चुक्ता',            en:'Tax clearance' },
+  { key:'ctevtAffiliation',       column:'ctevt_affiliation',        label:'CTEVT सम्बन्धन',       en:'CTEVT affiliation' },
+  { key:'ctevtRenewal',           column:'ctevt_renewal',            label:'CTEVT नवीकरण',        en:'CTEVT renewal' },
+];

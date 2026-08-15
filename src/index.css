@@ -1687,3 +1687,72 @@ md-filled-button.on-ink, md-filled-tonal-button.on-ink {
 .compliance-sub  { font-size: 11px; color: var(--text3); }
 .compliance-clear { font-size: 12px; color: var(--text3); }
 .compliance-issues { font-size: 12px; color: var(--red); }
+
+/* ── Documents centre ───────────────────────────────────────────────────── */
+.docs-table-wrap { overflow-x: auto; }
+.docs-table {
+  display: table !important;
+  width: 100%;
+  min-width: 900px;
+  border-collapse: collapse;
+  font-size: 13px;
+  background: var(--surface);
+  border-radius: var(--radius-card);
+  overflow: hidden;
+}
+.docs-table th {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .3px;
+  color: var(--text3);
+  padding: 10px 6px;
+  background: var(--bg2);
+  text-align: center;
+  vertical-align: bottom;
+  line-height: 1.3;
+}
+.docs-table td { padding: 9px 6px; border-top: 1px solid var(--border); text-align: center; }
+.docs-table .docs-name-col { text-align: left; width: 30%; min-width: 240px; padding-left: 14px; }
+.docs-table .docs-count-col { width: 74px; padding-right: 14px; font-variant-numeric: tabular-nums; }
+.docs-table tbody tr { cursor: pointer; transition: background 140ms ease; }
+.docs-table tbody tr:hover { background: var(--bg2); }
+.docs-table tbody tr:focus-visible { outline: 2px solid var(--primary); outline-offset: -2px; }
+/* Presence is a filled dot, absence an em dash — shape as well as colour, so
+   the grid is readable without relying on hue alone. */
+.docs-yes { color: var(--green); font-size: 13px; }
+.docs-no  { color: var(--text3); font-size: 13px; }
+.docs-complete { color: var(--green); font-weight: 700; font-size: 12px; }
+.docs-partial  { color: var(--text2); font-weight: 600; font-size: 12px; }
+
+/* ── Data Quality ───────────────────────────────────────────────────────── */
+.dq-scope { font-size: 12px; color: var(--text3); margin: 0 0 14px; }
+.dq-list {
+  background: var(--surface);
+  border-radius: var(--radius-card);
+  overflow: hidden;
+}
+.dq-row {
+  display: grid;
+  grid-template-columns: 10px minmax(160px, 1.1fr) minmax(160px, 1.6fr) minmax(90px, auto) 14px;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  text-align: left;
+  padding: 11px 16px;
+  background: none;
+  border: none;
+  border-top: 1px solid var(--border);
+  font-family: var(--font);
+  cursor: pointer;
+  transition: background 140ms ease;
+}
+.dq-list .dq-row:first-child { border-top: none; }
+.dq-row:hover { background: var(--bg2); }
+.dq-row:focus-visible { outline: 2px solid var(--primary); outline-offset: -2px; }
+/* Severity is a dot, but the tab label already names it in words — colour is
+   never the only carrier of meaning here. */
+.dq-dot { width: 8px; height: 8px; border-radius: 50%; }
+.dq-what  { font-size: 13px; font-weight: 600; color: var(--text); }
+.dq-where { font-size: 12.5px; color: var(--text2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dq-inst  { font-size: 11.5px; color: var(--text3); text-align: right; }
+.dq-go    { color: var(--text3); font-size: 15px; }
