@@ -52,6 +52,34 @@ function InstituteDetail({institute, clients, onUpdateClients, onBack, onUpdate,
   useEffect(() => { if(jumpToTab) switchTab(jumpToTab); }, [jumpToTab]);
 
   // Unique clients for this institute derived from experience
+  /**
+   * Headline figures, preferring what this page actually loaded.
+   *
+   * Falls back to the list endpoint's aggregates only while `experience` is
+   * still empty — that is the first paint after arriving from the list, where
+   * the aggregates are the only numbers available.
+   */
+  const kpis = useMemo(() => {
+    const exps = institute.experience || [];
+    if (exps.length === 0) {
+      return {
+        trainees: institute.totalTrainees || 0,
+        stAppeared: institute.totalStAppeared || 0,
+        programs: institute.totalAffPrograms || 0,
+      };
+    }
+    const sumOcc = (key) => exps.reduce((total, e) =>
+      total + (e.occupations || []).reduce((n, o) => n + (parseInt(o[key]) || 0), 0), 0);
+    return {
+      trainees: sumOcc('trainees'),
+      stAppeared: sumOcc('skillTestAppeared'),
+      // Affiliations are fetched with their programs; count them rather than
+      // trusting an aggregate this endpoint never returns.
+      programs: (institute.affiliation || []).reduce((n, a) => n + (a.programs || []).length, 0)
+        || institute.totalAffPrograms || 0,
+    };
+  }, [institute]);
+
   const instituteClients = useMemo(() => {
     const seen = new Map();
     for (const exp of institute.experience) {
@@ -287,16 +315,22 @@ function InstituteDetail({institute, clients, onUpdateClients, onBack, onUpdate,
         </div>
       </div>
 
-      {/* Figures the institute list already carries — no extra request. */}
+      {/* Derived from the assignments this page has already fetched, not from the
+          list endpoint's aggregates. GET /institutes/:id is a plain SELECT * and
+          carries none of total_trainees / total_st_appeared / total_aff_programs,
+          so opening an institute zeroed them: the row read "— trainees" directly
+          above a panel reporting 480. Deriving both from the same source means
+          they cannot disagree. The list aggregates are still used as a fallback
+          for the first paint, before the detail fetch lands. */}
       {!isShortlistOnly && (
         <div style={{display:'grid', gap:12, marginBottom:18,
           gridTemplateColumns:'repeat(auto-fit, minmax(140px, 1fr))'}}>
           {[
-            ['Trainees',    fmt(institute.totalTrainees),   'periwinkle'],
+            ['Trainees',    fmt(kpis.trainees),    'periwinkle'],
             ['Assignments', institute.experience.length,    'blue'],
             ['Clients',     instituteClients.length,        'mint'],
-            ['ST appeared', fmt(institute.totalStAppeared),  'lilac'],
-            ['Programs',    institute.totalAffPrograms || 0, 'cream'],
+            ['ST appeared', fmt(kpis.stAppeared),  'lilac'],
+            ['Programs',    kpis.programs,         'cream'],
           ].map(([label, value, tone]) => (
             <div key={label} style={{background:`var(--pastel-${tone})`,
               borderRadius:'var(--radius-card)', padding:'14px 16px'}}>

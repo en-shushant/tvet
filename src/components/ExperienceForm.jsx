@@ -42,7 +42,7 @@ function DistrictSearch({ value, onChange }) {
       {open && ReactDOM.createPortal(
         <DropdownPanel anchor={ref} search={q} setSearch={setQ}
           filtered={filtered.map(d=>({value:d.district+'||'+d.province, label:d.district+' ('+d.province+')'}))}
-          value={value ? value+'||'+(ALL_DISTRICTS.find(d=>d.district===value)?.province||'') : ''}
+          value={value ? value+'||'+(getAllDistricts().find(d=>d.district===value)?.province||'') : ''}
           onChange={v=>{ const [dist,prov]=v.split('||'); onChange(dist,prov); setOpen(false); setQ(''); }}
           setOpen={setOpen}
         />, document.body

@@ -35,6 +35,12 @@ async function plugin(fastify, opts) {
         i.letter_top_margin, i.letter_lr_padding, i.letter_bottom_padding,
         i.service_type, i.created_by, i.created_at,
         i.desc_template_id, i.narrative_template_id, i.services_template_id,
+        -- The list needs logos to render institute avatars, but this column also
+        -- holds embedded data URIs on some records, which is what made the list
+        -- slow enough to strip blobs in the first place. Ship the cheap ones (a
+        -- URL is a short string) and leave the heavy embedded ones to GET /:id,
+        -- where the avatar falls back to initials until the detail loads.
+        CASE WHEN i.logo LIKE 'http%' THEN i.logo END AS logo,
         COALESCE(json_agg(DISTINCT jsonb_build_object('fy', t.fiscal_year, 'turnover', t.turnover)) FILTER (WHERE t.id IS NOT NULL), '[]') AS "taxClearance",
         COALESCE(json_agg(DISTINCT jsonb_build_object('fy', n.fiscal_year)) FILTER (WHERE n.id IS NOT NULL), '[]') AS nstb,
         COALESCE(json_agg(DISTINCT jsonb_build_object('status', a.status, 'expiryDate', a.expiry_date, 'affiliationDate', a.affiliation_date)) FILTER (WHERE a.id IS NOT NULL), '[]') AS affiliation,
