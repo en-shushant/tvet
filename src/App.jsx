@@ -230,6 +230,31 @@ function App() {
     }
   }, [session]);
 
+  /**
+   * Logos, fetched separately and merged in once the list is already on screen.
+   *
+   * They are base64 data URIs (uploads go through FileReader.readAsDataURL), so
+   * they are the blobs GET /institutes deliberately strips to stay fast. Asking
+   * for them in their own request keeps the list quick while still getting logos
+   * rendered — previously an institute only showed one after its detail page had
+   * been visited and merged one into the row.
+   *
+   * Deliberately not written to the sessionStorage cache: a couple of dozen
+   * base64 images would blow the quota and wedge caching for everything else.
+   */
+  useEffect(() => {
+    if (!session || !token) return;
+    let alive = true;
+    api('GET', '/institutes/logos', null, token)
+      .then(rows => {
+        if (!alive || !rows?.length) return;
+        const byId = new Map(rows.map(r => [r.id, r.logo]));
+        setInstitutes(insts => insts.map(i => byId.has(i.id) ? { ...i, logo: byId.get(i.id) } : i));
+      })
+      .catch(() => {}); // Avatars fall back to initials; nothing else depends on this.
+    return () => { alive = false; };
+  }, [session, token]);
+
   if (!session) {
     return <LoginPage onLogin={(s) => setSession(s)} />;
   }

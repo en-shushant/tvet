@@ -35,12 +35,6 @@ async function plugin(fastify, opts) {
         i.letter_top_margin, i.letter_lr_padding, i.letter_bottom_padding,
         i.service_type, i.created_by, i.created_at,
         i.desc_template_id, i.narrative_template_id, i.services_template_id,
-        -- The list needs logos to render institute avatars, but this column also
-        -- holds embedded data URIs on some records, which is what made the list
-        -- slow enough to strip blobs in the first place. Ship the cheap ones (a
-        -- URL is a short string) and leave the heavy embedded ones to GET /:id,
-        -- where the avatar falls back to initials until the detail loads.
-        CASE WHEN i.logo LIKE 'http%' THEN i.logo END AS logo,
         COALESCE(json_agg(DISTINCT jsonb_build_object('fy', t.fiscal_year, 'turnover', t.turnover)) FILTER (WHERE t.id IS NOT NULL), '[]') AS "taxClearance",
         COALESCE(json_agg(DISTINCT jsonb_build_object('fy', n.fiscal_year)) FILTER (WHERE n.id IS NOT NULL), '[]') AS nstb,
         COALESCE(json_agg(DISTINCT jsonb_build_object('status', a.status, 'expiryDate', a.expiry_date, 'affiliationDate', a.affiliation_date)) FILTER (WHERE a.id IS NOT NULL), '[]') AS affiliation,
@@ -111,6 +105,39 @@ async function plugin(fastify, opts) {
     for (const a of assignments.rows) byInst.get(a.institute_id)?.experience.push(a);
     for (const t of tax.rows) byInst.get(t.institute_id)?.taxClearance.push(t);
     return [...byInst.values()];
+  });
+
+  /**
+   * Logos only, as a second request.
+   *
+   * Logos are uploaded through FileReader.readAsDataURL, so this column holds
+   * base64 data URIs, not links — they are exactly the blobs the list query
+   * strips to keep it fast. Folding them back into the list would undo that,
+   * but leaving them out meant an institute only ever showed its logo once its
+   * detail page had been visited and merged one in.
+   *
+   * So: the list paints immediately with initials, this fills the logos in
+   * behind it. Same visibility rules as the list — an editor must not be able
+   * to enumerate logos for institutes they cannot otherwise see.
+   */
+  fastify.get('/logos', async (request, reply) => {
+    let q = `SELECT i.id, i.logo FROM institutes i WHERE i.logo IS NOT NULL AND i.logo <> ''`;
+    const params = [];
+    if (request.user.role === 'editor') {
+      params.push(request.user.id);
+      q += ` AND i.id IN (SELECT institute_id FROM user_institutes WHERE user_id=$${params.length})`;
+    }
+    if (request.user.role === 'shortlist') {
+      params.push(request.user.id);
+      q += ` AND (i.created_by=$${params.length} OR i.id IN (SELECT institute_id FROM user_institutes WHERE user_id=$${params.length}))`;
+    }
+    if (request.user.role !== 'admin' && request.user.role !== 'superadmin') {
+      params.push(request.user.id);
+      q += ` AND (i.is_shortlisting_only IS NULL OR i.is_shortlisting_only = false
+        OR i.id IN (SELECT institute_id FROM user_institutes WHERE user_id=$${params.length}))`;
+    }
+    const { rows } = await pool.query(q, params);
+    return rows;
   });
 
   fastify.get('/:id', async (request, reply) => {

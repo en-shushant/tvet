@@ -66,6 +66,7 @@ function InstituteDetail({institute, clients, onUpdateClients, onBack, onUpdate,
         trainees: institute.totalTrainees || 0,
         stAppeared: institute.totalStAppeared || 0,
         programs: institute.totalAffPrograms || 0,
+        districts: 0,
       };
     }
     const sumOcc = (key) => exps.reduce((total, e) =>
@@ -73,6 +74,8 @@ function InstituteDetail({institute, clients, onUpdateClients, onBack, onUpdate,
     return {
       trainees: sumOcc('trainees'),
       stAppeared: sumOcc('skillTestAppeared'),
+      districts: new Set(exps.flatMap(e =>
+        (e.occupations || []).flatMap(o => (o.locations || []).map(l => l.district).filter(Boolean)))).size,
       // Affiliations are fetched with their programs; count them rather than
       // trusting an aggregate this endpoint never returns.
       programs: (institute.affiliation || []).reduce((n, a) => n + (a.programs || []).length, 0)
@@ -316,7 +319,9 @@ function InstituteDetail({institute, clients, onUpdateClients, onBack, onUpdate,
       </div>
 
       {/* Derived from the assignments this page has already fetched, not from the
-          list endpoint's aggregates. GET /institutes/:id is a plain SELECT * and
+          list endpoint's aggregates, and the only place they appear — the
+          Assignments tab used to repeat clients/assignments/trainees/districts
+          in its own strip. GET /institutes/:id is a plain SELECT * and
           carries none of total_trainees / total_st_appeared / total_aff_programs,
           so opening an institute zeroed them: the row read "— trainees" directly
           above a panel reporting 480. Deriving both from the same source means
@@ -330,6 +335,7 @@ function InstituteDetail({institute, clients, onUpdateClients, onBack, onUpdate,
             ['Assignments', institute.experience.length,    'blue'],
             ['Clients',     instituteClients.length,        'mint'],
             ['ST appeared', fmt(kpis.stAppeared),  'lilac'],
+            ['Districts',   kpis.districts,        'pink'],
             ['Programs',    kpis.programs,         'cream'],
           ].map(([label, value, tone]) => (
             <div key={label} style={{background:`var(--pastel-${tone})`,
@@ -498,29 +504,6 @@ function InstituteDetail({institute, clients, onUpdateClients, onBack, onUpdate,
             </div>
           </div>
 
-          {institute.experience.length > 0 && (() => {
-            const exps = institute.experience;
-            const totalAssignments = exps.length;
-            const totalTrained = exps.reduce((s,e)=>s+e.occupations.reduce((ss,o)=>ss+(parseInt(o.trainees)||0),0),0);
-            const totalDistricts = new Set(exps.flatMap(e=>e.occupations.flatMap(o=>(o.locations||[]).map(l=>l.district).filter(Boolean)))).size;
-            const uniqueClients = new Set(exps.map(e=>e.clientId||('m:'+e.clientName)).filter(Boolean)).size;
-            const statStyle = {textAlign:'center', flex:1};
-            const numStyle = {fontWeight:700, fontSize:20, fontFamily:'var(--font-mono)', color:'var(--accent)'};
-            const lblStyle = {fontSize:10, color:'var(--text3)', textTransform:'uppercase', letterSpacing:'0.5px', marginTop:2};
-            return (
-              <div style={{display:'flex', gap:0, background:'var(--bg2)', borderRadius:8, border:'1px solid var(--border)', marginBottom:12, padding:'10px 0'}}>
-                {[['Clients', uniqueClients, 'var(--blue)'],['Assignments', totalAssignments,'var(--accent)'],['Trainees trained', totalTrained.toLocaleString(),'var(--accent)'],['Districts', totalDistricts,'var(--purple)']].map(([lbl,val,col],i,arr)=>(
-                  <React.Fragment key={lbl}>
-                    <div style={statStyle}>
-                      <div style={{...numStyle,color:col}}>{val}</div>
-                      <div style={lblStyle}>{lbl}</div>
-                    </div>
-                    {i<arr.length-1 && <div style={{width:1,background:'var(--border)',margin:'0 4px'}}/>}
-                  </React.Fragment>
-                ))}
-              </div>
-            );
-          })()}
           {institute.experience.length === 0
             ? <div className="empty-state"><div className="empty-state-icon"><span className="material-icons-round" style={{fontSize:44,opacity:0.3}}>assignment</span></div><div className="empty-state-title">No assignments yet</div><div className="empty-state-sub">Add the first experience / assignment record</div></div>
             : expViewMode === 'fy'
