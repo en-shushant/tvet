@@ -56,6 +56,11 @@ function ReportsView({ institutes, clients }) {
   const [eoiEvents, setEoiEvents] = useState(f.eoiEvents || 1);
   const [eoiToolCols, setEoiToolCols] = useState(f.eoiToolCols || DEFAULT_TOOL_COLS);
   const [eoiToolTypes, setEoiToolTypes] = useState(f.eoiToolTypes || []);  // empty = all types
+  // Multi-firm reports render only when asked. Building a joint-venture EOI
+  // across several firms is expensive, and re-doing it on every checkbox tick
+  // made the filters feel sluggish. Holds the filter signature that was last
+  // rendered, so we can tell when what is on screen has gone out of date.
+  const [renderedSig, setRenderedSig] = useState(null);
   const [nstbComparative, setNstbComparative] = useState(false);
   const [nstbThreshold, setNstbThreshold] = useState('');
 
@@ -361,6 +366,20 @@ function ReportsView({ institutes, clients }) {
     return ordered.map(id => fwFullInsts[id]).filter(Boolean)
       .map(inst => ({ inst, exps: fwExpsFor(inst) }));
   };
+
+  // Everything the rendered document depends on. Compared against renderedSig to
+  // show whether what is on screen still matches the filters.
+  const filterSig = JSON.stringify([
+    reportId, fwInstIds, fwLeadId, fromFY, toFY, turnFromFY, turnToFY,
+    selectedOccs, filterDuration, filterDonorTypes,
+    eoiToolsLevel, eoiEvents, eoiToolCols, eoiToolTypes,
+  ]);
+  const isStale = renderedSig !== null && renderedSig !== filterSig;
+  const showReport = () => setRenderedSig(filterSig);
+
+  // A different report or firm set invalidates what is on screen rather than
+  // silently leaving the previous document up.
+  useEffect(() => { setRenderedSig(null); }, [reportId, familyId]);
 
   const handlePrint = () => {
     const w = window.open('', '_blank');
@@ -872,15 +891,40 @@ function ReportsView({ institutes, clients }) {
               <div className="empty-state" style={{background:'var(--surface)', border:'1px solid var(--border)', borderRadius:'var(--radius-lg)'}}>
                 <div className="empty-state-icon">📊</div>
                 <div className="empty-state-title">Select firms</div>
-                <div className="empty-state-sub">Check one or more firms in the sidebar</div>
+                <div className="empty-state-sub">Check one or more firms in the sidebar, set the filters, then show the report</div>
               </div>
             ) : fwLoading ? (
               <div className="empty-state" style={{background:'var(--surface)', border:'1px solid var(--border)', borderRadius:'var(--radius-lg)'}}>
                 <div className="empty-state-icon">⏳</div>
                 <div className="empty-state-title">Loading…</div>
               </div>
+            ) : renderedSig === null ? (
+              /* Filters first, document second: nothing is built until asked. */
+              <div className="empty-state" style={{background:'var(--surface)', border:'1px solid var(--border)', borderRadius:'var(--radius-lg)'}}>
+                <div className="empty-state-icon">
+                  <span className="material-icons-round" style={{fontSize:44, opacity:.35}}>tune</span>
+                </div>
+                <div className="empty-state-title">Ready when you are</div>
+                <div className="empty-state-sub" style={{marginBottom:16}}>
+                  {fwInstIds.length} firm{fwInstIds.length !== 1 ? 's' : ''} selected.
+                  Finish setting the filters on the left, then build the document.
+                </div>
+                <Btn className="btn btn-primary" onClick={showReport}>Show report</Btn>
+              </div>
             ) : (
               <div style={{display:'flex', flexDirection:'column', gap:16}}>
+                {/* Filters changed after the document was built — say so rather
+                    than leaving a document on screen that no longer matches. */}
+                {isStale && (
+                  <div role="status" style={{display:'flex', alignItems:'center', gap:10, flexWrap:'wrap',
+                    padding:'10px 16px', borderRadius:'var(--radius-lg)',
+                    background:'color-mix(in srgb, var(--warning,#f59e0b) 12%, var(--surface))',
+                    border:'1px solid color-mix(in srgb, var(--warning,#f59e0b) 35%, transparent)'}}>
+                    <span className="material-icons-round" style={{fontSize:17, color:'var(--warning,#f59e0b)'}}>update</span>
+                    <span style={{fontSize:12.5}}>Filters changed — this document was built with the previous settings.</span>
+                    <Btn className="btn btn-primary btn-sm" style={{marginLeft:'auto'}} onClick={showReport}>Rebuild</Btn>
+                  </div>
+                )}
                 {/* Multi-inst header */}
                 <div className="card" style={{padding:'14px 20px', display:'flex', alignItems:'center', gap:10, flexWrap:'wrap'}}>
                   <div>
@@ -911,7 +955,8 @@ function ReportsView({ institutes, clients }) {
                     {family.downloadMultiDOCX && (
                       <Btn className="btn btn-secondary btn-sm"
                         onClick={() => family.downloadMultiDOCX(fwSelectedFirms(), clients, report.id, opts)}
-                        disabled={fwInstIds.length === 0}>⬇ Word (.docx)</Btn>
+                        disabled={fwInstIds.length === 0 || isStale}
+                        title={isStale ? 'Rebuild first — the filters have changed since this was built' : undefined}>⬇ Word (.docx)</Btn>
                     )}
                     <Btn className="btn btn-primary btn-sm" onClick={() => {
                       const firms = fwSelectedFirms();
@@ -937,7 +982,8 @@ function ReportsView({ institutes, clients }) {
                       w.document.write(combined);
                       w.document.close();
                       setTimeout(() => w.print(), 300);
-                    }} disabled={fwInstIds.length === 0}>🖨 Print / PDF</Btn>
+                    }} disabled={fwInstIds.length === 0 || isStale}
+                      title={isStale ? 'Rebuild first — the filters have changed since this was built' : undefined}>🖨 Print / PDF</Btn>
                   </div>
                 </div>
 
