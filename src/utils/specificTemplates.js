@@ -1,3 +1,5 @@
+import { buildTemplateValues, applyTemplate } from './templateValues.js';
+
 // Templates for PPMO 3(B) Specific Experience — two slots per assignment:
 //   narrativeDescription  (Narrative description of Project)
 //   actualServicesDescription (Description of Actual Services Provided)
@@ -197,133 +199,16 @@ export const SERVICES_VARIATIONS = [
   },
 ];
 
-// ── Shared fill function ───────────────────────────────────────────────────────
-
-function buildValues(form, institute, clients) {
-  const client = (clients || []).find(c => c.id === form.clientId) || {};
-  const firm = institute?.acronym || institute?.name || '';
-  const occs = (form.occupations || []).filter(o => o.nameInLetter);
-  const occupationNames = occs.map(o => o.nameInLetter).join(', ') || '';
-  const totalTrainees = occs.reduce((s, o) => s + (parseInt(o.trainees) || 0), 0) || '';
-  const allDistricts = [...new Set(
-    occs.flatMap(o => (o.locations || []).map(l => l.district).filter(Boolean))
-  )];
-  const firstOcc = occs[0] || {};
-
-  const hasSkillTest  = occs.some(o => o.skillTestProvisioned);
-  const hasEmployment = occs.some(o => o.employmentProvisioned);
-  const t = totalTrainees || '—';
-
-  // How many actually sat the skill test. Falls back to the trainee count when
-  // only the provision is recorded and no attendance figure was entered.
-  const appeared = occs.reduce((s, o) => s + (parseInt(o.skillTestAppeared) || 0), 0);
-  const skillTestCount = appeared || (hasSkillTest ? (totalTrainees || 0) : 0);
-
-  // employmentActual is employment_actual_pct — a percentage per occupation, so
-  // aggregating means weighting by cohort size. Averaging the percentages of a
-  // 200-trainee and a 20-trainee occupation would overstate the small one.
-  let weighted = 0, covered = 0;
-  const plainPcts = [];
-  for (const o of occs) {
-    const pct = parseFloat(o.employmentActual);
-    if (isNaN(pct)) continue;
-    plainPcts.push(pct);
-    const tr = parseInt(o.trainees) || 0;
-    if (tr > 0) { weighted += pct * tr; covered += tr; }
-  }
-  const placementPct = covered > 0
-    ? Math.round(weighted / covered)
-    : plainPcts.length
-      // No trainee counts to weight by — fall back to a flat average.
-      ? Math.round(plainPcts.reduce((s, n) => s + n, 0) / plainPcts.length)
-      : null;
-
-  // Steps 6 and 7 of the service sequence. Assembled rather than substituted, so
-  // the sentence stays grammatical when one or both figures are absent — a bare
-  // "{x}" placeholder would leave a dangling ", and" on assignments that recorded
-  // neither. Three shapes because the variations differ in structure.
-  const inline = [], sentence = [], bullets = [];
-  if (skillTestCount) {
-    inline.push(`skill test was conducted for ${skillTestCount}`);
-    sentence.push(`Skill test was conducted for ${skillTestCount} trainees`);
-    bullets.push(`• Skill test was conducted for ${skillTestCount} trainees.`);
-  }
-  if (placementPct != null) {
-    inline.push(`achieved (${placementPct}%) of verified employment placement`);
-    sentence.push(`${placementPct}% verified employment placement was achieved`);
-    bullets.push(`• ${placementPct}% verified employment placement was achieved.`);
-  }
-  const outcomeClause   = inline.length   ? `, and ${inline.join(' and ')}` : '';
-  const outcomeSentence = sentence.length ? ` ${sentence.join(' and ')}.` : '';
-  const outcomeBullets  = bullets.length  ? `\n${bullets.join('\n')}` : '';
-
-  // Step 5. Only some programmes run an on-the-job phase — EVENT, RERP/SAMRIDDHI
-  // and ENSSURE — so it is driven by a flag on the client rather than assumed.
-  const hasOjt = !!client.includesOjt;
-  const ojtClauseWe       = hasOjt ? ' Trainees then completed on-the-job training with relevant enterprises.' : '';
-  const ojtClausePassive  = hasOjt ? ' On-the-job training was subsequently arranged with relevant enterprises.' : '';
-  const ojtClauseStage    = hasOjt ? ' On-the-job training with relevant enterprises followed the classroom phase.' : '';
-  const ojtClauseTrailing = hasOjt ? ', followed by on-the-job training with relevant enterprises' : '';
-  const ojtBullet         = hasOjt ? '\n• Arranged on-the-job training with relevant enterprises.' : '';
-
-  // Districts as prose. Separate from `locations`, which resolves to an em dash
-  // when empty — fine inside a table cell, but "venues in —" is not a sentence,
-  // so this falls back to the generic wording instead.
-  const districtsPhrase = allDistricts.length ? allDistricts.join(', ') : 'targeted areas';
-
-  // "Beautician training to 40 participants, Tailoring training to 20 participants
-  // and Mobile Phone Repair Technician training to 40 participants" — list form,
-  // "and" before the last item. Occupations without a trainee count are still
-  // named, just without the number.
-  const listAnd = (items) => items.length <= 1
-    ? (items[0] || '')
-    : `${items.slice(0, -1).join(', ')} and ${items[items.length - 1]}`;
-
-  const occPhrases = occs.map(o => {
-    const n = parseInt(o.trainees) || 0;
-    return n ? `${o.nameInLetter} training to ${n} participants` : `${o.nameInLetter} training`;
-  });
-  const occupationsWithCounts = occPhrases.length ? listAnd(occPhrases) : 'the proposed occupations';
-
-  return {
-    firm,
-    client: client.shortName || client.fullName || form.clientName || '',
-    occupations: occupationNames,
-    totalTrainees: t,
-    locations: allDistricts.join(', ') || '—',
-    numDistricts: allDistricts.length || '—',
-    durationHours: firstOcc.duration || '—',
-    durationDays: form.durationDays || '—',
-    numGroups: form.numGroups || '—',
-    level: firstOcc.level || '—',
-    assignmentName: form.assignmentName || '—',
-    // Conditional lines — resolve to full bullet text or empty string
-    skillTestLine:     hasSkillTest  ? `• Conducted Skill Test for all ${t} trainees.` : '',
-    skillTestNSTBLine: hasSkillTest  ? '• Arranged and managed skills testing together with NSTB.' : '',
-    employmentLine:    hasEmployment ? '• Provided Job placement and business start-up support to the training graduates.' : '',
-    outcomeClause, outcomeSentence, outcomeBullets,
-    ojtClauseWe, ojtClausePassive, ojtClauseStage, ojtClauseTrailing, ojtBullet,
-    districtsPhrase,
-    occupationsWithCounts,
-  };
-}
-
-function applyTemplate(template, vals) {
-  return template.preview
-    .replace(/\{(\w+)\}/g, (_, k) => vals[k] ?? `{${k}}`)
-    // Remove lines that became empty after conditional placeholders resolved to ''
-    .split('\n').filter(line => line.trim() !== '').join('\n')
-    // Conditional clauses carry their own leading space; trim what they leave behind.
-    .replace(/[ \t]+$/gm, '')
-    .trim();
-}
+// ── Fill functions ───────────────────────────────────────────────────────────
+// Values and substitution live in templateValues.js, shared with the 3(A)
+// description templates so the two cannot drift apart.
 
 export function fillNarrativeTemplate(variationId, form, institute, clients) {
   const v = NARRATIVE_VARIATIONS.find(x => x.id === variationId);
-  return v ? applyTemplate(v, buildValues(form, institute, clients)) : '';
+  return v ? applyTemplate(v.preview, buildTemplateValues(form, institute, clients)) : '';
 }
 
 export function fillServicesTemplate(variationId, form, institute, clients) {
   const v = SERVICES_VARIATIONS.find(x => x.id === variationId);
-  return v ? applyTemplate(v, buildValues(form, institute, clients)) : '';
+  return v ? applyTemplate(v.preview, buildTemplateValues(form, institute, clients)) : '';
 }

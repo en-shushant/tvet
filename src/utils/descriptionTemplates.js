@@ -1,3 +1,5 @@
+import { buildTemplateValues, applyTemplate } from './templateValues.js';
+
 // Description-of-work templates for PPMO 3(A) General Work Experience
 // Each variation uses {placeholders} substituted from assignment form data.
 // Add new variations by appending to the VARIATIONS array.
@@ -63,58 +65,56 @@ export const DESCRIPTION_VARIATIONS = [
     label: 'V12 — JV / consortium',
     preview: '{firm} in joint venture implemented {assignmentName} for {client}, providing {occupations} training to {totalTrainees} trainees from {locations}.',
   },
+  // ── Firm-assignable, paired 1:1 with the 3(B) service narratives S13–S17 ────
+  // Same seven-step sequence — social marketing → awareness → selection →
+  // training delivery → OJT → skill test → placement — and the same voice as its
+  // S-counterpart, but condensed: 3(A) is a cell in a seven-column table, not a
+  // section of its own. Assign V13 to the firm using S13, V14 with S14, and so on.
+  {
+    id: 'v13',
+    label: 'V13 — Sequence, direct (pairs with S13)',
+    preview:
+      'Conducted social marketing, awareness and participant selection in {districtsPhrase}, and provided {occupationsWithCounts} with soft skills, employability skills, health and safety, entrepreneurship and gender sensitivity orientation{ojtTerse}{outcomeTerse}.',
+  },
+  {
+    id: 'v14',
+    label: 'V14 — Sequence, formal (pairs with S14)',
+    preview:
+      'Social marketing, awareness and participant selection were carried out across {districtsPhrase}, and {firm} delivered {occupationsWithCounts} with soft skills, employability skills, occupational health and safety, entrepreneurship and gender sensitivity orientation{ojtTerse}{outcomeTerse}.',
+  },
+  {
+    id: 'v15',
+    label: 'V15 — Sequence, explicit stages (pairs with S15)',
+    preview:
+      'Beginning with social marketing and awareness across {districtsPhrase} and the selection of motivated participants, {firm} then delivered {occupationsWithCounts} alongside soft skills, employability skills, health and safety, entrepreneurship and gender sensitivity orientation{ojtTerse}{outcomeTerse}.',
+  },
+  {
+    id: 'v16',
+    label: 'V16 — Sequence, bulleted (pairs with S16)',
+    preview:
+      '• Social marketing, awareness and participant selection in {districtsPhrase}.\n• {occupationsWithCounts}.\n• Soft skills, employability skills, health and safety, entrepreneurship and gender sensitivity orientation for all {totalTrainees} participants.{ojtBullet}{outcomeBullets}',
+  },
+  {
+    id: 'v17',
+    label: 'V17 — Sequence, concise (pairs with S17)',
+    preview:
+      'Following social marketing and awareness in {districtsPhrase}, {firm} selected participants and delivered {occupationsWithCounts}, with soft skills, employability skills, health and safety, entrepreneurship and gender sensitivity orientation{ojtTerse}{outcomeTerse}.',
+  }
+
 ];
 
 /**
- * Fill a template variation with real values from the assignment form.
- * @param {string} variationId  — e.g. 'v1'
- * @param {object} form         — ExperienceForm state
- * @param {object} institute    — normInst() result (has .acronym, .name)
- * @param {Array}  clients      — array of normClient() results
+ * Fill a 3(A) description variation. Values come from templateValues.js, shared
+ * with the 3(B) templates; only the durationHours fallback differs — 3(A) will
+ * estimate hours from the assignment's month count when no per-occupation
+ * duration was recorded.
  */
 export function fillDescriptionTemplate(variationId, form, institute, clients) {
   const variation = DESCRIPTION_VARIATIONS.find(v => v.id === variationId);
   if (!variation) return '';
-
-  // Resolve client
-  const client = (clients || []).find(c => c.id === form.clientId) || {};
-  const clientName = client.shortName || client.fullName || form.clientName || '';
-
-  // Resolve firm
-  const firm = institute?.acronym || institute?.name || '';
-
-  // Occupations
-  const occs = (form.occupations || []).filter(o => o.nameInLetter);
-  const occupationNames = occs.map(o => o.nameInLetter).join(', ') || '';
-
-  // Trainees
-  const totalTrainees = occs.reduce((sum, o) => sum + (parseInt(o.trainees) || 0), 0) || '';
-
-  // Locations (districts from all occupations)
-  const allDistricts = [...new Set(
-    occs.flatMap(o => (o.locations || []).map(l => l.district).filter(Boolean))
-  )];
-  const locations = allDistricts.join(', ') || '';
-  const numDistricts = allDistricts.length || '';
-
-  // Duration / level from first occupation
-  const firstOcc = occs[0] || {};
-  const durationHours = firstOcc.duration || form.durationMonths * 30 * 8 || '';
-  const level = firstOcc.level || '';
-
-  const values = {
-    firm,
-    client: clientName,
-    occupations: occupationNames,
-    totalTrainees: totalTrainees || '—',
-    locations: locations || '—',
-    numDistricts: numDistricts || '—',
-    durationHours: durationHours || '—',
-    durationDays: form.durationDays || '—',
-    numGroups: form.numGroups || '—',
-    level: level || '—',
-    assignmentName: form.assignmentName || '—',
-  };
-
-  return variation.preview.replace(/\{(\w+)\}/g, (_, key) => values[key] ?? `{${key}}`);
+  const vals = buildTemplateValues(form, institute, clients);
+  if (vals.durationHours === '—' && form.durationMonths) {
+    vals.durationHours = form.durationMonths * 30 * 8;
+  }
+  return applyTemplate(variation.preview, vals);
 }
