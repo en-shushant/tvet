@@ -165,7 +165,7 @@ export const SERVICES_VARIATIONS = [
     // count and the aggregate placement rate only when the assignment recorded
     // them, and collapses to nothing when it recorded neither.
     preview:
-      'We conducted awareness programs, selected motivated participants, and managed suitable training venues in targeted areas. Participants received practical training in proposed occupations, along with soft skills, employability skills, health and safety, and entrepreneurship. Gender sensitivity orientation was provided{outcomeClause}.',
+      'We conducted awareness programs, selected motivated participants, and managed suitable training venues in {districtsPhrase}. Participants received practical training in proposed occupations, along with soft skills, employability skills, health and safety, and entrepreneurship. Gender sensitivity orientation was provided{outcomeClause}.',
   },
 ];
 
@@ -218,6 +218,11 @@ function buildValues(form, institute, clients) {
   if (placementPct != null) outcomes.push(`achieved (${placementPct}%) of verified employment placement`);
   const outcomeClause = outcomes.length ? `, and ${outcomes.join(' and ')}` : '';
 
+  // Districts as prose. Separate from `locations`, which resolves to an em dash
+  // when empty — fine inside a table cell, but "venues in —" is not a sentence,
+  // so this falls back to the generic wording instead.
+  const districtsPhrase = allDistricts.length ? allDistricts.join(', ') : 'targeted areas';
+
   return {
     firm,
     client: client.shortName || client.fullName || form.clientName || '',
@@ -235,6 +240,7 @@ function buildValues(form, institute, clients) {
     skillTestNSTBLine: hasSkillTest  ? '• Arranged and managed skills testing together with NSTB.' : '',
     employmentLine:    hasEmployment ? '• Provided Job placement and business start-up support to the training graduates.' : '',
     outcomeClause,
+    districtsPhrase,
   };
 }
 
