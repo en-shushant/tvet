@@ -25,9 +25,12 @@ export function PageHeader({ title, emphasis, sub, breadcrumb, actions }) {
         {breadcrumb && (
           <nav style={{fontSize:'var(--fs-meta)', color:'var(--text3)', marginBottom:6}}>{breadcrumb}</nav>
         )}
-        <h1 style={{fontSize:'var(--fs-display)', lineHeight:1.1, letterSpacing:'-0.02em',
-          fontWeight:400, color:'var(--text)', margin:0}}>
-          {title}{emphasis && <strong style={{fontWeight:800}}> {emphasis}</strong>}
+        {/* Soria is a single-weight display face, so the light/bold mix the sans
+            version used is not available — the emphasis carries on colour
+            instead. Tracking is loosened slightly: Didones set tightly at large
+            sizes lose their hairlines into each other. */}
+        <h1 className="page-title">
+          {title}{emphasis && <strong> {emphasis}</strong>}
         </h1>
         {sub && <p style={{fontSize:'var(--fs-body)', color:'var(--text3)', margin:'6px 0 0'}}>{sub}</p>}
       </div>

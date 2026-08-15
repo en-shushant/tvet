@@ -4,6 +4,21 @@
    Material Design 3 System Tokens — mapped to app palette
    These drive @material/web component colours automatically.
    ═══════════════════════════════════════════════════════════════ */
+/* ── Soria ──────────────────────────────────────────────────────────────────
+   A single 700-weight Didone display face, self-hosted alongside Kalimati
+   rather than pulled from a third-party CDN at runtime.
+   Display only, by necessity as much as by choice: there is exactly one weight,
+   and a high-contrast serif with hairline strokes is unreadable at the 12–14px
+   this app spends most of its time in. Body text, tables and controls stay on
+   Manrope. */
+@font-face {
+  font-family: 'Soria';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('/fonts/Soria-Bold.woff') format('woff');
+}
+
 :root {
   /* Primary */
   --md-sys-color-primary:              #5D87FF;
@@ -321,6 +336,9 @@ md-secondary-tab {
 
   /* Display scale — the reference's oversized numerals and titles. */
   --fs-display: 38px;
+  /* Page titles and the brand. Falls through to a Didone-ish stack, then to
+     the UI face, so a failed download degrades to something deliberate. */
+  --font-display: 'Soria', 'Didot', 'Bodoni MT', 'Playfair Display', Georgia, var(--font);
   --fs-kpi:     40px;
   --fs-title:   22px;
   --fs-card:    16px;
@@ -1930,3 +1948,17 @@ md-outlined-button.danger {
   --md-outlined-button-icon-color:                var(--error);
   --md-outlined-button-hover-icon-color:          var(--error);
 }
+
+/* ── Display titles ─────────────────────────────────────────────────────── */
+.page-title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: var(--fs-display);
+  line-height: 1.15;
+  /* Positive, not negative: a Didone's thin strokes need air between letters at
+     display size, where the sans wanted -0.02em to feel tight. */
+  letter-spacing: 0.005em;
+  color: var(--text);
+}
+.page-title strong { font-weight: 700; color: var(--primary); }
