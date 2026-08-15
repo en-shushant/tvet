@@ -5,6 +5,7 @@ import { exportToCSV } from '../utils/export.js';
 import { Btn } from '../md.jsx';
 import { fyInRange, fyYear } from '../reports/helpers.js';
 import REPORT_FAMILIES from '../reports/index.js';
+import { TOOL_COLUMN_OPTIONS, TOOL_TYPE_OPTIONS, DEFAULT_TOOL_COLS } from '../reports/bolpatra.jsx';
 
 const FILTER_KEY = 'tvettrack_reports_filters_v1';
 function loadFilters() {
@@ -53,6 +54,8 @@ function ReportsView({ institutes, clients }) {
   // Stored tool quantities are per training event; a bid running several
   // events needs them scaled up.
   const [eoiEvents, setEoiEvents] = useState(f.eoiEvents || 1);
+  const [eoiToolCols, setEoiToolCols] = useState(f.eoiToolCols || DEFAULT_TOOL_COLS);
+  const [eoiToolTypes, setEoiToolTypes] = useState(f.eoiToolTypes || []);  // empty = all types
   const [nstbComparative, setNstbComparative] = useState(false);
   const [nstbThreshold, setNstbThreshold] = useState('');
 
@@ -77,8 +80,8 @@ function ReportsView({ institutes, clients }) {
   const [enssureToolsData, setEnssureToolsData] = useState([]);
 
   // Persist key filter state to sessionStorage
-  useEffect(() => { saveFilters({ familyId, selectedInst, reportId, fromFY, toFY, turnFromFY, turnToFY, eoiToolsLevel, eoiEvents, filterDuration, enssureOccIds, enssureToolsOccId, enssureToolsLevel, enssureEvents }); },
-    [familyId, selectedInst, reportId, fromFY, toFY, turnFromFY, turnToFY, eoiToolsLevel, eoiEvents, filterDuration, enssureOccIds, enssureToolsOccId, enssureToolsLevel, enssureEvents]);
+  useEffect(() => { saveFilters({ familyId, selectedInst, reportId, fromFY, toFY, turnFromFY, turnToFY, eoiToolsLevel, eoiEvents, eoiToolCols, eoiToolTypes, filterDuration, enssureOccIds, enssureToolsOccId, enssureToolsLevel, enssureEvents }); },
+    [familyId, selectedInst, reportId, fromFY, toFY, turnFromFY, turnToFY, eoiToolsLevel, eoiEvents, eoiToolCols, eoiToolTypes, filterDuration, enssureOccIds, enssureToolsOccId, enssureToolsLevel, enssureEvents]);
 
   // Fetch tools for explicitly selected D2/D3 occupation + level
   useEffect(() => {
@@ -319,7 +322,7 @@ function ReportsView({ institutes, clients }) {
   }, [familyId, fullInst, activeExps]);
 
   const opts = { fromFY, toFY, turnoverFromFY: turnFromFY, turnoverToFY: turnToFY,
-    bolpatraTools: eoiTools, eoiToolsLevel, eoiEvents, selectedOccs, occupations, sortBy,
+    bolpatraTools: eoiTools, eoiToolsLevel, eoiEvents, eoiToolCols, eoiToolTypes, selectedOccs, occupations, sortBy,
     toolsOccIds, toolsLevel, toolsTypeFilter, toolsColumns, toolsLayout, toolsData, numGroups,
     enssureOccs, enssureOccIds, enssureToolsData, enssureToolsOccId, enssureToolsLevel, enssureEvents,
     filterDuration, clients };
@@ -655,6 +658,36 @@ function ReportsView({ institutes, clients }) {
                     ? `Tools listed for ${eoiOccIds.length} occupation${eoiOccIds.length !== 1 ? 's' : ''} at this level`
                       + (eoiEvents > 1 ? `, quantities \u00d7 ${eoiEvents}.` : '.')
                     : 'Pick occupations below to list their tools.'}
+                </div>
+
+                <div className="filter-label" style={{marginTop:12}}>Include types</div>
+                <div className="multi-select-list">
+                  {TOOL_TYPE_OPTIONS.map(t => (
+                    <label key={t} className="multi-select-item">
+                      <input type="checkbox"
+                        checked={eoiToolTypes.length === 0 || eoiToolTypes.includes(t)}
+                        onChange={() => setEoiToolTypes(prev => {
+                          // Empty means "all"; the first tick narrows from the full set.
+                          const cur = prev.length ? prev : TOOL_TYPE_OPTIONS;
+                          const next = cur.includes(t) ? cur.filter(x => x !== t) : [...cur, t];
+                          return next.length === TOOL_TYPE_OPTIONS.length ? [] : next;
+                        })}/>
+                      <span>{t}</span>
+                    </label>
+                  ))}
+                </div>
+
+                <div className="filter-label" style={{marginTop:12}}>Columns</div>
+                <div className="multi-select-list">
+                  {TOOL_COLUMN_OPTIONS.map(c => (
+                    <label key={c.key} className="multi-select-item">
+                      <input type="checkbox" checked={eoiToolCols.includes(c.key)}
+                        disabled={c.key === 'sn' || c.key === 'name'}
+                        onChange={() => setEoiToolCols(prev => prev.includes(c.key)
+                          ? prev.filter(x => x !== c.key) : [...prev, c.key])}/>
+                      <span>{c.label}</span>
+                    </label>
+                  ))}
                 </div>
               </div>
             )}

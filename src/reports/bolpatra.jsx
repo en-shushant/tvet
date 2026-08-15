@@ -344,33 +344,59 @@ function model4bInfra(inst) {
  * is what one event consumes, so a bid running six events needs six times the
  * consumables.
  */
+// Selectable columns, mirroring the Tools & Consumables report so the same
+// choices are available in both places.
+const TOOL_COLUMNS = [
+  { key: 'sn',          label: 'S. No',                 width: 800  },
+  { key: 'name',        label: 'Description',           width: 4000 },
+  { key: 'description', label: 'Detail',                width: 2600 },
+  { key: 'unit',        label: 'Unit',                  width: 1400 },
+  { key: 'quantity',    label: 'Quantity',              width: 1400 },
+  { key: 'ownership',   label: 'Ownership',             width: 1400 },
+  { key: 'type',        label: 'Type',                  width: 1600 },
+  { key: 'remarks',     label: 'Specification/Remarks', width: 2366 },
+];
+export const TOOL_COLUMN_OPTIONS = TOOL_COLUMNS.map(({ key, label }) => ({ key, label }));
+/** The occupation_tools.type values, in the order 4(B) groups them. */
+export const TOOL_TYPE_OPTIONS = TOOL_GROUPS.map(g => g.type);
+export const DEFAULT_TOOL_COLS = ['sn', 'name', 'unit', 'quantity', 'remarks'];
+
 function model4bTools(opts = {}) {
-  const { selectedOccs = [], occupations = [], bolpatraTools = {}, eoiEvents = 1 } = opts;
+  const { selectedOccs = [], occupations = [], bolpatraTools = {}, eoiEvents = 1,
+          eoiToolCols = DEFAULT_TOOL_COLS, eoiToolTypes = [] } = opts;
   const events = Math.max(1, parseInt(eoiEvents) || 1);
+
+  const picked = TOOL_COLUMNS.filter(c => eoiToolCols.includes(c.key));
+  const active = picked.length ? picked : TOOL_COLUMNS.filter(c => DEFAULT_TOOL_COLS.includes(c.key));
+
+  // An empty type selection means every type — matching an "All types" default.
+  const wantType = (t) => !eoiToolTypes.length || eoiToolTypes.includes(t);
 
   const wanted = selectedOccs.map(s => s.toLowerCase());
   const chosen = occupations.filter(o => wanted.includes(String(o.name).toLowerCase()));
 
+  const cellFor = (t, key, i) => {
+    if (key === 'sn') return String(i + 1);
+    // Stored quantities are per training event, so a multi-event bid scales them.
+    if (key === 'quantity') return t.quantity != null ? String(t.quantity * events) : '';
+    if (key === 'name') return dash(t.name) || dash(t.description);
+    return dash(t[key]);
+  };
+
   return {
     events,
     level: opts.eoiToolsLevel || '',
-    columns: ['S. No', 'Description', 'Unit', 'Quantity', 'Specification/Remarks'],
-    widths:  [800, 4000, 1400, 1400, 2366],
+    columns: active.map(c => c.label),
+    widths:  active.map(c => c.width),
     occupations: chosen.map(o => {
-      const items = bolpatraTools[o.id] || [];
+      const items = (bolpatraTools[o.id] || []).filter(t => wantType(t.type));
       const groups = TOOL_GROUPS
         .map(g => ({ label: g.label, rows: items.filter(t => t.type === g.type) }))
         .filter(g => g.rows.length)
         .map((g, gi) => ({
           letter: GROUP_LETTERS[gi] || String(gi + 1),
           label: g.label,
-          rows: g.rows.map((t, i) => [
-            String(i + 1),
-            dash(t.name) || dash(t.description),
-            dash(t.unit),
-            t.quantity != null ? String(t.quantity * events) : '',
-            dash(t.remarks),
-          ]),
+          rows: g.rows.map((t, i) => active.map(c => cellFor(t, c.key, i))),
         }));
       return { name: o.name, groups };
     }),
@@ -453,11 +479,9 @@ function Section4B({ firms, opts = {} }) {
         );
       })}
 
-      <div style={{fontWeight:700, fontSize:12.5, margin:'20px 0 6px'}}>
-        Tools and Equipment
-        {tools.level ? ` — ${tools.level}` : ''}
-        {tools.events > 1 ? ` — quantities for ${tools.events} training events` : ''}
-      </div>
+      {/* No summary heading here: the level and event count are working
+          parameters, not something a submitted bid should announce. Each
+          occupation carries its own heading below. */}
       {tools.occupations.length === 0
         ? <div style={{fontSize:12, color:'var(--text3)'}}>
             Select one or more occupations to list their tools and equipment.
@@ -668,9 +692,6 @@ function html4B(firms, opts = {}) {
       </div>`;
   }).join('');
 
-  const toolsHeading = `Tools and Equipment${tools.level ? ` — ${tools.level}` : ''}`
-    + (tools.events > 1 ? ` — quantities for ${tools.events} training events` : '');
-
   const occHtml = tools.occupations.length === 0
     ? `<p class="muted">Select one or more occupations to list their tools and equipment.</p>`
     : tools.occupations.map(o => `
@@ -683,7 +704,7 @@ function html4B(firms, opts = {}) {
                 ${htmlGridPlain(tools.columns, g.rows, '')}`).join('')}
         </div>`).join('');
 
-  return `${offices}<div class="sub-h" style="margin-top:18px">${esc(toolsHeading)}</div>${occHtml}`;
+  return `${offices}${occHtml}`;
 }
 
 function htmlSection(section, inst, exps, clients, opts) {
@@ -938,10 +959,6 @@ function docx4B(D, kit, firms, opts = {}) {
   });
 
   const tools = model4bTools(opts);
-  out.push(p(`Tools and Equipment${tools.level ? ` — ${tools.level}` : ''}`
-    + (tools.events > 1 ? ` — quantities for ${tools.events} training events` : ''),
-    { bold: true, spacing: { before: 300, after: 80 } }));
-
   if (!tools.occupations.length) {
     out.push(p('Select one or more occupations to list their tools and equipment.', { italic: true }));
     return out;
