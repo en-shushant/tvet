@@ -69,16 +69,27 @@ export default function BolpatraGapsModal({ exp, institute, clients = [], onSave
   const showClient = !onlyMissing || clientMissing;
   const showLocations = !onlyMissing || locationMissing;
 
-  /** Districts hang off occupations, so each one is edited in place. */
-  const setOccDistrict = (occIdx, district, province) => setForm(f => ({
+  /**
+   * Districts hang off occupations, and an occupation can carry several — the
+   * report joins them all into one location cell. So these add and remove
+   * rather than overwrite; an earlier version edited only the first, which
+   * quietly made a multi-district occupation look single-district.
+   */
+  const addOccDistrict = (occIdx, district, province) => setForm(f => ({
     ...f,
     occupations: f.occupations.map((o, i) => {
-      if (i !== occIdx) return o;
-      const locations = o.locations && o.locations.length
-        ? o.locations.map((l, li) => li === 0 ? { ...l, district, province } : l)
-        : [{ id: uid(), district, province, localLevels: [] }];
-      return { ...o, locations };
+      if (i !== occIdx || !district) return o;
+      const existing = o.locations || [];
+      if (existing.some(l => l.district === district)) return o;   // no duplicates
+      return { ...o, locations: [...existing, { id: uid(), district, province, localLevels: [] }] };
     }),
+  }));
+
+  const removeOccDistrict = (occIdx, district) => setForm(f => ({
+    ...f,
+    occupations: f.occupations.map((o, i) => i !== occIdx
+      ? o
+      : { ...o, locations: (o.locations || []).filter(l => l.district !== district) }),
   }));
 
   const save = async () => {
@@ -168,18 +179,33 @@ export default function BolpatraGapsModal({ exp, institute, clients = [], onSave
                 <div className="gap-note">
                   This assignment has no occupations yet — add one in the full editor first.
                 </div>
-              ) : form.occupations.map((occ, i) => (
-                <div key={occ.id || i} className="gap-occ-row">
-                  <span className="gap-occ-name">
-                    {getOccupation(occ.ctevtOccupationId).name || occ.nameInLetter || `Occupation ${i + 1}`}
-                  </span>
-                  <div className="gap-occ-district">
-                    <DistrictSearch
-                      value={(occ.locations || [])[0]?.district || ''}
-                      onChange={(district, province) => setOccDistrict(i, district, province)}/>
+              ) : form.occupations.map((occ, i) => {
+                const districts = (occ.locations || []).map(l => l.district).filter(Boolean);
+                return (
+                  <div key={occ.id || i} className="gap-occ-row">
+                    <span className="gap-occ-name">
+                      {getOccupation(occ.ctevtOccupationId).name || occ.nameInLetter || `Occupation ${i + 1}`}
+                    </span>
+                    <div className="gap-occ-district">
+                      {districts.length > 0 && (
+                        <div className="gap-chips">
+                          {districts.map(d => (
+                            <span key={d} className="gap-chip-district">
+                              {d}
+                              <button type="button" aria-label={`Remove ${d}`}
+                                onClick={() => removeOccDistrict(i, d)}>&times;</button>
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                      {/* Cleared after each pick so the field is always ready for
+                          the next district rather than showing the last one. */}
+                      <DistrictSearch key={districts.join('|')} value=""
+                        onChange={(district, province) => addOccDistrict(i, district, province)}/>
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </>
