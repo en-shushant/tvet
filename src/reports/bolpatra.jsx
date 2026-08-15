@@ -362,9 +362,11 @@ export const TOOL_TYPE_OPTIONS = TOOL_GROUPS.map(g => g.type);
 export const DEFAULT_TOOL_COLS = ['sn', 'name', 'unit', 'quantity', 'remarks'];
 
 function model4bTools(opts = {}) {
-  const { selectedOccs = [], occupations = [], bolpatraTools = {}, eoiEvents = 1,
-          eoiToolCols = DEFAULT_TOOL_COLS, eoiToolTypes = [] } = opts;
-  const events = Math.max(1, parseInt(eoiEvents) || 1);
+  const { selectedOccs = [], occupations = [], bolpatraTools = {},
+          eoiEventsByOcc = {}, eoiToolCols = DEFAULT_TOOL_COLS, eoiToolTypes = [] } = opts;
+  // Each occupation runs its own number of events, so quantities scale per
+  // occupation rather than by one figure across the whole bid.
+  const eventsFor = (occId) => Math.max(1, parseInt(eoiEventsByOcc[occId]) || 1);
 
   const picked = TOOL_COLUMNS.filter(c => eoiToolCols.includes(c.key));
   const active = picked.length ? picked : TOOL_COLUMNS.filter(c => DEFAULT_TOOL_COLS.includes(c.key));
@@ -375,20 +377,21 @@ function model4bTools(opts = {}) {
   const wanted = selectedOccs.map(s => s.toLowerCase());
   const chosen = occupations.filter(o => wanted.includes(String(o.name).toLowerCase()));
 
-  const cellFor = (t, key, i) => {
+  const cellFor = (t, key, i, events) => {
     if (key === 'sn') return String(i + 1);
-    // Stored quantities are per training event, so a multi-event bid scales them.
+    // Stored quantities are what one event consumes, so scale by that
+    // occupation's event count.
     if (key === 'quantity') return t.quantity != null ? String(t.quantity * events) : '';
     if (key === 'name') return dash(t.name) || dash(t.description);
     return dash(t[key]);
   };
 
   return {
-    events,
     level: opts.eoiToolsLevel || '',
     columns: active.map(c => c.label),
     widths:  active.map(c => c.width),
     occupations: chosen.map(o => {
+      const events = eventsFor(o.id);
       const items = (bolpatraTools[o.id] || []).filter(t => wantType(t.type));
       const groups = TOOL_GROUPS
         .map(g => ({ label: g.label, rows: items.filter(t => t.type === g.type) }))
@@ -396,9 +399,9 @@ function model4bTools(opts = {}) {
         .map((g, gi) => ({
           letter: GROUP_LETTERS[gi] || String(gi + 1),
           label: g.label,
-          rows: g.rows.map((t, i) => active.map(c => cellFor(t, c.key, i))),
+          rows: g.rows.map((t, i) => active.map(c => cellFor(t, c.key, i, events))),
         }));
-      return { name: o.name, groups };
+      return { name: o.name, events, groups };
     }),
   };
 }
@@ -490,6 +493,7 @@ function Section4B({ firms, opts = {} }) {
             <div key={o.name} style={{marginTop:16}}>
               <div style={{fontWeight:600, fontSize:12.5, marginBottom:6}}>
                 Tools and Equipment for {o.name} Training
+                {o.events > 1 && <span style={{fontWeight:400, color:'var(--text3)'}}> ({o.events} events)</span>}
               </div>
               {o.groups.length === 0
                 ? <div style={{fontSize:12, color:'var(--text3)'}}>
@@ -696,7 +700,7 @@ function html4B(firms, opts = {}) {
     ? `<p class="muted">Select one or more occupations to list their tools and equipment.</p>`
     : tools.occupations.map(o => `
         <div class="tool-block">
-          <div class="grp">Tools and Equipment for ${esc(o.name)} Training</div>
+          <div class="grp">Tools and Equipment for ${esc(o.name)} Training${o.events > 1 ? ` (${o.events} events)` : ''}</div>
           ${o.groups.length === 0
             ? `<p class="muted">No tools recorded for this occupation at the selected level.</p>`
             : o.groups.map(g => `
@@ -965,7 +969,8 @@ function docx4B(D, kit, firms, opts = {}) {
   }
 
   tools.occupations.forEach(o => {
-    out.push(p(`Tools and Equipment for ${o.name} Training`,
+    out.push(p(`Tools and Equipment for ${o.name} Training`
+      + (o.events > 1 ? ` (${o.events} events)` : ''),
       { bold: true, spacing: { before: 260, after: 80 } }));
     if (!o.groups.length) {
       out.push(p('No tools recorded for this occupation at the selected level.', { italic: true }));
@@ -1162,6 +1167,10 @@ const bolpatra = {
   id: 'bolpatra',
   label: 'Bolpatra (Standard EOI)',
   multiInstitute: true,
+  // The EOI is configured before it is built, so the controls read as a setup
+  // step across the top rather than a sidebar beside a document that is not
+  // there yet — and the assembled A4 pages get the full page width.
+  filtersOnTop: true,
   // Receive assignments filtered only by FY. Occupation and duration are applied
   // here instead, so they narrow 3(B) Specific Experience without also stripping
   // rows out of 3(A) General Work Experience.

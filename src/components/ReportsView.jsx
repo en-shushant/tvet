@@ -51,9 +51,10 @@ function ReportsView({ institutes, clients }) {
   // Level for the 4(B) tools tables — occupation_tools are stored per level.
   const [eoiToolsLevel, setEoiToolsLevel] = useState(f.eoiToolsLevel || 'Level 1');
   const [eoiTools, setEoiTools] = useState({});
-  // Stored tool quantities are per training event; a bid running several
-  // events needs them scaled up.
-  const [eoiEvents, setEoiEvents] = useState(f.eoiEvents || 1);
+  // Stored tool quantities are what one training event consumes. Each occupation
+  // runs its own number of events, so this is a map of occupation id -> count
+  // rather than one figure for the whole bid.
+  const [eoiEventsByOcc, setEoiEventsByOcc] = useState(f.eoiEventsByOcc || {});
   const [eoiToolCols, setEoiToolCols] = useState(f.eoiToolCols || DEFAULT_TOOL_COLS);
   const [eoiToolTypes, setEoiToolTypes] = useState(f.eoiToolTypes || []);  // empty = all types
   // Multi-firm reports render only when asked. Building a joint-venture EOI
@@ -85,8 +86,8 @@ function ReportsView({ institutes, clients }) {
   const [enssureToolsData, setEnssureToolsData] = useState([]);
 
   // Persist key filter state to sessionStorage
-  useEffect(() => { saveFilters({ familyId, selectedInst, reportId, fromFY, toFY, turnFromFY, turnToFY, eoiToolsLevel, eoiEvents, eoiToolCols, eoiToolTypes, filterDuration, enssureOccIds, enssureToolsOccId, enssureToolsLevel, enssureEvents }); },
-    [familyId, selectedInst, reportId, fromFY, toFY, turnFromFY, turnToFY, eoiToolsLevel, eoiEvents, eoiToolCols, eoiToolTypes, filterDuration, enssureOccIds, enssureToolsOccId, enssureToolsLevel, enssureEvents]);
+  useEffect(() => { saveFilters({ familyId, selectedInst, reportId, fromFY, toFY, turnFromFY, turnToFY, eoiToolsLevel, eoiEventsByOcc, eoiToolCols, eoiToolTypes, filterDuration, enssureOccIds, enssureToolsOccId, enssureToolsLevel, enssureEvents }); },
+    [familyId, selectedInst, reportId, fromFY, toFY, turnFromFY, turnToFY, eoiToolsLevel, eoiEventsByOcc, eoiToolCols, eoiToolTypes, filterDuration, enssureOccIds, enssureToolsOccId, enssureToolsLevel, enssureEvents]);
 
   // Fetch tools for explicitly selected D2/D3 occupation + level
   useEffect(() => {
@@ -134,6 +135,7 @@ function ReportsView({ institutes, clients }) {
 
   // Load multi-institute data for firm-wise
   const isMultiInst = !!family.multiInstitute;
+  const filtersOnTop = !!family.filtersOnTop;
   useEffect(() => {
     if (!isMultiInst) return;
     const token = getSession()?.token;
@@ -327,7 +329,7 @@ function ReportsView({ institutes, clients }) {
   }, [familyId, fullInst, activeExps]);
 
   const opts = { fromFY, toFY, turnoverFromFY: turnFromFY, turnoverToFY: turnToFY,
-    bolpatraTools: eoiTools, eoiToolsLevel, eoiEvents, eoiToolCols, eoiToolTypes, selectedOccs, occupations, sortBy,
+    bolpatraTools: eoiTools, eoiToolsLevel, eoiEventsByOcc, eoiToolCols, eoiToolTypes, selectedOccs, occupations, sortBy,
     toolsOccIds, toolsLevel, toolsTypeFilter, toolsColumns, toolsLayout, toolsData, numGroups,
     enssureOccs, enssureOccIds, enssureToolsData, enssureToolsOccId, enssureToolsLevel, enssureEvents,
     filterDuration, clients };
@@ -372,7 +374,7 @@ function ReportsView({ institutes, clients }) {
   const filterSig = JSON.stringify([
     reportId, fwInstIds, fwLeadId, fromFY, toFY, turnFromFY, turnToFY,
     selectedOccs, filterDuration, filterDonorTypes,
-    eoiToolsLevel, eoiEvents, eoiToolCols, eoiToolTypes,
+    eoiToolsLevel, eoiEventsByOcc, eoiToolCols, eoiToolTypes,
   ]);
   const isStale = renderedSig !== null && renderedSig !== filterSig;
   const showReport = () => setRenderedSig(filterSig);
@@ -532,15 +534,18 @@ function ReportsView({ institutes, clients }) {
         </div>
       )}
 
-      {/* ── Two-column layout ── */}
-      <div style={{display:'flex', gap:20, alignItems:'flex-start'}}>
+      {/* Sidebar beside the results, or a full-width setup bar above them when the
+          family asks for it (bolpatra — see filtersOnTop). */}
+      <div style={filtersOnTop
+        ? {display:'flex', flexDirection:'column', gap:16}
+        : {display:'flex', gap:20, alignItems:'flex-start'}}>
 
         {/* ── Filter panel ── */}
-        <div className="filter-panel">
+        <div className={filtersOnTop ? 'filter-panel filter-panel-top' : 'filter-panel'}>
           <div className="filter-panel-header">
-            <span className="filter-panel-header-title">Filters</span>
+            <span className="filter-panel-header-title">{filtersOnTop ? 'Set up the document' : 'Filters'}</span>
           </div>
-          <div className="filter-panel-body">
+          <div className={filtersOnTop ? 'filter-panel-body filter-grid' : 'filter-panel-body'}>
 
             {/* ENSSURE — missing data warning badge */}
             {familyId === 'enssure' && fullInst && enssureMissingCount > 0 && (
@@ -626,10 +631,15 @@ function ReportsView({ institutes, clients }) {
                         <div key={id} style={{display:'flex', alignItems:'center', gap:8, padding:'6px 8px',
                           borderTop:'1px solid var(--border)', fontSize:12}}>
                           {fwInstIds.length > 1 && (
-                            <label style={{display:'flex', alignItems:'center', gap:5, cursor:'pointer', whiteSpace:'nowrap'}}
+                            /* margin:0 overrides the global `label { display:block;
+                               margin-bottom:6px }`, which pushed this out of the row
+                               and let the firm name overlap the role chip. */
+                            <label style={{display:'flex', alignItems:'center', gap:5, margin:0,
+                              flexShrink:0, cursor:'pointer', whiteSpace:'nowrap'}}
                               title={isLead ? 'Lead firm' : 'Mark as lead firm'}>
-                              <input type="radio" name="fw-lead" checked={isLead} onChange={() => setFwLeadId(id)}/>
-                              <span style={{fontSize:10, fontWeight:700,
+                              <input type="radio" name="fw-lead" checked={isLead} onChange={() => setFwLeadId(id)}
+                                style={{margin:0}}/>
+                              <span style={{fontSize:10, fontWeight:700, width:30, display:'inline-block',
                                 color: isLead ? 'var(--accent)' : 'var(--text3)'}}>
                                 {isLead ? 'LEAD' : 'JV'}
                               </span>
@@ -669,15 +679,31 @@ function ReportsView({ institutes, clients }) {
                   <option>N/A</option><option>Level 1</option><option>Level 2</option>
                   <option>Level 3</option><option>Professional</option><option>Technician</option>
                 </select>
-                <div className="filter-label" style={{marginTop:10}}>Number of training events</div>
-                <input type="number" min="1" className="form-input" value={eoiEvents}
-                  onChange={e => setEoiEvents(Math.max(1, parseInt(e.target.value) || 1))}/>
-                <div className="input-hint" style={{marginTop:4}}>
-                  {eoiOccIds.length
-                    ? `Tools listed for ${eoiOccIds.length} occupation${eoiOccIds.length !== 1 ? 's' : ''} at this level`
-                      + (eoiEvents > 1 ? `, quantities \u00d7 ${eoiEvents}.` : '.')
-                    : 'Pick occupations below to list their tools.'}
-                </div>
+                <div className="filter-label" style={{marginTop:12}}>Training events per occupation</div>
+                {eoiOccIds.length === 0 ? (
+                  <div className="input-hint">Pick occupations below to list their tools.</div>
+                ) : (
+                  <>
+                    {eoiOccIds.map(id => {
+                      const o = occupations.find(x => x.id === id);
+                      const n = eoiEventsByOcc[id] ?? 1;
+                      return (
+                        <div key={id} style={{display:'flex', alignItems:'center', gap:8, marginBottom:6}}>
+                          <span style={{flex:1, minWidth:0, fontSize:12, overflow:'hidden',
+                            textOverflow:'ellipsis', whiteSpace:'nowrap'}} title={o?.name}>{o?.name || id}</span>
+                          <input type="number" min="1" className="form-input" value={n}
+                            style={{width:68, flexShrink:0, padding:'4px 8px', fontSize:12}}
+                            onChange={e => setEoiEventsByOcc(prev => ({
+                              ...prev, [id]: Math.max(1, parseInt(e.target.value) || 1),
+                            }))}/>
+                        </div>
+                      );
+                    })}
+                    <div className="input-hint" style={{marginTop:2}}>
+                      Quantities are per event and scale by each occupation&rsquo;s count.
+                    </div>
+                  </>
+                )}
 
                 <div className="filter-label" style={{marginTop:12}}>Include types</div>
                 <div className="multi-select-list">

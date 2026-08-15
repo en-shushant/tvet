@@ -976,6 +976,26 @@ textarea { resize: vertical; min-height: 80px; }
   position: sticky; top: 0;
   box-shadow: var(--shadow);
 }
+/* Full-width variant: the controls read as a setup step above the document
+   rather than a sidebar beside it. Sections flow into columns so a long list of
+   filters stays scannable instead of becoming a very tall single column. */
+.filter-panel-top {
+  width: 100%;
+  flex-shrink: 1;
+  position: static;
+}
+.filter-panel-top .filter-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+  gap: 8px 22px;
+  align-items: start;
+}
+/* The multi-selects inside a top bar would otherwise grow unbounded. */
+.filter-panel-top .multi-select-list { max-height: 190px; overflow-y: auto; }
+@media (max-width: 720px) {
+  .filter-panel-top .filter-grid { grid-template-columns: 1fr; }
+}
+
 .filter-panel-header {
   padding: 16px 18px 14px;
   border-bottom: 1px solid var(--border);
