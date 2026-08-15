@@ -165,7 +165,7 @@ export const SERVICES_VARIATIONS = [
     // count and the aggregate placement rate only when the assignment recorded
     // them, and collapses to nothing when it recorded neither.
     preview:
-      'We conducted awareness programs, selected motivated participants, and managed suitable training venues in {districtsPhrase}. Participants received practical training in proposed occupations, along with soft skills, employability skills, health and safety, and entrepreneurship. Gender sensitivity orientation was provided{outcomeClause}.',
+      'We conducted awareness programs, selected motivated participants, and managed suitable training venues in {districtsPhrase}. We provided {occupationsWithCounts}, along with soft skills, employability skills, health and safety, and entrepreneurship. Gender sensitivity orientation was provided{outcomeClause}.',
   },
 ];
 
@@ -223,6 +223,20 @@ function buildValues(form, institute, clients) {
   // so this falls back to the generic wording instead.
   const districtsPhrase = allDistricts.length ? allDistricts.join(', ') : 'targeted areas';
 
+  // "Beautician training to 40 participants, Tailoring training to 20 participants
+  // and Mobile Phone Repair Technician training to 40 participants" — list form,
+  // "and" before the last item. Occupations without a trainee count are still
+  // named, just without the number.
+  const listAnd = (items) => items.length <= 1
+    ? (items[0] || '')
+    : `${items.slice(0, -1).join(', ')} and ${items[items.length - 1]}`;
+
+  const occPhrases = occs.map(o => {
+    const n = parseInt(o.trainees) || 0;
+    return n ? `${o.nameInLetter} training to ${n} participants` : `${o.nameInLetter} training`;
+  });
+  const occupationsWithCounts = occPhrases.length ? listAnd(occPhrases) : 'the proposed occupations';
+
   return {
     firm,
     client: client.shortName || client.fullName || form.clientName || '',
@@ -241,6 +255,7 @@ function buildValues(form, institute, clients) {
     employmentLine:    hasEmployment ? '• Provided Job placement and business start-up support to the training graduates.' : '',
     outcomeClause,
     districtsPhrase,
+    occupationsWithCounts,
   };
 }
 
