@@ -10,6 +10,7 @@ import AnalyticsView from './components/AnalyticsView.jsx';
 import ComplianceCentre from './components/ComplianceCentre.jsx';
 import DocumentsCentre from './components/DocumentsCentre.jsx';
 import DataQuality from './components/DataQuality.jsx';
+import ClientsView from './components/ClientsView.jsx';
 import JVGroupPanel from './components/JVGroupPanel.jsx';
 import ProjectCompliance from './components/ProjectCompliance.jsx';
 import MasterData from './components/MasterData.jsx';
@@ -326,6 +327,7 @@ function App() {
     {id:'reports', icon:'description', label:'Reports', group:'Analytics', shortlistHidden: true},
     {id:'renewals', icon:'event_repeat', label:'Renewals & Compliance', group:'Operations', shortlistHidden: true},
     {id:'documents', icon:'folder_shared', label:'Documents', group:'Operations'},
+    {id:'clients', icon:'apartment', label:'Clients', group:'Main', shortlistHidden: true},
     {id:'quality', icon:'rule', label:'Data Quality', group:'System', shortlistHidden: true},
     {id:'compliance', icon:'fact_check', label:'Project Compliance', group:'Operations', editorHidden: true, shortlistHidden: true},
     {id:'shortlisting', icon:'playlist_add_check', label:'Shortlisting', group:'Operations'},
@@ -410,6 +412,7 @@ function App() {
     quotations: 'Quotations',
     renewals: 'Renewals & Compliance',
     documents: 'Documents',
+    clients: 'Clients',
     quality: 'Data Quality',
     reports: 'Reports',
     master: 'Master data',
@@ -611,6 +614,10 @@ function App() {
               institutes={isShortlistOnly ? institutes : isAdmin ? institutes : institutes.filter(i => !i.isShortlistingOnly)}
               token={token}
               onOpenInstitute={(inst, t) => handleSelectInstitute(inst).then(() => { if (t) setJumpToTab(t); })}/>
+          )}
+          {screen === 'clients' && (
+            <ClientsView clients={clients} token={token}
+              onGoToMasterData={() => handleNavigate('master')}/>
           )}
           {screen === 'quality' && (
             <DataQuality
