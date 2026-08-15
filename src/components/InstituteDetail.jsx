@@ -40,7 +40,13 @@ function InstituteDetail({institute, clients, onUpdateClients, onBack, onUpdate,
   // Writers (admin + editor + shortlist) can edit documents; viewers are read-only.
   const canEdit = !!(isAdmin || isEditor || isShortlistOnly);
 
-  const switchTab = (t) => { setTab(t); sessionStorage.setItem(tabKey, t); };
+  const [lastCompliance, setLastCompliance] = useState(
+    ['nstb','tax','affiliation','infrastructure'].includes(defaultTab) ? defaultTab : 'nstb');
+  const switchTab = (t) => {
+    setTab(t);
+    sessionStorage.setItem(tabKey, t);
+    if (['nstb','tax','affiliation','infrastructure'].includes(t)) setLastCompliance(t);
+  };
 
   useEffect(() => { if(jumpToTab) switchTab(jumpToTab); }, [jumpToTab]);
 
@@ -64,15 +70,26 @@ function InstituteDetail({institute, clients, onUpdateClients, onBack, onUpdate,
     return [...seen.values()].sort((a,b)=>a.name.localeCompare(b.name));
   }, [institute.experience, clients]);
 
+  /* Compliance folds four record types behind one top-level tab, so the strip
+     stops being eight items wide. The panels themselves are untouched — `tab`
+     still holds the specific sub-tab id, which also keeps the dashboard's
+     deep links (jumpToTab: 'tax', 'nstb', 'affiliation') working unchanged. */
+  const COMPLIANCE_TABS = [
+    {id:'nstb',           label:'NSTB',              count:institute.nstb.length},
+    {id:'tax',            label:'Tax clearance',     count:institute.taxClearance.length},
+    {id:'affiliation',    label:'CTEVT affiliation', count:institute.affiliation.length},
+    {id:'infrastructure', label:'Infrastructure',    count:(institute.infrastructure||[]).length},
+  ];
+  const complianceIds = COMPLIANCE_TABS.map(t => t.id);
+  const inCompliance = complianceIds.includes(tab);
+  const complianceCount = COMPLIANCE_TABS.reduce((n, t) => n + t.count, 0);
+
   const tabs = [
-    {id:'profile', label:'Profile', shortlistHidden: true},
-    {id:'experience', label:`Experience (${institute.experience.length})`, shortlistHidden: true},
-    {id:'clients', label:`Clients (${instituteClients.length})`, shortlistHidden: true},
-    {id:'nstb', label:`NSTB (${institute.nstb.length})`, shortlistHidden: true},
-    {id:'tax', label:`Tax Clearance (${institute.taxClearance.length})`, shortlistHidden: true},
-    {id:'affiliation', label:`CTEVT Affiliation (${institute.affiliation.length})`, shortlistHidden: true},
-    {id:'infrastructure', label:`Infrastructure (${(institute.infrastructure||[]).length})`, shortlistHidden: true},
-    {id:'documents', label:'Documents'},
+    {id:'profile',    label:'Overview', shortlistHidden: true},
+    {id:'experience', label:'Assignments', count:institute.experience.length, shortlistHidden: true},
+    {id:'clients',    label:'Clients', count:instituteClients.length, shortlistHidden: true},
+    {id:'__compliance', label:'Compliance', count:complianceCount, shortlistHidden: true},
+    {id:'documents',  label:'Documents'},
   ].filter(t => !isShortlistOnly || !t.shortlistHidden);
 
   const [saveErr, setSaveErr] = useState('');
@@ -209,38 +226,127 @@ function InstituteDetail({institute, clients, onUpdateClients, onBack, onUpdate,
   return (
     <div className="fade-in">
       {/* Header */}
-      <div style={{display:'flex', alignItems:'center', gap:12, marginBottom:20}}>
-        <Btn className="btn btn-ghost btn-sm" onClick={onBack}>← Back</Btn>
-        <div style={{flex:1}}>
-          <div style={{display:'flex', alignItems:'center', gap:10}}>
-            {logoSrc && <img src={logoSrc} alt="" style={{width:40, height:40, objectFit:'contain', borderRadius:6, border:'1px solid var(--border)', background:'#fff', padding:3}}/>}
-            <h2 style={{fontSize:18, fontWeight:600}}>{institute.name}</h2>
-            {institute.acronym && <span className="badge badge-purple" style={{fontSize:12, fontFamily:'var(--font-mono)'}}>{institute.acronym}</span>}
-            {institute.isShortlistingOnly && (
-              <span style={{fontSize:11, fontWeight:600, padding:'3px 10px', borderRadius:100, background:'var(--warning-light)', color:'#7A4D00', border:'1px solid rgba(255,174,31,.3)'}}>
-                Shortlisting Only
-              </span>
+      {/* ── Header ── */}
+      <button onClick={onBack}
+        style={{display:'inline-flex', alignItems:'center', gap:4, border:'none', background:'none',
+          cursor:'pointer', color:'var(--text3)', fontSize:'var(--fs-meta)', fontFamily:'var(--font)',
+          padding:0, marginBottom:10}}>
+        <span className="material-icons-round" style={{fontSize:15}}>chevron_left</span> Institutes
+      </button>
+
+      <div style={{display:'flex', alignItems:'flex-start', gap:16, flexWrap:'wrap', marginBottom:18}}>
+        {logoSrc && (
+          <img src={logoSrc} alt="" style={{width:52, height:52, objectFit:'contain',
+            borderRadius:14, background:'#fff', padding:4, flexShrink:0}}/>
+        )}
+        <div style={{flex:1, minWidth:240}}>
+          <h1 style={{fontSize:'var(--fs-title)', fontWeight:800, lineHeight:1.25,
+            letterSpacing:'-0.01em', color:'var(--text)', margin:0}}>{institute.name}</h1>
+          <div style={{display:'flex', alignItems:'center', gap:8, marginTop:8, flexWrap:'wrap'}}>
+            {institute.acronym && (
+              <span style={{fontSize:'var(--fs-meta)', fontWeight:700, color:'var(--text3)'}}>{institute.acronym}</span>
             )}
             <StatusBadge status={institute.status}/>
-            {!canEdit && <span className="badge badge-gray" title="Your role does not have edit permission" style={{fontSize:10}}>👁 Read-only</span>}
+            {institute.type && (
+              <span style={{fontSize:'var(--fs-meta)', color:'var(--text3)'}}>{institute.type}</span>
+            )}
+            {institute.isShortlistingOnly && (
+              <span style={{fontSize:11, fontWeight:600, padding:'3px 10px', borderRadius:100,
+                background:'var(--warning-light)', color:'#7A4D00'}}>Shortlisting only</span>
+            )}
+            {!canEdit && (
+              <span style={{fontSize:11, fontWeight:600, padding:'3px 10px', borderRadius:100,
+                background:'var(--bg2)', color:'var(--text3)'}}
+                title="Your role does not have edit permission">Read-only</span>
+            )}
           </div>
-          <div style={{fontSize:12, color:'var(--text3)', marginTop:2}}>
-            Reg: {institute.regNo} &nbsp;·&nbsp; PAN: {institute.pan}
+          <div style={{fontSize:'var(--fs-meta)', color:'var(--text3)', marginTop:8, lineHeight:1.7}}>
+            {[institute.regNo && `Reg. ${institute.regNo}`, institute.pan && `PAN ${institute.pan}`]
+              .filter(Boolean).join('  ·  ')}
+            {institute.address && <div>{institute.address}</div>}
           </div>
         </div>
-        {/* Visible to every role, including read-only viewers — the Documents
-            tab itself already shows uploaded files to anyone, this just makes
-            it easy to find instead of requiring someone to know to click it
-            among the other tabs. */}
-        <Btn className="btn btn-secondary btn-sm" onClick={()=>switchTab('documents')}><span className="material-icons-round" style={{fontSize:14}}>description</span> View Documents</Btn>
-        {canEdit && !isShortlistOnly && <Btn className="btn btn-secondary btn-sm" onClick={()=>setModal({type:'editInstitute'})}><span className="material-icons-round" style={{fontSize:14}}>edit</span> Edit profile</Btn>}
-        {isAdmin && <Btn className="btn btn-danger btn-sm" onClick={()=>setModal({type:'deleteInstitute'})}><span className="material-icons-round" style={{fontSize:14}}>delete</span> Delete</Btn>}
+        <div style={{display:'flex', gap:8, flexWrap:'wrap', flexShrink:0}}>
+          <Btn className="btn btn-secondary btn-sm" onClick={()=>switchTab('documents')}>
+            <span className="material-icons-round" style={{fontSize:14}}>description</span> Documents
+          </Btn>
+          {canEdit && !isShortlistOnly && (
+            <Btn className="btn btn-secondary btn-sm" onClick={()=>setModal({type:'editInstitute'})}>
+              <span className="material-icons-round" style={{fontSize:14}}>edit</span> Edit
+            </Btn>
+          )}
+          {isAdmin && (
+            <Btn className="btn btn-danger btn-sm" onClick={()=>setModal({type:'deleteInstitute'})}>
+              <span className="material-icons-round" style={{fontSize:14}}>delete</span> Delete
+            </Btn>
+          )}
+        </div>
       </div>
 
-      {/* Tabs */}
-      <div className="tabs">
-        {tabs.map(t=><button key={t.id} className={`tab ${tab===t.id?'active':''}`} onClick={()=>switchTab(t.id)}>{t.label}</button>)}
+      {/* Figures the institute list already carries — no extra request. */}
+      {!isShortlistOnly && (
+        <div style={{display:'grid', gap:12, marginBottom:18,
+          gridTemplateColumns:'repeat(auto-fit, minmax(140px, 1fr))'}}>
+          {[
+            ['Trainees',    fmt(institute.totalTrainees),   'periwinkle'],
+            ['Assignments', institute.experience.length,    'blue'],
+            ['Clients',     instituteClients.length,        'mint'],
+            ['ST appeared', fmt(institute.totalStAppeared),  'lilac'],
+            ['Programs',    institute.totalAffPrograms || 0, 'cream'],
+          ].map(([label, value, tone]) => (
+            <div key={label} style={{background:`var(--pastel-${tone})`,
+              borderRadius:'var(--radius-card)', padding:'14px 16px'}}>
+              <div style={{fontSize:26, fontWeight:800, letterSpacing:'-0.02em',
+                color:'var(--on-pastel)', lineHeight:1.1}}>{value}</div>
+              <div style={{fontSize:'var(--fs-meta)', color:'var(--on-pastel-muted)', marginTop:4}}>{label}</div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Two-level strip: five top-level pills, with the compliance record types
+          behind the fourth so the row stays readable. */}
+      <div style={{display:'flex', gap:8, flexWrap:'wrap', marginBottom: inCompliance ? 10 : 18}}>
+        {tabs.map(t => {
+          const active = t.id === '__compliance' ? inCompliance : tab === t.id;
+          const go = () => switchTab(t.id === '__compliance'
+            // Return to whichever compliance record was last open.
+            ? (complianceIds.includes(lastCompliance) ? lastCompliance : 'nstb')
+            : t.id);
+          return (
+            <button key={t.id} onClick={go} role="tab" aria-selected={active}
+              style={{display:'inline-flex', alignItems:'center', gap:7, border:'none',
+                background: active ? 'var(--ink)' : 'var(--bg2)',
+                color: active ? 'var(--on-ink)' : 'var(--text2)',
+                borderRadius:'var(--radius-pill)', padding:'9px 18px',
+                fontSize:'var(--fs-body)', fontWeight: active ? 700 : 500,
+                fontFamily:'var(--font)', cursor:'pointer', transition:'background .16s'}}>
+              {t.label}
+              {t.count != null && <span style={{fontSize:11, opacity:.65}}>{t.count}</span>}
+            </button>
+          );
+        })}
       </div>
+
+      {inCompliance && (
+        <div style={{display:'flex', gap:6, flexWrap:'wrap', marginBottom:18}}>
+          {COMPLIANCE_TABS.map(t => {
+            const active = tab === t.id;
+            return (
+              <button key={t.id} onClick={() => switchTab(t.id)} aria-selected={active}
+                style={{display:'inline-flex', alignItems:'center', gap:6, cursor:'pointer',
+                  background:'transparent', fontFamily:'var(--font)',
+                  border:'1px solid ' + (active ? 'var(--primary)' : 'var(--border)'),
+                  color: active ? 'var(--primary)' : 'var(--text3)',
+                  borderRadius:'var(--radius-pill)', padding:'6px 14px',
+                  fontSize:'var(--fs-meta)', fontWeight: active ? 700 : 500}}>
+                {t.label}<span style={{opacity:.65}}>{t.count}</span>
+              </button>
+            );
+          })}
+        </div>
+      )}
+
       {saveErr && <ErrorBanner msg={saveErr} onDismiss={()=>setSaveErr('')}/>}
 
       {/* Profile tab */}
