@@ -100,6 +100,9 @@ async function runMigrations() {
     `ALTER TABLE institutes ADD COLUMN IF NOT EXISTS org_profile TEXT`,
     `ALTER TABLE institutes ADD COLUMN IF NOT EXISTS total_staff INTEGER`,
     `ALTER TABLE institutes ADD COLUMN IF NOT EXISTS professional_staff INTEGER`,
+    // Projects whose assignments include on-the-job training (EVENT, RERP/SAMRIDDHI,
+    // ENSSURE). Drives the OJT step in the 3(B) services templates.
+    `ALTER TABLE clients ADD COLUMN IF NOT EXISTS includes_ojt BOOLEAN DEFAULT FALSE`,
     `CREATE TABLE IF NOT EXISTS occupation_tools (
       id SERIAL PRIMARY KEY,
       occupation_id INTEGER NOT NULL REFERENCES occupations(id) ON DELETE CASCADE,

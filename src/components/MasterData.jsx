@@ -158,7 +158,7 @@ function MasterData({clients, onUpdateClients, token, isAdmin, isEditor, isSuper
   const updateFY = (i, v) => { if (!/^\d{4}\/\d{2}$/.test(v)) return; const l=[...fiscalYears]; l[i]=v; saveFY(l.sort()); setEditFy(null); };
 
   const ClientForm = ({client, onSave, onClose}) => {
-    const [form, setForm] = useState(client || {fullName:'', shortName:'', type:'Government', address:'', remarks:'', phone:'', email:'', website:'', signatoryName:'', signatoryPosition:'', letterhead:null, nameNp:'', addressNp:''});
+    const [form, setForm] = useState(client || {fullName:'', shortName:'', type:'Government', address:'', remarks:'', phone:'', email:'', website:'', signatoryName:'', signatoryPosition:'', letterhead:null, nameNp:'', addressNp:'', includesOjt:false});
     const set = (k,v) => setForm(f=>({...f,[k]:v}));
     return (
       <Modal title={client ? 'Edit client' : 'Add new client'} onClose={onClose}
@@ -221,6 +221,18 @@ function MasterData({clients, onUpdateClients, token, isAdmin, isEditor, isSuper
               <MdTextField label="Signatory Position / Designation" value={form.signatoryPosition||''} onChange={e=>set('signatoryPosition',e.target.value)} placeholder="e.g. Project Director"/>
             </div>
           </div>
+          <label style={{display:'flex', alignItems:'flex-start', gap:10, padding:'10px 12px',
+            border:'1px solid var(--border)', borderRadius:8, marginBottom:14, cursor:'pointer'}}>
+            <input type="checkbox" style={{marginTop:2}} checked={!!form.includesOjt}
+              onChange={e=>set('includesOjt', e.target.checked)}/>
+            <span>
+              <span style={{fontWeight:600, fontSize:13}}>Assignments include on-the-job training</span>
+              <span style={{display:'block', fontSize:12, color:'var(--text3)', marginTop:2}}>
+                Tick for projects that run an OJT phase — EVENT, RERP/SAMRIDDHI and ENSSURE.
+                The 3(B) services templates then include the OJT step for this client's assignments.
+              </span>
+            </span>
+          </label>
           <div className="form-group">
             <label>Letterhead Image <span style={{fontWeight:400,color:'var(--text3)'}}>(optional — shown at top of generated letters)</span></label>
             <div style={{display:'flex', alignItems:'center', gap:12}}>

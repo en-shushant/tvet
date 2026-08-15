@@ -158,14 +158,42 @@ export const SERVICES_VARIATIONS = [
     preview:
       '{firm} Provided {durationHours} Hours Training to {totalTrainees} Trainees in {occupations}.\n{skillTestNSTBLine}\n• Implemented training across {numDistricts} districts: {locations}.\n• Submitted all required reports and database updates to {client} within the given timeline.',
   },
+  // ── Firm-assignable service narratives ────────────────────────────────────
+  // Five wordings of the same seven-step sequence:
+  //   social marketing → awareness → selection → training delivery → OJT →
+  //   skill test → placement
+  // Assign one per firm so two firms bidding the same tender do not submit
+  // visibly identical prose. The OJT step appears only for clients flagged as
+  // running one; the skill-test and placement steps only when recorded.
   {
     id: 's13',
-    label: 'S13 — Full service narrative with skill test & placement outcomes',
-    // The closing clause is assembled in buildValues: it names the skill-test
-    // count and the aggregate placement rate only when the assignment recorded
-    // them, and collapses to nothing when it recorded neither.
+    label: 'S13 — Sequence, direct (first person)',
     preview:
-      'We conducted awareness programs, selected motivated participants, and managed suitable training venues in {districtsPhrase}. We provided {occupationsWithCounts}, along with soft skills, employability skills, health and safety, and entrepreneurship. Gender sensitivity orientation was provided{outcomeClause}.',
+      'We carried out social marketing and awareness programs in {districtsPhrase}, and selected motivated participants from the communities reached. We provided {occupationsWithCounts}, along with soft skills, employability skills, health and safety, and entrepreneurship, and gender sensitivity orientation was provided at every event.{ojtClauseWe}{outcomeSentence}',
+  },
+  {
+    id: 's14',
+    label: 'S14 — Sequence, formal (third person, passive)',
+    preview:
+      'Social marketing and awareness campaigns were carried out across {districtsPhrase}, from which motivated participants were selected. {firm} delivered {occupationsWithCounts}, each supplemented with soft skills, employability skills, occupational health and safety, and entrepreneurship modules, together with gender sensitivity orientation.{ojtClausePassive}{outcomeSentence}',
+  },
+  {
+    id: 's15',
+    label: 'S15 — Sequence, explicit stages',
+    preview:
+      'The assignment began with social marketing and awareness programs across {districtsPhrase}, followed by the selection of motivated participants. {firm} then delivered {occupationsWithCounts}, with soft skills, employability skills, health and safety, entrepreneurship and gender sensitivity orientation provided alongside.{ojtClauseStage}{outcomeSentence}',
+  },
+  {
+    id: 's16',
+    label: 'S16 — Sequence, bulleted',
+    preview:
+      '• Carried out social marketing and awareness programs in {districtsPhrase}.\n• Selected motivated participants from the communities reached.\n• Delivered {occupationsWithCounts}.\n• Provided soft skills, employability skills, health and safety, entrepreneurship and gender sensitivity orientation to all {totalTrainees} participants.{ojtBullet}{outcomeBullets}',
+  },
+  {
+    id: 's17',
+    label: 'S17 — Sequence, concise',
+    preview:
+      'Following social marketing and awareness programs across {districtsPhrase}, {firm} selected motivated participants and delivered {occupationsWithCounts}. All {totalTrainees} participants also received soft skills, employability skills, health and safety, entrepreneurship and gender sensitivity orientation{ojtClauseTrailing}.{outcomeSentence}',
   },
 ];
 
@@ -210,13 +238,33 @@ function buildValues(form, institute, clients) {
       ? Math.round(plainPcts.reduce((s, n) => s + n, 0) / plainPcts.length)
       : null;
 
-  // Assembled rather than substituted, so the sentence stays grammatical when
-  // one or both figures are absent — a bare "{x}" placeholder would leave a
-  // dangling ", and" on assignments that recorded neither.
-  const outcomes = [];
-  if (skillTestCount) outcomes.push(`skill test was conducted for ${skillTestCount}`);
-  if (placementPct != null) outcomes.push(`achieved (${placementPct}%) of verified employment placement`);
-  const outcomeClause = outcomes.length ? `, and ${outcomes.join(' and ')}` : '';
+  // Steps 6 and 7 of the service sequence. Assembled rather than substituted, so
+  // the sentence stays grammatical when one or both figures are absent — a bare
+  // "{x}" placeholder would leave a dangling ", and" on assignments that recorded
+  // neither. Three shapes because the variations differ in structure.
+  const inline = [], sentence = [], bullets = [];
+  if (skillTestCount) {
+    inline.push(`skill test was conducted for ${skillTestCount}`);
+    sentence.push(`Skill test was conducted for ${skillTestCount} trainees`);
+    bullets.push(`• Skill test was conducted for ${skillTestCount} trainees.`);
+  }
+  if (placementPct != null) {
+    inline.push(`achieved (${placementPct}%) of verified employment placement`);
+    sentence.push(`${placementPct}% verified employment placement was achieved`);
+    bullets.push(`• ${placementPct}% verified employment placement was achieved.`);
+  }
+  const outcomeClause   = inline.length   ? `, and ${inline.join(' and ')}` : '';
+  const outcomeSentence = sentence.length ? ` ${sentence.join(' and ')}.` : '';
+  const outcomeBullets  = bullets.length  ? `\n${bullets.join('\n')}` : '';
+
+  // Step 5. Only some programmes run an on-the-job phase — EVENT, RERP/SAMRIDDHI
+  // and ENSSURE — so it is driven by a flag on the client rather than assumed.
+  const hasOjt = !!client.includesOjt;
+  const ojtClauseWe       = hasOjt ? ' Trainees then completed on-the-job training with relevant enterprises.' : '';
+  const ojtClausePassive  = hasOjt ? ' On-the-job training was subsequently arranged with relevant enterprises.' : '';
+  const ojtClauseStage    = hasOjt ? ' On-the-job training with relevant enterprises followed the classroom phase.' : '';
+  const ojtClauseTrailing = hasOjt ? ', followed by on-the-job training with relevant enterprises' : '';
+  const ojtBullet         = hasOjt ? '\n• Arranged on-the-job training with relevant enterprises.' : '';
 
   // Districts as prose. Separate from `locations`, which resolves to an em dash
   // when empty — fine inside a table cell, but "venues in —" is not a sentence,
@@ -253,7 +301,8 @@ function buildValues(form, institute, clients) {
     skillTestLine:     hasSkillTest  ? `• Conducted Skill Test for all ${t} trainees.` : '',
     skillTestNSTBLine: hasSkillTest  ? '• Arranged and managed skills testing together with NSTB.' : '',
     employmentLine:    hasEmployment ? '• Provided Job placement and business start-up support to the training graduates.' : '',
-    outcomeClause,
+    outcomeClause, outcomeSentence, outcomeBullets,
+    ojtClauseWe, ojtClausePassive, ojtClauseStage, ojtClauseTrailing, ojtBullet,
     districtsPhrase,
     occupationsWithCounts,
   };
@@ -263,7 +312,10 @@ function applyTemplate(template, vals) {
   return template.preview
     .replace(/\{(\w+)\}/g, (_, k) => vals[k] ?? `{${k}}`)
     // Remove lines that became empty after conditional placeholders resolved to ''
-    .split('\n').filter(line => line.trim() !== '').join('\n');
+    .split('\n').filter(line => line.trim() !== '').join('\n')
+    // Conditional clauses carry their own leading space; trim what they leave behind.
+    .replace(/[ \t]+$/gm, '')
+    .trim();
 }
 
 export function fillNarrativeTemplate(variationId, form, institute, clients) {

@@ -280,6 +280,7 @@ export function normClient(r) {
     website: r.website || '',
     signatoryName: r.signatory_name || '',
     signatoryPosition: r.signatory_position || '',
+    includesOjt: !!r.includes_ojt,
     letterhead: r.letterhead || null,
     nameNp: r.name_np || '',
     addressNp: r.address_np || '',
@@ -452,5 +453,6 @@ export function clientToAPI(f) {
     letterhead: f.letterhead || null,
     name_np: f.nameNp || null,
     address_np: f.addressNp || null,
+    includes_ojt: !!f.includesOjt,
   };
 }

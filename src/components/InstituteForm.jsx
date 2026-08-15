@@ -4,6 +4,9 @@ import { ErrorBanner } from './ui/Modal.jsx';
 import { useUnsavedGuard } from './ui/UnsavedGuard.jsx';
 import { INSTITUTE_TYPES, INSTITUTE_STATUSES, CONSTITUTION_TYPES } from '../constants/data.js';
 import { Btn, MdTextField, MdSelect, MdOption, MdToggle } from '../md.jsx';
+import { DESCRIPTION_VARIATIONS } from '../utils/descriptionTemplates.js';
+import { NARRATIVE_VARIATIONS, SERVICES_VARIATIONS } from '../utils/specificTemplates.js';
+import { getSession } from '../utils/auth.js';
 
 
 function InstituteForm({institute, onSave, onClose, isSuperAdmin}) {
@@ -17,8 +20,12 @@ function InstituteForm({institute, onSave, onClose, isSuperAdmin}) {
     letterTopMargin: 15, letterLrPadding: 5, letterBottomPadding: 15,
     constitutionType:'', fax:'', contactDesignation:'', localAgent:'',
     orgProfile:'', totalStaff:'', professionalStaff:'',
+    descTemplateId:'', narrativeTemplateId:'', servicesTemplateId:'',
   });
   const [showEoi, setShowEoi] = useState(false);
+  const [showTpl, setShowTpl] = useState(false);
+  const _role = getSession()?.role;
+  const canSetTemplates = _role === 'admin' || _role === 'superadmin';
 
   const { handleClose, markDirty, markClean, UnsavedModal } = useUnsavedGuard(onClose);
   const set = (k, v) => { markDirty(); setForm(f => ({...f, [k]: v})); };
@@ -151,6 +158,59 @@ function InstituteForm({institute, onSave, onClose, isSuperAdmin}) {
         <MdTextField type="textarea" label="Remarks" value={form.remarks}
           onChange={e=>set('remarks',e.target.value)} rows={2}/>
       </div>
+
+      {/* Per-firm auto-fill templates. Assigning a different variation to each
+          firm keeps two firms bidding the same tender from submitting visibly
+          identical prose. Drives the Auto-fill buttons on the assignment form. */}
+      {canSetTemplates && (
+        <div style={{marginBottom:16}}>
+          <button type="button" onClick={()=>setShowTpl(s=>!s)}
+            style={{width:'100%', background:'none', border:'1px solid var(--border)', cursor:'pointer',
+              borderRadius: showTpl ? 'var(--radius) var(--radius) 0 0' : 'var(--radius)',
+              padding:'10px 14px', display:'flex', alignItems:'center', justifyContent:'space-between',
+              fontFamily:'var(--font)'}}>
+            <span style={{fontSize:13, fontWeight:600, display:'flex', alignItems:'center', gap:6}}>
+              <span className="material-icons-round" style={{fontSize:16}}>auto_awesome</span>
+              Auto-fill templates
+            </span>
+            <span style={{fontSize:11, color:'var(--text3)'}}>
+              {showTpl ? '▲ Hide' : '▼ Show — wording used by this firm\u2019s assignments'}
+            </span>
+          </button>
+          {showTpl && (
+            <div style={{padding:14, border:'1px solid var(--border)', borderTop:'none',
+              borderRadius:'0 0 var(--radius) var(--radius)'}}>
+              {[
+                { key:'descTemplateId',      label:'3(A) Description of work carried out', variations: DESCRIPTION_VARIATIONS },
+                { key:'narrativeTemplateId', label:'3(B) Narrative description of project', variations: NARRATIVE_VARIATIONS },
+                { key:'servicesTemplateId',  label:'3(B) Description of actual services provided', variations: SERVICES_VARIATIONS },
+              ].map((slot, i, arr) => {
+                const chosen = slot.variations.find(v => v.id === form[slot.key]);
+                return (
+                  <div key={slot.key} style={{marginBottom: i < arr.length-1 ? 16 : 0}}>
+                    <MdSelect label={slot.label} value={form[slot.key] || ''}
+                      onChange={e=>set(slot.key, e.target.value)}>
+                      <MdOption value="">— No template —</MdOption>
+                      {slot.variations.map(v => <MdOption key={v.id} value={v.id}>{v.label}</MdOption>)}
+                    </MdSelect>
+                    {chosen && (
+                      <div style={{fontSize:11, color:'var(--text2)', background:'var(--bg2)',
+                        border:'1px solid var(--border)', borderRadius:'var(--radius)',
+                        padding:'7px 10px', marginTop:6, fontStyle:'italic',
+                        whiteSpace:'pre-wrap', lineHeight:1.5}}>
+                        {chosen.preview.length > 240 ? chosen.preview.slice(0,240) + '…' : chosen.preview}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+              <div className="input-hint" style={{marginTop:10}}>
+                Placeholders in braces are replaced with this firm\u2019s own assignment data when the Auto-fill button is used.
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Bolpatra / Standard EOI — Section 2 (Applicant's Information Form) */}
       <div style={{marginBottom:16}}>
