@@ -191,7 +191,25 @@ async function plugin(fastify, opts) {
   fastify.get('/:id', async (request, reply) => {
     const { id } = request.params;
     const [inst, assignments, nstb, tax, affiliations, infrastructure] = await Promise.all([
-      pool.query('SELECT * FROM institutes WHERE id = $1', [id]),
+      // The same aggregates the list computes. The client merges this response
+      // into its institutes array, so anything the list carries and this does
+      // not is destroyed for that institute the moment it is opened — which is
+      // how the dashboard's trainee and programme totals shrank as you browsed.
+      pool.query(`
+        SELECT i.*,
+          COALESCE((SELECT SUM(ao.trainees)
+                    FROM assignments a JOIN assignment_occupations ao ON ao.assignment_id = a.id
+                    WHERE a.institute_id = i.id), 0)            AS total_trainees,
+          COALESCE((SELECT SUM(ao.skill_test_appeared)
+                    FROM assignments a JOIN assignment_occupations ao ON ao.assignment_id = a.id
+                    WHERE a.institute_id = i.id), 0)            AS total_st_appeared,
+          COALESCE((SELECT COUNT(DISTINCT COALESCE('id:' || a.client_id::text,
+                                                   'm:'  || NULLIF(a.client_name_manual, '')))
+                    FROM assignments a WHERE a.institute_id = i.id), 0) AS total_clients,
+          COALESCE((SELECT COUNT(ap.id)
+                    FROM affiliations af JOIN affiliation_programs ap ON ap.affiliation_id = af.id
+                    WHERE af.institute_id = i.id), 0)           AS total_aff_programs
+        FROM institutes i WHERE i.id = $1`, [id]),
       pool.query(`
         SELECT a.*,
           json_agg(ao.* ORDER BY ao.sort_order, ao.id) FILTER (WHERE ao.id IS NOT NULL) as occupations,
