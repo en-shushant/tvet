@@ -25,10 +25,9 @@ import { NSTBBulkPage } from './components/NSTBForms.jsx';
 import { UserManagement } from './components/LoginPage.jsx';
 import { ErrorBanner } from './components/ui/Modal.jsx';
 import StatusBadge from './components/ui/StatusBadge.jsx';
-import { BulkAssignmentForm } from './components/BulkDistrictPicker.jsx';
 import { PROVINCES, OCCUPATIONS, FISCAL_YEARS, getAllDistricts, notifyMasterData } from './constants/data.js';
 import { getNepaliDate } from './constants/nepali.js';
-import { getOccupation } from './utils/format.js';
+
 import { api, normInst, normClient, instToAPI, nstbToAPI } from './utils/api.js';
 import { preloadLogos } from './utils/logoCache.js';
 import { getSession, setSession as setSessionStorage, clearSession } from './utils/auth.js';
@@ -66,7 +65,6 @@ function App() {
     return s;
   });
   const [selectedInstitute, setSelectedInstitute] = useState(null);
-  const [bulkAddInstitute, setBulkAddInstitute] = useState(null);
   const [nstbAddInstitute, setNstbAddInstitute] = useState(null);
   const [institutes, setInstitutes] = useState([]);
   const [clients, setClients] = useState([]);
@@ -80,7 +78,6 @@ function App() {
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [showChangePwd, setShowChangePwd] = useState(false);
   const [paletteOpen, setPaletteOpen] = useState(false);
-
 
   const isSuperAdmin = session?.role === 'superadmin';
   const isAdmin = session?.role === 'admin' || isSuperAdmin;
@@ -407,7 +404,6 @@ function App() {
     dashboard: 'Dashboard',
     institutes: 'Institutes',
     detail: selectedInstitute?.name,
-    bulkAdd: 'Bulk Add Assignments',
     nstbAdd: 'Add NSTB Records',
     summary: 'Analytics',
     comparison: 'Analytics',
@@ -559,38 +555,7 @@ function App() {
               isSuperAdmin={isSuperAdmin}
               isShortlistOnly={isShortlistOnly}
               jumpToTab={jumpToTab}
-              onBulkAdd={()=>{ setBulkAddInstitute(selectedInstitute); window.location.hash=`bulkAdd/${selectedInstitute.id}`; setScreen('bulkAdd'); }}
               onAddNSTB={()=>{ setNstbAddInstitute(selectedInstitute); window.location.hash=`nstbAdd/${selectedInstitute.id}`; setScreen('nstbAdd'); }}
-            />
-          )}
-          {screen === 'bulkAdd' && bulkAddInstitute && (
-            <BulkAssignmentForm
-              instituteName={bulkAddInstitute.name}
-              clients={clients}
-              onSave={async (rows) => {
-                await Promise.all(rows.map(row => {
-                  const payload = {
-                    institute_id: bulkAddInstitute.id,
-                    client_id: row.manualClient ? null : (row.clientId || null),
-                    client_name_manual: row.manualClient ? (row.clientName || null) : null,
-                    assignment_name: row.assignmentName,
-                    training_type: row.trainingType || '',
-                    fiscal_year: row.fy,
-                    occupations: (row.occupations||[]).filter(o=>o.nameInLetter||o.ctevtOccupationId).map((o,i)=>({
-                      name_in_letter: o.nameInLetter || getOccupation(o.ctevtOccupationId).name || '',
-                      ctevt_occupation_id: (() => { const v=o.ctevtOccupationId; return v?(typeof v==='string'&&v.startsWith('c:')?parseInt(v.slice(2)):v):null; })(),
-                      trainees: o.trainees ? parseInt(o.trainees) : null,
-                      sort_order: i,
-                      locations: (row.districts||[]).map(d=>({province:d.province,district:d.district,local_levels:[]})),
-                    })),
-                    locations: [],
-                  };
-                  return api('POST', '/assignments', payload, token);
-                }));
-                await handleRefreshInstitute(bulkAddInstitute.id);
-                window.location.hash=`detail/${bulkAddInstitute.id}`; setScreen('detail');
-              }}
-              onBack={()=>{ window.location.hash=`detail/${bulkAddInstitute.id}`; setScreen('detail'); }}
             />
           )}
           {screen === 'nstbAdd' && nstbAddInstitute && (

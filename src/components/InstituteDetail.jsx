@@ -22,7 +22,6 @@ import { Btn, MdTextField } from '../md.jsx';
 import { getSession } from '../utils/auth.js';
 import { usePagination } from '../utils/hooks.js';
 import { exportSummaryToMD, exportSummaryToPDF, exportSummaryToCSV } from '../utils/export.js';
-import { generateEoiDocx } from '../utils/generateEoiDocx.js';
 import { fmt, fyToAD, getClient, getOccupation, pct } from '../utils/format.js';
 import { toast } from './ui/Feedback.jsx';
 
@@ -30,7 +29,7 @@ import { toast } from './ui/Feedback.jsx';
 
 
 
-function InstituteDetail({institute, clients, onUpdateClients, onBack, onUpdate, onRefresh, onDelete, token, isAdmin, isEditor, isSuperAdmin, isShortlistOnly, jumpToTab, onBulkAdd, onAddNSTB}) {
+function InstituteDetail({institute, clients, onUpdateClients, onBack, onUpdate, onRefresh, onDelete, token, isAdmin, isEditor, isSuperAdmin, isShortlistOnly, jumpToTab, onAddNSTB}) {
   const logoSrc = useCachedLogo(institute.logo);
   const VALID_TABS = ['profile','experience','clients','nstb','tax','affiliation','infrastructure','documents'];
   const tabKey = `inst_tab_${institute.id}`;
@@ -485,24 +484,9 @@ function InstituteDetail({institute, clients, onUpdateClients, onBack, onUpdate,
               </button>
             </div>
             <div style={{display:'flex', gap:6}}>
-              {institute.experience.length > 0 && (
-                <Btn className="btn btn-secondary btn-sm" onClick={() => {
-                  const visible = institute.experience.filter(e =>
-                    (!expClientFilter || String(e.clientId) === String(expClientFilter)) &&
-                    (!expOccFilter || (expOccFilter === '__missing__'
-                      ? (e.occupations||[]).some(o => !o.ctevtOccupationId)
-                      : (e.occupations||[]).some(o => (getOccupation(o.ctevtOccupationId).name||o.nameInLetter) === expOccFilter))) &&
-                    (!expMissingFilter || (e.occupations||[]).some(o => !o.level || !o.duration))
-                  );
-                  generateEoiDocx(institute, visible, clients);
-                }}>
-                  <span className="material-icons-round" style={{fontSize:14}}>download</span> EOI Report (.docx)
-                </Btn>
-              )}
-              {canEdit && <>
-                <Btn className="btn btn-secondary btn-sm" onClick={onBulkAdd}>⊞ Bulk add</Btn>
+              {canEdit && (
                 <Btn className="btn btn-primary btn-sm" onClick={()=>setModal({type:'addExp'})}>+ Add assignment</Btn>
-              </>}
+              )}
             </div>
           </div>
 
