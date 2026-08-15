@@ -1651,3 +1651,39 @@ md-filled-button.on-ink, md-filled-tonal-button.on-ink {
 .review-problem:first-of-type { border-top: none; }
 .review-problem:hover .review-problem-step { color: var(--primary); }
 .review-problem-step { font-size: 11.5px; color: var(--text3); white-space: nowrap; }
+
+/* ── Renewals & Compliance ──────────────────────────────────────────────── */
+.compliance-table-wrap { overflow-x: auto; }
+.compliance-table {
+  display: table !important;          /* see .occ-table — .page-content table { display:block } */
+  width: 100%;
+  min-width: 900px;
+  border-collapse: collapse;
+  font-size: 13px;
+  background: var(--surface);
+  border-radius: var(--radius-card);
+  overflow: hidden;
+}
+.compliance-table th {
+  text-align: left;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: .5px;
+  text-transform: uppercase;
+  color: var(--text3);
+  padding: 12px 14px;
+  background: var(--bg2);
+  white-space: nowrap;
+}
+.compliance-table td {
+  padding: 11px 14px;
+  vertical-align: middle;
+  border-top: 1px solid var(--border);
+}
+.compliance-table tbody tr { cursor: pointer; transition: background 140ms ease; }
+.compliance-table tbody tr:hover { background: var(--bg2); }
+.compliance-table tbody tr:focus-visible { outline: 2px solid var(--primary); outline-offset: -2px; }
+.compliance-name { font-weight: 600; color: var(--text); line-height: 1.3; }
+.compliance-sub  { font-size: 11px; color: var(--text3); }
+.compliance-clear { font-size: 12px; color: var(--text3); }
+.compliance-issues { font-size: 12px; color: var(--red); }

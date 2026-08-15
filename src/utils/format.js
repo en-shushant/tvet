@@ -5,6 +5,7 @@
 // `fmt` and the date formatter `fmt` ended up sharing a name.
 
 import { OCCUPATIONS } from '../constants/data.js';
+import { bsToAD } from '../constants/nepali.js';
 
 /**
  * Indian-grouped number, em dash when absent.
@@ -47,3 +48,28 @@ export function getOccupation(id) {
 
 /** Client record by id; always an object so callers can destructure safely. */
 export const getClient = (clients, id) => (clients || []).find(c => c.id === id) || {};
+
+/**
+ * Days until an institute's renewal falls due.
+ *
+ * renewalDue is a Bikram Sambat date, so it has to be converted before it can
+ * be compared with today — treating "2083/04/15" as a Gregorian date would put
+ * it ~57 years out. Returns null when the date is absent or unparseable rather
+ * than guessing.
+ */
+export function daysUntilRenewal(renewalDue) {
+  if (!renewalDue) return null;
+  const parts = String(renewalDue).replace(/-/g, '/').split('/').map(n => parseInt(n, 10));
+  if (parts.length !== 3 || parts.some(isNaN)) return null;
+  try {
+    // bsToAD returns a "YYYY-MM-DD" string, not a Date.
+    const iso = bsToAD(parts[0], parts[1], parts[2]);
+    if (!iso) return null;
+    const due = new Date(`${iso}T00:00:00`);
+    if (isNaN(due.getTime())) return null;
+    // Compare date to date, so a renewal later today reads as 0 rather than -1.
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    return Math.round((due - today) / 86400000);
+  } catch { return null; }
+}

@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { getSession } from '../utils/auth.js';
 import { getNepaliDate } from '../constants/nepali.js';
+import { COMPLIANCE_FY } from '../constants/data.js';
 import { api } from '../utils/api.js';
 import { fmt } from '../utils/format.js';
 import { Btn } from '../md.jsx';
@@ -20,7 +21,6 @@ import {
 /* The fiscal year the compliance checks are measured against. Was repeated as a
    literal in four places; still a constant rather than derived, because "the
    year records are expected for" is a policy decision, not today's date. */
-const COMPLIANCE_FY = '2081/82';
 
 /* ── Trainees by fiscal year ─────────────────────────────────────────────── */
 

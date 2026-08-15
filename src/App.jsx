@@ -7,6 +7,7 @@ import InstituteList from './components/InstituteList.jsx';
 import InstituteDetail from './components/InstituteDetail.jsx';
 import InstituteForm from './components/InstituteForm.jsx';
 import AnalyticsView from './components/AnalyticsView.jsx';
+import ComplianceCentre from './components/ComplianceCentre.jsx';
 import JVGroupPanel from './components/JVGroupPanel.jsx';
 import ProjectCompliance from './components/ProjectCompliance.jsx';
 import MasterData from './components/MasterData.jsx';
@@ -321,6 +322,7 @@ function App() {
     // tab is open, so their hashes and role gating are untouched.
     {id:'summary', icon:'insights', label:'Analytics', group:'Analytics', editorHidden: true, shortlistHidden: true},
     {id:'reports', icon:'description', label:'Reports', group:'Analytics', shortlistHidden: true},
+    {id:'renewals', icon:'event_repeat', label:'Renewals & Compliance', group:'Operations', shortlistHidden: true},
     {id:'compliance', icon:'fact_check', label:'Project Compliance', group:'Operations', editorHidden: true, shortlistHidden: true},
     {id:'shortlisting', icon:'playlist_add_check', label:'Shortlisting', group:'Operations'},
     {id:'quotations', icon:'gavel', label:'Quotations', group:'Operations'},
@@ -402,6 +404,7 @@ function App() {
     comparison: 'Analytics',
     shortlisting: 'Shortlisting',
     quotations: 'Quotations',
+    renewals: 'Renewals & Compliance',
     reports: 'Reports',
     master: 'Master data',
     users: 'User management',
@@ -591,6 +594,11 @@ function App() {
           )}
           {(screen === 'summary' || screen === 'comparison') && (
             <AnalyticsView tab={screen} onTab={handleNavigate} institutes={institutes} clients={clients}/>
+          )}
+          {screen === 'renewals' && (
+            <ComplianceCentre
+              institutes={isAdmin ? institutes : institutes.filter(i => !i.isShortlistingOnly)}
+              onOpenInstitute={handleSelectInstitute}/>
           )}
           {screen === 'compliance' && <ProjectCompliance institutes={institutes} clients={clients}/>}
           {screen === 'shortlisting' && <Suspense fallback={<div style={{padding:40,textAlign:'center',color:'var(--text3)'}}>Loading…</div>}><Shortlisting institutes={institutes} clients={clients} isAdmin={isAdmin} isEditor={isEditor} isShortlistOnly={isShortlistOnly} isSuperAdmin={isSuperAdmin} token={token}/></Suspense>}

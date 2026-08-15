@@ -189,3 +189,12 @@ export const INITIAL_INSTITUTES = [
     affiliation:[]
   },
 ];
+
+/**
+ * The fiscal year compliance is currently judged against.
+ *
+ * Rolls over manually each year — every screen that asks "is this firm's
+ * paperwork current?" must agree on the answer, so it lives here rather than
+ * being redeclared per component.
+ */
+export const COMPLIANCE_FY = '2081/82';

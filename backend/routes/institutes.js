@@ -16,7 +16,13 @@ async function plugin(fastify, opts) {
         SELECT a.institute_id,
           SUM(ao.trainees)           AS total_trainees,
           SUM(ao.skill_test_appeared) AS total_st_appeared,
-          COUNT(DISTINCT a.client_id) FILTER (WHERE a.client_id IS NOT NULL) AS total_clients
+          -- Manual clients count too. Assignments record a client either by id
+          -- or as free text in client_name_manual, and counting only the former
+          -- made an institute whose clients are all manual read "0 Clients" in
+          -- the list while its own page listed them. Prefixed so a client_id of
+          -- 5 and a manual client literally named "5" stay distinct.
+          COUNT(DISTINCT COALESCE('id:' || a.client_id::text,
+                                  'm:'  || NULLIF(a.client_name_manual, ''))) AS total_clients
         FROM assignments a
         JOIN assignment_occupations ao ON ao.assignment_id = a.id
         GROUP BY a.institute_id
