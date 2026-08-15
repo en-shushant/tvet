@@ -17,6 +17,7 @@
  */
 import { useState, useMemo } from 'react';
 import Modal from '../ui/Modal.jsx';
+import { confirmDialog } from '../ui/Feedback.jsx';
 import { Btn } from '../../md.jsx';
 import SearchableSelect from '../ui/SearchableSelect.jsx';
 import { DistrictSearch } from '../ExperienceForm.jsx';
@@ -50,24 +51,45 @@ export default function BolpatraGapsModal({ exp, institute, clients = [], onSave
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState('');
 
-  // Recomputed from the working copy, so the list shrinks as fields are filled.
+  /**
+   * What was missing when the panel opened, captured once.
+   *
+   * Filling a field must not remove it from the page. An earlier version
+   * recomputed the visible list on every keystroke, so typing into the last
+   * remaining gap made the whole form vanish and be replaced by "nothing
+   * outstanding" — hiding the value just typed, claiming the assignment was
+   * complete when nothing had been saved, and inviting a close that silently
+   * discarded the work.
+   */
+  const [initialGapKeys] = useState(
+    () => new Set(missingBolpatraFields(exp, institute).map(g => g.key)));
+
+  // Live, so a filled field can be ticked rather than removed.
   const gaps = missingBolpatraFields(form, institute);
   const missingKeys = useMemo(() => new Set(gaps.map(g => g.key)), [gaps]);
+  const resolvedCount = [...initialGapKeys].filter(k => !missingKeys.has(k)).length;
+  const dirty = useMemo(
+    () => JSON.stringify(form) !== JSON.stringify({ ...exp, occupations: (exp.occupations || []).map(o => ({ ...o })) }),
+    [form, exp]);
 
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
 
   const clientMissing = missingKeys.has('client');
   const locationMissing = missingKeys.has('location');
 
+  // A field stays on screen once shown: currently missing, or missing when the
+  // panel opened and now filled but not yet saved.
+  const wasMissing = (key) => initialGapKeys.has(key);
+  const relevant = (f) => missingKeys.has(f.field) || wasMissing(f.field)
+    || (f.field === 'startDate' && (missingKeys.has('dates') || wasMissing('dates')));
+
   const visible = FIELDS.filter(f => {
     if (f.jvOnly && !form.isJV) return false;
-    if (!onlyMissing) return true;
-    // durationMonths and dates share a key in the gap check.
-    return missingKeys.has(f.field) || (f.field === 'startDate' && missingKeys.has('dates'));
+    return onlyMissing ? relevant(f) : true;
   });
 
-  const showClient = !onlyMissing || clientMissing;
-  const showLocations = !onlyMissing || locationMissing;
+  const showClient = !onlyMissing || missingKeys.has('client') || wasMissing('client');
+  const showLocations = !onlyMissing || missingKeys.has('location') || wasMissing('location');
 
   /**
    * Districts hang off occupations, and an occupation can carry several — the
@@ -92,6 +114,16 @@ export default function BolpatraGapsModal({ exp, institute, clients = [], onSave
       : { ...o, locations: (o.locations || []).filter(l => l.district !== district) }),
   }));
 
+  const requestClose = async () => {
+    if (!dirty) return onClose();
+    const ok = await confirmDialog({
+      title: 'Discard these changes?',
+      message: 'The fields you filled here have not been saved.',
+      confirmLabel: 'Discard', danger: true,
+    });
+    if (ok) onClose();
+  };
+
   const save = async () => {
     setErr(''); setSaving(true);
     try { await onSave(form); }
@@ -99,9 +131,9 @@ export default function BolpatraGapsModal({ exp, institute, clients = [], onSave
   };
 
   return (
-    <Modal title="EOI details" onClose={onClose} size="lg"
+    <Modal title="EOI details" onClose={requestClose} size="lg"
       footer={<>
-        <Btn className="btn btn-secondary" onClick={onClose}>Cancel</Btn>
+        <Btn className="btn btn-secondary" onClick={requestClose}>Cancel</Btn>
         <Btn className="btn btn-primary" onClick={save} disabled={saving}>
           {saving ? 'Saving…' : 'Save'}
         </Btn>
@@ -112,9 +144,12 @@ export default function BolpatraGapsModal({ exp, institute, clients = [], onSave
       <div className="gap-head">
         <p className="gap-intro">
           <strong>{form.assignmentName || 'This assignment'}</strong>
-          {gaps.length === 0
-            ? ' — prints in full, nothing missing.'
-            : ` — ${gaps.length} ${gaps.length === 1 ? 'field' : 'fields'} the report would leave blank.`}
+          {gaps.length > 0
+            ? ` — ${gaps.length} ${gaps.length === 1 ? 'field' : 'fields'} the report would leave blank.`
+            : resolvedCount > 0
+              // Deliberately not "nothing missing": nothing is written until Save.
+              ? ` — ${resolvedCount} filled. Save to apply.`
+              : ' — prints in full, nothing missing.'}
         </p>
         <label className="gap-toggle">
           <input type="checkbox" checked={onlyMissing} onChange={e => setOnlyMissing(e.target.checked)}/>
@@ -122,7 +157,7 @@ export default function BolpatraGapsModal({ exp, institute, clients = [], onSave
         </label>
       </div>
 
-      {onlyMissing && gaps.length === 0 ? (
+      {onlyMissing && gaps.length === 0 && initialGapKeys.size === 0 ? (
         <div className="gap-clear">
           Nothing outstanding. Untick above to review every field the report uses.
         </div>
@@ -150,9 +185,14 @@ export default function BolpatraGapsModal({ exp, institute, clients = [], onSave
 
           {visible.map(f => (
             <div key={f.field}
-              className={`gap-field${missingKeys.has(f.field) || (f.field==='startDate' && missingKeys.has('dates')) ? ' gap-field-missing' : ''}`}>
+              className={`gap-field${
+                missingKeys.has(f.field) || (f.field==='startDate' && missingKeys.has('dates')) ? ' gap-field-missing'
+                : wasMissing(f.field) || (f.field==='startDate' && wasMissing('dates')) ? ' gap-field-fixed' : ''}`}>
               <label htmlFor={`gap-${f.field}`}>
                 {f.label} <span className="gap-section">{f.section}</span>
+                {!missingKeys.has(f.field) && wasMissing(f.field) && (
+                  <span className="gap-fixed-tag">filled — not saved yet</span>
+                )}
               </label>
               {(f.hint || (f.template && institute?.[f.template])) && (
                 <p className="gap-hint">

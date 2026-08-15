@@ -298,3 +298,57 @@ describe('extracted shortlisting modules mount', () => {
     assertNoConsoleErrors();
   });
 });
+
+/**
+ * The EOI gap panel must not hide a field the moment it is filled.
+ *
+ * It used to recompute its visible list on every keystroke, so typing into the
+ * last remaining gap replaced the whole form with "nothing outstanding" — the
+ * value just typed disappeared, the panel claimed the assignment was complete
+ * when nothing had been written, and closing from there discarded the work
+ * without a word.
+ */
+describe('EOI gap panel keeps unsaved work visible', () => {
+  const institute = { id: 9, name: 'Test Firm',
+    descTemplateId: 'V13', narrativeTemplateId: 'N13', servicesTemplateId: 'S13' };
+  // Complete except one field.
+  const oneGap = () => ({
+    id: 1, fy: '2081/82', assignmentName: 'One Gap', clientId: 1,
+    contractValue: '100', startDate: '2082/01/15', endDate: '2082/04/10',
+    durationMonths: '3', totalPersonMonths: '', isJV: false,
+    occupations: [{ id: 'a', ctevtOccupationId: 1, trainees: '20', locations: [{ id: 'l', district: 'Kaski' }] }],
+  });
+
+  const typeInto = async (input, value) => {
+    const setter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value').set;
+    await act(async () => {
+      setter.call(input, value);
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+    });
+  };
+
+  it('a filled gap stays on screen with its value', async () => {
+    await mount(<BolpatraGapsModal exp={oneGap()} institute={institute}
+      clients={clients} onSave={noop} onClose={noop} />);
+
+    const input = document.querySelector('.gap-field input');
+    expect(input, 'expected the missing field to be rendered').toBeTruthy();
+    await typeInto(input, '12');
+
+    const after = document.querySelector('.gap-field input');
+    expect(after, 'the field vanished after being filled').toBeTruthy();
+    expect(after.value).toBe('12');
+    // And the panel must not claim a saved state.
+    expect(document.body.textContent).toContain('Save to apply');
+    expect(document.body.textContent).not.toContain('prints in full, nothing missing');
+    assertNoConsoleErrors();
+  });
+
+  it('says nothing is outstanding only when it opened that way', async () => {
+    const complete = { ...oneGap(), totalPersonMonths: '12' };
+    await mount(<BolpatraGapsModal exp={complete} institute={institute}
+      clients={clients} onSave={noop} onClose={noop} />);
+    expect(document.body.textContent).toContain('prints in full, nothing missing');
+    assertNoConsoleErrors();
+  });
+});

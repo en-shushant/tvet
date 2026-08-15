@@ -2027,3 +2027,8 @@ md-outlined-button.danger {
 .gap-chip-district button:hover { opacity: 1; }
 .gap-occ-row { align-items: flex-start; }
 .gap-occ-name { padding-top: 8px; }
+
+/* A gap filled in this session but not yet written. Stays on screen with its
+   value visible — removing it hid the user's own input and implied a save. */
+.gap-field-fixed { border-left: 2px solid var(--green); padding-left: 12px; margin-left: -14px; }
+.gap-fixed-tag { margin-left: 8px; font-size: 10.5px; font-weight: 600; color: var(--green); }
