@@ -22,6 +22,42 @@ async function plugin(fastify, opts) {
       institutes: parseInt(institutes.rows[0].count),
     };
   });
+
+  /**
+   * Registry-wide totals for the dashboard.
+   *
+   * GET /institutes omits assignments entirely (`'[]'::json AS experience`) and
+   * carries no district data, so these cannot be derived on the client — the
+   * dashboard would have to invent them. Counted here instead.
+   */
+  fastify.get('/totals', async (request, reply) => {
+    const [assignments, clients, districts, byFy] = await Promise.all([
+      pool.query(`SELECT COUNT(*)::int AS n FROM assignments`),
+      // Distinct clients actually engaged, not rows in the clients table.
+      pool.query(`SELECT COUNT(DISTINCT client_id)::int AS n FROM assignments WHERE client_id IS NOT NULL`),
+      // Districts live in the per-occupation locations JSONB.
+      pool.query(`
+        SELECT COUNT(DISTINCT loc->>'district')::int AS n
+        FROM assignment_occupations,
+             jsonb_array_elements(COALESCE(locations, '[]'::jsonb)) AS loc
+        WHERE COALESCE(loc->>'district', '') <> ''`),
+      pool.query(`
+        SELECT a.fiscal_year AS fy,
+               COUNT(DISTINCT a.id)::int AS assignments,
+               COALESCE(SUM(ao.trainees), 0)::int AS trainees
+        FROM assignments a
+        LEFT JOIN assignment_occupations ao ON ao.assignment_id = a.id
+        WHERE COALESCE(a.fiscal_year, '') <> ''
+        GROUP BY a.fiscal_year
+        ORDER BY a.fiscal_year`),
+    ]);
+    return {
+      assignments: assignments.rows[0].n,
+      clients: clients.rows[0].n,
+      districts: districts.rows[0].n,
+      byFy: byFy.rows,
+    };
+  });
 }
 
 module.exports = plugin;
