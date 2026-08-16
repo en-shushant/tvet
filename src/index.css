@@ -2058,3 +2058,24 @@ md-outlined-button.danger {
 .filter-inline-check { display: flex; gap: 8px; align-items: flex-start; font-size: 12px; color: var(--text2); cursor: pointer; margin: 0; }
 .filter-inline-check input { width: auto; margin: 2px 0 0; flex-shrink: 0; }
 .filter-inline-check em { display: block; font-style: normal; font-size: 11px; color: var(--text3); margin-top: 1px; }
+
+/* ── Field labels with an inline action ─────────────────────────────────────
+   A label row carrying a button — Client's "+ Manual entry" — was ~29px tall
+   against a plain label's ~18px, so its input started 11px below the field
+   beside it in the same row.
+
+   Matching the two by tuning heights was the wrong approach: they are
+   structurally different, and each value pinned overshot one way or the other.
+   The action is taken out of the flow instead. The label stays a plain label,
+   byte-for-byte the same box as its neighbour, and the button is positioned
+   over the empty space to its right, where it cannot push anything down. */
+.form-group.has-action { position: relative; }
+.form-group.has-action > .field-action {
+  position: absolute;
+  top: 0;
+  right: 0;
+  /* Sits on the label's cap height rather than its full line box. */
+  margin-top: -4px;
+  z-index: 1;
+}
+

@@ -389,10 +389,9 @@ function ExperienceForm({exp, clients, institute, onSave, onClose, onDuplicate, 
   const TemplateField = ({ label, field, templateKey, filler, placeholder, hint, rows = 5, style }) => {
     const variationId = institute?.[templateKey];
     return (
-      <div className="form-group" style={style}>
-        <div style={{display:'flex', alignItems:'center', justifyContent:'space-between', gap:8, marginBottom:4}}>
+      <div className="form-group has-action" style={style}>
           <label style={{fontSize:12, fontWeight:500, color:'var(--text2)'}}>{label}</label>
-          <button type="button"
+          <button type="button" className="field-action"
             disabled={!variationId}
             onClick={() => set(field, filler(variationId, form, institute, clients))}
             title={variationId
@@ -406,7 +405,6 @@ function ExperienceForm({exp, clients, institute, onSave, onClose, onDuplicate, 
               opacity: variationId ? 1 : 0.55}}>
             <span className="material-icons-round" style={{fontSize:13}}>auto_awesome</span> Auto-fill
           </button>
-        </div>
         <textarea
           value={form[field] || ''}
           onChange={e => set(field, e.target.value)}
@@ -481,14 +479,12 @@ function ExperienceForm({exp, clients, institute, onSave, onClose, onDuplicate, 
       {step === 0 && (<div>
       {/* Assignment level */}
       <div className="form-row form-row-2">
-        <div className="form-group">
-          <div style={{display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:4}}>
-            <label style={{marginBottom:0}}>Client *</label>
-            <Btn type="button" className="btn btn-ghost btn-sm" style={{fontSize:11, padding:'1px 6px'}}
-              onClick={()=>{ set('manualClient', !form.manualClient); set('clientId',''); set('clientName',''); }}>
-              {form.manualClient ? '← Use list' : '+ Manual entry'}
-            </Btn>
-          </div>
+        <div className="form-group has-action">
+          <label>Client *</label>
+          <Btn type="button" className="btn btn-ghost btn-sm field-action" style={{fontSize:11, padding:'1px 6px'}}
+            onClick={()=>{ set('manualClient', !form.manualClient); set('clientId',''); set('clientName',''); }}>
+            {form.manualClient ? '← Use list' : '+ Manual entry'}
+          </Btn>
           {form.manualClient
             ? <div style={{display:'flex', gap:6, alignItems:'center'}}>
                 <input style={{flex:1}} value={form.clientName||''} onChange={e=>set('clientName',e.target.value)} placeholder="Type client name"/>
