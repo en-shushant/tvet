@@ -22,6 +22,17 @@ function MasterData({clients, onUpdateClients, token, isAdmin, isEditor, isSuper
   const [search, setSearch] = useState('');
   const [sectorFilter, setSectorFilter] = useState('');
   const [occModal, setOccModal] = useState(null);
+  /**
+   * Occupations picked for merging, and how much each is used.
+   *
+   * The list carries near-duplicates — "Commis III" beside "General Cook
+   * (Commis III)", two spellings of "House Keeping Cleaner" — and choosing
+   * which one survives is only safe when you can see which one the assignments
+   * are actually attached to.
+   */
+  const [selectedOccIds, setSelectedOccIds] = useState(() => new Set());
+  const [occUsage, setOccUsage] = useState({});
+  const [merging, setMerging] = useState(false);
   const [trainingTypes, setTrainingTypes] = useState(getTrainingTypes());
   const [ttInput, setTtInput] = useState('');
   const [editTt, setEditTt] = useState(null);
@@ -55,6 +66,14 @@ function MasterData({clients, onUpdateClients, token, isAdmin, isEditor, isSuper
   };
 
   useEffect(() => { if (tab === 'tools') loadToolCounts(); }, [tab]);
+
+  // Usage counts drive the merge dialog's "which one should survive" hint.
+  useEffect(() => {
+    if (tab !== 'occupations') return;
+    api('GET', '/occupations/usage', null, token)
+      .then(rows => setOccUsage(Object.fromEntries(rows.map(r => [r.id, r]))))
+      .catch(() => setOccUsage({}));
+  }, [tab, token]);
 
   const getToolCount = (occId, level) => {
     const c = toolCounts.find(r => r.occupation_id === occId && r.level === level);
@@ -380,6 +399,47 @@ function MasterData({clients, onUpdateClients, token, isAdmin, isEditor, isSuper
     } catch(err) { setMasterErr('Failed to save: ' + err.message); }
   };
 
+  const toggleOccSelect = (id) => setSelectedOccIds(prev => {
+    const next = new Set(prev);
+    next.has(id) ? next.delete(id) : next.add(id);
+    return next;
+  });
+
+  const mergeOccupations = async (targetId) => {
+    const sourceIds = [...selectedOccIds].filter(id => id !== targetId);
+    const target = OCCUPATIONS.find(o => o.id === targetId);
+    const names = sourceIds.map(id => OCCUPATIONS.find(o => o.id === id)?.name).filter(Boolean);
+    const totals = sourceIds.reduce((n, id) => n + (occUsage[id]?.assignments || 0), 0);
+
+    const ok = await confirmDialog({
+      title: `Merge into “${target?.name}”?`,
+      message:
+        `${names.join(', ')} will be folded into ${target?.name}. ` +
+        `${totals} assignment row${totals === 1 ? '' : 's'} will be repointed, and their tools moved across. ` +
+        `The merged occupations are deactivated, not deleted.`,
+      confirmLabel: 'Merge', danger: true,
+    });
+    if (!ok) return;
+
+    setMasterErr(''); setMerging(true);
+    try {
+      const res = await api('POST', '/occupations/merge', { targetId, sourceIds }, token);
+      // Drop the merged ones from the in-memory list and tell every subscriber.
+      for (const m of res.merged) {
+        const i = OCCUPATIONS.findIndex(o => o.id === m.id);
+        if (i >= 0) OCCUPATIONS.splice(i, 1);
+      }
+      notifyMasterData();
+      setSelectedOccIds(new Set());
+      setOccModal(null);
+      const rows = await api('GET', '/occupations/usage', null, token).catch(() => []);
+      setOccUsage(Object.fromEntries(rows.map(r => [r.id, r])));
+      toast(`Merged into ${res.target.name} — ${res.movedAssignments} assignment rows and ${res.movedTools} tools moved.`);
+    } catch (err) {
+      setMasterErr('Merge failed: ' + err.message);
+    } finally { setMerging(false); }
+  };
+
   const deleteOccupation = async (occ) => {
     if (!await confirmDialog({ title:'Delete occupation', message:`“${occ.name}” will be permanently deleted.`, confirmLabel:'Delete', danger:true })) return;
     setMasterErr('');
@@ -491,17 +551,47 @@ function MasterData({clients, onUpdateClients, token, isAdmin, isEditor, isSuper
             {filteredOccs.length} occupation{filteredOccs.length!==1?'s':''} {sectorFilter ? `in ${sectorFilter}` : 'across all sectors'}
 
           </div>
+          {isAdmin && selectedOccIds.size > 0 && (
+            <div className="bulk-bar">
+              <span className="bulk-count">
+                {selectedOccIds.size} selected
+                {selectedOccIds.size < 2 && <span className="bulk-note"> · pick at least two to merge</span>}
+              </span>
+              <Btn className="btn btn-secondary btn-sm" disabled={selectedOccIds.size < 2 || merging}
+                onClick={() => { if (selectedOccIds.size >= 2 && !merging) setOccModal({ type:'merge' }); }}>
+                {merging ? 'Merging…' : 'Merge…'}
+              </Btn>
+              <Btn className="btn btn-ghost btn-sm" onClick={() => setSelectedOccIds(new Set())}>Clear</Btn>
+            </div>
+          )}
           <div className="card" style={{padding:0, overflow:'hidden'}}>
             <table>
-              <thead><tr><th>#</th><th>Occupation name</th><th>Sector</th><th>Level</th><th>Duration</th><th></th></tr></thead>
+              <thead><tr>
+                {isAdmin && <th style={{width:34}}></th>}
+                <th>#</th><th>Occupation name</th><th>Sector</th><th>Level</th><th>Duration</th>
+                <th style={{textAlign:'right'}}>Used by</th><th></th>
+              </tr></thead>
               <tbody>
                 {occPagination.paged.map((o, idx)=>(
                   <tr key={o.id}>
+                    {isAdmin && (
+                      <td>
+                        <input type="checkbox" style={{width:'auto', margin:0}}
+                          checked={selectedOccIds.has(o.id)}
+                          onChange={() => toggleOccSelect(o.id)}
+                          aria-label={`Select ${o.name} for merging`}/>
+                      </td>
+                    )}
                     <td className="mono text-muted" style={{fontSize:11}}>{occPagination.start + idx + 1}</td>
                     <td style={{fontWeight:500, fontSize:13}}>{o.name}</td>
                     <td><span className="badge badge-gray" style={{fontSize:10}}>{o.sector}</span></td>
                     <td>{o.level ? <span className="badge badge-info" style={{fontSize:10}}>{o.level}</span> : <span className="text-muted">—</span>}</td>
                     <td className="mono">{o.duration ? o.duration+' hrs' : '—'}</td>
+                    <td className="mono" style={{textAlign:'right', fontSize:11.5, color:'var(--text3)'}}>
+                      {occUsage[o.id]
+                        ? `${occUsage[o.id].assignments} assignment${occUsage[o.id].assignments === 1 ? '' : 's'}`
+                        : '—'}
+                    </td>
                     <td style={{display:'flex', gap:4}}>
                       {canManageOccs && <Btn className="btn btn-ghost btn-sm" onClick={()=>setOccModal({type:'edit', data:o})}>✏</Btn>}
                       {isAdmin && <Btn className="btn btn-danger btn-sm" onClick={()=>deleteOccupation(o)}>🗑</Btn>}
@@ -512,6 +602,33 @@ function MasterData({clients, onUpdateClients, token, isAdmin, isEditor, isSuper
             </table>
           </div>
           <Pagination {...occPagination} label="occupations"/>
+          {occModal?.type === 'merge' && (
+            <Modal title="Merge occupations" onClose={()=>setOccModal(null)}
+              footer={<Btn className="btn btn-secondary" onClick={()=>setOccModal(null)}>Cancel</Btn>}>
+              <p style={{fontSize:13, color:'var(--text2)', margin:'0 0 14px'}}>
+                Choose the one to keep. The others are folded into it: their assignments
+                are repointed and their tools moved across, then they are deactivated.
+              </p>
+              <div className="merge-options">
+                {[...selectedOccIds].map(id => {
+                  const o = OCCUPATIONS.find(x => x.id === id);
+                  if (!o) return null;
+                  const use = occUsage[id] || { assignments: 0, tools: 0 };
+                  return (
+                    <button key={id} type="button" className="merge-option"
+                      disabled={merging} onClick={() => mergeOccupations(id)}>
+                      <span className="merge-option-name">{o.name}</span>
+                      <span className="merge-option-meta">
+                        {o.sector}{o.level ? ` · ${o.level}` : ''} · {use.assignments} assignment
+                        {use.assignments === 1 ? '' : 's'} · {use.tools} tool{use.tools === 1 ? '' : 's'}
+                      </span>
+                      <span className="merge-option-cta">Keep this one</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </Modal>
+          )}
           {occModal?.type === 'add' && <OccupationForm onSave={saveOccupation} onClose={()=>setOccModal(null)}/>}
           {occModal?.type === 'edit' && <OccupationForm occ={occModal.data} onSave={saveOccupation} onClose={()=>setOccModal(null)}/>}
         </>

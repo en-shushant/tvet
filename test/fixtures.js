@@ -106,6 +106,12 @@ export const documentRows = [
  * loudly rather than resolving empty — a screen quietly rendering "no data"
  * because a URL was never stubbed is exactly the false pass to avoid.
  */
+/** Assignment/tool counts per occupation, as GET /occupations/usage returns. */
+export const occupationUsage = [
+  { id: 1, assignments: 7, tools: 12 },
+  { id: 2, assignments: 1, tools: 0 },
+];
+
 export function installFetchStub() {
   globalThis.fetch = (url) => {
     const u = String(url);
@@ -119,6 +125,7 @@ export function installFetchStub() {
     if (u.includes('/dashboard/activity'))    return json({ assignments: 1, tax: 0, nstb: 0, affiliations: 0, institutes: 0 });
     if (u.includes('/institutes'))            return json(institutes);
     if (u.includes('/clients'))               return json(clients);
+    if (u.includes('/occupations/usage'))     return json(occupationUsage);
     if (u.includes('/occupations'))           return json(occupations);
     if (u.includes('/locations'))             return json([]);
     if (u.includes('/shortlists') || u.includes('/standing-lists') || u.includes('/quotations')) return json([]);

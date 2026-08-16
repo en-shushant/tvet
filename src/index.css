@@ -2079,3 +2079,26 @@ md-outlined-button.danger {
   z-index: 1;
 }
 
+
+/* ── Merge occupations ──────────────────────────────────────────────────── */
+.merge-options { display: flex; flex-direction: column; gap: 8px; }
+.merge-option {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  grid-template-areas: "name cta" "meta cta";
+  gap: 2px 14px;
+  align-items: center;
+  text-align: left;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  background: var(--surface);
+  font-family: var(--font);
+  cursor: pointer;
+  transition: border-color 140ms ease, background 140ms ease;
+}
+.merge-option:hover:not(:disabled) { border-color: var(--primary); background: var(--bg2); }
+.merge-option:disabled { opacity: .6; cursor: not-allowed; }
+.merge-option-name { grid-area: name; font-size: 13.5px; font-weight: 600; color: var(--text); }
+.merge-option-meta { grid-area: meta; font-size: 11.5px; color: var(--text3); }
+.merge-option-cta  { grid-area: cta; font-size: 12px; font-weight: 600; color: var(--primary); white-space: nowrap; }
