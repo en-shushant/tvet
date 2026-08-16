@@ -309,9 +309,14 @@ function model4a(inst, opts = {}) {
     .slice()
     .sort((a, b) => String(a.fy).localeCompare(String(b.fy)));
 
+  // "Average Annual Turnover" is the average of the best three years within the
+  // selected range, not every year in it — a firm with a weak early year
+  // shouldn't have that year drag down a figure the form asks to be the best
+  // three. Fewer than three years just averages what's there.
   const amounts = records.map(t => Number(t.turnover)).filter(n => !isNaN(n) && n > 0);
-  const average = amounts.length
-    ? amounts.reduce((s, n) => s + n, 0) / amounts.length
+  const bestThree = amounts.slice().sort((a, b) => b - a).slice(0, 3);
+  const average = bestThree.length
+    ? bestThree.reduce((s, n) => s + n, 0) / bestThree.length
     : null;
 
   return {
