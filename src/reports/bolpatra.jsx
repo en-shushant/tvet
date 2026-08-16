@@ -398,23 +398,83 @@ function model4bTools(opts = {}) {
     return dash(t[key]);
   };
 
+  const perOccupation = () => chosen.map(o => {
+    const events = eventsFor(o.id);
+    const items = (bolpatraTools[o.id] || []).filter(t => wantType(t.type));
+    const groups = TOOL_GROUPS
+      .map(g => ({ label: g.label, rows: items.filter(t => t.type === g.type) }))
+      .filter(g => g.rows.length)
+      .map((g, gi) => ({
+        letter: GROUP_LETTERS[gi] || String(gi + 1),
+        label: g.label,
+        rows: g.rows.map((t, i) => active.map(c => cellFor(t, c.key, i, events))),
+      }));
+    return { name: o.name, events, groups };
+  });
+
+  /**
+   * One schedule for every selected occupation instead of a table each.
+   *
+   * The same drill appears under three trades, and a bid wants to know how many
+   * drills in total — not to have the reader add up three tables. Identical
+   * items merge and their quantities sum; each occupation's figure is scaled by
+   * its own event count first, so a trade running six events contributes six
+   * times, which a single total across the bid could not express.
+   *
+   * Two items count as the same only when name, description, unit and type all
+   * match. A 12mm and a 16mm spanner are not one line.
+   */
+  const combined = () => {
+    const merged = new Map();
+    for (const o of chosen) {
+      const events = eventsFor(o.id);
+      for (const t of (bolpatraTools[o.id] || []).filter(t => wantType(t.type))) {
+        const key = [t.name, t.description, t.unit, t.type]
+          .map(v => String(v ?? '').trim().toLowerCase()).join('|');
+        const qty = t.quantity != null ? Number(t.quantity) * events : null;
+        const seen = merged.get(key);
+        if (!seen) {
+          merged.set(key, { tool: t, quantity: qty, occupations: [o.name] });
+        } else {
+          // A null quantity on either side means "not recorded"; adding a
+          // number to it would invent one.
+          seen.quantity = seen.quantity == null || qty == null
+            ? (seen.quantity ?? qty)
+            : seen.quantity + qty;
+          if (!seen.occupations.includes(o.name)) seen.occupations.push(o.name);
+        }
+      }
+    }
+
+    const all = [...merged.values()];
+    const groups = TOOL_GROUPS
+      .map(g => ({ label: g.label, rows: all.filter(x => x.tool.type === g.type) }))
+      .filter(g => g.rows.length)
+      .map((g, gi) => ({
+        letter: GROUP_LETTERS[gi] || String(gi + 1),
+        label: g.label,
+        // Quantities are already multiplied through, so events is 1 here.
+        rows: g.rows.map((x, i) => active.map(c => c.key === 'quantity'
+          ? (x.quantity != null ? String(x.quantity) : '')
+          : cellFor(x.tool, c.key, i, 1))),
+      }));
+
+    return [{
+      name: chosen.length === 1 ? chosen[0].name : 'All selected occupations',
+      // Event counts differ per occupation and are already applied, so showing
+      // one number here would be a lie.
+      events: null,
+      combinedFrom: chosen.map(o => o.name),
+      groups,
+    }];
+  };
+
   return {
     level: opts.eoiToolsLevel || '',
     columns: active.map(c => c.label),
     widths:  active.map(c => c.width),
-    occupations: chosen.map(o => {
-      const events = eventsFor(o.id);
-      const items = (bolpatraTools[o.id] || []).filter(t => wantType(t.type));
-      const groups = TOOL_GROUPS
-        .map(g => ({ label: g.label, rows: items.filter(t => t.type === g.type) }))
-        .filter(g => g.rows.length)
-        .map((g, gi) => ({
-          letter: GROUP_LETTERS[gi] || String(gi + 1),
-          label: g.label,
-          rows: g.rows.map((t, i) => active.map(c => cellFor(t, c.key, i, events))),
-        }));
-      return { name: o.name, events, groups };
-    }),
+    combined: !!opts.eoiCombineTools,
+    occupations: opts.eoiCombineTools ? combined() : perOccupation(),
   };
 }
 
@@ -506,6 +566,11 @@ function Section4B({ firms, opts = {} }) {
               <div style={{fontWeight:600, fontSize:12.5, marginBottom:6}}>
                 Tools and Equipment for {o.name} Training
                 {o.events > 1 && <span style={{fontWeight:400, color:'var(--text3)'}}> ({o.events} events)</span>}
+                {/* Combined mode applies each occupation's own event count before
+                    merging, so naming the sources is the only honest summary. */}
+                {o.combinedFrom?.length > 1 && (
+                  <span style={{fontWeight:400, color:'var(--text3)'}}> — combined from {o.combinedFrom.join(', ')}</span>
+                )}
               </div>
               {o.groups.length === 0
                 ? <div style={{fontSize:12, color:'var(--text3)'}}>
@@ -714,7 +779,8 @@ function html4B(firms, opts = {}) {
     ? `<p class="muted">Select one or more occupations to list their tools and equipment.</p>`
     : tools.occupations.map(o => `
         <div class="tool-block">
-          <div class="grp">Tools and Equipment for ${esc(o.name)} Training${o.events > 1 ? ` (${o.events} events)` : ''}</div>
+          <div class="grp">Tools and Equipment for ${esc(o.name)} Training${o.events > 1 ? ` (${o.events} events)` : ''}${
+            o.combinedFrom && o.combinedFrom.length > 1 ? ` — combined from ${esc(o.combinedFrom.join(', '))}` : ''}</div>
           ${o.groups.length === 0
             ? `<p class="muted">No tools recorded for this occupation at the selected level.</p>`
             : o.groups.map(g => `
@@ -989,7 +1055,9 @@ function docx4B(D, kit, firms, opts = {}) {
 
   tools.occupations.forEach(o => {
     out.push(p(`Tools and Equipment for ${o.name} Training`
-      + (o.events > 1 ? ` (${o.events} events)` : ''),
+      + (o.events > 1 ? ` (${o.events} events)` : '')
+      + (o.combinedFrom && o.combinedFrom.length > 1
+          ? ` — combined from ${o.combinedFrom.join(', ')}` : ''),
       { bold: true, spacing: { before: 260, after: 80 } }));
     if (!o.groups.length) {
       out.push(p('No tools recorded for this occupation at the selected level.', { italic: true }));

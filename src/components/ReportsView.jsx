@@ -44,6 +44,14 @@ function ReportsView({ institutes, clients }) {
    * meant narrowing the tools list silently discarded most of the experience.
    */
   const [eoiAllOccsInSpecific, setEoiAllOccsInSpecific] = useState(f.eoiAllOccsInSpecific ?? false);
+  /**
+   * One tools schedule for all selected occupations, instead of a table each.
+   *
+   * The same drill appears under three trades; a bid wants the total, not three
+   * tables to add up. Off by default — the per-occupation breakdown is what the
+   * form asks for, and some clients want to see it that way.
+   */
+  const [eoiCombineTools, setEoiCombineTools] = useState(f.eoiCombineTools ?? false);
   const [occupations, setOccupations]   = useState([]);
   const [sortBy, setSortBy]             = useState('default'); // for Table 2 occupation sort
   const [filterTrainingTypes, setFilterTrainingTypes] = useState([]); // Helvetas training type filter
@@ -97,8 +105,8 @@ function ReportsView({ institutes, clients }) {
   const [enssureToolsData, setEnssureToolsData] = useState([]);
 
   // Persist key filter state to sessionStorage
-  useEffect(() => { saveFilters({ familyId, selectedInst, reportId, fromFY, toFY, turnFromFY, turnToFY, eoiToolsLevel, eoiEventsByOcc, eoiToolCols, eoiToolTypes, eoiAllOccsInSpecific, filterDuration, enssureOccIds, enssureToolsOccId, enssureToolsLevel, enssureEvents }); },
-    [familyId, selectedInst, reportId, fromFY, toFY, turnFromFY, turnToFY, eoiToolsLevel, eoiEventsByOcc, eoiToolCols, eoiToolTypes, eoiAllOccsInSpecific, filterDuration, enssureOccIds, enssureToolsOccId, enssureToolsLevel, enssureEvents]);
+  useEffect(() => { saveFilters({ familyId, selectedInst, reportId, fromFY, toFY, turnFromFY, turnToFY, eoiToolsLevel, eoiEventsByOcc, eoiToolCols, eoiToolTypes, eoiAllOccsInSpecific, eoiCombineTools, filterDuration, enssureOccIds, enssureToolsOccId, enssureToolsLevel, enssureEvents }); },
+    [familyId, selectedInst, reportId, fromFY, toFY, turnFromFY, turnToFY, eoiToolsLevel, eoiEventsByOcc, eoiToolCols, eoiToolTypes, eoiAllOccsInSpecific, eoiCombineTools, filterDuration, enssureOccIds, enssureToolsOccId, enssureToolsLevel, enssureEvents]);
 
   // Fetch tools for explicitly selected D2/D3 occupation + level
   useEffect(() => {
@@ -341,7 +349,7 @@ function ReportsView({ institutes, clients }) {
 
   const opts = { fromFY, toFY, turnoverFromFY: turnFromFY, turnoverToFY: turnToFY,
     bolpatraTools: eoiTools, eoiToolsLevel, eoiEventsByOcc, eoiToolCols, eoiToolTypes, selectedOccs,
-    eoiAllOccsInSpecific, occupations, sortBy,
+    eoiAllOccsInSpecific, eoiCombineTools, occupations, sortBy,
     toolsOccIds, toolsLevel, toolsTypeFilter, toolsColumns, toolsLayout, toolsData, numGroups,
     enssureOccs, enssureOccIds, enssureToolsData, enssureToolsOccId, enssureToolsLevel, enssureEvents,
     filterDuration, clients };
@@ -692,6 +700,15 @@ function ReportsView({ institutes, clients }) {
                   <option>N/A</option><option>Level 1</option><option>Level 2</option>
                   <option>Level 3</option><option>Professional</option><option>Technician</option>
                 </select>
+                <label className="filter-inline-check" style={{marginTop:10}}>
+                  <input type="checkbox" checked={eoiCombineTools}
+                    onChange={e => setEoiCombineTools(e.target.checked)}/>
+                  <span>
+                    Combine into one schedule
+                    <em>Merges every selected occupation into a single tools and
+                      equipment list, summing quantities for repeated items.</em>
+                  </span>
+                </label>
                 <div className="filter-label" style={{marginTop:12}}>Training events per occupation</div>
                 {eoiOccIds.length === 0 ? (
                   <div className="input-hint">Pick occupations below to list their tools.</div>
