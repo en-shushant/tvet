@@ -45,7 +45,11 @@ const SECTION_TITLES = {
           note: 'Details of similar assignments undertaken in the previous seven years' },
   '3c': { heading: '3(C). Geographic Experience',
           note: 'Experience of working in similar geographic region or country' },
-  '4a': { heading: '4(A). Financial Capacity',
+  // "4.  Capacity" is the parent heading that 4(A) sits under on the printed
+  // form, so it prints above the sub-heading and its note — not buried inside
+  // the section body after them.
+  '4a': { preHeading: '4.  Capacity',
+          heading: '4(A). Financial Capacity',
           note: '(In case of joint venture of two or more firms to be filled separately for each constituent member)' },
   '4b': { heading: '4(B). Infrastructure/equipment related to the proposed assignment',
           note: 'Service delivery space, and the tools and equipment available for the proposed occupations.' },
@@ -376,11 +380,16 @@ export const DEFAULT_TOOL_COLS = ['sn', 'name', 'unit', 'quantity', 'remarks'];
 function model4bTools(opts = {}) {
   const { selectedOccs = [], occupations = [], bolpatraTools = {},
           eoiEventsByOcc = {}, eoiToolCols = DEFAULT_TOOL_COLS, eoiToolTypes = [] } = opts;
+  // One table holding every type, rather than a lettered sub-table per type.
+  const singleTable = !!opts.eoiSingleTable;
   // Each occupation runs its own number of events, so quantities scale per
   // occupation rather than by one figure across the whole bid.
   const eventsFor = (occId) => Math.max(1, parseInt(eoiEventsByOcc[occId]) || 1);
 
-  const picked = TOOL_COLUMNS.filter(c => eoiToolCols.includes(c.key));
+  // Without the sub-table headings there is nothing left saying which rows are
+  // consumables and which are safety gear, so the Type column carries it.
+  const wantCol = (key) => eoiToolCols.includes(key) || (singleTable && key === 'type');
+  const picked = TOOL_COLUMNS.filter(c => wantCol(c.key));
   const active = picked.length ? picked : TOOL_COLUMNS.filter(c => DEFAULT_TOOL_COLS.includes(c.key));
 
   // An empty type selection means every type — matching an "All types" default.
@@ -398,17 +407,41 @@ function model4bTools(opts = {}) {
     return dash(t[key]);
   };
 
-  const perOccupation = () => chosen.map(o => {
-    const events = eventsFor(o.id);
-    const items = (bolpatraTools[o.id] || []).filter(t => wantType(t.type));
-    const groups = TOOL_GROUPS
-      .map(g => ({ label: g.label, rows: items.filter(t => t.type === g.type) }))
+  // The combined path carries each item wrapped with its summed quantity, the
+  // per-occupation path passes the tool straight through.
+  const typeOf = (x) => (x && x.tool ? x.tool.type : x?.type);
+
+  /**
+   * Split into lettered sub-tables by type, or keep everything in one.
+   *
+   * @param items  in TOOL_GROUPS order when flattened, so a single table still
+   *               reads safety → tools → consumables → stationery rather than
+   *               whatever order the master list happens to be in.
+   * @param rowFor (item, indexWithinTable) => cells
+   */
+  const groupsFor = (items, rowFor) => {
+    const inGroup = (g) => items.filter(t => typeOf(t) === g.type);
+    if (singleTable) {
+      const ordered = TOOL_GROUPS.flatMap(inGroup);
+      // Anything with an unrecognised type would vanish otherwise.
+      const known = new Set(TOOL_GROUPS.map(g => g.type));
+      ordered.push(...items.filter(t => !known.has(typeOf(t))));
+      return ordered.length ? [{ letter: '', label: '', rows: ordered.map(rowFor) }] : [];
+    }
+    return TOOL_GROUPS
+      .map(g => ({ label: g.label, rows: inGroup(g) }))
       .filter(g => g.rows.length)
       .map((g, gi) => ({
         letter: GROUP_LETTERS[gi] || String(gi + 1),
         label: g.label,
-        rows: g.rows.map((t, i) => active.map(c => cellFor(t, c.key, i, events))),
+        rows: g.rows.map(rowFor),
       }));
+  };
+
+  const perOccupation = () => chosen.map(o => {
+    const events = eventsFor(o.id);
+    const items = (bolpatraTools[o.id] || []).filter(t => wantType(t.type));
+    const groups = groupsFor(items, (t, i) => active.map(c => cellFor(t, c.key, i, events)));
     return { name: o.name, events, groups };
   });
 
@@ -446,18 +479,10 @@ function model4bTools(opts = {}) {
       }
     }
 
-    const all = [...merged.values()];
-    const groups = TOOL_GROUPS
-      .map(g => ({ label: g.label, rows: all.filter(x => x.tool.type === g.type) }))
-      .filter(g => g.rows.length)
-      .map((g, gi) => ({
-        letter: GROUP_LETTERS[gi] || String(gi + 1),
-        label: g.label,
-        // Quantities are already multiplied through, so events is 1 here.
-        rows: g.rows.map((x, i) => active.map(c => c.key === 'quantity'
-          ? (x.quantity != null ? String(x.quantity) : '')
-          : cellFor(x.tool, c.key, i, 1))),
-      }));
+    // Quantities are already multiplied through, so events is 1 here.
+    const groups = groupsFor([...merged.values()], (x, i) => active.map(c => c.key === 'quantity'
+      ? (x.quantity != null ? String(x.quantity) : '')
+      : cellFor(x.tool, c.key, i, 1)));
 
     return [{
       name: chosen.length === 1 ? chosen[0].name : 'All selected occupations',
@@ -474,6 +499,7 @@ function model4bTools(opts = {}) {
     columns: active.map(c => c.label),
     widths:  active.map(c => c.width),
     combined: !!opts.eoiCombineTools,
+    singleTable,
     occupations: opts.eoiCombineTools ? combined() : perOccupation(),
   };
 }
@@ -577,10 +603,12 @@ function Section4B({ firms, opts = {} }) {
                     No tools recorded for this occupation at the selected level.
                   </div>
                 : o.groups.map(g => (
-                    <div key={g.letter} style={{marginBottom:12}}>
-                      <div style={{fontSize:12, fontWeight:600, margin:'8px 0 4px'}}>
-                        {g.letter}. {g.label}
-                      </div>
+                    <div key={g.letter || 'all'} style={{marginBottom:12}}>
+                      {g.label && (
+                        <div style={{fontSize:12, fontWeight:600, margin:'8px 0 4px'}}>
+                          {g.letter}. {g.label}
+                        </div>
+                      )}
                       <Plain columns={tools.columns} rows={g.rows} empty="" />
                     </div>
                   ))}
@@ -652,7 +680,7 @@ function SectionBody({ section, inst, exps, clients, opts }) {
   const m = model4a(inst, opts);
   return (
     <div>
-      <table style={{borderCollapse:'collapse', width:'100%', maxWidth:520}}>
+      <table style={{borderCollapse:'collapse', width:'100%'}}>
         <thead>
           <tr><th style={{...TH, textAlign:'center'}} colSpan={2}>Annual Turnover</th></tr>
           <tr><th style={{...TH, textAlign:'center'}}>Year</th><th style={{...TH, textAlign:'center'}}>Amount Currency</th></tr>
@@ -667,7 +695,7 @@ function SectionBody({ section, inst, exps, clients, opts }) {
       </table>
       {/* Dashed bullet + bold label on the left, tall bordered box on the right,
           its edges aligned to the turnover table above — as printed on the form. */}
-      <div style={{display:'flex', alignItems:'stretch', marginTop:16, maxWidth:520}}>
+      <div style={{display:'flex', alignItems:'stretch', marginTop:16}}>
         <div style={{flex:1, display:'flex', alignItems:'center', gap:10, paddingLeft:14}}>
           <span style={{color:'var(--text2)'}}>-</span>
           <span style={{fontWeight:700, fontSize:12.5}}>Average Annual Turnover</span>
@@ -693,6 +721,11 @@ function renderAggregateTable(inst, exps, clients, reportId, opts = {}) {
       {inst?.acronym && <div style={{fontSize:11, color:'var(--text3)', marginBottom:14}}>{inst.acronym}</div>}
       {sections.map(s => (
         <div key={s} style={{marginBottom:26}}>
+          {SECTION_TITLES[s].preHeading && (
+            <div style={{fontWeight:700, fontSize:15, textAlign:'center', marginBottom:8}}>
+              {SECTION_TITLES[s].preHeading}
+            </div>
+          )}
           <div style={{fontWeight:700, marginBottom:2,
             fontSize: SECTION_TITLES[s].centered ? 15 : 13,
             textAlign: SECTION_TITLES[s].centered ? 'center' : 'left'}}>{SECTION_TITLES[s].heading}</div>
@@ -715,6 +748,11 @@ function renderMultiAggregate(firms, clients, reportId, opts = {}) {
     <div>
       {sections.map(s => (
         <div key={s} style={{marginBottom:34}}>
+          {SECTION_TITLES[s].preHeading && (
+            <div style={{fontWeight:700, fontSize:16, textAlign:'center', marginBottom:8}}>
+              {SECTION_TITLES[s].preHeading}
+            </div>
+          )}
           <div style={{fontWeight:700, marginBottom:2,
             fontSize: SECTION_TITLES[s].centered ? 16 : 14,
             textAlign: SECTION_TITLES[s].centered ? 'center' : 'left'}}>{SECTION_TITLES[s].heading}</div>
@@ -784,7 +822,7 @@ function html4B(firms, opts = {}) {
           ${o.groups.length === 0
             ? `<p class="muted">No tools recorded for this occupation at the selected level.</p>`
             : o.groups.map(g => `
-                <div class="grp">${esc(g.letter)}. ${esc(g.label)}</div>
+                ${g.label ? `<div class="grp">${esc(g.letter)}. ${esc(g.label)}</div>` : ''}
                 ${htmlGridPlain(tools.columns, g.rows, '')}`).join('')}
         </div>`).join('');
 
@@ -824,7 +862,6 @@ function htmlSection(section, inst, exps, clients, opts) {
 
   const m = model4a(inst, opts);
   return `
-    <div class="cap-head">4.  Capacity</div>
     <table class="turnover">
       <thead>
         <tr><th colspan="2" class="ctr">Annual Turnover</th></tr>
@@ -877,9 +914,9 @@ const printShell = (title, bodyHtml) => `<!DOCTYPE html><html><head><meta charse
   .block { white-space: pre-wrap; margin-top: 2px; }
   .note { font-weight: bold; margin: 3px 0; }
   .note-i { font-style: italic; font-size: 10.5px; color: #444; }
-  .turnover { max-width: 380px; }
+  .turnover { width: 100%; }
   /* Label left, tall bordered box right, aligned to the turnover table's edges. */
-  .avg { display: flex; align-items: stretch; margin-top: 14px; max-width: 380px; }
+  .avg { display: flex; align-items: stretch; margin-top: 14px; width: 100%; }
   .avg-label { flex: 1; display: flex; align-items: center; gap: 10px; padding-left: 14px; }
   .dash { font-weight: normal; }
   .avg-box { flex: 1; border: 1px solid #000; min-height: 52px; padding: 6px 10px;
@@ -900,6 +937,7 @@ const printShell = (title, bodyHtml) => `<!DOCTYPE html><html><head><meta charse
 const printBlock = (s, inst, exps, clients, opts, heading) => `
     <div class="section">
       <div class="doc-head">Standard EOI Document</div>
+      ${SECTION_TITLES[s].preHeading ? `<div class="cap-head">${esc(SECTION_TITLES[s].preHeading)}</div>` : ''}
       <h2 class="${SECTION_TITLES[s].centered ? 'h2-center' : ''}">${esc(SECTION_TITLES[s].heading)}</h2>
       <p class="sub">${esc(SECTION_TITLES[s].note)}</p>
       ${heading ? `<div class="firm">${esc(heading)}</div>` : ''}
@@ -926,6 +964,7 @@ function buildMultiPrintHTML(firms, clients, reportId, fyRange, opts = {}) {
       blocks.push(`
     <div class="section">
       <div class="doc-head">Standard EOI Document</div>
+      ${SECTION_TITLES[s].preHeading ? `<div class="cap-head">${esc(SECTION_TITLES[s].preHeading)}</div>` : ''}
       <h2 class="${SECTION_TITLES[s].centered ? 'h2-center' : ''}">${esc(SECTION_TITLES[s].heading)}</h2>
       <p class="sub">${esc(SECTION_TITLES[s].note)}</p>
       ${html4B(firms, opts)}
@@ -987,6 +1026,10 @@ function docxKit(D) {
   const { Paragraph, TextRun, TableCell, WidthType, VerticalAlign, BorderStyle, ShadingType } = D;
   const B = { style: BorderStyle.SINGLE, size: 6, color: '000000' };
   const BORDERS = { top: B, bottom: B, left: B, right: B };
+  // `borders: undefined` tells docx to use its default, which is a full single
+  // border — the opposite of what's wanted. Suppressing one needs saying so.
+  const N = { style: BorderStyle.NONE, size: 0, color: 'FFFFFF' };
+  const NO_BORDERS = { top: N, bottom: N, left: N, right: N };
 
   const p = (text, o = {}) => new Paragraph({
     alignment: o.align,
@@ -1008,7 +1051,7 @@ function docxKit(D) {
   const cell = (children, o = {}) => new TableCell({
     columnSpan: o.colspan,
     width: { size: o.width || HALF, type: WidthType.DXA },
-    borders: o.noBorder ? undefined : BORDERS,
+    borders: o.noBorder ? NO_BORDERS : BORDERS,
     shading: o.shade ? { fill: o.shade, type: ShadingType.CLEAR } : undefined,
     verticalAlign: VerticalAlign.TOP,
     margins: { top: 60, bottom: 60, left: 110, right: 110 },
@@ -1064,7 +1107,7 @@ function docx4B(D, kit, firms, opts = {}) {
       return;
     }
     o.groups.forEach(g => {
-      out.push(p(`${g.letter}. ${g.label}`, { bold: true, spacing: { before: 140, after: 60 } }));
+      if (g.label) out.push(p(`${g.letter}. ${g.label}`, { bold: true, spacing: { before: 140, after: 60 } }));
       out.push(grid(tools.columns, tools.widths, g.rows));
     });
   });
@@ -1141,8 +1184,7 @@ function docxSection(D, kit, section, inst, exps, clients, opts) {
 
   // 4a
   const m = model4a(inst, opts);
-  out.push(p('4.  Capacity', { bold: true, size: 24, align: D.AlignmentType.CENTER, spacing: { after: 160 } }));
-  const half = Math.round(CONTENT_W * 0.28);
+  const half = Math.round(CONTENT_W / 2);
   const w4 = [half, half];
   const t4w = half * 2;
   const rows = [
@@ -1204,6 +1246,10 @@ async function downloadMultiDOCX(firms, clients, reportId, opts = {}) {
       if (!first) children.push(new Paragraph({ pageBreakBefore: true, children: [new TextRun({ text: '', size: 19 })] }));
       first = false;
       children.push(p('Standard EOI Document', { bold: true, italic: true, align: AlignmentType.CENTER, size: 22 }));
+      if (SECTION_TITLES[s].preHeading) {
+        children.push(p(SECTION_TITLES[s].preHeading, { bold: true, size: 24,
+          align: AlignmentType.CENTER, spacing: { before: 200, after: 120 } }));
+      }
       children.push(p(SECTION_TITLES[s].heading, { bold: true,
         size: SECTION_TITLES[s].centered ? 26 : 22,
         align: SECTION_TITLES[s].centered ? AlignmentType.CENTER : undefined,
@@ -1217,6 +1263,10 @@ async function downloadMultiDOCX(firms, clients, reportId, opts = {}) {
       first = false;
 
       children.push(p('Standard EOI Document', { bold: true, italic: true, align: AlignmentType.CENTER, size: 22 }));
+      if (SECTION_TITLES[s].preHeading) {
+        children.push(p(SECTION_TITLES[s].preHeading, { bold: true, size: 24,
+          align: AlignmentType.CENTER, spacing: { before: 200, after: 120 } }));
+      }
       children.push(p(SECTION_TITLES[s].heading, { bold: true,
         size: SECTION_TITLES[s].centered ? 26 : 22,
         align: SECTION_TITLES[s].centered ? AlignmentType.CENTER : undefined,

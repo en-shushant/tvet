@@ -52,6 +52,7 @@ function ReportsView({ institutes, clients }) {
    * form asks for, and some clients want to see it that way.
    */
   const [eoiCombineTools, setEoiCombineTools] = useState(f.eoiCombineTools ?? false);
+  const [eoiSingleTable, setEoiSingleTable] = useState(f.eoiSingleTable ?? false);
   const [occupations, setOccupations]   = useState([]);
   const [sortBy, setSortBy]             = useState('default'); // for Table 2 occupation sort
   const [filterTrainingTypes, setFilterTrainingTypes] = useState([]); // Helvetas training type filter
@@ -105,8 +106,8 @@ function ReportsView({ institutes, clients }) {
   const [enssureToolsData, setEnssureToolsData] = useState([]);
 
   // Persist key filter state to sessionStorage
-  useEffect(() => { saveFilters({ familyId, selectedInst, reportId, fromFY, toFY, turnFromFY, turnToFY, eoiToolsLevel, eoiEventsByOcc, eoiToolCols, eoiToolTypes, eoiAllOccsInSpecific, eoiCombineTools, filterDuration, enssureOccIds, enssureToolsOccId, enssureToolsLevel, enssureEvents }); },
-    [familyId, selectedInst, reportId, fromFY, toFY, turnFromFY, turnToFY, eoiToolsLevel, eoiEventsByOcc, eoiToolCols, eoiToolTypes, eoiAllOccsInSpecific, eoiCombineTools, filterDuration, enssureOccIds, enssureToolsOccId, enssureToolsLevel, enssureEvents]);
+  useEffect(() => { saveFilters({ familyId, selectedInst, reportId, fromFY, toFY, turnFromFY, turnToFY, eoiToolsLevel, eoiEventsByOcc, eoiToolCols, eoiToolTypes, eoiAllOccsInSpecific, eoiCombineTools, eoiSingleTable, filterDuration, enssureOccIds, enssureToolsOccId, enssureToolsLevel, enssureEvents }); },
+    [familyId, selectedInst, reportId, fromFY, toFY, turnFromFY, turnToFY, eoiToolsLevel, eoiEventsByOcc, eoiToolCols, eoiToolTypes, eoiAllOccsInSpecific, eoiCombineTools, eoiSingleTable, filterDuration, enssureOccIds, enssureToolsOccId, enssureToolsLevel, enssureEvents]);
 
   // Fetch tools for explicitly selected D2/D3 occupation + level
   useEffect(() => {
@@ -349,7 +350,7 @@ function ReportsView({ institutes, clients }) {
 
   const opts = { fromFY, toFY, turnoverFromFY: turnFromFY, turnoverToFY: turnToFY,
     bolpatraTools: eoiTools, eoiToolsLevel, eoiEventsByOcc, eoiToolCols, eoiToolTypes, selectedOccs,
-    eoiAllOccsInSpecific, eoiCombineTools, occupations, sortBy,
+    eoiAllOccsInSpecific, eoiCombineTools, eoiSingleTable, occupations, sortBy,
     toolsOccIds, toolsLevel, toolsTypeFilter, toolsColumns, toolsLayout, toolsData, numGroups,
     enssureOccs, enssureOccIds, enssureToolsData, enssureToolsOccId, enssureToolsLevel, enssureEvents,
     filterDuration, clients };
@@ -707,6 +708,16 @@ function ReportsView({ institutes, clients }) {
                     Combine into one schedule
                     <em>Merges every selected occupation into a single tools and
                       equipment list, summing quantities for repeated items.</em>
+                  </span>
+                </label>
+                <label className="filter-inline-check">
+                  <input type="checkbox" checked={eoiSingleTable}
+                    onChange={e => setEoiSingleTable(e.target.checked)}/>
+                  <span>
+                    All types in one table
+                    <em>Tools, equipment, consumables, stationery and safety gear
+                      share a single table instead of one per type. Adds a Type
+                      column so the rows stay distinguishable.</em>
                   </span>
                 </label>
                 <div className="filter-label" style={{marginTop:12}}>Training events per occupation</div>
