@@ -153,9 +153,14 @@ const meetsDuration = (occ, filterDuration) => {
  * user asked for 400-hour Plumbing.
  */
 function specificExps(exps, opts = {}) {
-  const { selectedOccs = [], filterDuration = '', occupations = [] } = opts;
-  if (!selectedOccs.length && !filterDuration) return exps;
-  const wanted = selectedOccs.map(s => s.toLowerCase());
+  const { selectedOccs = [], filterDuration = '', occupations = [],
+          eoiAllOccsInSpecific = false } = opts;
+  // The occupation picker scopes the 4(B) tools list. When this is set it stops
+  // scoping 3(B) as well, so the firm's experience can be shown in full while
+  // the tools stay limited to the occupations being tendered for. Duration is
+  // still applied — that is a separate filter and means the same thing here.
+  const wanted = eoiAllOccsInSpecific ? [] : selectedOccs.map(s => s.toLowerCase());
+  if (!wanted.length && !filterDuration) return exps;
   return exps.filter(exp => (exp.occupations || []).some(occ => {
     if (!meetsDuration(occ, filterDuration)) return false;
     if (!wanted.length) return true;

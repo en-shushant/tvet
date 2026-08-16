@@ -33,6 +33,17 @@ function ReportsView({ institutes, clients }) {
   const [turnFromFY, setTurnFromFY]     = useState(f.turnFromFY || '');
   const [turnToFY, setTurnToFY]         = useState(f.turnToFY || '');
   const [selectedOccs, setSelectedOccs] = useState([]); // for Table 3 occupation filter
+  /**
+   * Whether 3(B) Specific Experience covers every occupation or only the
+   * selected ones.
+   *
+   * The occupation picker drives two different things: which tools are listed
+   * in 4(B), and which assignments 3(B) describes. Those wants diverge — a bid
+   * asks for the tools of the occupations being tendered for, while the firm's
+   * experience is strongest when all of it is shown. Tying both to one control
+   * meant narrowing the tools list silently discarded most of the experience.
+   */
+  const [eoiAllOccsInSpecific, setEoiAllOccsInSpecific] = useState(f.eoiAllOccsInSpecific ?? false);
   const [occupations, setOccupations]   = useState([]);
   const [sortBy, setSortBy]             = useState('default'); // for Table 2 occupation sort
   const [filterTrainingTypes, setFilterTrainingTypes] = useState([]); // Helvetas training type filter
@@ -86,8 +97,8 @@ function ReportsView({ institutes, clients }) {
   const [enssureToolsData, setEnssureToolsData] = useState([]);
 
   // Persist key filter state to sessionStorage
-  useEffect(() => { saveFilters({ familyId, selectedInst, reportId, fromFY, toFY, turnFromFY, turnToFY, eoiToolsLevel, eoiEventsByOcc, eoiToolCols, eoiToolTypes, filterDuration, enssureOccIds, enssureToolsOccId, enssureToolsLevel, enssureEvents }); },
-    [familyId, selectedInst, reportId, fromFY, toFY, turnFromFY, turnToFY, eoiToolsLevel, eoiEventsByOcc, eoiToolCols, eoiToolTypes, filterDuration, enssureOccIds, enssureToolsOccId, enssureToolsLevel, enssureEvents]);
+  useEffect(() => { saveFilters({ familyId, selectedInst, reportId, fromFY, toFY, turnFromFY, turnToFY, eoiToolsLevel, eoiEventsByOcc, eoiToolCols, eoiToolTypes, eoiAllOccsInSpecific, filterDuration, enssureOccIds, enssureToolsOccId, enssureToolsLevel, enssureEvents }); },
+    [familyId, selectedInst, reportId, fromFY, toFY, turnFromFY, turnToFY, eoiToolsLevel, eoiEventsByOcc, eoiToolCols, eoiToolTypes, eoiAllOccsInSpecific, filterDuration, enssureOccIds, enssureToolsOccId, enssureToolsLevel, enssureEvents]);
 
   // Fetch tools for explicitly selected D2/D3 occupation + level
   useEffect(() => {
@@ -329,7 +340,8 @@ function ReportsView({ institutes, clients }) {
   }, [familyId, fullInst, activeExps]);
 
   const opts = { fromFY, toFY, turnoverFromFY: turnFromFY, turnoverToFY: turnToFY,
-    bolpatraTools: eoiTools, eoiToolsLevel, eoiEventsByOcc, eoiToolCols, eoiToolTypes, selectedOccs, occupations, sortBy,
+    bolpatraTools: eoiTools, eoiToolsLevel, eoiEventsByOcc, eoiToolCols, eoiToolTypes, selectedOccs,
+    eoiAllOccsInSpecific, occupations, sortBy,
     toolsOccIds, toolsLevel, toolsTypeFilter, toolsColumns, toolsLayout, toolsData, numGroups,
     enssureOccs, enssureOccIds, enssureToolsData, enssureToolsOccId, enssureToolsLevel, enssureEvents,
     filterDuration, clients };
@@ -878,6 +890,18 @@ function ReportsView({ institutes, clients }) {
                     </label>
                   ))}
                 </div>
+                {report.hasToolsPicker && (
+                  // Only meaningful where the same picker also drives a tools
+                  // list — that is the conflict this resolves.
+                  <label className="filter-inline-check" style={{marginTop:8}}>
+                    <input type="checkbox" checked={eoiAllOccsInSpecific}
+                      onChange={e => setEoiAllOccsInSpecific(e.target.checked)}/>
+                    <span>
+                      All occupations in 3(B)
+                      <em>Tools stay limited to the selection above.</em>
+                    </span>
+                  </label>
+                )}
               </div>
             )}
 
