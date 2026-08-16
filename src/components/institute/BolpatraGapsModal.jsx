@@ -21,9 +21,8 @@ import { confirmDialog } from '../ui/Feedback.jsx';
 import { Btn } from '../../md.jsx';
 import SearchableSelect from '../ui/SearchableSelect.jsx';
 import { DistrictSearch } from '../ExperienceForm.jsx';
-import { getOccupation } from '../../utils/format.js';
+import { getOccupation, getClient, fyToAD, uid } from '../../utils/format.js';
 import { missingBolpatraFields } from '../../utils/bolpatraGaps.js';
-import { uid } from '../../utils/format.js';
 
 /** Report sections, so the order on screen matches the order in the document. */
 const FIELDS = [
@@ -44,6 +43,69 @@ const FIELDS = [
   { field:'narrativeDescription',     label:'Narrative description of project', section:'3(B)', long:true, template:'narrativeTemplateId' },
   { field:'actualServicesDescription',label:'Description of actual services',   section:'3(B) footer', long:true, template:'servicesTemplateId' },
 ];
+
+/**
+ * Read-only context for the assignment being fixed: FY, client, occupations
+ * with their trainees/duration, and districts.
+ *
+ * Every blank the panel below asks about belongs to this same assignment, but
+ * none of that surrounding detail is otherwise on screen while filling gaps —
+ * only the field list. Someone entering a contract start date has no way to
+ * confirm they're looking at the right occupation or FY without leaving the
+ * modal. This mirrors the read-only assignment card elsewhere in the app, cut
+ * down to what's static — nothing here is editable, so the summary can't
+ * drift out of sync with the fields below it.
+ */
+function TrainingSummary({ exp, institute, clients }) {
+  const client = getClient(clients, exp.clientId);
+  const districts = [...new Set(
+    (exp.occupations || []).flatMap(o => (o.locations || [])).map(l => l.district).filter(Boolean))];
+
+  return (
+    <div className="gap-summary">
+      <div className="gap-summary-badges">
+        <span className="gap-summary-badge gap-summary-badge-fy">
+          FY {exp.fy}{fyToAD(exp.fy) ? ` · ${fyToAD(exp.fy)}` : ''}
+        </span>
+        {exp.trainingType && <span className="gap-summary-badge">{exp.trainingType}</span>}
+        {exp.isJV && <span className="gap-summary-badge">JV</span>}
+        {exp.contractValue && (
+          <span className="gap-summary-badge">NPR {parseInt(exp.contractValue, 10).toLocaleString()}</span>
+        )}
+      </div>
+      <div className="gap-summary-client">
+        {client.fullName || exp.clientName || institute?.name || 'Unknown client'}
+        {client.shortName ? ` (${client.shortName})` : ''}
+      </div>
+
+      {(exp.occupations || []).length > 0 && (
+        <div className="gap-summary-occs">
+          {exp.occupations.map((occ, i) => {
+            const name = getOccupation(occ.ctevtOccupationId).name || occ.nameInLetter || `Occupation ${i + 1}`;
+            return (
+              <div key={occ.id || i} className="gap-summary-occ">
+                <span className="gap-summary-occ-name">
+                  {name}{occ.level ? <span className="gap-summary-occ-level"> · {occ.level}</span> : ''}
+                </span>
+                <span className="gap-summary-occ-stats">
+                  {occ.trainees ? `${occ.trainees} trainees` : ''}
+                  {occ.trainees && occ.duration ? ' · ' : ''}
+                  {occ.duration ? `${occ.duration}h` : ''}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {districts.length > 0 && (
+        <div className="gap-summary-districts">
+          {districts.map(d => <span key={d} className="gap-summary-district">{d}</span>)}
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default function BolpatraGapsModal({ exp, institute, clients = [], onSave, onClose }) {
   const [form, setForm] = useState(() => ({ ...exp, occupations: (exp.occupations || []).map(o => ({ ...o })) }));
@@ -140,6 +202,8 @@ export default function BolpatraGapsModal({ exp, institute, clients = [], onSave
       </>}>
 
       {err && <div className="gap-error">{err}</div>}
+
+      <TrainingSummary exp={form} institute={institute} clients={clients} />
 
       <div className="gap-head">
         <p className="gap-intro">
