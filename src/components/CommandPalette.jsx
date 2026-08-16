@@ -10,7 +10,7 @@ import { useState, useEffect, useMemo, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useOccupations } from '../utils/useMasterData.js';
 
-const MAX_PER_GROUP = 5;
+const MAX_PER_GROUP = 6;
 
 export default function CommandPalette({ open, onClose, institutes = [], clients = [], actions = [] }) {
   const OCCUPATIONS = useOccupations();
@@ -24,52 +24,101 @@ export default function CommandPalette({ open, onClose, institutes = [], clients
 
   const groups = useMemo(() => {
     const term = q.trim().toLowerCase();
-    // With no query, show the actions — the palette doubles as a launcher.
-    if (!term) return actions.length ? [{ key: 'actions', label: 'Actions', items: actions }] : [];
 
-    const hit = (...vals) => vals.some(v => v && String(v).toLowerCase().includes(term));
+    // With no query, show the actions grouped as they were declared, so the
+    // palette doubles as a map of the app rather than a flat list of five.
+    if (!term) {
+      const byGroup = new Map();
+      for (const a of actions) {
+        const g = a.group || 'Actions';
+        if (!byGroup.has(g)) byGroup.set(g, []);
+        byGroup.get(g).push(a);
+      }
+      return [...byGroup.entries()].map(([label, items]) => ({ key: label, label, items }));
+    }
+
+    /**
+     * Rank by where the match lands, not merely whether it matched. Typing
+     * "nab" should put Nabaratna above a firm with "nab" buried mid-address,
+     * which a plain `includes` filter cannot express.
+     */
+    const score = (...vals) => {
+      let best = 0;
+      for (const v of vals) {
+        if (!v) continue;
+        const t = String(v).toLowerCase();
+        if (t === term) best = Math.max(best, 100);
+        else if (t.startsWith(term)) best = Math.max(best, 80);
+        // A word starting with the term, e.g. "Manpower" in "Brilliant Manpower".
+        else if (new RegExp(`\\b${term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`).test(t)) best = Math.max(best, 60);
+        else if (t.includes(term)) best = Math.max(best, 30);
+      }
+      return best;
+    };
+    // Returns the built items plus the group's best score, so groups can be
+    // ordered by relevance rather than by category.
+    const ranked = (rows, fields, build) => {
+      const hits = rows
+        .map(r => ({ r, s: score(...fields(r)) }))
+        .filter(x => x.s > 0)
+        .sort((a, b) => b.s - a.s);
+      return { items: hits.slice(0, MAX_PER_GROUP).map(x => build(x.r)), best: hits[0]?.s || 0 };
+    };
+
     const out = [];
 
-    const inst = institutes
-      .filter(i => hit(i.name, i.acronym, i.regNo, i.pan, i.address))
-      .slice(0, MAX_PER_GROUP)
-      .map(i => ({
+    // Institutes first: searching a firm by name is the commonest reason to
+    // open this, and burying it under navigation would be perverse.
+    const inst = ranked(institutes,
+      i => [i.name, i.acronym, i.regNo, i.pan, i.address],
+      i => ({
         id: `inst-${i.id}`,
         label: i.name,
-        meta: [i.acronym, i.regNo && `Reg. ${i.regNo}`].filter(Boolean).join(' · '),
+        meta: [i.acronym, i.regNo && `Reg. ${i.regNo}`, i.address].filter(Boolean).join(' · '),
         icon: 'account_balance',
         run: () => window.__paletteOpenInstitute?.(i),
       }));
-    if (inst.length) out.push({ key: 'institutes', label: 'Institutes', items: inst });
+    if (inst.items.length) out.push({ key: 'institutes', label: 'Institutes', items: inst.items, best: inst.best + 1 });
 
-    const cl = clients
-      .filter(c => hit(c.fullName, c.shortName, c.address))
-      .slice(0, MAX_PER_GROUP)
-      .map(c => ({
+    const cl = ranked(clients,
+      c => [c.fullName, c.shortName, c.type, c.address],
+      c => ({
         id: `client-${c.id}`,
         label: c.fullName || c.shortName,
         meta: [c.shortName, c.type].filter(Boolean).join(' · '),
         icon: 'apartment',
-        run: () => window.__paletteGo?.('master'),
+        run: () => window.__paletteGo?.('clients'),
       }));
-    if (cl.length) out.push({ key: 'clients', label: 'Clients', items: cl });
+    if (cl.items.length) out.push({ key: 'clients', label: 'Clients', items: cl.items, best: cl.best });
 
-    const occ = OCCUPATIONS
-      .filter(o => hit(o.name, o.sector))
-      .slice(0, MAX_PER_GROUP)
-      .map(o => ({
+    const occ = ranked(OCCUPATIONS,
+      o => [o.name, o.sector, o.level],
+      o => ({
         id: `occ-${o.id}`,
         label: o.name,
         meta: [o.sector, o.level].filter(Boolean).join(' · '),
-        icon: 'construction',
-        run: () => window.__paletteGo?.('master'),
+        icon: 'work',
+        run: () => window.__paletteGo?.('master/occupations'),
       }));
-    if (occ.length) out.push({ key: 'occupations', label: 'Occupations', items: occ });
+    if (occ.items.length) out.push({ key: 'occupations', label: 'Occupations', items: occ.items, best: occ.best });
 
-    const acts = actions.filter(a => hit(a.label)).slice(0, MAX_PER_GROUP);
-    if (acts.length) out.push({ key: 'actions', label: 'Actions', items: acts });
+    // Actions match on their keywords too, so "vat", "eoi" or "palika" find the
+    // screen that deals with them without knowing its title.
+    const actHits = actions
+      .map(a => ({ a, s: score(a.label, a.keywords, a.group) }))
+      .filter(x => x.s > 0)
+      .sort((x, y) => y.s - x.s);
+    if (actHits.length) out.push({
+      key: 'actions', label: 'Actions', best: actHits[0].s,
+      items: actHits.slice(0, 8).map(x => ({
+        ...x.a, meta: x.a.group && x.a.group !== 'Actions' ? x.a.group : undefined })),
+    });
 
-    return out;
+    // Strongest match first. "vat" should lead with the screen that deals with
+    // VAT, not with a firm whose name happens to contain those letters inside
+    // "Private". Institutes carry a +1 so they win a genuine tie, since looking
+    // one up is the commonest reason to open this at all.
+    return out.sort((a, b) => (b.best || 0) - (a.best || 0));
   }, [q, institutes, clients, actions, OCCUPATIONS]);
 
   // Flattened for keyboard traversal across group boundaries.
@@ -108,7 +157,7 @@ export default function CommandPalette({ open, onClose, institutes = [], clients
           <span className="material-icons-round" aria-hidden="true"
             style={{fontSize:20, color:'var(--text3)'}}>search</span>
           <input ref={inputRef} value={q} onChange={e => setQ(e.target.value)} onKeyDown={onKeyDown}
-            placeholder="Search institutes, clients, occupations…"
+            placeholder="Search institutes, clients, occupations, or jump to a screen…"
             aria-label="Search TVETtrack"
             style={{flex:1, border:'none', outline:'none', background:'transparent',
               fontSize:15, fontFamily:'var(--font)', color:'var(--text)'}}/>

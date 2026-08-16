@@ -305,12 +305,18 @@ function App() {
     setScreen('dashboard');
   };
 
-  const handleNavigate = (id) => {
+  // A nav id may carry a sub-route, e.g. 'master/tools'. The hash already
+  // splits on '/', so this needs no new routing — only somewhere to keep it.
+  const [subRoute, setSubRoute] = useState(() => parseHash().instId);
+
+  const handleNavigate = (rawId) => {
+    const [id, sub] = String(rawId).split('/');
+    setSubRoute(sub || null);
     if (isShortlistOnly && id !== 'shortlisting' && id !== 'quotations' && id !== 'dashboard' && id !== 'institutes' && id !== 'detail' && id !== 'documents') return;
     if (id === 'master' && !isAdmin && !isEditor) return;
     if (id === 'users' && !isAdmin) return;
     if ((id === 'summary' || id === 'comparison' || id === 'compliance') && isEditor) return;
-    window.location.hash = id;
+    window.location.hash = sub ? `${id}/${sub}` : id;
     setScreen(id);
     if (id === 'institutes') setSelectedInstitute(null);
     setMobileSidebarOpen(false);
@@ -596,7 +602,7 @@ function App() {
           {screen === 'shortlisting' && <Suspense fallback={<div style={{padding:40,textAlign:'center',color:'var(--text3)'}}>Loading…</div>}><Shortlisting institutes={institutes} clients={clients} isAdmin={isAdmin} isEditor={isEditor} isShortlistOnly={isShortlistOnly} isSuperAdmin={isSuperAdmin} token={token}/></Suspense>}
           {screen === 'quotations' && <QuotationsView institutes={institutes} clients={clients} isAdmin={isAdmin} isEditor={isEditor} isShortlistOnly={isShortlistOnly}/>}
           {screen === 'reports' && <Suspense fallback={<div style={{padding:40,textAlign:'center',color:'var(--text3)'}}>Loading reports…</div>}><ReportsView institutes={institutes} clients={clients}/></Suspense>}
-          {screen === 'master' && (isAdmin || isEditor) && <MasterData onGoToClients={()=>handleNavigate('clients')} clients={clients} onUpdateClients={handleUpdateClients} token={token} isAdmin={isAdmin} isEditor={isEditor} isSuperAdmin={isSuperAdmin}/>}
+          {screen === 'master' && (isAdmin || isEditor) && <MasterData initialTab={subRoute} onGoToClients={()=>handleNavigate('clients')} clients={clients} onUpdateClients={handleUpdateClients} token={token} isAdmin={isAdmin} isEditor={isEditor} isSuperAdmin={isSuperAdmin}/>}
           {screen === 'master' && !isAdmin && !isEditor && (
             <div style={{display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',height:'60%',gap:12,color:'var(--text3)'}}>
               <div style={{fontSize:40}}>🔒</div>
@@ -629,14 +635,72 @@ function App() {
         institutes={institutes}
         clients={clients}
         actions={[
+          // Every screen the current role can reach, plus the Master data tabs,
+          // which are otherwise two clicks deep and unsearchable. `keywords`
+          // exist so people can type what they call the thing — "eoi",
+          // "bolpatra", "renewal", "vat" — rather than the label we chose.
           ...((isAdmin || isShortlistOnly) ? [{ id:'a-inst', label:'Add institute', icon:'add_business',
+            group:'Create', keywords:'new firm add register',
             run:()=>setShowAddInstitute(true) }] : []),
-          { id:'a-dash',    label:'Go to Dashboard',   icon:'dashboard',          run:()=>handleNavigate('dashboard') },
-          { id:'a-insts',   label:'Go to Institutes',  icon:'account_balance',    run:()=>handleNavigate('institutes') },
-          ...(!isShortlistOnly ? [{ id:'a-reports', label:'Generate a report', icon:'description',
-            run:()=>handleNavigate('reports') }] : []),
-          ...((isAdmin || isEditor) ? [{ id:'a-master', label:'Open Master data', icon:'category',
-            run:()=>handleNavigate('master') }] : []),
+
+          { id:'a-dash',  label:'Dashboard',  icon:'dashboard',       group:'Go to',
+            keywords:'home overview start', run:()=>handleNavigate('dashboard') },
+          { id:'a-insts', label:'Institutes', icon:'account_balance', group:'Go to',
+            keywords:'firms companies training centers providers', run:()=>handleNavigate('institutes') },
+          ...(!isShortlistOnly ? [
+            { id:'a-clients', label:'Clients', icon:'apartment', group:'Go to',
+              keywords:'organisations organizations donors employers engagement',
+              run:()=>handleNavigate('clients') },
+          ] : []),
+          ...(!isEditor && !isShortlistOnly ? [
+            { id:'a-summary', label:'Analytics — Summary', icon:'bar_chart', group:'Go to',
+              keywords:'statistics totals figures trainees', run:()=>handleNavigate('summary') },
+            { id:'a-compare', label:'Analytics — Comparison', icon:'compare_arrows', group:'Go to',
+              keywords:'compare side by side jv joint venture', run:()=>handleNavigate('comparison') },
+          ] : []),
+          ...(!isShortlistOnly ? [
+            { id:'a-reports', label:'Reports', icon:'description', group:'Go to',
+              keywords:'eoi bolpatra docx export generate helvetas enssure tools consumables',
+              run:()=>handleNavigate('reports') },
+            { id:'a-renewals', label:'Renewals & Compliance', icon:'event_repeat', group:'Go to',
+              keywords:'renewal expiry overdue tax clearance nstb affiliation lapsed',
+              run:()=>handleNavigate('renewals') },
+          ] : []),
+          { id:'a-docs', label:'Documents', icon:'folder_shared', group:'Go to',
+            keywords:'ocr vat ctevt registration paperwork files uploads',
+            run:()=>handleNavigate('documents') },
+          ...(!isEditor && !isShortlistOnly ? [
+            { id:'a-projcomp', label:'Project Compliance', icon:'fact_check', group:'Go to',
+              keywords:'match firms criteria eligibility bid shortlist jv',
+              run:()=>handleNavigate('compliance') },
+          ] : []),
+          { id:'a-shortlist', label:'Shortlisting', icon:'playlist_add_check', group:'Go to',
+            keywords:'standing list nea letters roster', run:()=>handleNavigate('shortlisting') },
+          { id:'a-quotes', label:'Quotations', icon:'gavel', group:'Go to',
+            keywords:'quote bid price contract', run:()=>handleNavigate('quotations') },
+          ...(!isShortlistOnly ? [{ id:'a-quality', label:'Data Quality', icon:'rule', group:'Go to',
+            keywords:'missing gaps incomplete blank problems', run:()=>handleNavigate('quality') }] : []),
+          ...(isAdmin ? [{ id:'a-users', label:'User Management', icon:'manage_accounts', group:'Go to',
+            keywords:'accounts roles permissions access', run:()=>handleNavigate('users') }] : []),
+
+          ...((isAdmin || isEditor) ? [
+            { id:'m-tools', label:'Tools & consumables', icon:'construction', group:'Master data',
+              keywords:'tools consumables equipment materials stationery safety',
+              run:()=>handleNavigate('master/tools') },
+            { id:'m-occ', label:'Occupations', icon:'work', group:'Master data',
+              keywords:'trades courses skills sectors levels', run:()=>handleNavigate('master/occupations') },
+            { id:'m-cli', label:'Client records', icon:'apartment', group:'Master data',
+              keywords:'add edit client organisation', run:()=>handleNavigate('master/clients') },
+            { id:'m-tt', label:'Training types', icon:'school', group:'Master data',
+              keywords:'short term long term type', run:()=>handleNavigate('master/training_types') },
+            ...(isSuperAdmin ? [
+              { id:'m-fy', label:'Fiscal years', icon:'event', group:'Master data',
+                keywords:'fy year bikram sambat current', run:()=>handleNavigate('master/fiscal_years') },
+              { id:'m-loc', label:'Locations', icon:'place', group:'Master data',
+                keywords:'province district palika local level municipality',
+                run:()=>handleNavigate('master/locations') },
+            ] : []),
+          ] : []),
         ]}
       />
     </div>

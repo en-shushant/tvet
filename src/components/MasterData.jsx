@@ -14,8 +14,10 @@ import { PageHeader, PillTabs } from './ui/primitives.jsx';
 import { useOccupations } from '../utils/useMasterData.js';
 
 
-function MasterData({clients, onUpdateClients, token, isAdmin, isEditor, isSuperAdmin, onGoToClients}) {
-  const [tab, setTab] = useState('clients');
+function MasterData({clients, onUpdateClients, token, isAdmin, isEditor, isSuperAdmin, onGoToClients, initialTab}) {
+  // Deep-linked from the command palette (#master/tools and friends), so
+  // "go to tools" lands on the tab rather than on Clients.
+  const [tab, setTab] = useState(initialTab || 'clients');
   const [clientModal, setClientModal] = useState(null);
   const [search, setSearch] = useState('');
   const [sectorFilter, setSectorFilter] = useState('');
