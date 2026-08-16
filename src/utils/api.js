@@ -33,10 +33,25 @@ export async function api(method, path, body, token, _retry = 0) {
     throw new Error('Network error — could not reach server. Check your internet connection.');
   }
   if (!res.ok) {
-    const err = await res.json().catch(() => ({ error: res.statusText }));
-    const msg = err.error || res.statusText;
+    // Every failure has to carry a message. Over HTTP/2 res.statusText is
+    // always the empty string, so a response our API did not write — a proxy's
+    // HTML error page while the container restarts, a gateway timeout —
+    // produced a bare "Failed: " with nothing after it, which told nobody
+    // anything. Fall back through the body, then the status line.
+    const raw = await res.text().catch(() => '');
+    let msg = '';
+    try { msg = (JSON.parse(raw) || {}).error || ''; } catch {}
+    if (!msg) {
+      msg = res.statusText
+        || (res.status >= 500
+              ? `Server error ${res.status} — the server did not complete the request.`
+              : `Request failed (HTTP ${res.status}).`);
+      // A non-JSON body means this never reached the API; say so plainly.
+      if (raw && !raw.trimStart().startsWith('{')) msg += ' The server returned a non-JSON response.';
+    }
     const e = new Error(msg);
     e.status = res.status;
+    e.rawBody = raw;
     if (res.status === 401 && _retry === 0 && token) {
       // Try to silently refresh the token once before giving up
       try {

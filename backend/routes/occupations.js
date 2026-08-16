@@ -110,8 +110,11 @@ async function plugin(fastify, opts) {
       };
     } catch (err) {
       await client.query('ROLLBACK');
-      request.log.error(err);
-      return reply.code(500).send({ error: 'Merge failed: ' + err.message });
+      console.error('Occupation merge failed:', err);
+      // pg puts the useful part in code/detail/constraint, not in message.
+      const detail = [err.code && `[${err.code}]`, err.message, err.detail, err.constraint]
+        .filter(Boolean).join(' ');
+      return reply.code(500).send({ error: 'Merge failed: ' + (detail || 'unknown database error') });
     } finally {
       client.release();
     }
