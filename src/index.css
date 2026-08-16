@@ -753,6 +753,26 @@ input, select, textarea {
   transition: border-color 0.15s, box-shadow 0.15s;
   outline: none; line-height: 1.5;
 }
+/* Checkboxes and radios are not text fields and must not inherit the text
+   field box. `width: 100%` above stretched them across their row, pushing the
+   label text on top of whatever sat beside it — the JV lead picker showed
+   "LEAD" printed over the firm's name.
+
+   Every container holding one had been patching `width: auto` for itself
+   (.multi-select-item, .filter-inline-check, and inline styles elsewhere), so
+   any new one that forgot the patch broke the same way. Reset at the source
+   instead; the container rules stay and still win on specificity. */
+input[type="checkbox"], input[type="radio"] {
+  width: auto;
+  padding: 0;
+  border: none;
+  background: none;
+  flex-shrink: 0;
+  accent-color: var(--primary);
+  cursor: pointer;
+}
+/* The shared :focus glow below still applies and is the keyboard indicator. */
+
 input:hover, select:hover, textarea:hover { border-color: var(--text3); }
 input:focus, select:focus, textarea:focus {
   border-color: var(--primary);
