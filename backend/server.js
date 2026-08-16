@@ -38,6 +38,25 @@ fastify.register(require('@fastify/static'), {
   wildcard: false,
 });
 
+/**
+ * index.html must never be cached immutably.
+ *
+ * It is the file that names the hashed bundles, so a cached copy pins a browser
+ * to whichever deploy it first saw — new code ships and nobody sees it. The
+ * static plugin's setHeaders only fires for paths it resolves itself, so a
+ * request for "/" or any SPA route served through the not-found handler was
+ * still going out with the plugin-level `immutable, max-age=7 days`.
+ *
+ * Hashed assets keep the long cache; only the HTML is forced to revalidate.
+ */
+fastify.addHook('onSend', async (request, reply, payload) => {
+  const type = String(reply.getHeader('content-type') || '');
+  if (type.includes('text/html')) {
+    reply.header('Cache-Control', 'no-cache, must-revalidate');
+  }
+  return payload;
+});
+
 // ─── STARTUP MIGRATIONS ───────────────────────────────────────────────────────
 async function runMigrations() {
   const fs = require('fs');
