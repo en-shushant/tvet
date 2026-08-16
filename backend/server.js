@@ -334,11 +334,29 @@ fastify.register(require('./routes/quotations'),       { prefix: '/api/quotation
 fastify.register(require('./routes/upload'),           { prefix: '/api/upload' });
 
 // ─── SPA FALLBACK ─────────────────────────────────────────────────────────────
+/**
+ * A request for a hashed chunk that a redeploy has just deleted must 404, not
+ * fall through to index.html.
+ *
+ * The app is code-split (Vite lazily imports each route, e.g.
+ * ReportsView-<hash>.js), so a browser tab that has been open across a deploy —
+ * or one that loaded index.html in the instant before the new build replaced
+ * the old files underneath it — asks for a chunk that no longer exists. Before
+ * this guard, that request fell into the catch-all below and got back
+ * index.html's markup with a 200. The browser then tried to run that HTML as
+ * the JS module it asked for, which is a SyntaxError, not a 404 — so it never
+ * surfaced as a clean, catchable load failure, just a blank page until a
+ * manual reload picked up the new index.html.
+ */
+const ASSET_PATH = /\.[a-zA-Z0-9]+$/;
 fastify.setNotFoundHandler((request, reply) => {
-  if (!request.url.startsWith('/api/')) {
-    return reply.sendFile('index.html');
+  if (request.url.startsWith('/api/')) {
+    return reply.code(404).send({ error: 'Not found' });
   }
-  reply.code(404).send({ error: 'Not found' });
+  if (ASSET_PATH.test(request.url.split('?')[0])) {
+    return reply.code(404).send('Not found');
+  }
+  return reply.sendFile('index.html');
 });
 
 // ─── ERROR HANDLER ────────────────────────────────────────────────────────────
