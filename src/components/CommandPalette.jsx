@@ -12,6 +12,38 @@ import { useOccupations } from '../utils/useMasterData.js';
 
 const MAX_PER_GROUP = 6;
 
+/**
+ * Trailing words that mean "open this institute on that tab".
+ *
+ * So "wltti documents" goes straight to the Documents tab rather than to the
+ * institute's front page, which is where you were headed anyway — the search
+ * was only ever the first half of the journey.
+ *
+ * Compliance resolves to nstb because Compliance is a group header rather than
+ * a pane; nstb is the record type it opens on by default.
+ */
+const TAB_WORDS = [
+  { tab: 'profile',    label: 'Overview',    words: ['overview', 'profile', 'details', 'info'] },
+  { tab: 'experience', label: 'Assignments', words: ['experience', 'assignments', 'assignment', 'work', 'projects', 'eoi'] },
+  { tab: 'clients',    label: 'Clients',     words: ['clients', 'client'] },
+  { tab: 'nstb',       label: 'Compliance',  words: ['compliance', 'nstb', 'tax', 'affiliation', 'infrastructure', 'renewal'] },
+  { tab: 'documents',  label: 'Documents',   words: ['documents', 'document', 'docs', 'files', 'papers'] },
+];
+
+/**
+ * Splits "wltti documents" into a name to match and a tab to open. Only a
+ * trailing word counts, and only when something remains to search on — a bare
+ * "documents" should still find the Documents screen, not every institute.
+ */
+function splitTabSuffix(term) {
+  const parts = term.split(/\s+/).filter(Boolean);
+  if (parts.length < 2) return { name: term, tab: null, tabLabel: null };
+  const last = parts[parts.length - 1];
+  const hit = TAB_WORDS.find(t => t.words.some(w => w === last || w.startsWith(last) && last.length >= 3));
+  if (!hit) return { name: term, tab: null, tabLabel: null };
+  return { name: parts.slice(0, -1).join(' '), tab: hit.tab, tabLabel: hit.label };
+}
+
 export default function CommandPalette({ open, onClose, institutes = [], clients = [], actions = [] }) {
   const OCCUPATIONS = useOccupations();
   const [q, setQ] = useState('');
@@ -42,42 +74,54 @@ export default function CommandPalette({ open, onClose, institutes = [], clients
      * "nab" should put Nabaratna above a firm with "nab" buried mid-address,
      * which a plain `includes` filter cannot express.
      */
-    const score = (...vals) => {
+    const scoreFor = (needle, vals) => {
+      if (!needle) return 0;
+      const escaped = needle.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const wordStart = new RegExp(`\\b${escaped}`);
       let best = 0;
       for (const v of vals) {
         if (!v) continue;
         const t = String(v).toLowerCase();
-        if (t === term) best = Math.max(best, 100);
-        else if (t.startsWith(term)) best = Math.max(best, 80);
+        if (t === needle) best = Math.max(best, 100);
+        else if (t.startsWith(needle)) best = Math.max(best, 80);
         // A word starting with the term, e.g. "Manpower" in "Brilliant Manpower".
-        else if (new RegExp(`\\b${term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`).test(t)) best = Math.max(best, 60);
-        else if (t.includes(term)) best = Math.max(best, 30);
+        else if (wordStart.test(t)) best = Math.max(best, 60);
+        else if (t.includes(needle)) best = Math.max(best, 30);
       }
       return best;
     };
+    const score = (...vals) => scoreFor(term, vals);
+
     // Returns the built items plus the group's best score, so groups can be
-    // ordered by relevance rather than by category.
-    const ranked = (rows, fields, build) => {
+    // ordered by relevance rather than by category. `overrideTerm` lets the
+    // institute list match on the name alone when a tab word was typed after it.
+    const ranked = (rows, fields, build, overrideTerm) => {
+      const needle = overrideTerm === undefined ? term : overrideTerm;
       const hits = rows
-        .map(r => ({ r, s: score(...fields(r)) }))
+        .map(r => ({ r, s: scoreFor(needle, fields(r)) }))
         .filter(x => x.s > 0)
         .sort((a, b) => b.s - a.s);
       return { items: hits.slice(0, MAX_PER_GROUP).map(x => build(x.r)), best: hits[0]?.s || 0 };
     };
 
     const out = [];
+    const { name, tab, tabLabel } = splitTabSuffix(term);
 
     // Institutes first: searching a firm by name is the commonest reason to
     // open this, and burying it under navigation would be perverse.
+    const instTerm = tab ? name : term;
     const inst = ranked(institutes,
       i => [i.name, i.acronym, i.regNo, i.pan, i.address],
       i => ({
         id: `inst-${i.id}`,
         label: i.name,
-        meta: [i.acronym, i.regNo && `Reg. ${i.regNo}`, i.address].filter(Boolean).join(' · '),
-        icon: 'account_balance',
-        run: () => window.__paletteOpenInstitute?.(i),
-      }));
+        // When a tab was asked for, say so instead of repeating the address.
+        meta: tabLabel
+          ? `${i.acronym ? i.acronym + ' · ' : ''}Open ${tabLabel}`
+          : [i.acronym, i.regNo && `Reg. ${i.regNo}`, i.address].filter(Boolean).join(' · '),
+        icon: tabLabel ? 'open_in_new' : 'account_balance',
+        run: () => window.__paletteOpenInstitute?.(i, tab),
+      }), instTerm);
     if (inst.items.length) out.push({ key: 'institutes', label: 'Institutes', items: inst.items, best: inst.best + 1 });
 
     const cl = ranked(clients,

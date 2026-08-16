@@ -97,7 +97,9 @@ function App() {
   // Bridges the command palette calls when a result is chosen.
   useEffect(() => {
     window.__paletteGo = (id) => handleNavigate(id);
-    window.__paletteOpenInstitute = (inst) => handleSelectInstitute(inst);
+    // A tab may come with it, e.g. searching "WLTTI documents".
+    window.__paletteOpenInstitute = (inst, tab) =>
+      handleSelectInstitute(inst).then(() => { if (tab) setJumpToTab(tab); });
     return () => { delete window.__paletteGo; delete window.__paletteOpenInstitute; };
   });
 

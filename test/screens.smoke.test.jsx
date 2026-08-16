@@ -352,3 +352,60 @@ describe('EOI gap panel keeps unsaved work visible', () => {
     assertNoConsoleErrors();
   });
 });
+
+/**
+ * Searching an institute with a trailing tab word opens that tab.
+ *
+ * "WLTTI documents" should land on the Documents tab, not on the institute's
+ * front page — the search was only ever the first half of the journey.
+ */
+describe('command palette opens institutes on a named tab', () => {
+  const firms = [{ id: 1, name: 'Wisdom Land Technical Training Institute',
+    acronym: 'WLTTI', regNo: '99/070', address: 'Butwal' }];
+
+  const search = async (text) => {
+    const input = document.querySelector('input[aria-label="Search TVETtrack"]');
+    const setter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value').set;
+    await act(async () => {
+      setter.call(input, text);
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+    });
+    await act(async () => {
+      input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+    });
+  };
+
+  const cases = [
+    ['wltti',             null],        // no suffix — App leaves the tab alone
+    ['wltti overview',    'profile'],
+    ['wltti experience',  'experience'],
+    ['wltti clients',     'clients'],
+    ['wltti compliance',  'nstb'],       // Compliance is a group; nstb is its default pane
+    ['wltti documents',   'documents'],
+    ['wltti doc',         'documents'],  // partial suffix still resolves
+  ];
+
+  for (const [query, expectedTab] of cases) {
+    it(`"${query}" opens ${expectedTab || 'the default tab'}`, async () => {
+      let opened = null;
+      window.__paletteOpenInstitute = (inst, tab) => { opened = { acronym: inst.acronym, tab }; };
+      await mount(<CommandPalette open onClose={noop} institutes={firms} clients={[]} actions={[]} />);
+      await search(query);
+      expect(opened, `"${query}" matched no institute`).toBeTruthy();
+      expect(opened.acronym).toBe('WLTTI');
+      expect(opened.tab).toBe(expectedTab);
+      assertNoConsoleErrors();
+    });
+  }
+
+  it('a bare tab word still finds the screen, not every institute', async () => {
+    let went = null;
+    window.__paletteGo = (id) => { went = id; };
+    const actions = [{ id: 'a-docs', label: 'Documents', icon: 'folder_shared',
+      group: 'Go to', run: () => window.__paletteGo('documents') }];
+    await mount(<CommandPalette open onClose={noop} institutes={firms} clients={[]} actions={actions} />);
+    await search('documents');
+    expect(went).toBe('documents');
+    assertNoConsoleErrors();
+  });
+});
