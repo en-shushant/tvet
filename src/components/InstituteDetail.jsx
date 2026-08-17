@@ -252,7 +252,16 @@ function InstituteDetail({institute, clients, onUpdateClients, onBack, onUpdate,
   const [expClientFilter, setExpClientFilter] = useState('');
   const [expOccFilter, setExpOccFilter] = useState('');
   const [expViewMode, setExpViewMode] = useState('fy'); // 'fy' | 'client'
-  const [expMissingFilter, setExpMissingFilter] = useState(false);
+  // '' | 'level' | 'duration' | 'either' — split so "missing level" (needed to
+  // pick the right EOI level bracket) doesn't require wading through
+  // assignments that are only missing duration, and vice versa.
+  const [expMissingFilter, setExpMissingFilter] = useState('');
+  const matchesMissingFilter = (occs) => {
+    if (!expMissingFilter) return true;
+    if (expMissingFilter === 'level') return (occs || []).some(o => !o.level);
+    if (expMissingFilter === 'duration') return (occs || []).some(o => !o.duration);
+    return (occs || []).some(o => !o.level || !o.duration);
+  };
   // Assignments the EOI report would print with blanks in them.
   const [expBolpatraFilter, setExpBolpatraFilter] = useState(false);
 
@@ -483,15 +492,17 @@ function InstituteDetail({institute, clients, onUpdateClients, onBack, onUpdate,
                   <option key={name} value={name}>{name}</option>
                 ))}
               </select>
-              <button
-                onClick={()=>setExpMissingFilter(v=>!v)}
-                style={{fontSize:12, padding:'4px 10px', borderRadius:6, border:'1px solid var(--border)', cursor:'pointer', whiteSpace:'nowrap',
+              <select value={expMissingFilter} onChange={e=>setExpMissingFilter(e.target.value)}
+                title="Show only assignments where an occupation is missing that field"
+                style={{fontSize:12, padding:'4px 8px', borderRadius:6, border:'1px solid var(--border)',
                   background: expMissingFilter ? '#fff3cd' : 'var(--bg2)',
-                  color: expMissingFilter ? '#856404' : 'var(--text2)',
-                  fontWeight: expMissingFilter ? 700 : 400}}
-                title="Show only assignments where any occupation is missing level or duration (hrs)">
-                <span className="material-icons-round" style={{fontSize:14,verticalAlign:'middle'}}>warning</span> Missing level/duration
-              </button>
+                  color: expMissingFilter ? '#856404' : 'var(--text1)',
+                  fontWeight: expMissingFilter ? 700 : 400, minWidth:150}}>
+                <option value="">Level/duration: all</option>
+                <option value="level">Missing level</option>
+                <option value="duration">Missing duration</option>
+                <option value="either">Missing level or duration</option>
+              </select>
               <button
                 onClick={()=>setExpBolpatraFilter(v=>!v)}
                 className={`gap-chip${expBolpatraFilter ? ' gap-chip-on' : ''}`}
@@ -510,7 +521,7 @@ function InstituteDetail({institute, clients, onUpdateClients, onBack, onUpdate,
           {institute.experience.length === 0
             ? <div className="empty-state"><div className="empty-state-icon"><span className="material-icons-round" style={{fontSize:44,opacity:0.3}}>assignment</span></div><div className="empty-state-title">No assignments yet</div><div className="empty-state-sub">Add the first experience / assignment record</div></div>
             : expViewMode === 'fy'
-              ? groupByFY(institute.experience.filter(e=>(!expClientFilter || String(e.clientId)===String(expClientFilter)) && (!expOccFilter || (expOccFilter==='__missing__' ? (e.occupations||[]).some(o=>!o.ctevtOccupationId) : (e.occupations||[]).some(o=>(getOccupation(o.ctevtOccupationId).name||o.nameInLetter)===expOccFilter))) && (!expMissingFilter || (e.occupations||[]).some(o=>!o.level || !o.duration)) && (!expBolpatraFilter || missingBolpatraFields(e, institute).length > 0))).map(([fy, items]) => (
+              ? groupByFY(institute.experience.filter(e=>(!expClientFilter || String(e.clientId)===String(expClientFilter)) && (!expOccFilter || (expOccFilter==='__missing__' ? (e.occupations||[]).some(o=>!o.ctevtOccupationId) : (e.occupations||[]).some(o=>(getOccupation(o.ctevtOccupationId).name||o.nameInLetter)===expOccFilter))) && matchesMissingFilter(e.occupations) && (!expBolpatraFilter || missingBolpatraFields(e, institute).length > 0))).map(([fy, items]) => (
                 <div key={fy} className="fy-group">
                   <button className="fy-header" onClick={()=>toggleFY('exp-'+fy)}>
                     <span>{expandedFY['exp-'+fy] ? '▼' : '▶'}</span>
@@ -527,7 +538,7 @@ function InstituteDetail({institute, clients, onUpdateClients, onBack, onUpdate,
               : (() => {
                   // Group by client
                   const clientMap = new Map();
-                  institute.experience.filter(exp => (!expClientFilter || String(exp.clientId)===String(expClientFilter)) && (!expOccFilter || (exp.occupations||[]).some(o=>(getOccupation(o.ctevtOccupationId).name||o.nameInLetter)===expOccFilter)) && (!expMissingFilter || (exp.occupations||[]).some(o=>!o.level || !o.duration)) && (!expBolpatraFilter || missingBolpatraFields(exp, institute).length > 0)).forEach(exp => {
+                  institute.experience.filter(exp => (!expClientFilter || String(exp.clientId)===String(expClientFilter)) && (!expOccFilter || (exp.occupations||[]).some(o=>(getOccupation(o.ctevtOccupationId).name||o.nameInLetter)===expOccFilter)) && matchesMissingFilter(exp.occupations) && (!expBolpatraFilter || missingBolpatraFields(exp, institute).length > 0)).forEach(exp => {
                     const key = exp.clientId || ('manual:' + (exp.clientName||'Unknown'));
                     if (!clientMap.has(key)) clientMap.set(key, []);
                     clientMap.get(key).push(exp);
