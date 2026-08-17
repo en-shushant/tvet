@@ -472,7 +472,7 @@ function InstituteDetail({institute, clients, onUpdateClients, onBack, onUpdate,
       {tab==='experience' && (
         <>
           <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:12, gap:8, flexWrap:'wrap'}}>
-            <div style={{display:'flex', gap:6, alignItems:'center'}}>
+            <div style={{display:'flex', gap:6, alignItems:'center', flexWrap:'wrap'}}>
               {/* View mode toggle */}
               <div style={{display:'flex', borderRadius:6, border:'1px solid var(--border)', overflow:'visible'}}>
                 <button onClick={()=>setExpViewMode('fy')} style={{fontSize:12, padding:'5px 14px', whiteSpace:'nowrap', background: expViewMode==='fy' ? 'var(--accent)' : 'var(--bg2)', color: expViewMode==='fy' ? '#fff' : 'var(--text2)', border:'none', cursor:'pointer', borderRadius:'5px 0 0 5px'}}>By FY</button>
