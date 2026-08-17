@@ -259,7 +259,7 @@ const AVATAR_TINTS = [
 ];
 
 /** Stable per-institute tint, so the same firm looks the same on every screen. */
-function tintFor(key = '') {
+export function tintFor(key = '') {
   let h = 0;
   for (let i = 0; i < key.length; i++) h = (h * 31 + key.charCodeAt(i)) >>> 0;
   return AVATAR_TINTS[h % AVATAR_TINTS.length];

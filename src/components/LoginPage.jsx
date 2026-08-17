@@ -9,6 +9,7 @@ import { API_URL_KEY, getApiBase } from '../utils/api.js';
 import { getSession, setSession, clearSession, loadUsers, saveUsers } from '../utils/auth.js';
 import { INSTITUTE_TYPES, OCCUPATIONS } from '../constants/data.js';
 import { confirmDialog } from './ui/Feedback.jsx';
+import { initialsFor, tintFor } from './ui/primitives.jsx';
 
 function LoginPage({ onLogin }) {
   const [email, setEmail] = useState('');
@@ -207,7 +208,7 @@ function AssignFirmsModal({ user, institutes, onSave, onClose }) {
       <div className="modal" style={{maxWidth:480}} onClick={e=>e.stopPropagation()}>
         <div className="modal-header">
           <div className="modal-title">Assign firms — {user.name}</div>
-          <Btn className="btn btn-ghost btn-sm" onClick={onClose}>✕</Btn>
+          <Btn className="btn btn-ghost btn-sm" onClick={onClose}><span className="material-icons-round" style={{fontSize:16}}>close</span></Btn>
         </div>
         <div style={{padding:'16px 24px 24px'}}>
           <div className="search-wrap" style={{marginBottom:12}}>
@@ -282,15 +283,15 @@ function UserModal({ user, institutes, isSuperAdmin, onSave, onClose }) {
       <div className="modal" style={{ maxWidth: 460 }} onClick={e => e.stopPropagation()}>
         <div className="modal-header">
           <div className="modal-title">{isEdit ? 'Edit user' : 'Add user'}</div>
-          <Btn className="btn btn-ghost btn-sm" onClick={onClose}>✕</Btn>
+          <Btn className="btn btn-ghost btn-sm" onClick={onClose}><span className="material-icons-round" style={{fontSize:16}}>close</span></Btn>
         </div>
         <div style={{ padding: '20px 24px 24px' }}>
           <div style={{display:'flex', alignItems:'center', gap:16, marginBottom:16}}>
             <div style={{position:'relative'}}>
               {form.photo
                 ? <img src={form.photo} alt="" style={{width:60,height:60,borderRadius:'50%',objectFit:'cover',border:'2px solid var(--border)'}}/>
-                : <div style={{width:60,height:60,borderRadius:'50%',background:'#3D7A54',display:'flex',alignItems:'center',justifyContent:'center',fontSize:20,fontWeight:600,color:'#fff'}}>
-                    {form.name ? form.name.slice(0,2).toUpperCase() : '?'}
+                : <div style={{width:60,height:60,borderRadius:'50%',background:`var(${tintFor(form.name || '')})`,display:'flex',alignItems:'center',justifyContent:'center',fontSize:20,fontWeight:600,color:'var(--text)'}}>
+                    {form.name ? initialsFor(form.name) : '?'}
                   </div>
               }
             </div>
@@ -302,9 +303,9 @@ function UserModal({ user, institutes, isSuperAdmin, onSave, onClose }) {
                   reader.onload=ev=>setForm(f=>({...f,photo:ev.target.result}));
                   reader.readAsDataURL(file);
                 }}/>
-                <span className="btn btn-secondary btn-sm">{form.photo?'🔄 Change photo':'📷 Upload photo'}</span>
+                <span className="btn btn-secondary btn-sm"><span className="material-icons-round" style={{fontSize:14,verticalAlign:'middle',marginRight:4}}>photo_camera</span>{form.photo?'Change photo':'Upload photo'}</span>
               </label>
-              {form.photo && <span className="btn btn-ghost btn-sm" style={{cursor:'pointer',marginLeft:6}} onClick={()=>setForm(f=>({...f,photo:null}))}>✕ Remove</span>}
+              {form.photo && <span className="btn btn-ghost btn-sm" style={{cursor:'pointer',marginLeft:6}} onClick={()=>setForm(f=>({...f,photo:null}))}><span className="material-icons-round" style={{fontSize:14,verticalAlign:'middle',marginRight:4}}>close</span>Remove</span>}
             </div>
           </div>
           <div className="form-row">
@@ -380,11 +381,11 @@ function UserManagement({institutes, isSuperAdmin}) {
   useEffect(reload, []);
 
   const roleBadge = (role) => {
-    if (role === 'superadmin') return <span className="badge badge-purple">⭐ Superadmin</span>;
-    if (role === 'admin') return <span className="badge badge-purple" style={{opacity:0.8}}>👑 Admin</span>;
-    if (role === 'editor') return <span className="badge badge-active">✏ Editor</span>;
-    if (role === 'shortlist') return <span className="badge badge-warning">📋 Shortlist</span>;
-    return <span className="badge badge-info">👁 Viewer</span>;
+    if (role === 'superadmin') return <span className="badge badge-purple"><span className="material-icons-round" style={{fontSize:12,verticalAlign:'middle',marginRight:3}}>admin_panel_settings</span>Superadmin</span>;
+    if (role === 'admin') return <span className="badge badge-purple" style={{opacity:0.8}}><span className="material-icons-round" style={{fontSize:12,verticalAlign:'middle',marginRight:3}}>shield</span>Admin</span>;
+    if (role === 'editor') return <span className="badge badge-active"><span className="material-icons-round" style={{fontSize:12,verticalAlign:'middle',marginRight:3}}>edit</span>Editor</span>;
+    if (role === 'shortlist') return <span className="badge badge-warning"><span className="material-icons-round" style={{fontSize:12,verticalAlign:'middle',marginRight:3}}>checklist</span>Shortlist</span>;
+    return <span className="badge badge-info"><span className="material-icons-round" style={{fontSize:12,verticalAlign:'middle',marginRight:3}}>visibility</span>Viewer</span>;
   };
 
   const [actionErr, setActionErr] = useState('');
@@ -416,7 +417,7 @@ function UserManagement({institutes, isSuperAdmin}) {
       {actionErr && <ErrorBanner msg={actionErr} onDismiss={()=>setActionErr('')}/>}
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
         <div className="search-wrap" style={{ flex: 1, maxWidth: 300 }}>
-          <span className="search-icon">🔍</span>
+          <span className="search-icon material-icons-round" style={{fontSize:16}}>search</span>
           <input className="search-input" placeholder="Search users…" value={search} onChange={e => setSearch(e.target.value)} />
         </div>
         <Btn className="btn btn-primary btn-sm" onClick={() => setModal('add')}>+ Add user</Btn>
@@ -442,7 +443,7 @@ function UserManagement({institutes, isSuperAdmin}) {
                     <div style={{display:'flex',alignItems:'center',gap:10}}>
                       {u.photo
                         ? <img src={u.photo} alt="" style={{width:32,height:32,borderRadius:'50%',objectFit:'cover',flexShrink:0}}/>
-                        : <div style={{width:32,height:32,borderRadius:'50%',background:'#3D7A54',display:'flex',alignItems:'center',justifyContent:'center',fontSize:11,fontWeight:600,color:'#fff',flexShrink:0}}>{u.name.slice(0,2).toUpperCase()}</div>
+                        : <div style={{width:32,height:32,borderRadius:'50%',background:`var(${tintFor(u.name)})`,display:'flex',alignItems:'center',justifyContent:'center',fontSize:11,fontWeight:600,color:'var(--text)',flexShrink:0}}>{initialsFor(u.name)}</div>
                       }
                       <span style={{fontWeight:500}}>{u.name}</span>
                     </div>
@@ -480,7 +481,7 @@ function UserManagement({institutes, isSuperAdmin}) {
                         onClick={() => toggleActive(u)}>
                         {u.is_active ? 'Deactivate' : 'Activate'}
                       </Btn>
-                      {isSuperAdmin && <Btn className="btn btn-danger btn-sm" onClick={() => deleteUser(u)}>🗑</Btn>}
+                      {isSuperAdmin && <Btn className="btn btn-danger btn-sm" onClick={() => deleteUser(u)}><span className="material-icons-round" style={{fontSize:14}}>delete</span></Btn>}
                     </div>
                   </td>
                 </tr>
