@@ -1,4 +1,4 @@
-import { buildTemplateValues, applyTemplate } from './templateValues.js';
+import { buildTemplateValues, applyTemplate, listAnd } from './templateValues.js';
 
 // Templates for PPMO 3(B) Specific Experience — two slots per assignment:
 //   narrativeDescription  (Narrative description of Project)
@@ -246,4 +246,23 @@ export function fillNarrativeTemplate(variationId, form, institute, clients) {
 export function fillServicesTemplate(variationId, form, institute, clients) {
   const v = SERVICES_VARIATIONS.find(x => x.id === variationId);
   return v ? applyTemplate(v.preview, buildTemplateValues(form, institute, clients)) : '';
+}
+
+/**
+ * "Name of Senior Staff and Designation ... Involved and Functions Performed",
+ * written from the firm's key-staff roster rather than a chosen variation.
+ *
+ * The other three 3(B)/3(A) fields pick from a library of wordings because the
+ * *substance* varies by project type. This one doesn't — the substance is just
+ * who was on it — so there is nothing to choose between, and no variation
+ * picker to wire up. Empty roster means nothing to write, same as an
+ * unassigned template on the other three.
+ */
+export function fillSeniorStaffText(form, institute, clients) {
+  const staff = (institute?.keyStaff || []).filter(s => (s.name || '').trim());
+  if (!staff.length) return '';
+  const roster = staff.map(s => s.position ? `${s.name} — ${s.position}` : s.name).join('\n');
+  const { client } = buildTemplateValues(form, institute, clients);
+  const named = listAnd(staff.map(s => s.name));
+  return `${roster}\n\n${named} were responsible for overall project management, coordination with ${client || 'the client'}, and quality assurance of the training delivered under this assignment.`;
 }

@@ -11,7 +11,7 @@ import { PROVINCES, FISCAL_YEARS, TRAINING_TYPES, SECTORS, OCCUPATIONS, CLIENT_T
 import { api } from '../utils/api.js';
 import { getSession } from '../utils/auth.js';
 import { fillDescriptionTemplate } from '../utils/descriptionTemplates.js';
-import { fillNarrativeTemplate, fillServicesTemplate } from '../utils/specificTemplates.js';
+import { fillNarrativeTemplate, fillServicesTemplate, fillSeniorStaffText } from '../utils/specificTemplates.js';
 import { fyToAD, uid } from '../utils/format.js';
 import { toast } from './ui/Feedback.jsx';
 import { useOccupations } from '../utils/useMasterData.js';
@@ -142,7 +142,7 @@ const BLANK_ASSIGNMENT = {
   country:'Nepal', descriptionOfWork:'', durationMonths:'', totalPersonMonths:'',
   ownServiceValue:'', jvPartnerNames:'', jvPartnerPersonMonths:'',
   narrativeDescription:'', actualServicesDescription:'',
-  numGroups:'', durationDays:''
+  numGroups:'', durationDays:'', staffCount:'', seniorStaffDescription:''
 };
 
 /**
@@ -386,23 +386,26 @@ function ExperienceForm({exp, clients, institute, onSave, onClose, onDuplicate, 
   // derived entirely from data already captured on this form (client, occupations,
   // trainees, districts), so the button exists to avoid retyping it per assignment.
   // Firms without a configured template still get a normal textarea.
-  const TemplateField = ({ label, field, templateKey, filler, placeholder, hint, rows = 5, style }) => {
-    const variationId = institute?.[templateKey];
+  const TemplateField = ({ label, field, templateKey, filler, placeholder, hint, rows = 5, style, hasSource, noTemplateHint }) => {
+    // Senior staff has one source — the firm's key-staff roster — rather than a
+    // library of variations, so it has no templateKey to read a variationId from.
+    const plain = !!hasSource;
+    const available = plain ? hasSource(institute) : !!institute?.[templateKey];
     return (
       <div className="form-group has-action" style={style}>
           <label style={{fontSize:12, fontWeight:500, color:'var(--text2)'}}>{label}</label>
           <button type="button" className="field-action"
-            disabled={!variationId}
-            onClick={() => set(field, filler(variationId, form, institute, clients))}
-            title={variationId
-              ? 'Generate from this firm’s template using the details already entered above'
-              : 'No template set for this firm — an admin can assign one on the firm’s Overview tab'}
+            disabled={!available}
+            onClick={() => set(field, plain ? filler(form, institute, clients) : filler(institute[templateKey], form, institute, clients))}
+            title={available
+              ? 'Generate from this firm’s ' + (plain ? 'key-staff roster' : 'template') + ' using the details already entered above'
+              : (noTemplateHint || 'No template set for this firm — an admin can assign one on the firm’s Overview tab')}
             style={{display:'flex', alignItems:'center', gap:4, fontSize:11, padding:'3px 9px',
               borderRadius:6, border:'1px solid var(--border)', fontFamily:'var(--font)',
-              background: variationId ? 'var(--bg2)' : 'transparent',
-              color: variationId ? 'var(--accent)' : 'var(--text3)',
-              cursor: variationId ? 'pointer' : 'not-allowed',
-              opacity: variationId ? 1 : 0.55}}>
+              background: available ? 'var(--bg2)' : 'transparent',
+              color: available ? 'var(--accent)' : 'var(--text3)',
+              cursor: available ? 'pointer' : 'not-allowed',
+              opacity: available ? 1 : 0.55}}>
             <span className="material-icons-round" style={{fontSize:13}}>auto_awesome</span> Auto-fill
           </button>
         <textarea
@@ -672,6 +675,11 @@ function ExperienceForm({exp, clients, institute, onSave, onClose, onDuplicate, 
                 <MdTextField type="number" label="Total person-months of assignment" value={form.totalPersonMonths} onChange={e=>set('totalPersonMonths', e.target.value)} placeholder="e.g. 24"/>
               </div>
               <div className="form-group">
+                <MdTextField type="number" label="No. of staff" value={form.staffCount} onChange={e=>set('staffCount', e.target.value)} placeholder="e.g. 4"/>
+              </div>
+            </div>
+            <div className="form-row form-row-2">
+              <div className="form-group">
                 <MdTextField type="number" label="Value of firm's services (NPR) — if different from contract value" value={form.ownServiceValue} onChange={e=>set('ownServiceValue', e.target.value)} placeholder="Leave blank to use contract amount"/>
               </div>
             </div>
@@ -700,7 +708,11 @@ function ExperienceForm({exp, clients, institute, onSave, onClose, onDuplicate, 
                   hint:'Each new line becomes a separate paragraph in the Word report.' },
                 { label:'Description of actual services provided — 3(B)', field:'actualServicesDescription',
                   templateKey:'servicesTemplateId', filler:fillServicesTemplate,
-                  placeholder:'Leave empty to use the firm’s template.', style:{marginBottom:0} },
+                  placeholder:'Leave empty to use the firm’s template.' },
+                { label:'Senior staff involved and functions performed — 3(B)', field:'seniorStaffDescription',
+                  filler:fillSeniorStaffText, hasSource: (inst) => !!inst?.keyStaff?.length,
+                  noTemplateHint:'No key staff set for this firm — add names and positions on the firm’s Edit → EOI profile tab.',
+                  placeholder:'Leave empty to list the firm’s key staff automatically.', style:{marginBottom:0} },
               ];
               const setCount = OVERRIDES.filter(o => (form[o.field] || '').trim()).length;
               return (

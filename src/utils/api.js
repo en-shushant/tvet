@@ -132,6 +132,9 @@ export function normInst(r) {
     descTemplateId: r.desc_template_id || '',
     narrativeTemplateId: r.narrative_template_id || '',
     servicesTemplateId: r.services_template_id || '',
+    // Roster the "Name of Senior Staff ... Functions Performed" field is
+    // auto-written from, same pattern as the three narrative templates above.
+    keyStaff: Array.isArray(r.key_staff) ? r.key_staff : [],
     googleMapLink: r.google_map_link || '',
     latitude: r.latitude != null ? String(r.latitude) : '',
     longitude: r.longitude != null ? String(r.longitude) : '',
@@ -206,6 +209,8 @@ export function normExp(r) {
     jvPartnerPersonMonths: r.jv_partner_person_months != null ? String(r.jv_partner_person_months) : '',
     narrativeDescription: r.narrative_description || '',
     actualServicesDescription: r.actual_services_description || '',
+    seniorStaffDescription: r.senior_staff_description || '',
+    staffCount: r.staff_count != null ? String(r.staff_count) : '',
     numGroups: r.num_groups != null ? String(r.num_groups) : '',
     durationDays: r.duration_days != null ? String(r.duration_days) : '',
     occupations: (r.occupations || []).map(o => ({
@@ -329,6 +334,7 @@ export function instToAPI(f) {
     desc_template_id: f.descTemplateId || null,
     narrative_template_id: f.narrativeTemplateId || null,
     services_template_id: f.servicesTemplateId || null,
+    key_staff: (f.keyStaff || []).filter(s => (s.name || '').trim()),
     google_map_link: f.googleMapLink || null,
     latitude: f.latitude ? parseFloat(f.latitude) : null,
     longitude: f.longitude ? parseFloat(f.longitude) : null,
@@ -382,6 +388,8 @@ export function expToAPI(f, instituteId) {
     jv_partner_person_months: f.isJV ? (f.jvPartnerPersonMonths || null) : null,
     narrative_description: f.narrativeDescription || null,
     actual_services_description: f.actualServicesDescription || null,
+    senior_staff_description: f.seniorStaffDescription || null,
+    staff_count: f.staffCount || null,
     num_groups: f.numGroups || null,
     duration_days: f.durationDays || null,
     occupations: (f.occupations || []).filter(o => o.nameInLetter || o.ctevtOccupationId).map(o => ({

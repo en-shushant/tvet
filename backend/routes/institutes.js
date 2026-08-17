@@ -256,7 +256,7 @@ async function plugin(fastify, opts) {
       tax_clearance_doc, letter_top_margin, letter_lr_padding, letter_bottom_padding, mobile,
       service_type, local_level_registration, local_level_renewal,
       constitution_type, fax, contact_designation, local_agent, org_profile,
-      total_staff, professional_staff } = request.body;
+      total_staff, professional_staff, key_staff } = request.body;
     if (!name) return reply.code(400).send({ error: 'name is required' });
     if (!reg_no && !is_shortlisting_only) return reply.code(400).send({ error: 'reg_no is required' });
     if (name.length > 300) return reply.code(400).send({ error: 'name too long (max 300 chars)' });
@@ -273,8 +273,8 @@ async function plugin(fastify, opts) {
         letter_top_margin,letter_lr_padding,letter_bottom_padding,
         service_type,local_level_registration,local_level_renewal,created_by,
         constitution_type,fax,contact_designation,local_agent,org_profile,
-        total_staff,professional_staff)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27,$28,$29,$30,$31,$32,$33,$34,$35,$36,$37,$38,$39,$40,$41,$42,$43,$44,$45,$46,$47,$48,$49,$50,$51) RETURNING *`,
+        total_staff,professional_staff,key_staff)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27,$28,$29,$30,$31,$32,$33,$34,$35,$36,$37,$38,$39,$40,$41,$42,$43,$44,$45,$46,$47,$48,$49,$50,$51,$52) RETURNING *`,
       [name,acronym,reg_no||null,reg_date,pan,permanent_account_no,
        contact_person,phone,mobile||null,email,address,type,status||'Active',renewal_due,remarks,logo||null,website||null,
        desc_template_id||null,narrative_template_id||null,services_template_id||null,
@@ -286,7 +286,7 @@ async function plugin(fastify, opts) {
        letter_top_margin||null,letter_lr_padding||null,letter_bottom_padding||null,
        service_type||null,local_level_registration||null,local_level_renewal||null,createdBy,
        constitution_type||null,fax||null,contact_designation||null,local_agent||null,org_profile||null,
-       total_staff||null,professional_staff||null]
+       total_staff||null,professional_staff||null,JSON.stringify(key_staff||[])]
     );
     return reply.code(201).send(rows[0]);
   });
@@ -319,7 +319,7 @@ async function plugin(fastify, opts) {
       tax_clearance_doc, letter_top_margin, letter_lr_padding, letter_bottom_padding, mobile,
       service_type, local_level_registration, local_level_renewal,
       constitution_type, fax, contact_designation, local_agent, org_profile,
-      total_staff, professional_staff } = request.body;
+      total_staff, professional_staff, key_staff } = request.body;
     const { rows } = await pool.query(
       `UPDATE institutes SET name=$1,acronym=$2,reg_no=$3,reg_date=$4,pan=$5,
         permanent_account_no=$6,contact_person=$7,phone=$8,mobile=$9,email=$10,address=$11,
@@ -333,7 +333,7 @@ async function plugin(fastify, opts) {
         letter_top_margin=$38,letter_lr_padding=$39,letter_bottom_padding=$40,
         service_type=$41,local_level_registration=$42,local_level_renewal=$43,
         constitution_type=$45,fax=$46,contact_designation=$47,local_agent=$48,
-        org_profile=$49,total_staff=$50,professional_staff=$51
+        org_profile=$49,total_staff=$50,professional_staff=$51,key_staff=$52
        WHERE id=$44 RETURNING *`,
       [name,acronym,reg_no||null,reg_date,pan,permanent_account_no,
        contact_person,phone,mobile||null,email,address,type,status,renewal_due,remarks,logo||null,website||null,
@@ -346,7 +346,7 @@ async function plugin(fastify, opts) {
        letter_top_margin||null,letter_lr_padding||null,letter_bottom_padding||null,
        service_type||null,local_level_registration||null,local_level_renewal||null,id,
        constitution_type||null,fax||null,contact_designation||null,local_agent||null,
-       org_profile||null,total_staff||null,professional_staff||null]
+       org_profile||null,total_staff||null,professional_staff||null,JSON.stringify(key_staff||[])]
     );
     if (!rows.length) return reply.code(404).send({ error: 'Not found' });
     return rows[0];

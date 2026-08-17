@@ -3,7 +3,7 @@ import { getClient, monthsBetween, districtsOf, esc, fyInRange } from './helpers
 import { loadDocx, loadFileSaver } from './docxLazy.js';
 import { BS_MONTHS_EN } from '../constants/nepali.js';
 import { fillDescriptionTemplate } from '../utils/descriptionTemplates.js';
-import { fillNarrativeTemplate, fillServicesTemplate } from '../utils/specificTemplates.js';
+import { fillNarrativeTemplate, fillServicesTemplate, fillSeniorStaffText } from '../utils/specificTemplates.js';
 
 // ─── Standard EOI Document (Bolpatra) ────────────────────────────────────────
 // Mirrors the PPMO/e-GP "Standard EOI Document" form:
@@ -102,15 +102,22 @@ const clientNameOf = (exp, clients) => {
 function narrativeFor(exp, inst, clients, slot) {
   const stored = (exp[slot.field] || '').trim();
   if (stored) return stored;
+  // Senior staff has one source — the firm's key-staff roster — rather than a
+  // library of variations to pick from, so it has no templateKey to gate on.
+  if (slot.always) {
+    try { return slot.fill(exp, inst, clients) || ''; }
+    catch { return ''; }
+  }
   const variationId = inst?.[slot.templateKey];
   if (!variationId) return '';
   try { return slot.fill(variationId, exp, inst, clients) || ''; }
   catch { return ''; }
 }
 
-const DESCRIPTION_SLOT = { field: 'descriptionOfWork',          templateKey: 'descTemplateId',      fill: fillDescriptionTemplate };
-const NARRATIVE_SLOT   = { field: 'narrativeDescription',       templateKey: 'narrativeTemplateId', fill: fillNarrativeTemplate };
-const SERVICES_SLOT    = { field: 'actualServicesDescription',  templateKey: 'servicesTemplateId',  fill: fillServicesTemplate };
+const DESCRIPTION_SLOT  = { field: 'descriptionOfWork',          templateKey: 'descTemplateId',      fill: fillDescriptionTemplate };
+const NARRATIVE_SLOT    = { field: 'narrativeDescription',       templateKey: 'narrativeTemplateId', fill: fillNarrativeTemplate };
+const SERVICES_SLOT     = { field: 'actualServicesDescription',  templateKey: 'servicesTemplateId',  fill: fillServicesTemplate };
+const SENIOR_STAFF_SLOT = { field: 'seniorStaffDescription', always: true, fill: fillSeniorStaffText };
 
 const captionOf = (exp) => {
   const name = exp.assignmentName || '(unnamed assignment)';
@@ -266,6 +273,11 @@ function model3b(exps, clients, inst) {
           [{ label: 'Name of joint venture partner or sub-Consultants, if any',
              value: jv ? dash(exp.jvPartnerNames) : 'NA' }],
           [{ label: 'Narrative description of Project', value: narrativeFor(exp, inst, clients, NARRATIVE_SLOT), block: true }],
+        ],
+        [
+          [{ label: 'Name of Senior Staff and Designation (Project Director/Coordinator, Team Leader etc.) Involved and Functions Performed',
+             value: narrativeFor(exp, inst, clients, SENIOR_STAFF_SLOT), block: true }],
+          [{ label: 'No. of Staff', value: dash(exp.staffCount) }],
         ],
       ],
       footer: {

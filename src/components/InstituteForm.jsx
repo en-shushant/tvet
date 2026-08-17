@@ -19,7 +19,7 @@ function InstituteForm({institute, onSave, onClose, isSuperAdmin}) {
     letterhead: null, sign: null, stamp: null,
     letterTopMargin: 15, letterLrPadding: 5, letterBottomPadding: 15,
     constitutionType:'', fax:'', contactDesignation:'', localAgent:'',
-    orgProfile:'', totalStaff:'', professionalStaff:'',
+    orgProfile:'', totalStaff:'', professionalStaff:'', keyStaff:[],
     descTemplateId:'', narrativeTemplateId:'', servicesTemplateId:'',
   });
   const [showEoi, setShowEoi] = useState(false);
@@ -29,6 +29,14 @@ function InstituteForm({institute, onSave, onClose, isSuperAdmin}) {
 
   const { handleClose, markDirty, markClean, UnsavedModal } = useUnsavedGuard(onClose);
   const set = (k, v) => { markDirty(); setForm(f => ({...f, [k]: v})); };
+
+  // Key staff roster — what "Name of Senior Staff ... Functions Performed" on
+  // every assignment's 3(B) is auto-written from, the same way the templates
+  // above drive the three narrative fields. Kept at firm level rather than
+  // per-assignment because the same people usually lead every project.
+  const addKeyStaff = () => { markDirty(); setForm(f => ({...f, keyStaff:[...(f.keyStaff||[]), {name:'', position:''}]})); };
+  const updateKeyStaff = (i, k, v) => { markDirty(); setForm(f => ({...f, keyStaff:(f.keyStaff||[]).map((s, j) => j===i ? {...s,[k]:v} : s)})); };
+  const removeKeyStaff = (i) => { markDirty(); setForm(f => ({...f, keyStaff:(f.keyStaff||[]).filter((_, j) => j!==i)})); };
   const [err, setErr] = useState('');
   const handleSave = () => {
     if(!form.name.trim()) { setErr('Institute name is required.'); return; }
@@ -263,10 +271,44 @@ function InstituteForm({institute, onSave, onClose, isSuperAdmin}) {
                   onChange={e=>set('professionalStaff',e.target.value)} placeholder="e.g. 12"/>
               </div>
             </div>
-            <div className="form-group" style={{marginBottom:0}}>
+            <div className="form-group">
               <MdTextField type="textarea" label="Consultant's organization / company profile"
                 value={form.orgProfile||''} onChange={e=>set('orgProfile',e.target.value)} rows={4}
                 placeholder="Background and organization of the consultant"/>
+            </div>
+
+            {/* Drives the "Name of Senior Staff and Designation ... Involved
+                and Functions Performed" field on every assignment's 3(B) —
+                auto-written from this roster the same way the templates above
+                write the three narrative fields. */}
+            <div className="form-group" style={{marginBottom:0}}>
+              <label style={{fontSize:12, fontWeight:500, color:'var(--text2)', display:'block', marginBottom:6}}>
+                Key staff (Project Director, Team Leader, etc.)
+              </label>
+              {(form.keyStaff||[]).length > 0 && (
+                <div style={{display:'flex', flexDirection:'column', gap:8, marginBottom:8}}>
+                  {form.keyStaff.map((s, i) => (
+                    <div key={i} style={{display:'flex', gap:8, alignItems:'center'}}>
+                      <input className="form-input" style={{flex:1}} placeholder="Name"
+                        value={s.name||''} onChange={e=>updateKeyStaff(i,'name',e.target.value)}/>
+                      <input className="form-input" style={{flex:1}} placeholder="Position — e.g. Team Leader"
+                        value={s.position||''} onChange={e=>updateKeyStaff(i,'position',e.target.value)}/>
+                      <button type="button" onClick={()=>removeKeyStaff(i)} aria-label={`Remove ${s.name || 'staff member'}`}
+                        style={{background:'none', border:'none', cursor:'pointer', color:'var(--text3)', padding:4, flexShrink:0}}>
+                        <span className="material-icons-round" style={{fontSize:18}}>close</span>
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+              <button type="button" onClick={addKeyStaff}
+                style={{display:'flex', alignItems:'center', gap:4, fontSize:12, fontWeight:600, color:'var(--accent)',
+                  background:'none', border:'none', cursor:'pointer', padding:0, fontFamily:'var(--font)'}}>
+                <span className="material-icons-round" style={{fontSize:15}}>add</span> Add staff member
+              </button>
+              <div className="input-hint" style={{marginTop:6}}>
+                Used to auto-fill the senior-staff field on each assignment&rsquo;s EOI details when left blank.
+              </div>
             </div>
           </div>
         )}

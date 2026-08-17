@@ -119,6 +119,13 @@ async function runMigrations() {
     `ALTER TABLE institutes ADD COLUMN IF NOT EXISTS org_profile TEXT`,
     `ALTER TABLE institutes ADD COLUMN IF NOT EXISTS total_staff INTEGER`,
     `ALTER TABLE institutes ADD COLUMN IF NOT EXISTS professional_staff INTEGER`,
+    // Bolpatra 3(B) — "No. of Staff" per assignment, and the firm's key-staff
+    // roster (name + position) that "Name of Senior Staff ... Involved and
+    // Functions Performed" is auto-written from, the same way the three
+    // narrative fields are written from their assigned templates.
+    `ALTER TABLE assignments ADD COLUMN IF NOT EXISTS staff_count INTEGER`,
+    `ALTER TABLE assignments ADD COLUMN IF NOT EXISTS senior_staff_description TEXT`,
+    `ALTER TABLE institutes ADD COLUMN IF NOT EXISTS key_staff JSONB DEFAULT '[]'`,
     // Projects whose assignments include on-the-job training (EVENT, RERP/SAMRIDDHI,
     // ENSSURE). Drives the OJT step in the 3(B) services templates.
     `ALTER TABLE clients ADD COLUMN IF NOT EXISTS includes_ojt BOOLEAN DEFAULT FALSE`,

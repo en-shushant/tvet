@@ -310,12 +310,13 @@ describe('extracted shortlisting modules mount', () => {
  */
 describe('EOI gap panel keeps unsaved work visible', () => {
   const institute = { id: 9, name: 'Test Firm',
-    descTemplateId: 'V13', narrativeTemplateId: 'N13', servicesTemplateId: 'S13' };
+    descTemplateId: 'V13', narrativeTemplateId: 'N13', servicesTemplateId: 'S13',
+    keyStaff: [{ name: 'Jane Doe', position: 'Team Leader' }] };
   // Complete except one field.
   const oneGap = () => ({
     id: 1, fy: '2081/82', assignmentName: 'One Gap', clientId: 1,
     contractValue: '100', startDate: '2082/01/15', endDate: '2082/04/10',
-    durationMonths: '3', totalPersonMonths: '', isJV: false,
+    durationMonths: '3', totalPersonMonths: '', staffCount: '4', isJV: false,
     occupations: [{ id: 'a', ctevtOccupationId: 1, trainees: '20', locations: [{ id: 'l', district: 'Kaski' }] }],
   });
 

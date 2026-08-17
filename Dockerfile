@@ -8,6 +8,11 @@ RUN npm install --include=dev
 
 COPY index.html vite.config.js ./
 COPY src/ ./src/
+# Vite copies public/ into dist/ verbatim at build time — favicon, robots.txt,
+# anything meant to be served at a fixed path rather than imported. Omitting
+# this COPY silently drops all of it; the build stage never errors, it just
+# doesn't have the directory to copy from.
+COPY public/ ./public/
 
 RUN npm run build
 
