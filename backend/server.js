@@ -276,6 +276,18 @@ async function runMigrations() {
          'Road Construction and Supervision Training'
        )
      )`,
+    // The exact-match version above still left two of the three trades on
+    // "N/A" — their stored level text apparently isn't the literal string
+    // 'N/A' (stray whitespace/casing, e.g. 'n/a' or ' N/A '). Match anything
+    // that reads as "not applicable" once trimmed and case-folded, still
+    // scoped to just these occupations and matched the same tolerant way.
+    `UPDATE occupation_tools SET level = 'Level 1'
+     WHERE TRIM(LOWER(level)) IN ('n/a', 'na') AND occupation_id IN (
+       SELECT id FROM occupations WHERE TRIM(LOWER(name)) IN (
+         'project planning and road asset management training',
+         'road asset management and maintenance training'
+       )
+     )`,
   ];
   for (const sql of migrations) {
     try { await pool.query(sql); }
