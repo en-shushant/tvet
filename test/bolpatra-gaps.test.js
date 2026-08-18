@@ -13,12 +13,11 @@ const complete = () => ({
   id: 1, fy: '2081/82', assignmentName: 'Skills for Employment',
   clientId: 1, contractValue: '2500000',
   startDate: '2082/01/15', endDate: '2082/04/10',
-  durationMonths: '3', totalPersonMonths: '12', staffCount: '4',
+  durationMonths: '3', totalPersonMonths: '12',
   isJV: false,
   descriptionOfWork: 'Delivered training.',
   narrativeDescription: 'Project narrative.',
   actualServicesDescription: 'Services provided.',
-  seniorStaffDescription: 'Jane Doe — Team Leader.',
   occupations: [{ trainees: '40', locations: [{ district: 'Kathmandu' }] }],
 });
 
@@ -70,16 +69,6 @@ describe('bolpatra gap detection', () => {
       expect(keys(e, noTemplates))
         .toEqual(['actualServicesDescription', 'descriptionOfWork', 'narrativeDescription']);
     });
-
-    it('senior staff, when the firm has a key-staff roster set', () => {
-      const e = complete(); e.seniorStaffDescription = '';
-      const withRoster = { keyStaff: [{ name: 'Jane Doe', position: 'Team Leader' }] };
-      expect(keys(e, withRoster)).toEqual([]);
-      // …but the same assignment for a firm with no roster is a gap.
-      expect(keys(e, noTemplates)).toEqual(['seniorStaffDescription']);
-      // An empty roster counts the same as none.
-      expect(keys(e, { keyStaff: [] })).toEqual(['seniorStaffDescription']);
-    });
   });
 
   describe('flags what the report cannot fill', () => {
@@ -108,11 +97,6 @@ describe('bolpatra gap detection', () => {
       // A manual client name is enough.
       const f = complete(); f.clientId = null; f.clientName = 'Ad-hoc Municipality';
       expect(keys(f, noTemplates)).toEqual([]);
-    });
-
-    it('staffCount, which has no fallback', () => {
-      const e = complete(); e.staffCount = '';
-      expect(keys(e, noTemplates)).toEqual(['staffCount']);
     });
   });
 

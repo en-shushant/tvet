@@ -13,7 +13,6 @@
  *   durationMonths     falls back to the span between the contract dates
  *   descriptionOfWork, narrativeDescription, actualServicesDescription
  *                      fall back to the firm's assigned template
- *   seniorStaffDescription  falls back to the firm's key-staff roster
  *   JV partner fields  print "NA" unless the assignment is a joint venture
  *
  * Flagging any of those would train people to ignore the warning, which is
@@ -63,10 +62,6 @@ const CHECKS = [
     hint: 'Has no fallback; 3(B) prints a dash without it.',
     missing: (e) => absent(e.totalPersonMonths) },
 
-  { key: 'staffCount', field: 'staffCount', label: 'No. of Staff',
-    hint: 'Has no fallback; 3(B) prints a dash without it.',
-    missing: (e) => absent(e.staffCount) },
-
   { key: 'location', label: 'District',
     hint: 'Taken from the occupations. Add a district on the Occupations step.',
     missing: (e) => !hasLocation(e) },
@@ -95,12 +90,6 @@ const NARRATIVES = [
   { key: 'actualServicesDescription', field: 'actualServicesDescription', templateKey: 'servicesTemplateId',
     label: 'Description of actual services provided',
     hint: 'Section 3(B) footer. Written from the firm’s template when one is assigned.' },
-  // Same shape, different source: written from the firm's key-staff roster
-  // rather than a chosen template variation, so it checks a list length
-  // instead of a templateKey being set.
-  { key: 'seniorStaffDescription', field: 'seniorStaffDescription', hasSource: (inst) => !!inst?.keyStaff?.length,
-    label: 'Senior staff involved and functions performed',
-    hint: 'Section 3(B). Written from the firm’s key-staff roster when one is set.' },
 ];
 
 /**

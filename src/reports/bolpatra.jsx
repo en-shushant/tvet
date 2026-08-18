@@ -3,7 +3,7 @@ import { getClient, monthsBetween, districtsOf, esc, fyInRange } from './helpers
 import { loadDocx, loadFileSaver } from './docxLazy.js';
 import { BS_MONTHS_EN } from '../constants/nepali.js';
 import { fillDescriptionTemplate } from '../utils/descriptionTemplates.js';
-import { fillNarrativeTemplate, fillServicesTemplate, fillSeniorStaffText } from '../utils/specificTemplates.js';
+import { fillNarrativeTemplate, fillServicesTemplate } from '../utils/specificTemplates.js';
 
 // ─── Standard EOI Document (Bolpatra) ────────────────────────────────────────
 // Mirrors the PPMO/e-GP "Standard EOI Document" form:
@@ -117,7 +117,6 @@ function narrativeFor(exp, inst, clients, slot) {
 const DESCRIPTION_SLOT  = { field: 'descriptionOfWork',          templateKey: 'descTemplateId',      fill: fillDescriptionTemplate };
 const NARRATIVE_SLOT    = { field: 'narrativeDescription',       templateKey: 'narrativeTemplateId', fill: fillNarrativeTemplate };
 const SERVICES_SLOT     = { field: 'actualServicesDescription',  templateKey: 'servicesTemplateId',  fill: fillServicesTemplate };
-const SENIOR_STAFF_SLOT = { field: 'seniorStaffDescription', always: true, fill: fillSeniorStaffText };
 
 const captionOf = (exp) => {
   const name = exp.assignmentName || '(unnamed assignment)';
@@ -270,14 +269,13 @@ function model3b(exps, clients, inst) {
              value: jv ? dash(exp.jvPartnerPersonMonths) : 'NA' }],
         ],
         [
+          // The standard EOI form's 3(B) box ends here — Senior Staff and No. of
+          // Staff are not fields on it. That data is still captured on the
+          // assignment (staffCount, seniorStaffDescription) for other uses, but
+          // it does not belong in this printed table.
           [{ label: 'Name of joint venture partner or sub-Consultants, if any',
              value: jv ? dash(exp.jvPartnerNames) : 'NA' }],
           [{ label: 'Narrative description of Project', value: narrativeFor(exp, inst, clients, NARRATIVE_SLOT), block: true }],
-        ],
-        [
-          [{ label: 'Name of Senior Staff and Designation (Project Director/Coordinator, Team Leader etc.) Involved and Functions Performed',
-             value: narrativeFor(exp, inst, clients, SENIOR_STAFF_SLOT), block: true }],
-          [{ label: 'No. of Staff', value: dash(exp.staffCount) }],
         ],
       ],
       footer: {

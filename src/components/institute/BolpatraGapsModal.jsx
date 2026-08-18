@@ -35,7 +35,6 @@ const FIELDS = [
   { field:'durationMonths',    label:'Duration (months)',      section:'3(B) · 3(C)',
     hint:'Derived from the contract dates when both are present.' },
   { field:'totalPersonMonths', label:'Total person-months',    section:'3(B)' },
-  { field:'staffCount',        label:'No. of Staff',           section:'3(B)' },
   { field:'country',           label:'Country',                section:'3(B) · 3(C)',
     hint:'Defaults to Nepal when blank.' },
   { field:'jvPartnerNames',        label:'JV partner names',        section:'3(B)', jvOnly:true },
@@ -43,12 +42,6 @@ const FIELDS = [
   { field:'descriptionOfWork',        label:'Description of work carried out',  section:'3(A)', long:true, template:'descTemplateId' },
   { field:'narrativeDescription',     label:'Narrative description of project', section:'3(B)', long:true, template:'narrativeTemplateId' },
   { field:'actualServicesDescription',label:'Description of actual services',   section:'3(B) footer', long:true, template:'servicesTemplateId' },
-  // Same shape, different source: written from the firm's key-staff roster
-  // rather than a chosen template, so it checks a list length instead of a
-  // templateKey being set.
-  { field:'seniorStaffDescription',   label:'Senior staff involved and functions performed', section:'3(B)',
-    long:true, hasSource: (inst) => !!inst?.keyStaff?.length,
-    sourceHint:'Written from the firm’s key-staff roster (Institute → Edit → EOI profile) when left blank.' },
 ];
 
 /**

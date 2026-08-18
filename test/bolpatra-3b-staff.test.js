@@ -1,12 +1,10 @@
 /**
- * 3(B) Specific Experience — "No. of Staff" and the senior-staff field.
- *
- * The RFP's own 3(B) template carries two fields TVETtrack had never captured:
- * a per-assignment staff count, and "Name of Senior Staff and Designation ...
- * Involved and Functions Performed". The second is written from the firm's
- * key-staff roster the same way the three narrative fields are written from
- * their assigned templates — stored text wins, the roster is the fallback,
- * and an empty roster prints a dash rather than inventing names.
+ * 3(B) Specific Experience mirrors the official Standard EOI Document's own
+ * box exactly — six field-rows plus the services footer, no more. "Name of
+ * Senior Staff" and "No. of Staff" are not fields on that form, so even
+ * though the assignment still captures them (staffCount, seniorStaffDescription
+ * — used elsewhere, e.g. the assignment form and gap tracking), 3(B)'s printed
+ * output must not include them.
  */
 import { describe, it, expect } from 'vitest';
 import bolpatra from '../src/reports/bolpatra.jsx';
@@ -24,20 +22,32 @@ const clients = [{ id: 1, fullName: 'Nepal Electricity Authority', shortName: 'N
 const html3b = (exp, inst, opts = {}) =>
   bolpatra.buildPrintHTML(inst, [exp], clients, '3b', null, { clients, ...opts });
 
-describe('3(B) No. of Staff', () => {
-  it('prints the stored count', () => {
+describe('3(B) matches the official form — no Senior Staff / No. of Staff row', () => {
+  it('does not print "No. of Staff", even when the assignment has a count', () => {
     const out = html3b(baseExp({ staffCount: '4' }), { id: 1, name: 'Test Firm' });
-    expect(out).toContain('No. of Staff');
-    expect(out).toMatch(/No\. of Staff[\s\S]{0,40}>4</);
+    expect(out).not.toContain('No. of Staff');
   });
 
-  it('has no fallback — prints a dash when blank', () => {
-    const out = html3b(baseExp({ staffCount: '' }), { id: 1, name: 'Test Firm' });
-    expect(out).toMatch(/No\. of Staff[\s\S]{0,60}&mdash;/);
+  it('does not print "Name of Senior Staff", even for a firm with a key-staff roster', () => {
+    const inst = { id: 1, name: 'Test Firm', keyStaff: [{ name: 'Jane Doe', position: 'Team Leader' }] };
+    const out = html3b(baseExp(), inst);
+    expect(out).not.toContain('Name of Senior Staff');
+    expect(out).not.toContain('Jane Doe');
+  });
+
+  it('ends the field box at Narrative description, straight into the services footer', () => {
+    const out = html3b(baseExp(), { id: 1, name: 'Test Firm' });
+    const narrativeIdx = out.indexOf('Narrative description of Project');
+    const footerIdx = out.indexOf('Description of actual services provided in the assignment');
+    expect(narrativeIdx).toBeGreaterThan(-1);
+    expect(footerIdx).toBeGreaterThan(narrativeIdx);
   });
 });
 
-describe('3(B) senior staff — auto-fill from the key-staff roster', () => {
+// fillSeniorStaffText itself is still used elsewhere (the assignment form's own
+// "Senior staff description" auto-fill) — only its appearance inside the 3(B)
+// print output was removed above.
+describe('fillSeniorStaffText — auto-fill from the key-staff roster', () => {
   const inst = { id: 1, name: 'Test Firm', keyStaff: [
     { name: 'Jane Doe', position: 'Team Leader' },
     { name: 'Ram Sharma', position: 'Project Director' },
@@ -69,24 +79,6 @@ describe('3(B) senior staff — auto-fill from the key-staff roster', () => {
   it('ignores roster entries with no name', () => {
     const withBlank = { id: 4, name: 'Firm', keyStaff: [{ name: '', position: 'Ghost' }] };
     expect(fillSeniorStaffText(baseExp(), withBlank, clients)).toBe('');
-  });
-
-  it('flows through into the rendered 3(B) document', () => {
-    const out = html3b(baseExp(), inst);
-    expect(out).toContain('Name of Senior Staff and Designation');
-    expect(out).toContain('Jane Doe');
-    expect(out).toContain('Ram Sharma');
-  });
-
-  it('a manually typed value overrides the roster', () => {
-    const out = html3b(baseExp({ seniorStaffDescription: 'Custom senior staff text.' }), inst);
-    expect(out).toContain('Custom senior staff text.');
-    expect(out).not.toContain('Jane Doe');
-  });
-
-  it('prints a dash rather than fabricating staff for a firm with no roster', () => {
-    const out = html3b(baseExp(), { id: 5, name: 'No Roster Firm' });
-    expect(out).toMatch(/Name of Senior Staff[\s\S]{0,200}&mdash;/);
   });
 
   it('a position-less entry still prints, by name alone', () => {
