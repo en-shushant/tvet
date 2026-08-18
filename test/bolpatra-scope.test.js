@@ -1,11 +1,11 @@
 /**
- * The occupation picker scopes the 4(B) tools list; it must be able to stop
- * scoping 3(B) Specific Experience at the same time.
+ * 3(B) Specific Experience has its own occupation selection (`specificOccs`),
+ * independent of `selectedOccs` which scopes the 4(B) tools list.
  *
  * Those two wants genuinely diverge. A bid asks for the tools of the
  * occupations being tendered for, while the firm's experience reads strongest
- * when all of it is shown. Tying both to one control meant narrowing the tools
- * list silently dropped most of the experience from the document.
+ * when a different, broader set is shown. Tying both to one control meant
+ * narrowing the tools list silently narrowed the experience too.
  */
 import { describe, it, expect } from 'vitest';
 import bolpatra from '../src/reports/bolpatra.jsx';
@@ -38,21 +38,20 @@ function specificAssignments(opts) {
 }
 
 describe('3(B) occupation scope', () => {
-  it('narrows to the selected occupations by default', () => {
-    expect(specificAssignments({ selectedOccs: ['Beautician'] })).toEqual([1, 3]);
+  it('narrows to the selected occupations', () => {
+    expect(specificAssignments({ specificOccs: ['Beautician'] })).toEqual([1, 3]);
   });
 
-  it('includes every assignment when the option is set', () => {
-    expect(specificAssignments({
-      selectedOccs: ['Beautician'],
-      eoiAllOccsInSpecific: true,
-    })).toEqual([1, 2, 3, 4]);
+  it('includes every assignment when nothing is selected', () => {
+    expect(specificAssignments({ specificOccs: [] })).toEqual([1, 2, 3, 4]);
   });
 
-  it('changes nothing when no occupation is selected', () => {
-    // Without a selection there was never any narrowing to undo.
-    expect(specificAssignments({ selectedOccs: [] })).toEqual([1, 2, 3, 4]);
-    expect(specificAssignments({ selectedOccs: [], eoiAllOccsInSpecific: true })).toEqual([1, 2, 3, 4]);
+  it('is unaffected by the separate tools occupation selection', () => {
+    // selectedOccs drives the 4(B) tools list, not the 3(B) narrowing.
+    expect(specificAssignments({ specificOccs: [], selectedOccs: ['Beautician'] }))
+      .toEqual([1, 2, 3, 4]);
+    expect(specificAssignments({ specificOccs: ['Beautician'], selectedOccs: ['Welding'] }))
+      .toEqual([1, 3]);
   });
 
   it('still applies the duration filter, which is a separate question', () => {
@@ -63,23 +62,23 @@ describe('3(B) occupation scope', () => {
       // The filter takes '160plus' / '390plus' / '390more'; an unrecognised
       // value falls through to keeping everything, which is how a wrong string
       // here looked like a broken filter.
-      clients, selectedOccs: ['Beautician'], eoiAllOccsInSpecific: true, filterDuration: '160plus',
+      clients, specificOccs: [], filterDuration: '160plus',
     });
     expect(html.includes('Assignment 5'), 'an 80-hour assignment should still be excluded').toBe(false);
     expect(html.includes('Assignment 6')).toBe(true);
   });
 
   it('leaves the tools selection alone', () => {
-    // The flag is read only by the 3(B) narrowing; the tools list is built from
-    // selectedOccs elsewhere and must not shift when this is toggled.
-    const withFlag = bolpatra.buildPrintHTML(inst, exps, clients, '4b', null, {
-      clients, selectedOccs: ['Beautician'], eoiAllOccsInSpecific: true,
+    // specificOccs is read only by the 3(B) narrowing; the tools list is built
+    // from selectedOccs elsewhere and must not shift when this changes.
+    const withSpecific = bolpatra.buildPrintHTML(inst, exps, clients, '4b', null, {
+      clients, selectedOccs: ['Beautician'], specificOccs: ['Welding'],
       bolpatraTools: {}, eoiToolsLevel: 'Level 1',
     });
     const without = bolpatra.buildPrintHTML(inst, exps, clients, '4b', null, {
-      clients, selectedOccs: ['Beautician'], eoiAllOccsInSpecific: false,
+      clients, selectedOccs: ['Beautician'], specificOccs: [],
       bolpatraTools: {}, eoiToolsLevel: 'Level 1',
     });
-    expect(withFlag).toBe(without);
+    expect(withSpecific).toBe(without);
   });
 });

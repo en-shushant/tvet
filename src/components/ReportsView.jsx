@@ -32,18 +32,17 @@ function ReportsView({ institutes, clients }) {
   // ask for a different span of accounts than of work (see bolpatra 4(A)).
   const [turnFromFY, setTurnFromFY]     = useState(f.turnFromFY || '');
   const [turnToFY, setTurnToFY]         = useState(f.turnToFY || '');
-  const [selectedOccs, setSelectedOccs] = useState([]); // for Table 3 occupation filter
+  const [selectedOccs, setSelectedOccs] = useState([]); // for Table 3 occupation filter, and 4(B) tools
   /**
-   * Whether 3(B) Specific Experience covers every occupation or only the
-   * selected ones.
+   * 3(B) Specific Experience's own occupation selection.
    *
-   * The occupation picker drives two different things: which tools are listed
-   * in 4(B), and which assignments 3(B) describes. Those wants diverge — a bid
-   * asks for the tools of the occupations being tendered for, while the firm's
-   * experience is strongest when all of it is shown. Tying both to one control
-   * meant narrowing the tools list silently discarded most of the experience.
+   * Kept independent of `selectedOccs` (which drives the 4(B) tools list): a bid
+   * wants tools limited to the occupations being tendered for, while the
+   * "similar assignments" shown as experience are often a different, broader
+   * set. Tying both to one control meant narrowing the tools list silently
+   * narrowed the experience too.
    */
-  const [eoiAllOccsInSpecific, setEoiAllOccsInSpecific] = useState(f.eoiAllOccsInSpecific ?? false);
+  const [eoiSpecificOccs, setEoiSpecificOccs] = useState(f.eoiSpecificOccs || []);
   /**
    * One tools schedule for all selected occupations, instead of a table each.
    *
@@ -59,6 +58,7 @@ function ReportsView({ institutes, clients }) {
   const [filterDuration, setFilterDuration] = useState(f.filterDuration || ''); // Helvetas duration filter
   const [filterDonorTypes, setFilterDonorTypes] = useState([]); // Donor/client type filter
   const [occSearch, setOccSearch] = useState('');
+  const [toolsOccSearch2, setToolsOccSearch2] = useState(''); // search for the separate 4(B) tools occupation picker (bolpatra 'full')
 
   // Multi-institute state (firm-wise report)
   const [fwInstIds, setFwInstIds] = useState([]);
@@ -106,8 +106,8 @@ function ReportsView({ institutes, clients }) {
   const [enssureToolsData, setEnssureToolsData] = useState([]);
 
   // Persist key filter state to sessionStorage
-  useEffect(() => { saveFilters({ familyId, selectedInst, reportId, fromFY, toFY, turnFromFY, turnToFY, eoiToolsLevel, eoiEventsByOcc, eoiToolCols, eoiToolTypes, eoiAllOccsInSpecific, eoiCombineTools, eoiSingleTable, filterDuration, enssureOccIds, enssureToolsOccId, enssureToolsLevel, enssureEvents }); },
-    [familyId, selectedInst, reportId, fromFY, toFY, turnFromFY, turnToFY, eoiToolsLevel, eoiEventsByOcc, eoiToolCols, eoiToolTypes, eoiAllOccsInSpecific, eoiCombineTools, eoiSingleTable, filterDuration, enssureOccIds, enssureToolsOccId, enssureToolsLevel, enssureEvents]);
+  useEffect(() => { saveFilters({ familyId, selectedInst, reportId, fromFY, toFY, turnFromFY, turnToFY, eoiToolsLevel, eoiEventsByOcc, eoiToolCols, eoiToolTypes, eoiSpecificOccs, eoiCombineTools, eoiSingleTable, filterDuration, enssureOccIds, enssureToolsOccId, enssureToolsLevel, enssureEvents }); },
+    [familyId, selectedInst, reportId, fromFY, toFY, turnFromFY, turnToFY, eoiToolsLevel, eoiEventsByOcc, eoiToolCols, eoiToolTypes, eoiSpecificOccs, eoiCombineTools, eoiSingleTable, filterDuration, enssureOccIds, enssureToolsOccId, enssureToolsLevel, enssureEvents]);
 
   // Fetch tools for explicitly selected D2/D3 occupation + level
   useEffect(() => {
@@ -318,6 +318,9 @@ function ReportsView({ institutes, clients }) {
   const toggleOcc = (name) =>
     setSelectedOccs(prev => prev.includes(name) ? prev.filter(x => x !== name) : [...prev, name]);
 
+  const toggleSpecificOcc = (name) =>
+    setEoiSpecificOccs(prev => prev.includes(name) ? prev.filter(x => x !== name) : [...prev, name]);
+
   const toggleSelected = (id) => {
     setSelectedIds(prev => {
       const base = prev === null ? rangeFiltered.map(e => e.id) : prev;
@@ -350,7 +353,7 @@ function ReportsView({ institutes, clients }) {
 
   const opts = { fromFY, toFY, turnoverFromFY: turnFromFY, turnoverToFY: turnToFY,
     bolpatraTools: eoiTools, eoiToolsLevel, eoiEventsByOcc, eoiToolCols, eoiToolTypes, selectedOccs,
-    eoiAllOccsInSpecific, eoiCombineTools, eoiSingleTable, occupations, sortBy,
+    specificOccs: eoiSpecificOccs, eoiCombineTools, eoiSingleTable, occupations, sortBy,
     toolsOccIds, toolsLevel, toolsTypeFilter, toolsColumns, toolsLayout, toolsData, numGroups,
     enssureOccs, enssureOccIds, enssureToolsData, enssureToolsOccId, enssureToolsLevel, enssureEvents,
     filterDuration, clients };
@@ -394,7 +397,7 @@ function ReportsView({ institutes, clients }) {
   // show whether what is on screen still matches the filters.
   const filterSig = JSON.stringify([
     reportId, fwInstIds, fwLeadId, fromFY, toFY, turnFromFY, turnToFY,
-    selectedOccs, filterDuration, filterDonorTypes,
+    selectedOccs, eoiSpecificOccs, filterDuration, filterDonorTypes,
     eoiToolsLevel, eoiEventsByOcc, eoiToolCols, eoiToolTypes,
   ]);
   const isStale = renderedSig !== null && renderedSig !== filterSig;
@@ -904,10 +907,30 @@ function ReportsView({ institutes, clients }) {
             )}
 
 
-            {/* Occupation */}
-            {!noInstitute && (fullInst || isMultiInst) && report.hasOccupationFilter && allOccNames.length > 0 && (
+            {/* Occupation — 3(B) Specific Experience. Its own selection, separate
+                from the one below that scopes 4(B) tools. */}
+            {!noInstitute && (fullInst || isMultiInst) && report.hasSpecificOccFilter && allOccNames.length > 0 && (
               <div className="filter-section">
-                <div className="filter-label">Occupation</div>
+                <div className="filter-label">Occupation — 3(B) Specific Experience</div>
+                <input className="form-input" value={occSearch} onChange={e => setOccSearch(e.target.value)}
+                  placeholder="Search…" style={{fontSize:12, marginBottom:6}}/>
+                <div className="multi-select-list" style={{maxHeight:200, overflowY:'auto'}}>
+                  {allOccNames.filter(n => !occSearch || n.toLowerCase().includes(occSearch.toLowerCase())).map(name => (
+                    <label key={name} className="multi-select-item">
+                      <input type="checkbox" checked={eoiSpecificOccs.includes(name)} onChange={() => toggleSpecificOcc(name)}/>
+                      <span>{name}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Occupation — general filter. For 'full'/'4b' this scopes the 4(B)
+                tools list; for other report families (Helvetas, Firm-wise) it's
+                the sole occupation filter for that table. */}
+            {!noInstitute && (fullInst || isMultiInst) && report.hasOccupationFilter && !report.hasSpecificOccFilter && allOccNames.length > 0 && (
+              <div className="filter-section">
+                <div className="filter-label">{report.hasToolsPicker ? 'Occupation — 4(B) Tools' : 'Occupation'}</div>
                 <input className="form-input" value={occSearch} onChange={e => setOccSearch(e.target.value)}
                   placeholder="Search…" style={{fontSize:12, marginBottom:6}}/>
                 <div className="multi-select-list" style={{maxHeight:200, overflowY:'auto'}}>
@@ -918,18 +941,24 @@ function ReportsView({ institutes, clients }) {
                     </label>
                   ))}
                 </div>
-                {report.hasToolsPicker && (
-                  // Only meaningful where the same picker also drives a tools
-                  // list — that is the conflict this resolves.
-                  <label className="filter-inline-check" style={{marginTop:8}}>
-                    <input type="checkbox" checked={eoiAllOccsInSpecific}
-                      onChange={e => setEoiAllOccsInSpecific(e.target.checked)}/>
-                    <span>
-                      All occupations in 3(B)
-                      <em>Tools stay limited to the selection above.</em>
-                    </span>
-                  </label>
-                )}
+              </div>
+            )}
+
+            {/* Occupation — 4(B) Tools, shown alongside the 3(B) picker above
+                when the report has both sections (the 'full' Complete EOI doc). */}
+            {!noInstitute && (fullInst || isMultiInst) && report.hasOccupationFilter && report.hasSpecificOccFilter && report.hasToolsPicker && allOccNames.length > 0 && (
+              <div className="filter-section">
+                <div className="filter-label">Occupation — 4(B) Tools</div>
+                <input className="form-input" value={toolsOccSearch2} onChange={e => setToolsOccSearch2(e.target.value)}
+                  placeholder="Search…" style={{fontSize:12, marginBottom:6}}/>
+                <div className="multi-select-list" style={{maxHeight:200, overflowY:'auto'}}>
+                  {allOccNames.filter(n => !toolsOccSearch2 || n.toLowerCase().includes(toolsOccSearch2.toLowerCase())).map(name => (
+                    <label key={name} className="multi-select-item">
+                      <input type="checkbox" checked={selectedOccs.includes(name)} onChange={() => toggleOcc(name)}/>
+                      <span>{name}</span>
+                    </label>
+                  ))}
+                </div>
               </div>
             )}
 

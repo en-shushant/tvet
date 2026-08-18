@@ -20,10 +20,10 @@ import { fillNarrativeTemplate, fillServicesTemplate, fillSeniorStaffText } from
 // 3(B) "Specific Experience", which is by definition the subset of similar
 // assignments relevant to the EOI being bid for.
 const REPORTS = [
-  { id: 'full', label: 'Complete EOI Document', aggregate: true, hasOccupationFilter: true, hasTurnoverFY: true, hasToolsPicker: true },
+  { id: 'full', label: 'Complete EOI Document', aggregate: true, hasOccupationFilter: true, hasTurnoverFY: true, hasToolsPicker: true, hasSpecificOccFilter: true },
   { id: '2',    label: "2. Applicant's Information Form", aggregate: true },
   { id: '3a',   label: '3(A) General Work Experience', aggregate: true },
-  { id: '3b',   label: '3(B) Specific Experience', aggregate: true, hasOccupationFilter: true },
+  { id: '3b',   label: '3(B) Specific Experience', aggregate: true, hasOccupationFilter: true, hasSpecificOccFilter: true },
   { id: '3c',   label: '3(C) Geographic Experience', aggregate: true },
   { id: '4a',   label: '4(A) Financial Capacity', aggregate: true, hasTurnoverFY: true },
   { id: '4b',   label: '4(B) Infrastructure / Equipment', aggregate: true, hasOccupationFilter: true, hasToolsPicker: true },
@@ -162,15 +162,15 @@ const meetsDuration = (occ, filterDuration) => {
  * least one of its occupation rows satisfies *both* the occupation and duration
  * criteria — a 400-hour Electrician row must not qualify the assignment when the
  * user asked for 400-hour Plumbing.
+ *
+ * 3(B)'s occupation filter (specificOccs) is a separate selection from the one
+ * that scopes 4(B)'s tools list (selectedOccs) — a bid's tools are limited to
+ * the occupations being tendered for, but the experience worth showing as
+ * "similar" doesn't have to be the same set.
  */
 function specificExps(exps, opts = {}) {
-  const { selectedOccs = [], filterDuration = '', occupations = [],
-          eoiAllOccsInSpecific = false } = opts;
-  // The occupation picker scopes the 4(B) tools list. When this is set it stops
-  // scoping 3(B) as well, so the firm's experience can be shown in full while
-  // the tools stay limited to the occupations being tendered for. Duration is
-  // still applied — that is a separate filter and means the same thing here.
-  const wanted = eoiAllOccsInSpecific ? [] : selectedOccs.map(s => s.toLowerCase());
+  const { specificOccs = [], filterDuration = '', occupations = [] } = opts;
+  const wanted = specificOccs.map(s => s.toLowerCase());
   if (!wanted.length && !filterDuration) return exps;
   return exps.filter(exp => (exp.occupations || []).some(occ => {
     if (!meetsDuration(occ, filterDuration)) return false;
