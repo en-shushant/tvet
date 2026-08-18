@@ -263,6 +263,19 @@ async function runMigrations() {
       created_at       TIMESTAMPTZ DEFAULT NOW(),
       updated_at       TIMESTAMPTZ DEFAULT NOW()
     )`,
+    // These three Civil/Construction trades had their tools lists entered under
+    // level 'N/A' instead of 'Level 1', so the tools never appeared under any
+    // level the EOI/report pickers actually offer (Level 1/2/3, Professional) —
+    // the master-data screen showed a Total count but every level column read
+    // "—". Idempotent: after the first run no rows match and this is a no-op.
+    `UPDATE occupation_tools SET level = 'Level 1'
+     WHERE level = 'N/A' AND occupation_id IN (
+       SELECT id FROM occupations WHERE name IN (
+         'Project Planning and Road Asset Management Training',
+         'Road Asset Management and Maintenance training',
+         'Road Construction and Supervision Training'
+       )
+     )`,
   ];
   for (const sql of migrations) {
     try { await pool.query(sql); }
