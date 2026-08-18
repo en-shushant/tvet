@@ -315,6 +315,14 @@ function ReportsView({ institutes, clients }) {
     return [...names].sort();
   }, [activeExps, occupations, isMultiInst, fwFullInsts, reportId, fullInst]);
 
+  // Every occupation in the master list, not just the ones the firm already has
+  // recorded experience in. The bolpatra pickers (3(B) and 4(B) tools) need the
+  // full list — a firm can propose an occupation, or need its tools listed, that
+  // it has no past assignments for yet, and the picker shouldn't hide it.
+  const allMasterOccNames = useMemo(() =>
+    [...new Set(occupations.map(o => o.name).filter(Boolean))].sort(),
+    [occupations]);
+
   const toggleOcc = (name) =>
     setSelectedOccs(prev => prev.includes(name) ? prev.filter(x => x !== name) : [...prev, name]);
 
@@ -909,13 +917,13 @@ function ReportsView({ institutes, clients }) {
 
             {/* Occupation — 3(B) Specific Experience. Its own selection, separate
                 from the one below that scopes 4(B) tools. */}
-            {!noInstitute && (fullInst || isMultiInst) && report.hasSpecificOccFilter && allOccNames.length > 0 && (
+            {!noInstitute && (fullInst || isMultiInst) && report.hasSpecificOccFilter && allMasterOccNames.length > 0 && (
               <div className="filter-section">
                 <div className="filter-label">Occupation — 3(B) Specific Experience</div>
                 <input className="form-input" value={occSearch} onChange={e => setOccSearch(e.target.value)}
                   placeholder="Search…" style={{fontSize:12, marginBottom:6}}/>
                 <div className="multi-select-list" style={{maxHeight:200, overflowY:'auto'}}>
-                  {allOccNames.filter(n => !occSearch || n.toLowerCase().includes(occSearch.toLowerCase())).map(name => (
+                  {allMasterOccNames.filter(n => !occSearch || n.toLowerCase().includes(occSearch.toLowerCase())).map(name => (
                     <label key={name} className="multi-select-item">
                       <input type="checkbox" checked={eoiSpecificOccs.includes(name)} onChange={() => toggleSpecificOcc(name)}/>
                       <span>{name}</span>
@@ -928,13 +936,13 @@ function ReportsView({ institutes, clients }) {
             {/* Occupation — general filter. For 'full'/'4b' this scopes the 4(B)
                 tools list; for other report families (Helvetas, Firm-wise) it's
                 the sole occupation filter for that table. */}
-            {!noInstitute && (fullInst || isMultiInst) && report.hasOccupationFilter && !report.hasSpecificOccFilter && allOccNames.length > 0 && (
+            {!noInstitute && (fullInst || isMultiInst) && report.hasOccupationFilter && !report.hasSpecificOccFilter && (report.hasToolsPicker ? allMasterOccNames : allOccNames).length > 0 && (
               <div className="filter-section">
                 <div className="filter-label">{report.hasToolsPicker ? 'Occupation — 4(B) Tools' : 'Occupation'}</div>
                 <input className="form-input" value={occSearch} onChange={e => setOccSearch(e.target.value)}
                   placeholder="Search…" style={{fontSize:12, marginBottom:6}}/>
                 <div className="multi-select-list" style={{maxHeight:200, overflowY:'auto'}}>
-                  {allOccNames.filter(n => !occSearch || n.toLowerCase().includes(occSearch.toLowerCase())).map(name => (
+                  {(report.hasToolsPicker ? allMasterOccNames : allOccNames).filter(n => !occSearch || n.toLowerCase().includes(occSearch.toLowerCase())).map(name => (
                     <label key={name} className="multi-select-item">
                       <input type="checkbox" checked={selectedOccs.includes(name)} onChange={() => toggleOcc(name)}/>
                       <span>{name}</span>
@@ -946,13 +954,13 @@ function ReportsView({ institutes, clients }) {
 
             {/* Occupation — 4(B) Tools, shown alongside the 3(B) picker above
                 when the report has both sections (the 'full' Complete EOI doc). */}
-            {!noInstitute && (fullInst || isMultiInst) && report.hasOccupationFilter && report.hasSpecificOccFilter && report.hasToolsPicker && allOccNames.length > 0 && (
+            {!noInstitute && (fullInst || isMultiInst) && report.hasOccupationFilter && report.hasSpecificOccFilter && report.hasToolsPicker && allMasterOccNames.length > 0 && (
               <div className="filter-section">
                 <div className="filter-label">Occupation — 4(B) Tools</div>
                 <input className="form-input" value={toolsOccSearch2} onChange={e => setToolsOccSearch2(e.target.value)}
                   placeholder="Search…" style={{fontSize:12, marginBottom:6}}/>
                 <div className="multi-select-list" style={{maxHeight:200, overflowY:'auto'}}>
-                  {allOccNames.filter(n => !toolsOccSearch2 || n.toLowerCase().includes(toolsOccSearch2.toLowerCase())).map(name => (
+                  {allMasterOccNames.filter(n => !toolsOccSearch2 || n.toLowerCase().includes(toolsOccSearch2.toLowerCase())).map(name => (
                     <label key={name} className="multi-select-item">
                       <input type="checkbox" checked={selectedOccs.includes(name)} onChange={() => toggleOcc(name)}/>
                       <span>{name}</span>
