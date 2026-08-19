@@ -1003,7 +1003,8 @@ function ReportsView({ institutes, clients }) {
             <button className="filter-reset-btn" onClick={() => {
               setFromFY(''); setToFY(''); setFilterDuration('');
               setFilterTrainingTypes([]); setFilterDonorTypes([]);
-              setSelectedOccs([]); setSelectedIds(null); setOccSearch('');
+              setSelectedOccs([]); setEoiSpecificOccs([]); setSelectedIds(null);
+              setOccSearch(''); setToolsOccSearch2('');
             }}>
               ↻ Reset
             </button>
