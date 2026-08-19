@@ -28,14 +28,6 @@ export function bsDateLabel(adStr) {
   return `${toNpNum(bs.d)} ${BS_MONTHS[bs.m - 1]} ${toNpNum(bs.y)}`;
 }
 
-function todayBS() {
-  const now = new Date();
-  const ktmStr = now.toLocaleDateString('en-CA', { timeZone: 'Asia/Kathmandu' });
-  const [y, m, d] = ktmStr.split('-').map(Number);
-  const bs = adToBS(new Date(Date.UTC(y, m - 1, d)));
-  return `${toNpNum(String(bs.y))}/${toNpNum(String(bs.m).padStart(2,'0'))}/${toNpNum(String(bs.d).padStart(2,'0'))}`;
-}
-
 // ── Letter generator — opens print-ready A4 in new window ─────────────────────
 // Scan letterhead image for header/footer boundaries
 async function detectLetterheadMargins(dataUrl) {
@@ -262,7 +254,6 @@ export async function openShortlistLetter(row, opts = {}) {
   const dateAD    = fmtDate(row.shortlist_date);
   const status    = row.status || 'Active';
   const remarks   = row.remarks || '';
-  const todayBSStr = todayBS();
 
   const statusNp = status === 'Active' ? 'सक्रिय' : status === 'Expired' ? 'म्याद सकिएको' : 'प्रक्रियामा';
   const todayAD = new Date().toLocaleDateString('en-GB', { day:'2-digit', month:'long', year:'numeric' });
@@ -377,7 +368,7 @@ export async function openShortlistLetter(row, opts = {}) {
 
   <div class="ref-row">
     <span class="ref-bold"></span>
-    <span>मिति: ${todayBSStr}</span>
+    <span>मिति: ${dateBS}</span>
   </div>
 
   <div class="to-block">
@@ -443,7 +434,7 @@ export async function openShortlistLetter(row, opts = {}) {
     <tr><td colspan="2" style="padding:0;">
       <div style="display:flex;min-height:100px;">
         <div style="flex:0 0 34%;padding:8px 10px;border-right:1px solid #666;line-height:2;font-size:10pt;">
-          <div>निवेदन दिएको मिति: ${todayBSStr}</div>
+          <div>निवेदन दिएको मिति: ${dateBS}</div>
           ${fyNp ? `<div>आ.व.: ${fyNp}</div>` : ''}
         </div>
         <div style="flex:0 0 32%;border-right:1px solid #666;text-align:center;padding:6px 4px;">
