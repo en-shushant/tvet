@@ -42,7 +42,13 @@ async function plugin(fastify, opts) {
         i.service_type AS institute_service_type,
         stl.letter_type      AS list_letter_type,
         stl.addressee        AS list_addressee,
-        stl.client_name2_manual AS list_client_name2
+        stl.client_name2_manual AS list_client_name2,
+        -- The standing list's own date is what's shown and edited on screen
+        -- (the list header); a firm's own shortlist_date is only a one-time
+        -- snapshot taken when it was assigned (see standingLists.js) and goes
+        -- stale if the list's date is corrected afterward. The letter prefers
+        -- this when the firm belongs to a standing list.
+        stl.list_date         AS list_date
       FROM shortlists sl
       LEFT JOIN clients       c   ON c.id   = sl.client_id
       LEFT JOIN institutes    i   ON i.id   = sl.institute_id

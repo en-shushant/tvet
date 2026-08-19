@@ -250,8 +250,14 @@ export async function openShortlistLetter(row, opts = {}) {
   // Shortlisting details
   const listName  = row.standing_list_name || 'Standing List';
   const fy        = row.fy || '';
-  const dateBS    = bsDateLabel(row.shortlist_date);
-  const dateAD    = fmtDate(row.shortlist_date);
+  // A firm's own shortlist_date is a one-time snapshot taken when it was
+  // assigned to the standing list; the list's own date (list_date) is what's
+  // actually shown and edited on screen, so correcting it there needs to
+  // still reach the letter. Only a legacy row with no standing list at all
+  // falls back to its own shortlist_date.
+  const effectiveDate = row.list_date || row.shortlist_date;
+  const dateBS    = bsDateLabel(effectiveDate);
+  const dateAD    = fmtDate(effectiveDate);
   const status    = row.status || 'Active';
   const remarks   = row.remarks || '';
 
