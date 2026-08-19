@@ -606,7 +606,6 @@ function Section4B({ firms, opts = {} }) {
             <div key={o.name} style={{marginTop:16}}>
               <div style={{fontWeight:600, fontSize:12.5, marginBottom:6}}>
                 Tools and Equipment for {o.name} Training
-                {o.events > 1 && <span style={{fontWeight:400, color:'var(--text3)'}}> ({o.events} events)</span>}
                 {/* Combined mode applies each occupation's own event count before
                     merging, so naming the sources is the only honest summary. */}
                 {o.combinedFrom?.length > 1 && (
@@ -832,7 +831,7 @@ function html4B(firms, opts = {}) {
     ? `<p class="muted">Select one or more occupations to list their tools and equipment.</p>`
     : tools.occupations.map(o => `
         <div class="tool-block">
-          <div class="grp">Tools and Equipment for ${esc(o.name)} Training${o.events > 1 ? ` (${o.events} events)` : ''}${
+          <div class="grp">Tools and Equipment for ${esc(o.name)} Training${
             o.combinedFrom && o.combinedFrom.length > 1 ? ` — combined from ${esc(o.combinedFrom.join(', '))}` : ''}</div>
           ${o.groups.length === 0
             ? `<p class="muted">No tools recorded for this occupation at the selected level.</p>`
@@ -1113,7 +1112,6 @@ function docx4B(D, kit, firms, opts = {}) {
 
   tools.occupations.forEach(o => {
     out.push(p(`Tools and Equipment for ${o.name} Training`
-      + (o.events > 1 ? ` (${o.events} events)` : '')
       + (o.combinedFrom && o.combinedFrom.length > 1
           ? ` — combined from ${o.combinedFrom.join(', ')}` : ''),
       { bold: true, spacing: { before: 260, after: 80 } }));
