@@ -1,11 +1,28 @@
+import { BS_YEARS } from './nepali.js';
+
 const FY_KEY = 'tvettrack_fiscal_years';
+// Runs to the latest year the app's own BS calendar data (BS_DATA) covers,
+// rather than a fixed end year that goes stale every year it isn't bumped.
 function defaultFYs() {
+  const endYear = Math.max(...BS_YEARS, 2083);
   const fys = [];
-  for (let y = 2065; y <= 2083; y++) fys.push(`${y}/${String(y + 1).slice(-2)}`);
+  for (let y = 2065; y <= endYear; y++) fys.push(`${y}/${String(y + 1).slice(-2)}`);
   return fys;
 }
 export function getFiscalYears() {
-  try { const s = localStorage.getItem(FY_KEY); return s ? JSON.parse(s) : defaultFYs(); } catch { return defaultFYs(); }
+  try {
+    const s = localStorage.getItem(FY_KEY);
+    if (!s) return defaultFYs();
+    const stored = JSON.parse(s);
+    if (!Array.isArray(stored) || !stored.length) return defaultFYs();
+    // A list saved before the calendar data was extended stays frozen at
+    // whatever year it was generated — appending only years *after* its own
+    // latest entry brings it forward automatically without resurrecting any
+    // year an admin deliberately removed from earlier in the range.
+    const latestStored = stored.slice().sort().at(-1);
+    const extra = defaultFYs().filter(fy => fy > latestStored);
+    return extra.length ? [...stored, ...extra].sort() : stored;
+  } catch { return defaultFYs(); }
 }
 export function saveFiscalYears(list) { localStorage.setItem(FY_KEY, JSON.stringify(list)); }
 export let FISCAL_YEARS = getFiscalYears();
