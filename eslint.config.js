@@ -10,8 +10,17 @@
  * `no-undef` is the rule that catches all four. Style rules are left off on
  * purpose: turning them on across a codebase this size would produce thousands
  * of findings and the useful signal would drown.
+ *
+ * `react-hooks/rules-of-hooks` is here for the same reason. A useState declared
+ * below App's early returns for the login/loading/error states changed the hook
+ * count between renders and white-screened the whole app on cold load — the
+ * "refresh two or three times before it appears" bug. It is a crash, not a
+ * style opinion, and the rule has effectively no false positives.
+ * `exhaustive-deps` stays off: that one *is* advisory and would drown the
+ * signal, exactly like the style rules above.
  */
 import globals from 'globals';
+import reactHooks from 'eslint-plugin-react-hooks';
 
 export default [
   // Built bundles, not source.
@@ -24,8 +33,10 @@ export default [
       globals: { ...globals.browser, ...globals.es2021 },
       parserOptions: { ecmaFeatures: { jsx: true } },
     },
+    plugins: { 'react-hooks': reactHooks },
     rules: {
       'no-undef': 'error',
+      'react-hooks/rules-of-hooks': 'error',
     },
   },
   {

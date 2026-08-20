@@ -64,6 +64,15 @@ function App() {
     if (session?.role === 'shortlist' && !['dashboard','institutes','detail','shortlisting','quotations'].includes(s)) return 'dashboard';
     return s;
   });
+  // A nav id may carry a sub-route, e.g. 'master/tools'. The hash already
+  // splits on '/', so this needs no new routing — only somewhere to keep it.
+  //
+  // Must stay up here with the other hooks: this component early-returns for
+  // the login, loading and api-error states below, so a hook declared after
+  // those returns changes the hook count between renders and crashes React
+  // ("Rendered fewer hooks than expected") the moment the app moves between
+  // those states — which is what it does on every cold load.
+  const [subRoute, setSubRoute] = useState(() => parseHash().instId);
   const [selectedInstitute, setSelectedInstitute] = useState(null);
   const [nstbAddInstitute, setNstbAddInstitute] = useState(null);
   const [institutes, setInstitutes] = useState([]);
@@ -306,10 +315,6 @@ function App() {
     window.location.hash = '';
     setScreen('dashboard');
   };
-
-  // A nav id may carry a sub-route, e.g. 'master/tools'. The hash already
-  // splits on '/', so this needs no new routing — only somewhere to keep it.
-  const [subRoute, setSubRoute] = useState(() => parseHash().instId);
 
   const handleNavigate = (rawId) => {
     const [id, sub] = String(rawId).split('/');
