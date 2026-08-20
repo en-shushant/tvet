@@ -11,6 +11,7 @@
  */
 import { useState, useEffect, useMemo } from 'react';
 import { PageHeader, PillTabs, EmptyState, SkeletonTable, InstituteAvatar } from './ui/primitives.jsx';
+import { ViewDocumentsModal } from './shortlisting/modals.jsx';
 import { DOC_KEYS } from '../constants/data.js';
 import { api } from '../utils/api.js';
 
@@ -19,6 +20,10 @@ export default function DocumentsCentre({ institutes = [], token, onOpenInstitut
   const [failed, setFailed] = useState(false);
   const [tab, setTab] = useState('all');
   const [q, setQ] = useState('');
+  // Which institute's documents are open in the preview modal — lets a
+  // document cell be clicked straight into a preview instead of only being
+  // able to navigate away to the full institute record.
+  const [previewInstId, setPreviewInstId] = useState(null);
 
   useEffect(() => {
     let alive = true;
@@ -132,9 +137,11 @@ export default function DocumentsCentre({ institutes = [], token, onOpenInstitut
                     </div>
                   </td>
                   {DOC_KEYS.map(d => (
-                    <td key={d.key} className="docs-cell">
+                    <td key={d.key} className="docs-cell"
+                      onClick={e => { e.stopPropagation(); setPreviewInstId(inst.id); }}>
                       <span className={held[d.key] ? 'docs-yes' : 'docs-no'}
-                        title={`${d.en} — ${held[d.key] ? 'on file' : 'missing'}`}>
+                        style={{cursor:'pointer'}}
+                        title={`${d.en} — ${held[d.key] ? 'on file, click to preview' : 'missing'}`}>
                         {held[d.key] ? '●' : '—'}
                       </span>
                     </td>
@@ -149,6 +156,10 @@ export default function DocumentsCentre({ institutes = [], token, onOpenInstitut
             </tbody>
           </table>
         </div>
+      )}
+
+      {previewInstId && (
+        <ViewDocumentsModal instituteId={previewInstId} token={token} onClose={() => setPreviewInstId(null)}/>
       )}
     </>
   );
