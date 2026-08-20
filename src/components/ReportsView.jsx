@@ -4,6 +4,7 @@ import { api, normInst } from '../utils/api.js';
 import { exportToCSV } from '../utils/export.js';
 import { Btn } from '../md.jsx';
 import { fyInRange, fyYear } from '../reports/helpers.js';
+import { FISCAL_YEARS } from '../constants/data.js';
 import REPORT_FAMILIES from '../reports/index.js';
 import { TOOL_COLUMN_OPTIONS, TOOL_TYPE_OPTIONS, DEFAULT_TOOL_COLS } from '../reports/bolpatra.jsx';
 
@@ -207,10 +208,13 @@ function ReportsView({ institutes, clients }) {
 
   const experience = fullInst?.experience || [];
 
-  // All FYs across assignments + tax clearance + NSTB records
+  // All FYs across assignments + tax clearance + NSTB records, plus the
+  // app-wide fiscal years list — so a range filter (especially the
+  // forward-looking ones like Portfolio FY) can reach a year the org has
+  // defined even before any record is actually dated in it.
   const allFYs = useMemo(() => {
     if (isMultiInst) {
-      const fys = new Set();
+      const fys = new Set(FISCAL_YEARS);
       for (const inst of Object.values(fwFullInsts)) {
         for (const e of (inst.experience || [])) if (e.fy) fys.add(e.fy);
         for (const n of (inst.nstb || [])) if (n.fy) fys.add(n.fy);
@@ -221,7 +225,7 @@ function ReportsView({ institutes, clients }) {
     const taxFYs  = (fullInst?.taxClearance || []).map(t => t.fy).filter(Boolean);
     const nstbFYs = (fullInst?.nstb || []).map(n => n.fy).filter(Boolean);
     const expFYs  = experience.map(e => e.fy).filter(Boolean);
-    return [...new Set([...expFYs, ...taxFYs, ...nstbFYs])].sort();
+    return [...new Set([...FISCAL_YEARS, ...expFYs, ...taxFYs, ...nstbFYs])].sort();
   }, [experience, fullInst, isMultiInst, fwFullInsts]);
 
   // Assignments visible in the checklist (FY range applied)
