@@ -32,6 +32,10 @@ function ReportsView({ institutes, clients }) {
   // ask for a different span of accounts than of work (see bolpatra 4(A)).
   const [turnFromFY, setTurnFromFY]     = useState(f.turnFromFY || '');
   const [turnToFY, setTurnToFY]         = useState(f.turnToFY || '');
+  // Portfolio years (bagmati B.1) are also independent — a "current portfolio"
+  // window doesn't have to match the experience tables' FY range.
+  const [portfolioFromFY, setPortfolioFromFY] = useState(f.portfolioFromFY || '');
+  const [portfolioToFY, setPortfolioToFY]     = useState(f.portfolioToFY || '');
   const [selectedOccs, setSelectedOccs] = useState([]); // for Table 3 occupation filter, and 4(B) tools
   /**
    * 3(B) Specific Experience's own occupation selection.
@@ -106,8 +110,8 @@ function ReportsView({ institutes, clients }) {
   const [enssureToolsData, setEnssureToolsData] = useState([]);
 
   // Persist key filter state to sessionStorage
-  useEffect(() => { saveFilters({ familyId, selectedInst, reportId, fromFY, toFY, turnFromFY, turnToFY, eoiToolsLevel, eoiEventsByOcc, eoiToolCols, eoiToolTypes, eoiSpecificOccs, eoiCombineTools, eoiSingleTable, filterDuration, enssureOccIds, enssureToolsOccId, enssureToolsLevel, enssureEvents }); },
-    [familyId, selectedInst, reportId, fromFY, toFY, turnFromFY, turnToFY, eoiToolsLevel, eoiEventsByOcc, eoiToolCols, eoiToolTypes, eoiSpecificOccs, eoiCombineTools, eoiSingleTable, filterDuration, enssureOccIds, enssureToolsOccId, enssureToolsLevel, enssureEvents]);
+  useEffect(() => { saveFilters({ familyId, selectedInst, reportId, fromFY, toFY, turnFromFY, turnToFY, portfolioFromFY, portfolioToFY, eoiToolsLevel, eoiEventsByOcc, eoiToolCols, eoiToolTypes, eoiSpecificOccs, eoiCombineTools, eoiSingleTable, filterDuration, enssureOccIds, enssureToolsOccId, enssureToolsLevel, enssureEvents }); },
+    [familyId, selectedInst, reportId, fromFY, toFY, turnFromFY, turnToFY, portfolioFromFY, portfolioToFY, eoiToolsLevel, eoiEventsByOcc, eoiToolCols, eoiToolTypes, eoiSpecificOccs, eoiCombineTools, eoiSingleTable, filterDuration, enssureOccIds, enssureToolsOccId, enssureToolsLevel, enssureEvents]);
 
   // Fetch tools for explicitly selected D2/D3 occupation + level
   useEffect(() => {
@@ -360,6 +364,7 @@ function ReportsView({ institutes, clients }) {
   }, [familyId, fullInst, activeExps]);
 
   const opts = { fromFY, toFY, turnoverFromFY: turnFromFY, turnoverToFY: turnToFY,
+    portfolioFromFY, portfolioToFY,
     bolpatraTools: eoiTools, eoiToolsLevel, eoiEventsByOcc, eoiToolCols, eoiToolTypes, selectedOccs,
     specificOccs: eoiSpecificOccs, eoiCombineTools, eoiSingleTable, occupations, sortBy,
     toolsOccIds, toolsLevel, toolsTypeFilter, toolsColumns, toolsLayout, toolsData, numGroups,
@@ -404,7 +409,7 @@ function ReportsView({ institutes, clients }) {
   // Everything the rendered document depends on. Compared against renderedSig to
   // show whether what is on screen still matches the filters.
   const filterSig = JSON.stringify([
-    reportId, fwInstIds, fwLeadId, fromFY, toFY, turnFromFY, turnToFY,
+    reportId, fwInstIds, fwLeadId, fromFY, toFY, turnFromFY, turnToFY, portfolioFromFY, portfolioToFY,
     selectedOccs, eoiSpecificOccs, filterDuration, filterDonorTypes,
     eoiToolsLevel, eoiEventsByOcc, eoiToolCols, eoiToolTypes,
   ]);
@@ -544,6 +549,30 @@ function ReportsView({ institutes, clients }) {
                 {(turnFromFY || turnToFY) && (
                   <Btn className="btn btn-ghost btn-sm" style={{fontSize:10, padding:'2px 6px'}}
                     onClick={() => { setTurnFromFY(''); setTurnToFY(''); }}>✕</Btn>
+                )}
+              </div>
+            </>
+          )}
+
+          {/* Portfolio years (bagmati B.1), independent of the experience years above. */}
+          {report.hasPortfolioFY && allFYs.length > 0 && (
+            <>
+              <div style={{width:1, height:24, background:'var(--border)'}}/>
+              <div style={{display:'flex', alignItems:'center', gap:8}}>
+                <span style={{fontSize:11, fontWeight:600, color:'var(--text3)', whiteSpace:'nowrap'}}
+                  title="Fiscal years of the assignments shown in B.1 Current Portfolio">PORTFOLIO FY</span>
+                <select className="form-input" style={{width:'auto', minWidth:90, padding:'4px 8px', fontSize:12}} value={portfolioFromFY} onChange={e => setPortfolioFromFY(e.target.value)}>
+                  <option value="">From</option>
+                  {allFYs.map(fy => <option key={fy} value={fy}>{fy}</option>)}
+                </select>
+                <span style={{color:'var(--text3)', fontSize:12}}>→</span>
+                <select className="form-input" style={{width:'auto', minWidth:90, padding:'4px 8px', fontSize:12}} value={portfolioToFY} onChange={e => setPortfolioToFY(e.target.value)}>
+                  <option value="">To</option>
+                  {allFYs.map(fy => <option key={fy} value={fy}>{fy}</option>)}
+                </select>
+                {(portfolioFromFY || portfolioToFY) && (
+                  <Btn className="btn btn-ghost btn-sm" style={{fontSize:10, padding:'2px 6px'}}
+                    onClick={() => { setPortfolioFromFY(''); setPortfolioToFY(''); }}>✕</Btn>
                 )}
               </div>
             </>

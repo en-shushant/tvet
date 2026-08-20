@@ -14,15 +14,16 @@ import { getClient, esc, fyInRange } from './helpers.js';
 // Every report is `aggregate` — same reasoning as bolpatra.jsx: ReportsView's
 // per-row path is never used here.
 //
-// B.1/B.2/B.3 all read from the FY range already on the sidebar (fromFY/toFY),
-// so which years they cover is a plain filter, not baked into the report. B.4
-// uses its own turnover FY range (turnoverFromFY/turnoverToFY), the same split
-// bolpatra.jsx uses for 4(A) — a bid's tax-clearance years and its training
-// years are usually asked for separately.
+// B.2/B.3 read the experience FY range already on the sidebar (fromFY/toFY).
+// B.1's own portfolio years are a separate range (portfolioFromFY/portfolioToFY)
+// so the "current portfolio" window doesn't have to be the same span as the
+// experience tables — B.1 reads the firm's full experience list directly
+// (via `inst`) rather than the already fromFY/toFY-narrowed `exps` the other
+// sections get, the same way B.4's turnover years are independent too.
 
 const REPORTS = [
-  { id: 'full', label: 'Complete RFP Format', aggregate: true, hasOccupationFilter: true, hasTurnoverFY: true },
-  { id: 'b1', label: 'B.1 Current Portfolio', aggregate: true },
+  { id: 'full', label: 'Complete RFP Format', aggregate: true, hasOccupationFilter: true, hasTurnoverFY: true, hasPortfolioFY: true },
+  { id: 'b1', label: 'B.1 Current Portfolio', aggregate: true, hasPortfolioFY: true },
   { id: 'b2', label: 'B.2 General Experience', aggregate: true },
   { id: 'b3', label: 'B.3 Specific Experience', aggregate: true, hasOccupationFilter: true },
   { id: 'b4', label: 'B.4 Financial Experience', aggregate: true, hasTurnoverFY: true },
@@ -52,8 +53,9 @@ const fyRangeText = (fromFY, toFY, joiner = ' – ') => {
  * it rather than needing the sidebar filter to confirm.
  */
 function sectionTitlesFor(opts = {}) {
-  const { fromFY = '', toFY = '', turnoverFromFY = '', turnoverToFY = '' } = opts;
-  const portfolioFY = fyPairText(fromFY, toFY);
+  const { fromFY = '', toFY = '', turnoverFromFY = '', turnoverToFY = '',
+          portfolioFromFY = '', portfolioToFY = '' } = opts;
+  const portfolioFY = fyPairText(portfolioFromFY, portfolioToFY);
   const rangeFY      = fyRangeText(fromFY, toFY);
   const turnoverFY   = fyRangeText(turnoverFromFY, turnoverToFY, ' to ');
 
@@ -106,8 +108,21 @@ const occInfo = (occ, occupations) => {
 // Each returns { columns, rows, totalRow? } — a shape the JSX, print-HTML and
 // DOCX renderers all consume the same way, so the three stay in sync.
 
-/** B.1 — one row per occupation on an assignment, not per assignment. */
-function modelB1(exps, clients, occupations) {
+/**
+ * B.1 — one row per occupation on an assignment, not per assignment.
+ *
+ * Reads the firm's full experience list (not the `exps` the other sections
+ * get, which is already narrowed to the experience FY range) and applies its
+ * own portfolioFromFY/portfolioToFY range instead, so the portfolio window
+ * can differ from the experience tables' span without one overwriting the
+ * other. No range selected shows every assignment, same as the other
+ * independent ranges in this file (B.4's turnover years).
+ */
+function modelB1(inst, clients, occupations, opts = {}) {
+  const fromFY = opts.portfolioFromFY ?? '';
+  const toFY   = opts.portfolioToFY ?? '';
+  const exps = (inst?.experience || [])
+    .filter(e => !fromFY && !toFY ? true : fyInRange(e.fy, fromFY, toFY));
   const rows = [];
   for (const exp of exps) {
     const occs = (exp.occupations || []).length ? exp.occupations : [{}];
@@ -170,6 +185,7 @@ function modelB2(exps, clients, occupations) {
       'No of graduate trainees', 'No of trainees appeared in the skill test', 'Employment Percentage (%)'],
     rows,
     totalRow: ['', '', '', '', 'Total', String(totalTrainees), String(totalAppeared), totalEmp],
+    emptyText: 'NA',
   };
 }
 
@@ -204,6 +220,7 @@ function modelB3(exps, clients, occupations, selectedOccs = []) {
     columns: ['Funding Agency', 'FY', 'Assignment Name', 'Occupation', 'No of graduate trainees', 'No of trainees appeared in the skill test'],
     rows,
     totalRow: ['', '', '', 'Total', String(totalTrainees), String(totalAppeared)],
+    emptyText: 'NA',
   };
 }
 
@@ -232,7 +249,7 @@ function modelB4(inst, opts = {}) {
 
 function modelFor(section, exps, clients, inst, opts) {
   const occupations = opts.occupations || [];
-  if (section === 'b1') return modelB1(exps, clients, occupations);
+  if (section === 'b1') return modelB1(inst, clients, occupations, opts);
   if (section === 'b2') return modelB2(exps, clients, occupations);
   if (section === 'b3') return modelB3(exps, clients, occupations, opts.selectedOccs);
   if (section === 'b4') return modelB4(inst, opts);
@@ -248,6 +265,7 @@ const TD = { border:'1px solid #8ba3bd', padding:'6px 8px', fontSize:11,
 const TOTAL_TD = { ...TD, fontWeight:700, background:'#eef3fb' };
 
 function GridTable({ model }) {
+  const empty = model.emptyText || '—';
   if (!model.rows.length) {
     return <div style={{fontSize:12, color:'var(--text3)', padding:'8px 0'}}>No records in range.</div>;
   }
@@ -257,7 +275,7 @@ function GridTable({ model }) {
         <thead><tr>{model.columns.map(c => <th key={c} style={TH}>{c}</th>)}</tr></thead>
         <tbody>
           {model.rows.map((row, i) => (
-            <tr key={i}>{row.map((v, j) => <td key={j} style={TD}>{v || '—'}</td>)}</tr>
+            <tr key={i}>{row.map((v, j) => <td key={j} style={TD}>{v || empty}</td>)}</tr>
           ))}
           {model.totalRow && (
             <tr>{model.totalRow.map((v, j) => <td key={j} style={TOTAL_TD}>{v || ''}</td>)}</tr>
@@ -288,16 +306,19 @@ function renderAggregateTable(inst, exps, clients, reportId, opts = {}) {
 
 // ─── Print / PDF ─────────────────────────────────────────────────────────────
 
-const htmlGrid = (model) => `
+const htmlGrid = (model) => {
+  const empty = esc(model.emptyText) || '&mdash;';
+  return `
   <table>
     <thead><tr>${model.columns.map(c => `<th>${esc(c)}</th>`).join('')}</tr></thead>
     <tbody>
       ${model.rows.length
-        ? model.rows.map(r => `<tr>${r.map(v => `<td>${esc(v) || '&mdash;'}</td>`).join('')}</tr>`).join('')
+        ? model.rows.map(r => `<tr>${r.map(v => `<td>${esc(v) || empty}</td>`).join('')}</tr>`).join('')
         : `<tr><td colspan="${model.columns.length}">No records in range.</td></tr>`}
       ${model.totalRow ? `<tr class="total-row">${model.totalRow.map(v => `<td>${esc(v) || ''}</td>`).join('')}</tr>` : ''}
     </tbody>
   </table>`;
+};
 
 const printShell = (title, bodyHtml) => `<!DOCTYPE html><html><head><meta charset="UTF-8">
 <title>${esc(title)}</title>
@@ -346,24 +367,26 @@ const HDR_FILL = 'DCE6F1';
 const TOTAL_FILL = 'EEF3FB';
 
 function docxCell(text, opts = {}) {
+  const empty = opts.empty || '—';
   return new TableCell({
     shading: opts.fill ? { fill: opts.fill } : undefined,
     borders: ALL_BORDERS,
     verticalAlign: VerticalAlign.TOP,
     margins: CELL_MARGIN,
     children: [new Paragraph({
-      children: [new TextRun({ text: String(text ?? '—') || '—', bold: !!opts.bold, size: 17 })],
+      children: [new TextRun({ text: String(text ?? '') || empty, bold: !!opts.bold, size: 17 })],
     })],
   });
 }
 
 function docxTable(model) {
+  const empty = model.emptyText || '—';
   const header = new TableRow({
     tableHeader: true,
     children: model.columns.map(c => docxCell(c, { bold: true, fill: HDR_FILL })),
   });
   const body = model.rows.length
-    ? model.rows.map(r => new TableRow({ children: r.map(v => docxCell(v)) }))
+    ? model.rows.map(r => new TableRow({ children: r.map(v => docxCell(v, { empty })) }))
     : [new TableRow({ children: [docxCell('No records in range.', {})] })];
   const totalRow = model.totalRow
     ? [new TableRow({ children: model.totalRow.map(v => docxCell(v, { bold: true, fill: TOTAL_FILL })) })]
