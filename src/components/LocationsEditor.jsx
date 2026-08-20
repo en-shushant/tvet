@@ -92,8 +92,8 @@ function LocationsEditor({token}) {
               style={{padding:'8px 14px',cursor:'pointer',background:selProvince===p.id?'var(--primary-light)':'',borderBottom:'1px solid var(--border)',display:'flex',alignItems:'center',justifyContent:'space-between',gap:6}}>
               <span style={{fontSize:13,fontWeight:selProvince===p.id?600:400}}>{p.name}</span>
               <div style={{display:'flex',gap:4,flexShrink:0}}>
-                <Btn className="btn btn-ghost btn-sm" style={{padding:'1px 5px'}} onClick={e=>{e.stopPropagation();setModal({type:'editProvince',item:p});}}>✏</Btn>
-                <Btn className="btn btn-danger btn-sm" style={{padding:'1px 5px'}} onClick={e=>{e.stopPropagation();del(`/locations/provinces/${p.id}`,()=>{setSelProvince(null);load();});}}>🗑</Btn>
+                <Btn className="btn btn-ghost btn-sm" style={{padding:'1px 5px'}} onClick={e=>{e.stopPropagation();setModal({type:'editProvince',item:p});}}><span className="material-icons-round" style={{fontSize:14}}>edit</span></Btn>
+                <Btn className="btn btn-danger btn-sm" style={{padding:'1px 5px'}} onClick={e=>{e.stopPropagation();del(`/locations/provinces/${p.id}`,()=>{setSelProvince(null);load();});}}><span className="material-icons-round" style={{fontSize:14}}>delete</span></Btn>
               </div>
             </div>
           ))}
@@ -111,8 +111,8 @@ function LocationsEditor({token}) {
                 style={{padding:'8px 14px',cursor:'pointer',background:selDistrict===d.id?'var(--primary-light)':'',borderBottom:'1px solid var(--border)',display:'flex',alignItems:'center',justifyContent:'space-between',gap:6}}>
                 <span style={{fontSize:13,fontWeight:selDistrict===d.id?600:400}}>{d.name}</span>
                 <div style={{display:'flex',gap:4,flexShrink:0}}>
-                  <Btn className="btn btn-ghost btn-sm" style={{padding:'1px 5px'}} onClick={e=>{e.stopPropagation();setModal({type:'editDistrict',item:d});}}>✏</Btn>
-                  <Btn className="btn btn-danger btn-sm" style={{padding:'1px 5px'}} onClick={e=>{e.stopPropagation();del(`/locations/districts/${d.id}`,()=>{setSelDistrict(null);load();});}}>🗑</Btn>
+                  <Btn className="btn btn-ghost btn-sm" style={{padding:'1px 5px'}} onClick={e=>{e.stopPropagation();setModal({type:'editDistrict',item:d});}}><span className="material-icons-round" style={{fontSize:14}}>edit</span></Btn>
+                  <Btn className="btn btn-danger btn-sm" style={{padding:'1px 5px'}} onClick={e=>{e.stopPropagation();del(`/locations/districts/${d.id}`,()=>{setSelDistrict(null);load();});}}><span className="material-icons-round" style={{fontSize:14}}>delete</span></Btn>
                 </div>
               </div>
             ))}
@@ -135,8 +135,8 @@ function LocationsEditor({token}) {
                     <td style={{fontSize:13}}>{ll.name}</td>
                     <td><span style={{fontSize:11,background:'var(--primary-light)',borderRadius:4,padding:'1px 6px'}}>{ll.type}</span></td>
                     <td style={{display:'flex',gap:4}}>
-                      <Btn className="btn btn-ghost btn-sm" onClick={()=>setModal({type:'editLL',item:ll})}>✏</Btn>
-                      <Btn className="btn btn-danger btn-sm" onClick={()=>del(`/locations/local-levels/${ll.id}`,load)}>🗑</Btn>
+                      <Btn className="btn btn-ghost btn-sm" onClick={()=>setModal({type:'editLL',item:ll})}><span className="material-icons-round" style={{fontSize:14}}>edit</span></Btn>
+                      <Btn className="btn btn-danger btn-sm" onClick={()=>del(`/locations/local-levels/${ll.id}`,load)}><span className="material-icons-round" style={{fontSize:14}}>delete</span></Btn>
                     </td>
                   </tr>
                 ))}

@@ -33,7 +33,7 @@ function ShortlistDocUpload({ value, onChange, token }) {
           <div style={{ position: 'relative', display: 'inline-flex', flexDirection: 'column', alignItems: 'center' }}>
             {isPdf ? (
               <a href={value} target="_blank" rel="noreferrer" style={{ height: 56, width: 56, border: '1px solid var(--border)', borderRadius: 6, background: '#fff8f0', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 2, textDecoration: 'none' }}>
-                <span style={{ fontSize: 20 }}>📄</span>
+                <span className="material-icons-round" style={{fontSize:20, color:'var(--text3)'}}>description</span>
                 <span style={{ fontSize: 9, color: 'var(--text3)', fontWeight: 600 }}>PDF</span>
               </a>
             ) : (
@@ -41,7 +41,7 @@ function ShortlistDocUpload({ value, onChange, token }) {
                 <img src={value} alt="" style={{ height: 56, maxWidth: 80, objectFit: 'contain', border: '1px solid var(--border)', borderRadius: 6, background: '#fff', padding: 2 }}/>
               </a>
             )}
-            <button onClick={() => onChange(null)} style={{ position: 'absolute', top: -6, right: -6, width: 18, height: 18, borderRadius: '50%', background: '#e53935', color: '#fff', border: 'none', cursor: 'pointer', fontSize: 11, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}>✕</button>
+            <button onClick={() => onChange(null)} style={{ position: 'absolute', top: -6, right: -6, width: 18, height: 18, borderRadius: '50%', background: '#e53935', color: '#fff', border: 'none', cursor: 'pointer', fontSize: 11, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}><span className="material-icons-round" style={{fontSize:12}}>close</span></button>
           </div>
         ) : (
           <div style={{ height: 56, width: 56, border: '1px dashed var(--border)', borderRadius: 6, background: 'var(--bg2)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -52,7 +52,7 @@ function ShortlistDocUpload({ value, onChange, token }) {
           <input type="file" accept={ACCEPT} style={{ display: 'none' }} onChange={handleFile} disabled={uploading}/>
           <span className="btn btn-secondary btn-sm">{uploading ? 'Uploading…' : value ? 'Change' : 'Upload'}</span>
         </label>
-        {value && <span className="btn btn-ghost btn-sm" style={{ cursor: 'pointer' }} onClick={() => onChange(null)}>✕ Remove</span>}
+        {value && <span className="btn btn-ghost btn-sm" style={{ cursor: 'pointer' }} onClick={() => onChange(null)}><span className="material-icons-round" style={{fontSize:14,verticalAlign:'middle',marginRight:4}}>close</span>Remove</span>}
       </div>
       {err && <div style={{ fontSize: 11, color: '#c0391e', marginTop: 4 }}>{err}</div>}
     </div>
@@ -137,7 +137,7 @@ function ClientCombobox({ clients, value, onChange }) {
               fontSize: 18, lineHeight: 1, padding: '2px 0 2px 4px', flexShrink: 0,
             }}>×</button>
           ) : (
-            <span style={{ color: 'var(--text3)', fontSize: 18, lineHeight: 1, userSelect: 'none' }}>▾</span>
+            <span className="material-icons-round" style={{ color: 'var(--text3)', fontSize: 18, lineHeight: 1, userSelect: 'none' }}>expand_more</span>
           )}
         </div>
       </div>
@@ -354,7 +354,7 @@ function ShortlistForm({ initial, institutes, clients, onSave, onClose, saving, 
           <div style={{border:'1.5px solid var(--border)', borderRadius:10, overflow:'hidden'}}>
             {/* Search bar */}
             <div style={{display:'flex', alignItems:'center', gap:8, padding:'10px 14px', borderBottom:'1px solid var(--border)', background:'var(--bg)'}}>
-              <span style={{color:'var(--text3)', fontSize:15, flexShrink:0}}>🔍</span>
+              <span className="material-icons-round" style={{color:'var(--text3)', fontSize:17, flexShrink:0}}>search</span>
               <input
                 placeholder="Search firms…"
                 value={firmSearch}

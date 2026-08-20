@@ -102,7 +102,7 @@ function ExpCard({exp, clients, institute, showFY, setModal, deleteExperience, c
               ) : (
                 <div style={{width:44, height:44, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', borderRadius:8, border:'1px solid var(--border)', background:'var(--bg)', cursor:'pointer', flexShrink:0}}
                   onClick={e=>{e.stopPropagation(); const w=window.open(); w.document.write(`<iframe src="${exp.referenceFile}" width="100%" height="100%" style="border:none"/>`)}}>
-                  <span style={{fontSize:18}}>📄</span>
+                  <span className="material-icons-round" style={{fontSize:18, color:'var(--text3)'}}>description</span>
                 </div>
               )}
               <span style={{fontSize:11, color:'var(--primary)', cursor:'pointer'}}

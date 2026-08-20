@@ -446,11 +446,11 @@ function InstituteDetail({institute, clients, onUpdateClients, onBack, onUpdate,
                 ? <span style={{display:'flex', alignItems:'center', gap:8, flexWrap:'wrap'}}>
                     <span style={{fontFamily:'var(--font-mono)', fontSize:12}}>{parseFloat(institute.latitude).toFixed(6)}, {parseFloat(institute.longitude).toFixed(6)}</span>
                     {institute.googleMapLink
-                      ? <a href={institute.googleMapLink} target="_blank" rel="noreferrer" style={{color:'var(--accent)'}}>📍 Google Maps</a>
-                      : <a href={`https://www.google.com/maps?q=${institute.latitude},${institute.longitude}`} target="_blank" rel="noreferrer" style={{color:'var(--accent)'}}>📍 Google Maps</a>}
+                      ? <a href={institute.googleMapLink} target="_blank" rel="noreferrer" style={{color:'var(--accent)'}}><span className="material-icons-round" style={{fontSize:13, verticalAlign:'middle', marginRight:4}}>place</span>Google Maps</a>
+                      : <a href={`https://www.google.com/maps?q=${institute.latitude},${institute.longitude}`} target="_blank" rel="noreferrer" style={{color:'var(--accent)'}}><span className="material-icons-round" style={{fontSize:13, verticalAlign:'middle', marginRight:4}}>place</span>Google Maps</a>}
                   </span>
                 : institute.googleMapLink
-                  ? <a href={institute.googleMapLink} target="_blank" rel="noreferrer" style={{color:'var(--accent)'}}>📍 View on Google Maps</a>
+                  ? <a href={institute.googleMapLink} target="_blank" rel="noreferrer" style={{color:'var(--accent)'}}><span className="material-icons-round" style={{fontSize:13, verticalAlign:'middle', marginRight:4}}>place</span>View on Google Maps</a>
                   : null],
               ['Address', institute.address],
               ['Status', <StatusBadge status={institute.status}/>],
@@ -524,7 +524,7 @@ function InstituteDetail({institute, clients, onUpdateClients, onBack, onUpdate,
               ? groupByFY(institute.experience.filter(e=>(!expClientFilter || String(e.clientId)===String(expClientFilter)) && (!expOccFilter || (expOccFilter==='__missing__' ? (e.occupations||[]).some(o=>!o.ctevtOccupationId) : (e.occupations||[]).some(o=>(getOccupation(o.ctevtOccupationId).name||o.nameInLetter)===expOccFilter))) && matchesMissingFilter(e.occupations) && (!expBolpatraFilter || missingBolpatraFields(e, institute).length > 0))).map(([fy, items]) => (
                 <div key={fy} className="fy-group">
                   <button className="fy-header" onClick={()=>toggleFY('exp-'+fy)}>
-                    <span>{expandedFY['exp-'+fy] ? '▼' : '▶'}</span>
+                    <span className="material-icons-round" style={{fontSize:18, verticalAlign:'middle'}}>{expandedFY['exp-'+fy] ? 'expand_more' : 'chevron_right'}</span>
                     <span>FY {fy}{fyToAD(fy) ? <span style={{color:'var(--text3)',fontWeight:400,fontSize:'0.88em'}}> ({fyToAD(fy)})</span> : ''}</span>
                     <span className="badge badge-info" style={{marginLeft:'auto'}}>{items.length} assignment{items.length>1?'s':''}</span>
                   </button>
@@ -551,7 +551,7 @@ function InstituteDetail({institute, clients, onUpdateClients, onBack, onUpdate,
                     return (
                       <div key={key} className="fy-group">
                         <button className="fy-header" onClick={()=>toggleFY('client-'+key)}>
-                          <span>{expandedFY['client-'+key] ? '▼' : '▶'}</span>
+                          <span><span className="material-icons-round" style={{fontSize:16, verticalAlign:'middle'}}>{expandedFY['client-'+key] ? 'expand_more' : 'chevron_right'}</span></span>
                           <span style={{fontWeight:600}}>{clientLabel}</span>
                           <div style={{display:'flex', gap:6, marginLeft:'auto', alignItems:'center'}}>
                             <span className="badge badge-gray" style={{fontSize:10}}>{fys[0]}{fys.length>1?` – ${fys[fys.length-1]}`:''}</span>
@@ -600,11 +600,11 @@ function InstituteDetail({institute, clients, onUpdateClients, onBack, onUpdate,
             );
           })()}
           {institute.nstb.length === 0
-            ? <div className="empty-state"><div className="empty-state-icon">📝</div><div className="empty-state-title">No NSTB records yet</div></div>
+            ? <div className="empty-state"><div className="empty-state-icon"><span className="material-icons-round" style={{fontSize:42, color:'var(--text3)', opacity:.4}}>description</span></div><div className="empty-state-title">No NSTB records yet</div></div>
             : groupByFY(institute.nstb).map(([fy, items]) => (
               <div key={fy} className="fy-group">
                 <button className="fy-header" onClick={()=>toggleFY('nstb-'+fy)}>
-                  <span>{expandedFY['nstb-'+fy] ? '▼' : '▶'}</span>
+                  <span><span className="material-icons-round" style={{fontSize:16, verticalAlign:'middle'}}>{expandedFY['nstb-'+fy] ? 'expand_more' : 'chevron_right'}</span></span>
                   <span>FY {fy}{fyToAD(fy) ? <span style={{color:'var(--text3)',fontWeight:400,fontSize:'0.88em'}}> ({fyToAD(fy)})</span> : ''}</span>
                   <div style={{marginLeft:'auto', display:'flex', gap:8}}>
                     <span className="badge badge-info">Applied: {items.reduce((s,i)=>s+i.applied,0)}</span>
@@ -630,7 +630,7 @@ function InstituteDetail({institute, clients, onUpdateClients, onBack, onUpdate,
                             <td><span className={`badge ${parseFloat(pct(r.pass,r.appeared))>=70?'badge-active':'badge-pending'}`}>{pct(r.pass, r.appeared)}</span></td>
                             <td className="text-sm text-muted">{r.letterNo}</td>
                             <td style={{display:'flex', gap:4}}>
-                              {canEdit && <Btn className="btn btn-ghost btn-sm" onClick={()=>setModal({type:'editNSTB', data:r})}>✏</Btn>}
+                              {canEdit && <Btn className="btn btn-ghost btn-sm" onClick={()=>setModal({type:'editNSTB', data:r})}><span className="material-icons-round" style={{fontSize:14}}>edit</span></Btn>}
                               {isAdmin && <Btn className="btn btn-danger btn-sm" onClick={()=>deleteNSTB(r.id)}><span className="material-icons-round" style={{fontSize:15}}>delete</span></Btn>}
                             </td>
                           </tr>
@@ -652,7 +652,7 @@ function InstituteDetail({institute, clients, onUpdateClients, onBack, onUpdate,
             {canEdit && <Btn className="btn btn-primary btn-sm" onClick={()=>setModal({type:'addTax'})}>+ Add tax clearance</Btn>}
           </div>
           {institute.taxClearance.length === 0
-            ? <div className="empty-state"><div className="empty-state-icon">🧾</div><div className="empty-state-title">No tax clearance records</div></div>
+            ? <div className="empty-state"><div className="empty-state-icon"><span className="material-icons-round" style={{fontSize:42, color:'var(--text3)', opacity:.4}}>receipt_long</span></div><div className="empty-state-title">No tax clearance records</div></div>
             : (
               <div className="card" style={{padding:0, overflow:'hidden'}}>
                 <table>
@@ -670,7 +670,7 @@ function InstituteDetail({institute, clients, onUpdateClients, onBack, onUpdate,
                         <td className="text-sm">{t.certDate}</td>
                         <td className="mono text-sm">{t.karChutaNo}</td>
                         <td style={{display:'flex', gap:4}}>
-                          {canEdit && <Btn className="btn btn-ghost btn-sm" onClick={()=>setModal({type:'editTax', data:t})}>✏</Btn>}
+                          {canEdit && <Btn className="btn btn-ghost btn-sm" onClick={()=>setModal({type:'editTax', data:t})}><span className="material-icons-round" style={{fontSize:14}}>edit</span></Btn>}
                           {isAdmin && <Btn className="btn btn-danger btn-sm" onClick={()=>deleteTax(t.id)}><span className="material-icons-round" style={{fontSize:15}}>delete</span></Btn>}
                         </td>
                       </tr>
@@ -690,11 +690,11 @@ function InstituteDetail({institute, clients, onUpdateClients, onBack, onUpdate,
             {canEdit && <Btn className="btn btn-primary btn-sm" onClick={()=>setModal({type:'addAffiliation'})}>+ Add affiliation</Btn>}
           </div>
           {institute.affiliation.length === 0
-            ? <div className="empty-state"><div className="empty-state-icon">📜</div><div className="empty-state-title">No CTEVT affiliations</div></div>
+            ? <div className="empty-state"><div className="empty-state-icon"><span className="material-icons-round" style={{fontSize:42, color:'var(--text3)', opacity:.4}}>workspace_premium</span></div><div className="empty-state-title">No CTEVT affiliations</div></div>
             : institute.affiliation.map(aff=>(
               <div key={aff.id} className="fy-group" style={{marginBottom:8}}>
                 <button className="fy-header" onClick={()=>toggleFY('aff-'+aff.id)}>
-                  <span>{expandedFY['aff-'+aff.id] ? '▼' : '▶'}</span>
+                  <span><span className="material-icons-round" style={{fontSize:16, verticalAlign:'middle'}}>{expandedFY['aff-'+aff.id] ? 'expand_more' : 'chevron_right'}</span></span>
                   <span>{aff.type}</span>
                   {(aff.chalaniNo || aff.patraNo) && (
                     <span style={{fontSize:11, color:'var(--text3)', fontFamily:'var(--font-mono)'}}>
@@ -704,7 +704,7 @@ function InstituteDetail({institute, clients, onUpdateClients, onBack, onUpdate,
                   <span style={{fontSize:12, color:'var(--text3)', marginLeft:8}}>{aff.affiliationDate} → {aff.expiryDate}</span>
                   <span className={`badge ${aff.status==='Active'?'badge-active':aff.status==='Expired'?'badge-expired':'badge-pending'}`} style={{marginLeft:'auto'}}>{aff.status}</span>
                   <span className="badge badge-gray" style={{marginLeft:8}}>{aff.programs.length} programs</span>
-                  {canEdit && <Btn className="btn btn-ghost btn-sm" style={{marginLeft:8}} onClick={e=>{e.stopPropagation();setModal({type:'editAffiliation',data:aff});}}>✏</Btn>}
+                  {canEdit && <Btn className="btn btn-ghost btn-sm" style={{marginLeft:8}} onClick={e=>{e.stopPropagation();setModal({type:'editAffiliation',data:aff});}}><span className="material-icons-round" style={{fontSize:14}}>edit</span></Btn>}
                   {isAdmin && <Btn className="btn btn-danger btn-sm" style={{marginLeft:4}} onClick={e=>{e.stopPropagation();deleteAffiliation(aff.id);}}><span className="material-icons-round" style={{fontSize:15}}>delete</span></Btn>}
                 </button>
                 {expandedFY['aff-'+aff.id] && (
@@ -747,7 +747,7 @@ function InstituteDetail({institute, clients, onUpdateClients, onBack, onUpdate,
           <div className="modal" style={{maxWidth:420}} onClick={e=>e.stopPropagation()}>
             <div className="modal-header">
               <span className="modal-title">Delete institute</span>
-              <Btn className="btn btn-ghost btn-sm" onClick={()=>setModal(null)}>✕</Btn>
+              <Btn className="btn btn-ghost btn-sm" onClick={()=>setModal(null)}><span className="material-icons-round" style={{fontSize:16}}>close</span></Btn>
             </div>
             <div className="modal-body">
               <p style={{fontSize:14,color:'var(--text2)',marginBottom:8}}>
@@ -976,7 +976,7 @@ function InstituteDetail({institute, clients, onUpdateClients, onBack, onUpdate,
       {tab==='clients' && (
         <div>
           {instituteClients.length === 0
-            ? <div className="empty-state"><div className="empty-state-icon">🤝</div><div className="empty-state-title">No clients yet</div><div className="empty-state-sub">Clients appear here once experience assignments are added.</div></div>
+            ? <div className="empty-state"><div className="empty-state-icon"><span className="material-icons-round" style={{fontSize:42, color:'var(--text3)', opacity:.4}}>handshake</span></div><div className="empty-state-title">No clients yet</div><div className="empty-state-sub">Clients appear here once experience assignments are added.</div></div>
             : instituteClients.map(client => (
               <ClientDocuments key={client.id||client.name} client={client} instituteId={institute.id} token={token} canEdit={canEdit} isAdmin={isAdmin}/>
             ))

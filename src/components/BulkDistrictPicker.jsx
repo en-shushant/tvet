@@ -44,14 +44,14 @@ function DistrictMultiPicker({onAdd, buttonLabel='+ Add districts'}) {
           {PROVINCES.map(p=><option key={p.id} value={p.name}>{p.name}</option>)}
         </select>
         {selected.length > 0 && <Btn className="btn btn-primary btn-sm" onClick={handleAdd}>Add {selected.length}</Btn>}
-        <button onClick={()=>{setOpen(false);setSelected([]);setSearch('');}} style={{background:'none',border:'none',cursor:'pointer',color:'var(--text3)',fontSize:14,flexShrink:0}}>✕</button>
+        <button onClick={()=>{setOpen(false);setSelected([]);setSearch('');}} style={{background:'none',border:'none',cursor:'pointer',color:'var(--text3)',fontSize:14,flexShrink:0}}><span className="material-icons-round" style={{fontSize:14}}>close</span></button>
       </div>
       {selected.length > 0 && (
         <div style={{display:'flex', flexWrap:'wrap', gap:4, marginBottom:8}}>
           {selected.map(s => (
             <span key={s.province+s.district} onClick={()=>toggle(s.province,s.district)}
               style={{fontSize:11, padding:'2px 8px', borderRadius:10, background:'var(--accent)', color:'#fff', cursor:'pointer'}}>
-              {s.district} ✕
+              {s.district} <span className="material-icons-round" style={{fontSize:13,verticalAlign:'middle'}}>close</span>
             </span>
           ))}
         </div>

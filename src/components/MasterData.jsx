@@ -267,9 +267,9 @@ function MasterData({clients, onUpdateClients, token, isAdmin, isEditor, isSuper
                   reader.onload=ev=>set('letterhead',ev.target.result);
                   reader.readAsDataURL(file);
                 }}/>
-                <span className="btn btn-secondary btn-sm">{form.letterhead ? '🔄 Change' : '📷 Upload letterhead'}</span>
+                <span className="btn btn-secondary btn-sm">{form.letterhead ? <><span className="material-icons-round" style={{fontSize:14,verticalAlign:'middle',marginRight:4}}>sync</span>Change</> : <><span className="material-icons-round" style={{fontSize:14,verticalAlign:'middle',marginRight:4}}>photo_camera</span>Upload letterhead</>}</span>
               </label>
-              {form.letterhead && <span className="btn btn-ghost btn-sm" style={{cursor:'pointer'}} onClick={()=>set('letterhead',null)}>✕ Remove</span>}
+              {form.letterhead && <span className="btn btn-ghost btn-sm" style={{cursor:'pointer'}} onClick={()=>set('letterhead',null)}><span className="material-icons-round" style={{fontSize:14,verticalAlign:'middle',marginRight:4}}>close</span>Remove</span>}
             </div>
             <div className="input-hint">PNG or JPG — recommended width 600–800px, height 80–120px. Max ~500 KB.</div>
           </div>
@@ -502,7 +502,7 @@ function MasterData({clients, onUpdateClients, token, isAdmin, isEditor, isSuper
         <>
           <div style={{display:'flex', gap:12, marginBottom:16}}>
             <div className="search-wrap" style={{flex:1}}>
-              <span className="search-icon">🔍</span>
+              <span className="search-icon material-icons-round" style={{fontSize:16}}>search</span>
               <input value={clientSearch} onChange={e=>setClientSearch(e.target.value)} placeholder="Search clients by name, acronym or type..."/>
             </div>
             {onGoToClients && (
@@ -522,7 +522,7 @@ function MasterData({clients, onUpdateClients, token, isAdmin, isEditor, isSuper
                     <td style={{fontSize:12}}>{c.fullName}</td>
                     <td><span className="badge badge-info">{c.type}</span></td>
                     <td style={{fontSize:12, color:'var(--text3)'}}>{c.address}</td>
-                    <td><Btn className="btn btn-ghost btn-sm" onClick={()=>setClientModal({type:'edit', data:c})}>✏</Btn></td>
+                    <td><Btn className="btn btn-ghost btn-sm" onClick={()=>setClientModal({type:'edit', data:c})}><span className="material-icons-round" style={{fontSize:14}}>edit</span></Btn></td>
                   </tr>
                 ))}
               </tbody>
@@ -538,7 +538,7 @@ function MasterData({clients, onUpdateClients, token, isAdmin, isEditor, isSuper
         <>
           <div style={{display:'flex', gap:12, marginBottom:16}}>
             <div className="search-wrap" style={{flex:1}}>
-              <span className="search-icon">🔍</span>
+              <span className="search-icon material-icons-round" style={{fontSize:16}}>search</span>
               <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search occupations..."/>
             </div>
             <select value={sectorFilter} onChange={e=>setSectorFilter(e.target.value)} style={{width:220}}>
@@ -593,8 +593,8 @@ function MasterData({clients, onUpdateClients, token, isAdmin, isEditor, isSuper
                         : '—'}
                     </td>
                     <td style={{display:'flex', gap:4}}>
-                      {canManageOccs && <Btn className="btn btn-ghost btn-sm" onClick={()=>setOccModal({type:'edit', data:o})}>✏</Btn>}
-                      {isAdmin && <Btn className="btn btn-danger btn-sm" onClick={()=>deleteOccupation(o)}>🗑</Btn>}
+                      {canManageOccs && <Btn className="btn btn-ghost btn-sm" onClick={()=>setOccModal({type:'edit', data:o})}><span className="material-icons-round" style={{fontSize:14}}>edit</span></Btn>}
+                      {isAdmin && <Btn className="btn btn-danger btn-sm" onClick={()=>deleteOccupation(o)}><span className="material-icons-round" style={{fontSize:14}}>delete</span></Btn>}
                     </td>
                   </tr>
                 ))}
@@ -639,7 +639,7 @@ function MasterData({clients, onUpdateClients, token, isAdmin, isEditor, isSuper
           {/* ── Occupation list with tool counts ── */}
           <div style={{display:'flex', gap:12, marginBottom:12}}>
             <div className="search-wrap" style={{flex:1}}>
-              <span className="search-icon">🔍</span>
+              <span className="search-icon material-icons-round" style={{fontSize:16}}>search</span>
               <input value={toolsSearch} onChange={e=>setToolsSearch(e.target.value)} placeholder="Search occupations..."/>
             </div>
           </div>
@@ -726,7 +726,7 @@ function MasterData({clients, onUpdateClients, token, isAdmin, isEditor, isSuper
                       ))}
                     </div>
                   )}
-                  <Btn className="btn btn-ghost btn-sm" onClick={()=>{ setToolsOccId(''); setToolsLevel(''); setToolsList([]); setToolsSelected([]); setToolsBulkMode(false); }}>✕ Close</Btn>
+                  <Btn className="btn btn-ghost btn-sm" onClick={()=>{ setToolsOccId(''); setToolsLevel(''); setToolsList([]); setToolsSelected([]); setToolsBulkMode(false); }}><span className="material-icons-round" style={{fontSize:14, verticalAlign:'middle', marginRight:4}}>close</span>Close</Btn>
                 </div>
               </div>
 
@@ -761,7 +761,7 @@ function MasterData({clients, onUpdateClients, token, isAdmin, isEditor, isSuper
                           <tr key={row._key}>
                             <td style={{padding:'3px 4px', textAlign:'center'}}>
                               <Btn className="btn btn-ghost btn-sm" style={{padding:'1px 4px', fontSize:11, color:'var(--danger,#ef4444)'}}
-                                onClick={()=>setBulkRows(prev=>prev.filter((_,idx)=>idx!==i))}>✕</Btn>
+                                onClick={()=>setBulkRows(prev=>prev.filter((_,idx)=>idx!==i))}><span className="material-icons-round" style={{fontSize:16}}>close</span></Btn>
                             </td>
                             <td style={{padding:'3px 4px', fontSize:11, textAlign:'center', color:'var(--text3)'}}>{i+1}</td>
                             <td style={{padding:'3px 4px'}}><input tabIndex={1} value={row.name} onChange={e=>setBulkRows(prev=>{const n=[...prev];n[i]={...n[i],name:e.target.value};return n;})} placeholder="Name" style={{fontSize:12, padding:'4px 6px'}}/></td>
@@ -831,8 +831,8 @@ function MasterData({clients, onUpdateClients, token, isAdmin, isEditor, isSuper
                           <td style={{fontSize:12, color:'var(--text3)'}}>{t.remarks || ''}</td>
                           {canManageOccs && (
                             <td style={{display:'flex', gap:4}}>
-                              <Btn className="btn btn-ghost btn-sm" onClick={()=>setToolModal(t)}>✏</Btn>
-                              <Btn className="btn btn-danger btn-sm" onClick={()=>deleteTool(t.id)}>🗑</Btn>
+                              <Btn className="btn btn-ghost btn-sm" onClick={()=>setToolModal(t)}><span className="material-icons-round" style={{fontSize:14}}>edit</span></Btn>
+                              <Btn className="btn btn-danger btn-sm" onClick={()=>deleteTool(t.id)}><span className="material-icons-round" style={{fontSize:14}}>delete</span></Btn>
                             </td>
                           )}
                         </tr>
@@ -880,11 +880,11 @@ function MasterData({clients, onUpdateClients, token, isAdmin, isEditor, isSuper
                       {editTt?.idx === i
                         ? <>
                             <Btn className="btn btn-primary btn-sm" onClick={()=>updateTT(i,editTt.val)}>Save</Btn>
-                            <Btn className="btn btn-ghost btn-sm" onClick={()=>setEditTt(null)}>✕</Btn>
+                            <Btn className="btn btn-ghost btn-sm" onClick={()=>setEditTt(null)}><span className="material-icons-round" style={{fontSize:16}}>close</span></Btn>
                           </>
                         : <>
-                            <Btn className="btn btn-ghost btn-sm" onClick={()=>setEditTt({idx:i, val:t})}>✏</Btn>
-                            <Btn className="btn btn-danger btn-sm" onClick={()=>removeTT(i)}>🗑</Btn>
+                            <Btn className="btn btn-ghost btn-sm" onClick={()=>setEditTt({idx:i, val:t})}><span className="material-icons-round" style={{fontSize:14}}>edit</span></Btn>
+                            <Btn className="btn btn-danger btn-sm" onClick={()=>removeTT(i)}><span className="material-icons-round" style={{fontSize:14}}>delete</span></Btn>
                           </>
                       }
                     </td>
@@ -895,7 +895,7 @@ function MasterData({clients, onUpdateClients, token, isAdmin, isEditor, isSuper
           </div>
           <div style={{marginTop:12}}>
             <Btn className="btn btn-ghost btn-sm" onClick={()=>saveTT([...TRAINING_TYPES_DEFAULT])}>
-              ↺ Reset to defaults
+              <span className="material-icons-round" style={{fontSize:14, verticalAlign:'middle', marginRight:4}}>refresh</span>Reset to defaults
             </Btn>
           </div>
         </div>
@@ -943,7 +943,7 @@ function MasterData({clients, onUpdateClients, token, isAdmin, isEditor, isSuper
                         {editFy?.idx===i
                           ? <>
                               <Btn className="btn btn-primary btn-sm" onClick={()=>updateFY(i,editFy.val)}>Save</Btn>
-                              <Btn className="btn btn-ghost btn-sm" onClick={()=>setEditFy(null)}>✕</Btn>
+                              <Btn className="btn btn-ghost btn-sm" onClick={()=>setEditFy(null)}><span className="material-icons-round" style={{fontSize:16}}>close</span></Btn>
                             </>
                           : <>
                               {!isCurrent && (
@@ -953,8 +953,8 @@ function MasterData({clients, onUpdateClients, token, isAdmin, isEditor, isSuper
                                   Set current
                                 </Btn>
                               )}
-                              <Btn className="btn btn-ghost btn-sm" onClick={()=>setEditFy({idx:i,val:fy})}>✏</Btn>
-                              <Btn className="btn btn-danger btn-sm" onClick={()=>removeFY(i)}>🗑</Btn>
+                              <Btn className="btn btn-ghost btn-sm" onClick={()=>setEditFy({idx:i,val:fy})}><span className="material-icons-round" style={{fontSize:14}}>edit</span></Btn>
+                              <Btn className="btn btn-danger btn-sm" onClick={()=>removeFY(i)}><span className="material-icons-round" style={{fontSize:14}}>delete</span></Btn>
                             </>
                         }
                       </td>
@@ -969,7 +969,7 @@ function MasterData({clients, onUpdateClients, token, isAdmin, isEditor, isSuper
               const fys=[];
               for(let y=2065;y<=2083;y++) fys.push(`${y}/${String(y+1).slice(-2)}`);
               saveFY(fys);
-            }}>↺ Reset to defaults</Btn>
+            }}><span className="material-icons-round" style={{fontSize:14, verticalAlign:'middle', marginRight:4}}>refresh</span>Reset to defaults</Btn>
           </div>
         </div>
       )}

@@ -129,7 +129,7 @@ export function InfrastructureTab({ instituteId, token, canEdit }) {
                 {canEdit && <td style={tdS}>
                   <Btn className="btn btn-ghost btn-sm" style={{marginRight:2}} title="Move up" disabled={i===0} onClick={()=>moveRow(row.id,-1)}>↑</Btn>
                   <Btn className="btn btn-ghost btn-sm" style={{marginRight:4}} title="Move down" disabled={i===rows.length-1} onClick={()=>moveRow(row.id,1)}>↓</Btn>
-                  <Btn className="btn btn-ghost btn-sm" style={{marginRight:4}} onClick={()=>startEdit(row)}>✏</Btn>
+                  <Btn className="btn btn-ghost btn-sm" style={{marginRight:4}} onClick={()=>startEdit(row)}><span className="material-icons-round" style={{fontSize:14}}>edit</span></Btn>
                   <Btn className="btn btn-danger btn-sm" onClick={()=>deleteRow(row.id)}><span className="material-icons-round" style={{fontSize:15}}>delete</span></Btn>
                 </td>}
               </tr>
@@ -174,7 +174,7 @@ export function InfrastructureTab({ instituteId, token, canEdit }) {
                     </td>
                     <td style={tdS}><input style={inp} value={r.remark} onChange={e=>updateBulk(i,'remark',e.target.value)} /></td>
                     <td style={{...tdS, textAlign:'center'}}>
-                      <Btn className="btn btn-danger btn-sm" onClick={()=>removeBulkRow(i)} disabled={bulkRows.length===1}>✕</Btn>
+                      <Btn className="btn btn-danger btn-sm" onClick={()=>removeBulkRow(i)} disabled={bulkRows.length===1}><span className="material-icons-round" style={{fontSize:16}}>close</span></Btn>
                     </td>
                   </tr>
                 ))}

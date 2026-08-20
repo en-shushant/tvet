@@ -130,7 +130,7 @@ function FileThumb({ src, onRemove }) {
           <button onClick={e=>{e.preventDefault(); setConfirming(true);}}
             style={{position:'absolute', inset:0, width:'100%', height:'100%', background:'rgba(229,57,53,.72)',
               color:'#fff', border:'none', cursor:'pointer', fontSize:18, display:'flex', alignItems:'center',
-              justifyContent:'center', backdropFilter:'blur(2px)'}}>✕</button>
+              justifyContent:'center', backdropFilter:'blur(2px)'}}><span className="material-icons-round" style={{fontSize:14}}>close</span></button>
         )
       )}
     </div>
@@ -404,7 +404,7 @@ export function DocumentsTab({ institute, token, canEdit, onUpdate, isShortlistO
             <Btn className="btn btn-primary" onClick={handleSave} disabled={saving}>
               {saving ? 'Saving…' : 'Save documents'}
             </Btn>
-            {saved && <span style={{fontSize:12, color:'var(--success)', fontWeight:500}}>✓ Saved</span>}
+            {saved && <span style={{fontSize:12, color:'var(--success)', fontWeight:500}}><span className="material-icons-round" style={{fontSize:13, verticalAlign:'middle', marginRight:3}}>check</span>Saved</span>}
             {err  && <span style={{fontSize:12, color:'var(--error)'}}>{err}</span>}
           </div>
         )}

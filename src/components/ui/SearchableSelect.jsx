@@ -106,7 +106,7 @@ export default function SearchableSelect({ value, onChange, options, placeholder
         <span style={{overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', flex:1}}>
           {selected ? selected.label : placeholder}
         </span>
-        <span style={{marginLeft:6, color:'var(--text3)', fontSize:10, flexShrink:0}}>{open ? '▲' : '▼'}</span>
+        <span className="material-icons-round" style={{marginLeft:6, color:'var(--text3)', fontSize:16, flexShrink:0}}>{open ? 'expand_less' : 'expand_more'}</span>
       </button>
       {open && ReactDOM.createPortal(
         <DropdownPanel

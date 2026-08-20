@@ -592,7 +592,7 @@ function ClientCombobox({ clients, value, onChange }) {
             style={{ flex:1, border:'none', outline:'none', background:'transparent', fontSize:16, color:'var(--text)', fontFamily:'inherit', minWidth:0 }}/>
           {query
             ? <button onMouseDown={clear} style={{ background:'none', border:'none', cursor:'pointer', color:'var(--text3)', fontSize:18, lineHeight:1, padding:'2px 0 2px 4px' }}>×</button>
-            : <span style={{ color:'var(--text3)', fontSize:18, lineHeight:1, userSelect:'none' }}>▾</span>}
+            : <span className="material-icons-round" style={{ color:'var(--text3)', fontSize:18, lineHeight:1, userSelect:'none' }}>expand_more</span>}
         </div>
       </div>
       {open && (

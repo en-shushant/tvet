@@ -121,7 +121,7 @@ function ComparisonView({institutes, clients}) {
       <div className="card" style={{marginBottom:16, padding:0, overflow:'hidden'}}>
         {/* Header */}
         <div style={{padding:'14px 20px', background:headerBg, display:'flex', alignItems:'center', gap:10}}>
-          {isJV && <span style={{fontSize:16}}>🤝</span>}
+          {isJV && <span className="material-icons-round" style={{fontSize:16, color:'var(--text3)'}}>handshake</span>}
           {inst?.acronym && (
             <span style={{background:'rgba(109,191,138,0.2)', color:'#6DBF8A', fontFamily:'var(--font-mono)', fontSize:12, fontWeight:600, padding:'2px 8px', borderRadius:4}}>
               {inst.acronym}
@@ -201,7 +201,7 @@ function ComparisonView({institutes, clients}) {
     <div className="fade-in" style={{display:'flex', gap:20, alignItems:'flex-start'}}>
       <div className="filter-panel">
         <div className="filter-panel-header">
-          <span style={{fontSize:14}}>⚖</span>
+          <span className="material-icons-round" style={{fontSize:16, color:'var(--text3)'}}>balance</span>
           <span className="filter-panel-header-title">Compare</span>
           {activeFilterCount > 0 && (
             <span style={{marginLeft:'auto', background:'var(--accent)', color:'#fff', borderRadius:10, fontSize:10, fontWeight:700, padding:'1px 7px'}}>
@@ -268,14 +268,14 @@ function ComparisonView({institutes, clients}) {
 
         </div>
         <button className="filter-reset-btn" onClick={()=>{setSelectedInsts([]);setJvGroups([]);setSelectedFYs([]);setSelectedOccs([]);setMinDuration('');}}>
-          ↺ Reset
+          <span className="material-icons-round" style={{fontSize:14, verticalAlign:'middle', marginRight:4}}>refresh</span>Reset
         </button>
       </div>
 
       <div style={{flex:1, minWidth:0}}>
         {!hasAnything ? (
           <div className="empty-state" style={{background:'var(--surface)', border:'1px solid var(--border)', borderRadius:'var(--radius-lg)'}}>
-            <div className="empty-state-icon">⚖</div>
+            <div className="empty-state-icon"><span className="material-icons-round" style={{fontSize:42, color:'var(--text3)', opacity:.4}}>balance</span></div>
             <div className="empty-state-title">Select firms or create a JV to compare</div>
             <div className="empty-state-sub">Pick individual firms from the list, or group 2–6 firms into a JV using the "JV Groups" panel</div>
           </div>

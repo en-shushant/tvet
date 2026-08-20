@@ -1107,7 +1107,7 @@ function ReportsView({ institutes, clients }) {
                       {allFYs.map(fy => <option key={fy} value={fy}>{fy}</option>)}
                     </select>
                     {(fromFY || toFY) && (
-                      <Btn className="btn btn-ghost btn-sm" onClick={() => { setFromFY(''); setToFY(''); setSelectedIds(null); }}>✕</Btn>
+                      <Btn className="btn btn-ghost btn-sm" onClick={() => { setFromFY(''); setToFY(''); setSelectedIds(null); }}><span className="material-icons-round" style={{fontSize:16}}>close</span></Btn>
                     )}
                   </div>
                 </div>
@@ -1128,7 +1128,7 @@ function ReportsView({ institutes, clients }) {
                       {allFYs.map(fy => <option key={fy} value={fy}>{fy}</option>)}
                     </select>
                     {(turnFromFY || turnToFY) && (
-                      <Btn className="btn btn-ghost btn-sm" onClick={() => { setTurnFromFY(''); setTurnToFY(''); }}>✕</Btn>
+                      <Btn className="btn btn-ghost btn-sm" onClick={() => { setTurnFromFY(''); setTurnToFY(''); }}><span className="material-icons-round" style={{fontSize:16}}>close</span></Btn>
                     )}
                   </div>
                 </div>
@@ -1149,7 +1149,7 @@ function ReportsView({ institutes, clients }) {
                       {allFYs.map(fy => <option key={fy} value={fy}>{fy}</option>)}
                     </select>
                     {(portfolioFromFY || portfolioToFY) && (
-                      <Btn className="btn btn-ghost btn-sm" onClick={() => { setPortfolioFromFY(''); setPortfolioToFY(''); }}>✕</Btn>
+                      <Btn className="btn btn-ghost btn-sm" onClick={() => { setPortfolioFromFY(''); setPortfolioToFY(''); }}><span className="material-icons-round" style={{fontSize:16}}>close</span></Btn>
                     )}
                   </div>
                 </div>
@@ -1317,7 +1317,7 @@ function ReportsView({ institutes, clients }) {
             {isMultiInst ? (
               fwLoading ? (
                 <div className="empty-state">
-                  <div className="empty-state-icon">⏳</div>
+                  <div className="empty-state-icon"><span className="material-icons-round" style={{fontSize:42, color:'var(--text3)', opacity:.4}}>hourglass_empty</span></div>
                   <div className="empty-state-title">Loading…</div>
                 </div>
               ) : (
@@ -1453,7 +1453,7 @@ function ReportsView({ institutes, clients }) {
                   family.renderAggregateTable(fullInst || null, activeExps, clients, report.id, opts)
                 ) : activeExps.length === 0 ? (
                   <div className="empty-state">
-                    <div className="empty-state-icon">🔍</div>
+                    <div className="empty-state-icon"><span className="material-icons-round" style={{fontSize:42, color:'var(--text3)', opacity:.4}}>search_off</span></div>
                     <div className="empty-state-title">
                       {rangeFiltered.length === 0 ? 'No assignments in this FY range' : 'No assignments selected'}
                     </div>

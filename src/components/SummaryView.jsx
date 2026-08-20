@@ -136,7 +136,7 @@ function SummaryView({institutes, clients}) {
       {/* Filter panel */}
       <div className="filter-panel">
         <div className="filter-panel-header">
-          <span style={{fontSize:14}}>⚙</span>
+          <span className="material-icons-round" style={{fontSize:16, color:'var(--text3)'}}>tune</span>
           <span className="filter-panel-header-title">Filters</span>
           {(selectedFYs.length > 0 || selectedOccs.length > 0 || selectedClientTypes.length > 0 || minDuration) && (
             <span style={{marginLeft:'auto', background:'var(--accent)', color:'#fff', borderRadius:10, fontSize:10, fontWeight:700, padding:'1px 7px'}}>
@@ -202,7 +202,7 @@ function SummaryView({institutes, clients}) {
 
         </div>
         <button className="filter-reset-btn" onClick={()=>{setSelectedFYs([]);setSelectedOccs([]);setSelectedClientTypes([]);setMinDuration('');}}>
-          ↺ Reset filters
+          <span className="material-icons-round" style={{fontSize:14, verticalAlign:'middle', marginRight:4}}>refresh</span>Reset filters
         </button>
       </div>
 
@@ -210,12 +210,12 @@ function SummaryView({institutes, clients}) {
       <div style={{flex:1, minWidth:0}}>
         {loadingInst ? (
           <div className="empty-state" style={{background:'var(--surface)', border:'1px solid var(--border)', borderRadius:'var(--radius-lg)'}}>
-            <div className="empty-state-icon">⏳</div>
+            <div className="empty-state-icon"><span className="material-icons-round" style={{fontSize:42, color:'var(--text3)', opacity:.4}}>hourglass_empty</span></div>
             <div className="empty-state-title">Loading institute data…</div>
           </div>
         ) : !institute ? (
           <div className="empty-state" style={{background:'var(--surface)', border:'1px solid var(--border)', borderRadius:'var(--radius-lg)'}}>
-            <div className="empty-state-icon">📊</div>
+            <div className="empty-state-icon"><span className="material-icons-round" style={{fontSize:42, color:'var(--text3)', opacity:.4}}>insights</span></div>
             <div className="empty-state-title">Select an institute to view summary</div>
             <div className="empty-state-sub">Choose an institute from the filter panel, then select fiscal years and occupations</div>
           </div>
@@ -235,11 +235,11 @@ function SummaryView({institutes, clients}) {
                     <span className={`badge ${institute.status==='Active'?'badge-active':institute.status==='Expired'?'badge-expired':'badge-pending'}`} style={{fontSize:10,flexShrink:0}}>{institute.status}</span>
                   </div>
                   <div style={{display:'flex',flexWrap:'wrap',gap:'4px 20px',fontSize:11,color:'var(--text2)'}}>
-                    {institute.phone && <span>📞 {institute.phone}</span>}
-                    {institute.email && <span>✉ {institute.email}</span>}
-                    {institute.registrationNo && <span>📋 Reg: {institute.registrationNo}</span>}
-                    {institute.renewalDue && <span>🗓 Renewal: {institute.renewalDue}</span>}
-                    {institute.website && <a href={institute.website} target="_blank" rel="noreferrer" style={{color:'var(--primary)'}}>🌐 Website</a>}
+                    {institute.phone && <span><span className="material-icons-round" style={{fontSize:13, verticalAlign:'middle', marginRight:4}}>call</span>{institute.phone}</span>}
+                    {institute.email && <span><span className="material-icons-round" style={{fontSize:13, verticalAlign:'middle', marginRight:4}}>mail</span>{institute.email}</span>}
+                    {institute.registrationNo && <span><span className="material-icons-round" style={{fontSize:13,verticalAlign:'middle',marginRight:3}}>badge</span>Reg: {institute.registrationNo}</span>}
+                    {institute.renewalDue && <span><span className="material-icons-round" style={{fontSize:13, verticalAlign:'middle', marginRight:4}}>event</span>Renewal: {institute.renewalDue}</span>}
+                    {institute.website && <a href={institute.website} target="_blank" rel="noreferrer" style={{color:'var(--primary)'}}><span className="material-icons-round" style={{fontSize:13, verticalAlign:'middle', marginRight:4}}>language</span>Website</a>}
                   </div>
                 </div>
                 <div style={{display:'flex',gap:8,flexShrink:0,alignItems:'center'}}>

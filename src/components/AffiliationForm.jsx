@@ -68,7 +68,7 @@ function AffiliationForm({record, onSave, onClose}) {
         <div className="sub-section-title">Affiliated programs</div>
         {form.programs.map((prog, i) => (
           <div className="repeatable-row" key={prog.id||i}>
-            <button className="remove-btn" onClick={()=>removeProg(i)}>✕</button>
+            <button className="remove-btn" onClick={()=>removeProg(i)}><span className="material-icons-round" style={{fontSize:15}}>close</span></button>
             <div className="form-row" style={{gridTemplateColumns:'2fr 1fr 1fr 1fr', gap:8, marginBottom:0}}>
               <div className="form-group" style={{marginBottom:0}}>
                 <label>Program / occupation name</label>

@@ -43,7 +43,7 @@ export function ErrorBanner({ msg, onDismiss }) {
       <span className="material-icons-round" style={{ fontSize: 14, flexShrink: 0 }}>error_outline</span>
       <span style={{ flex: 1 }}>{msg}</span>
       {onDismiss && (
-        <button onClick={onDismiss} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'inherit', padding: 0, lineHeight: 1, fontSize: 16 }}>✕</button>
+        <button onClick={onDismiss} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'inherit', padding: 0, lineHeight: 1, fontSize: 16 }}><span className="material-icons-round" style={{fontSize:16}}>close</span></button>
       )}
     </div>
   );

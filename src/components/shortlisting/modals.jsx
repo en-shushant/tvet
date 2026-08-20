@@ -456,7 +456,7 @@ export function LetterOptsModal({ row, token, onClose, onOpenBuilder }) {
   return (
     <Modal title="Generate Letter" onClose={onClose} footer={<>
       <Btn className="btn btn-secondary" onClick={onClose}>Cancel</Btn>
-      {onOpenBuilder && <Btn className="btn btn-secondary" onClick={() => { onClose(); onOpenBuilder(); }}>✏ Builder</Btn>}
+      {onOpenBuilder && <Btn className="btn btn-secondary" onClick={() => { onClose(); onOpenBuilder(); }}><span className="material-icons-round" style={{fontSize:14,verticalAlign:'middle',marginRight:4}}>edit</span>Builder</Btn>}
       <Btn className="btn btn-primary" onClick={handleGenerate} disabled={instLoading || generating}>
         {generating ? 'Generating…' : instLoading ? 'Loading…' : 'Generate Preview'}
       </Btn>
@@ -599,7 +599,7 @@ export function BillModal({ row, token, onSave, onClose, saving }) {
               <div style={{position:'relative', display:'inline-flex', flexDirection:'column', alignItems:'center'}}>
                 {isPdf ? (
                   <a href={doc} target="_blank" rel="noreferrer" style={{height:64, width:64, border:'1px solid var(--border)', borderRadius:8, background:'#fff8f0', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:2, textDecoration:'none'}}>
-                    <span style={{fontSize:24}}>📄</span>
+                    <span className="material-icons-round" style={{fontSize:24, color:'var(--text3)'}}>description</span>
                     <span style={{fontSize:9, color:'var(--text3)', fontWeight:600}}>PDF</span>
                   </a>
                 ) : (
@@ -607,7 +607,7 @@ export function BillModal({ row, token, onSave, onClose, saving }) {
                     <img src={doc} alt="" style={{height:64, maxWidth:90, objectFit:'contain', border:'1px solid var(--border)', borderRadius:8, background:'#fff', padding:3}}/>
                   </a>
                 )}
-                <button onClick={() => setDoc(null)} style={{position:'absolute', top:-6, right:-6, width:18, height:18, borderRadius:'50%', background:'#e53935', color:'#fff', border:'none', cursor:'pointer', fontSize:11, display:'flex', alignItems:'center', justifyContent:'center', padding:0}}>✕</button>
+                <button onClick={() => setDoc(null)} style={{position:'absolute', top:-6, right:-6, width:18, height:18, borderRadius:'50%', background:'#e53935', color:'#fff', border:'none', cursor:'pointer', fontSize:11, display:'flex', alignItems:'center', justifyContent:'center', padding:0}}><span className="material-icons-round" style={{fontSize:12}}>close</span></button>
               </div>
             ) : (
               <div style={{height:64, width:64, border:'1px dashed var(--border)', borderRadius:8, background:'var(--bg2)', display:'flex', alignItems:'center', justifyContent:'center'}}>
@@ -618,7 +618,7 @@ export function BillModal({ row, token, onSave, onClose, saving }) {
               <input type="file" accept={ACCEPT} style={{display:'none'}} onChange={handleFile} disabled={uploading}/>
               <span className="btn btn-secondary btn-sm">{uploading ? 'Uploading…' : doc ? 'Replace' : 'Upload'}</span>
             </label>
-            {doc && <span className="btn btn-ghost btn-sm" style={{cursor:'pointer'}} onClick={() => setDoc(null)}>✕ Remove</span>}
+            {doc && <span className="btn btn-ghost btn-sm" style={{cursor:'pointer'}} onClick={() => setDoc(null)}><span className="material-icons-round" style={{fontSize:14,verticalAlign:'middle',marginRight:4}}>close</span>Remove</span>}
           </div>
           {err && <div style={{fontSize:11, color:'#c0391e', marginTop:4}}>{err}</div>}
         </div>

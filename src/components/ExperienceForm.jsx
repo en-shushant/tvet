@@ -38,7 +38,7 @@ function DistrictSearch({ value, onChange }) {
         style={{paddingRight: value && !open ? 28 : 12}}
       />
       {value && !open && (
-        <button onClick={e=>{e.stopPropagation(); onChange('',''); setQ('');}} style={{position:'absolute',right:6,top:'50%',transform:'translateY(-50%)',background:'none',border:'none',cursor:'pointer',color:'var(--text3)',fontSize:14,padding:0,lineHeight:1}}>✕</button>
+        <button onClick={e=>{e.stopPropagation(); onChange('',''); setQ('');}} style={{position:'absolute',right:6,top:'50%',transform:'translateY(-50%)',background:'none',border:'none',cursor:'pointer',color:'var(--text3)',fontSize:14,padding:0,lineHeight:1}}><span className="material-icons-round" style={{fontSize:14}}>close</span></button>
       )}
       {open && ReactDOM.createPortal(
         <DropdownPanel anchor={ref} search={q} setSearch={setQ}
@@ -496,7 +496,7 @@ function ExperienceForm({exp, clients, institute, onSave, onClose, onDuplicate, 
                   try { const p = JSON.parse(atob(token.split('.')[1])); if (p.role === 'admin' || p.role === 'editor' || p.role === 'superadmin') return (
                     <Btn type="button" className="btn btn-ghost btn-sm" style={{fontSize:11, whiteSpace:'nowrap'}}
                       onClick={()=>setSaveClientModal({fullName: form.clientName.trim(), shortName:'', type:'Government', address:'', remarks:''})}>
-                      💾 Save to list
+                      <span className="material-icons-round" style={{fontSize:14, verticalAlign:'middle', marginRight:4}}>save</span>Save to list
                     </Btn>
                   ); } catch {}
                   return null;
@@ -608,15 +608,15 @@ function ExperienceForm({exp, clients, institute, onSave, onClose, onDuplicate, 
           <div style={{flex:1}}>
             <div style={{display:'flex', gap:8, alignItems:'center', marginBottom: form.referenceFile ? 8 : 0}}>
               <Btn className="btn btn-secondary btn-sm" onClick={()=>fileInputRef.current?.click()}>
-                📎 {form.referenceFileName ? 'Change file' : 'Attach file'}
+                <span className="material-icons-round" style={{fontSize:14, verticalAlign:'middle', marginRight:4}}>attach_file</span>{form.referenceFileName ? 'Change file' : 'Attach file'}
               </Btn>
               {form.referenceFile && (
-                <Btn className="btn btn-ghost btn-sm" onClick={()=>{set('referenceFile',null);set('referenceFileName','');}}>✕ Remove</Btn>
+                <Btn className="btn btn-ghost btn-sm" onClick={()=>{set('referenceFile',null);set('referenceFileName','');}}><span className="material-icons-round" style={{fontSize:14,verticalAlign:'middle',marginRight:4}}>close</span>Remove</Btn>
               )}
               {form.referenceFile && form.referenceFileName?.match(/\.pdf$/i) && (
                 <Btn className="btn btn-ghost btn-sm" onClick={()=>{
                   const w=window.open(); w.document.write(`<iframe src="${form.referenceFile}" width="100%" height="100%" style="border:none"/>`);
-                }}>👁 Preview PDF</Btn>
+                }}><span className="material-icons-round" style={{fontSize:14,verticalAlign:'middle',marginRight:4}}>visibility</span>Preview PDF</Btn>
               )}
             </div>
             {form.referenceFile && (
@@ -731,7 +731,7 @@ function ExperienceForm({exp, clients, institute, onSave, onClose, onDuplicate, 
                       )}
                     </span>
                     <span style={{fontSize:11, color:'var(--text3)'}}>
-                      {showOverrides ? '▲ Hide' : '▼ Written automatically — open to override'}
+                      {showOverrides ? <><span className="material-icons-round" style={{fontSize:15, verticalAlign:'middle', marginRight:4}}>expand_less</span>Hide</> : <><span className="material-icons-round" style={{fontSize:15, verticalAlign:'middle', marginRight:4}}>expand_more</span>Written automatically — open to override</>}
                     </span>
                   </button>
                   {showOverrides && (
@@ -824,10 +824,10 @@ function ExperienceForm({exp, clients, institute, onSave, onClose, onDuplicate, 
                   {districts.length === 0 ? 'Add districts'
                     : districts.length === 1 ? districts[0]
                     : `${districts.length} districts`}
-                  <span aria-hidden="true">{open ? '▾' : '▸'}</span>
+                  <span aria-hidden="true" className="material-icons-round" style={{fontSize:16, verticalAlign:'middle'}}>{open ? 'expand_more' : 'chevron_right'}</span>
                 </button>
               </td>
-              <td><button className="remove-btn occ-remove" tabIndex={-1} title="Remove occupation" onClick={()=>removeOcc(i)}>✕</button></td>
+              <td><button className="remove-btn occ-remove" tabIndex={-1} title="Remove occupation" onClick={()=>removeOcc(i)}><span className="material-icons-round" style={{fontSize:14}}>close</span></button></td>
             </tr>
 
             {issues.length > 0 && (
@@ -861,7 +861,7 @@ function ExperienceForm({exp, clients, institute, onSave, onClose, onDuplicate, 
                         setOccLoc(i,li,'province',province);
                       }}/>
                     </div>
-                    <button onClick={()=>removeOccLoc(i,li)} style={{background:'none',border:'none',cursor:'pointer',color:'var(--text3)',fontSize:16,padding:'0 4px',alignSelf:'center',marginBottom:2}}>✕</button>
+                    <button onClick={()=>removeOccLoc(i,li)} style={{background:'none',border:'none',cursor:'pointer',color:'var(--text3)',fontSize:16,padding:'0 4px',alignSelf:'center',marginBottom:2}}><span className="material-icons-round" style={{fontSize:16}}>close</span></button>
                   </div>
                   {loc.district && (
                     <div>
@@ -871,7 +871,7 @@ function ExperienceForm({exp, clients, institute, onSave, onClose, onDuplicate, 
                             background:'color-mix(in srgb,var(--primary) 12%,transparent)',color:'var(--primary)',
                             borderRadius:4,padding:'2px 6px'}}>
                             {ll.name}
-                            <button onClick={()=>removeOccLocLL(i,li,ll.name)} style={{background:'none',border:'none',cursor:'pointer',color:'var(--primary)',fontSize:11,padding:0,lineHeight:1,opacity:0.7}}>✕</button>
+                            <button onClick={()=>removeOccLocLL(i,li,ll.name)} style={{background:'none',border:'none',cursor:'pointer',color:'var(--primary)',fontSize:11,padding:0,lineHeight:1,opacity:0.7}}><span className="material-icons-round" style={{fontSize:12}}>close</span></button>
                           </span>
                         ))}
                       </div>

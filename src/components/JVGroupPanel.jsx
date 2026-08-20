@@ -135,7 +135,7 @@ function JVGroupPanel({institutes, jvGroups, onChange}) {
 
       {jvGroups.map(g => (
         <div key={g.id} style={{display:'flex', alignItems:'flex-start', gap:6, padding:'6px 0', borderBottom:'1px solid var(--border)'}}>
-          <span style={{fontSize:12, marginTop:1, flexShrink:0}}>🤝</span>
+          <span className="material-icons-round" style={{fontSize:14, marginTop:1, flexShrink:0, color:'var(--text3)'}}>handshake</span>
           <div style={{flex:1, minWidth:0}}>
             <div style={{fontSize:12, fontWeight:600, color:'var(--text)'}}>{g.name}</div>
             <div style={{fontSize:10, color:'var(--text3)', lineHeight:1.5, marginTop:1}}>
@@ -146,8 +146,8 @@ function JVGroupPanel({institutes, jvGroups, onChange}) {
             </div>
           </div>
           <div style={{display:'flex', gap:4, flexShrink:0}}>
-            <button onClick={()=>openEdit(g)} style={{fontSize:10, color:'var(--accent)', background:'none', border:'none', cursor:'pointer', padding:0}}>✏</button>
-            <button onClick={()=>removeGroup(g.id)} style={{fontSize:12, color:'var(--text3)', background:'none', border:'none', cursor:'pointer', padding:0}}>✕</button>
+            <button onClick={()=>openEdit(g)} style={{fontSize:10, color:'var(--accent)', background:'none', border:'none', cursor:'pointer', padding:0}}><span className="material-icons-round" style={{fontSize:13}}>edit</span></button>
+            <button onClick={()=>removeGroup(g.id)} style={{fontSize:12, color:'var(--text3)', background:'none', border:'none', cursor:'pointer', padding:0}}><span className="material-icons-round" style={{fontSize:13}}>close</span></button>
           </div>
         </div>
       ))}
@@ -178,7 +178,7 @@ function JVGroupPanel({institutes, jvGroups, onChange}) {
             })}
           </div>
           <div style={{fontSize:10, color: draft.partnerIds.length>=2 ? 'var(--accent)' : 'var(--text3)', marginBottom:8}}>
-            {draft.partnerIds.length} firm{draft.partnerIds.length!==1?'s':''} selected {draft.partnerIds.length>=2&&'✓'}
+            {draft.partnerIds.length} firm{draft.partnerIds.length!==1?'s':''} selected {draft.partnerIds.length>=2 && <span className="material-icons-round" style={{fontSize:12, verticalAlign:'middle'}}>check</span>}
           </div>
           <div style={{display:'flex', gap:6}}>
             <Btn className="btn btn-primary btn-sm" style={{fontSize:11}} onClick={save} disabled={draft.partnerIds.length<2}>

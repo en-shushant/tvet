@@ -66,9 +66,9 @@ function InstituteForm({institute, onSave, onClose, isSuperAdmin}) {
               reader.onload=ev=>set('logo',ev.target.result);
               reader.readAsDataURL(file);
             }}/>
-            <span className="btn btn-secondary btn-sm">{form.logo ? '🔄 Change logo' : '📷 Upload logo'}</span>
+            <span className="btn btn-secondary btn-sm">{form.logo ? <><span className="material-icons-round" style={{fontSize:14,verticalAlign:'middle',marginRight:4}}>sync</span>Change logo</> : <><span className="material-icons-round" style={{fontSize:14,verticalAlign:'middle',marginRight:4}}>photo_camera</span>Upload logo</>}</span>
           </label>
-          {form.logo && <span className="btn btn-ghost btn-sm" style={{cursor:'pointer'}} onClick={()=>set('logo',null)}>✕ Remove</span>}
+          {form.logo && <span className="btn btn-ghost btn-sm" style={{cursor:'pointer'}} onClick={()=>set('logo',null)}><span className="material-icons-round" style={{fontSize:14,verticalAlign:'middle',marginRight:4}}>close</span>Remove</span>}
         </div>
         <div className="input-hint">PNG or JPG shown on the institute card. Max ~500 KB recommended.</div>
       </div>
@@ -144,7 +144,7 @@ function InstituteForm({institute, onSave, onClose, isSuperAdmin}) {
         </div>
       </div>
       <div style={{fontSize:11, color:'var(--text3)', marginTop:-8, marginBottom:16}}>
-        💡 From Google Maps: right-click your location → copy the coordinates shown at top, or copy from the URL.
+        <span className="material-icons-round" style={{fontSize:14,verticalAlign:'middle',marginRight:4}}>lightbulb</span> From Google Maps: right-click your location → copy the coordinates shown at top, or copy from the URL.
       </div>
       <div className="form-row form-row-3">
         <div className="form-group">
@@ -182,7 +182,7 @@ function InstituteForm({institute, onSave, onClose, isSuperAdmin}) {
               Auto-fill templates
             </span>
             <span style={{fontSize:11, color:'var(--text3)'}}>
-              {showTpl ? '▲ Hide' : '▼ Show — wording used by this firm\u2019s assignments'}
+              {showTpl ? <><span className="material-icons-round" style={{fontSize:15, verticalAlign:'middle', marginRight:4}}>expand_less</span>Hide</> : <><span className="material-icons-round" style={{fontSize:15, verticalAlign:'middle', marginRight:4}}>expand_more</span>Show — wording used by this firm\u2019s assignments</>}
             </span>
           </button>
           {showTpl && (
@@ -232,7 +232,7 @@ function InstituteForm({institute, onSave, onClose, isSuperAdmin}) {
             EOI / Bolpatra profile
           </span>
           <span style={{fontSize:11, color:'var(--text3)'}}>
-            {showEoi ? '▲ Hide' : "▼ Show — used in the Applicant's Information Form"}
+            {showEoi ? <><span className="material-icons-round" style={{fontSize:15, verticalAlign:'middle', marginRight:4}}>expand_less</span>Hide</> : <><span className="material-icons-round" style={{fontSize:15, verticalAlign:'middle', marginRight:4}}>expand_more</span>Show — used in the Applicant's Information Form</>}
           </span>
         </button>
         {showEoi && (

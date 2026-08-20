@@ -101,7 +101,7 @@ function ProjectCompliance({institutes, clients}) {
       {/* Filter panel */}
       <div className="filter-panel">
         <div className="filter-panel-header">
-          <span style={{fontSize:14}}>✅</span>
+          <span className="material-icons-round" style={{fontSize:16, color:'var(--text3)'}}>checklist</span>
           <span className="filter-panel-header-title">Project criteria</span>
           {activeFilterCount > 0 && (
             <span style={{marginLeft:'auto', background:'var(--accent)', color:'#fff', borderRadius:10, fontSize:10, fontWeight:700, padding:'1px 7px'}}>{activeFilterCount}</span>
@@ -134,7 +134,7 @@ function ProjectCompliance({institutes, clients}) {
               <div style={{marginBottom:6, display:'flex', flexWrap:'wrap', gap:4}}>
                 {selectedOccs.map(o => (
                   <span key={o} style={{fontSize:10, background:'color-mix(in srgb, var(--accent) 15%, transparent)', color:'var(--accent)', borderRadius:4, padding:'2px 6px', cursor:'pointer'}} onClick={()=>toggleOcc(o)}>
-                    {o.split(',')[0]} ✕
+                    {o.split(',')[0]} <span className="material-icons-round" style={{fontSize:13,verticalAlign:'middle'}}>close</span>
                   </span>
                 ))}
               </div>
@@ -164,25 +164,25 @@ function ProjectCompliance({institutes, clients}) {
           </div>
           <JVGroupPanel institutes={institutes} jvGroups={jvGroups} onChange={setJvGroups}/>
         </div>
-        <button className="filter-reset-btn" onClick={resetFilters}>↺ Reset filters</button>
+        <button className="filter-reset-btn" onClick={resetFilters}><span className="material-icons-round" style={{fontSize:14, verticalAlign:'middle', marginRight:4}}>refresh</span>Reset filters</button>
       </div>
 
       {/* Results */}
       <div style={{flex:1, minWidth:0}}>
         {loading ? (
           <div className="empty-state" style={{background:'var(--surface)', border:'1px solid var(--border)', borderRadius:'var(--radius-lg)'}}>
-            <div className="empty-state-icon">⏳</div>
+            <div className="empty-state-icon"><span className="material-icons-round" style={{fontSize:42, color:'var(--text3)', opacity:.4}}>hourglass_empty</span></div>
             <div className="empty-state-title">Loading institute data…</div>
           </div>
         ) : results === null ? (
           <div className="empty-state" style={{background:'var(--surface)', border:'1px solid var(--border)', borderRadius:'var(--radius-lg)'}}>
-            <div className="empty-state-icon">✅</div>
+            <div className="empty-state-icon"><span className="material-icons-round" style={{fontSize:42, color:'var(--text3)', opacity:.4}}>task_alt</span></div>
             <div className="empty-state-title">Set project criteria</div>
             <div className="empty-state-sub">Select fiscal years, client types, occupations and duration to find matching firms — then group them into JVs using the panel on the left</div>
           </div>
         ) : !hasAny ? (
           <div className="empty-state" style={{background:'var(--surface)', border:'1px solid var(--border)', borderRadius:'var(--radius-lg)'}}>
-            <div className="empty-state-icon">🔍</div>
+            <div className="empty-state-icon"><span className="material-icons-round" style={{fontSize:42, color:'var(--text3)', opacity:.4}}>search_off</span></div>
             <div className="empty-state-title">No firms match these criteria</div>
             <div className="empty-state-sub">Try relaxing the filters</div>
           </div>
@@ -224,7 +224,7 @@ function ProjectCompliance({institutes, clients}) {
                       <tr style={{background:'color-mix(in srgb, var(--accent) 6%, var(--surface))'}}>
                         <td>
                           <div style={{display:'flex', alignItems:'center', gap:6}}>
-                            <span style={{fontSize:13}}>🤝</span>
+                            <span className="material-icons-round" style={{fontSize:15, color:'var(--text3)'}}>handshake</span>
                             <div>
                               <div style={{fontWeight:700, fontSize:13}}>{r.group.name}</div>
                               <div style={{fontSize:10, color:'var(--text3)', marginTop:1}}>

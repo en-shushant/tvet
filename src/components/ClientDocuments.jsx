@@ -83,14 +83,14 @@ function ClientDocuments({ client, instituteId, token, canEdit, isAdmin }) {
     <div className="card" style={{marginBottom:12, padding:0}}>
       <button style={{width:'100%', background:'none', border:'none', cursor:'pointer', padding:'14px 18px', display:'flex', alignItems:'center', gap:12, textAlign:'left', fontFamily:'var(--font)'}}
         onClick={() => setExpanded(x => !x)}>
-        <span style={{fontSize:18}}>🤝</span>
+        <span className="material-icons-round" style={{fontSize:18, color:'var(--text3)'}}>handshake</span>
         <div style={{flex:1}}>
           <div style={{fontWeight:600, fontSize:14, color:'var(--text)'}}>{client.name}</div>
           <div style={{fontSize:12, color:'var(--text3)', marginTop:1}}>{client.fullName !== client.name ? client.fullName + ' · ' : ''}{client.type} · {client.assignmentCount} assignment{client.assignmentCount!==1?'s':''}</div>
         </div>
         <div style={{display:'flex', alignItems:'center', gap:8}}>
           {!loading && docs.length > 0 && <span className="badge badge-info">{docs.length} file{docs.length!==1?'s':''}</span>}
-          <span style={{color:'var(--text3)', fontSize:12}}>{expanded ? '▲' : '▼'}</span>
+          <span className="material-icons-round" style={{color:'var(--text3)', fontSize:18}}>{expanded ? 'expand_less' : 'expand_more'}</span>
         </div>
       </button>
 
@@ -112,7 +112,7 @@ function ClientDocuments({ client, instituteId, token, canEdit, isAdmin }) {
                         onClick={() => doc.url && window.open(doc.url, '_blank')}>
                         {isImage(doc.content_type) && doc.url
                           ? <img src={doc.url} alt={doc.file_name} style={{width:'100%', height:'100%', objectFit:'cover'}}/>
-                          : <span style={{fontSize:36}}>{isPdf(doc.content_type) ? '📄' : '📎'}</span>
+                          : <span className="material-icons-round" style={{fontSize:36, color:'var(--text3)'}}>{isPdf(doc.content_type) ? 'picture_as_pdf' : 'attach_file'}</span>
                         }
                       </div>
                       {/* Label */}
@@ -121,7 +121,7 @@ function ClientDocuments({ client, instituteId, token, canEdit, isAdmin }) {
                         <div style={{fontSize:10, color:'var(--text3)', marginTop:2}}>{fmtSize(doc.file_size)} · {new Date(doc.uploaded_at).toLocaleDateString()}</div>
                         <div style={{display:'flex', gap:4, marginTop:6}}>
                           {doc.url && <a href={doc.url} target="_blank" rel="noreferrer" className="btn btn-ghost btn-sm" style={{fontSize:10, padding:'2px 6px'}}>View</a>}
-                          {(canEdit || isAdmin) && <Btn className="btn btn-danger btn-sm" style={{fontSize:10, padding:'2px 6px'}} onClick={()=>deleteDoc(doc)}>🗑</Btn>}
+                          {(canEdit || isAdmin) && <Btn className="btn btn-danger btn-sm" style={{fontSize:10, padding:'2px 6px'}} onClick={()=>deleteDoc(doc)}><span className="material-icons-round" style={{fontSize:14}}>delete</span></Btn>}
                         </div>
                       </div>
                     </div>
@@ -139,19 +139,21 @@ function ClientDocuments({ client, instituteId, token, canEdit, isAdmin }) {
                   {item.preview
                     ? <img src={item.preview} alt="" style={{width:44, height:44, objectFit:'cover', borderRadius:4, border:'1px solid var(--border)', flexShrink:0}}/>
                     : <div style={{width:44, height:44, display:'flex', alignItems:'center', justifyContent:'center', borderRadius:4, border:'1px solid var(--border)', background:'var(--bg)', flexShrink:0, fontSize:22}}>
-                        {item.file.type.includes('pdf') ? '📄' : '📎'}
+                        <span className="material-icons-round" style={{fontSize:22, color:'var(--text3)'}}>{item.file.type.includes('pdf') ? 'picture_as_pdf' : 'attach_file'}</span>
                       </div>
                   }
                   <input className="form-input" style={{flex:1, fontSize:12}}
                     placeholder="File label…"
                     value={item.label}
                     onChange={e => updateLabel(i, e.target.value)}/>
-                  <button style={{background:'none', border:'none', cursor:'pointer', color:'var(--text3)', fontSize:16, flexShrink:0}} onClick={()=>removePending(i)}>✕</button>
+                  <button style={{background:'none', border:'none', cursor:'pointer', color:'var(--text3)', fontSize:16, flexShrink:0}} onClick={()=>removePending(i)}><span className="material-icons-round" style={{fontSize:16}}>close</span></button>
                 </div>
               ))}
               <div style={{display:'flex', gap:8, marginTop:4}}>
                 <Btn className="btn btn-primary btn-sm" onClick={handleUpload} disabled={uploading}>
-                  {uploading ? '⏳ Uploading…' : `⬆ Upload ${pending.length} file${pending.length!==1?'s':''}`}
+                  {uploading
+                    ? <><span className="material-icons-round" style={{fontSize:14, verticalAlign:'middle', marginRight:4}}>hourglass_empty</span>Uploading…</>
+                    : <><span className="material-icons-round" style={{fontSize:14, verticalAlign:'middle', marginRight:4}}>upload</span>{`Upload ${pending.length} file${pending.length!==1?'s':''}`}</>}
                 </Btn>
                 <Btn className="btn btn-ghost btn-sm" onClick={()=>{ pending.forEach(p=>{if(p.preview)URL.revokeObjectURL(p.preview);}); setPending([]); }}>Cancel</Btn>
               </div>
@@ -162,7 +164,7 @@ function ClientDocuments({ client, instituteId, token, canEdit, isAdmin }) {
             <div style={{marginTop: docs.length || pending.length ? 4 : 0}}>
               <input ref={fileRef} type="file" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,.webp" multiple style={{display:'none'}} onChange={handleSelect}/>
               <Btn className="btn btn-secondary btn-sm" onClick={()=>fileRef.current?.click()}>
-                📎 Upload experience letters
+                <span className="material-icons-round" style={{fontSize:14, verticalAlign:'middle', marginRight:4}}>attach_file</span>Upload experience letters
               </Btn>
               <span style={{fontSize:11, color:'var(--text3)', marginLeft:10}}>PDF, image, or Word document</span>
             </div>
