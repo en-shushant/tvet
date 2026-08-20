@@ -19,6 +19,8 @@ function saveFilters(patch) {
   } catch {}
 }
 
+const WIZARD_STEPS = ['Report', 'Data & Filters', 'Configure', 'Preview'];
+
 function ReportsView({ institutes, clients }) {
   const f = loadFilters();
   const [familyId, setFamilyId]         = useState(f.familyId || REPORT_FAMILIES[0].id);
@@ -67,6 +69,7 @@ function ReportsView({ institutes, clients }) {
   const [filterDonorTypes, setFilterDonorTypes] = useState([]); // Donor/client type filter
   const [occSearch, setOccSearch] = useState('');
   const [toolsOccSearch2, setToolsOccSearch2] = useState(''); // search for the separate 4(B) tools occupation picker (bolpatra 'full')
+  const [firmSearch, setFirmSearch] = useState(''); // single-firm search list (UI only, not persisted)
 
   // Multi-institute state (firm-wise report)
   const [fwInstIds, setFwInstIds] = useState([]);
@@ -85,10 +88,10 @@ function ReportsView({ institutes, clients }) {
   const [eoiEventsByOcc, setEoiEventsByOcc] = useState(f.eoiEventsByOcc || {});
   const [eoiToolCols, setEoiToolCols] = useState(f.eoiToolCols || DEFAULT_TOOL_COLS);
   const [eoiToolTypes, setEoiToolTypes] = useState(f.eoiToolTypes || []);  // empty = all types
-  // Multi-firm reports render only when asked. Building a joint-venture EOI
-  // across several firms is expensive, and re-doing it on every checkbox tick
-  // made the filters feel sluggish. Holds the filter signature that was last
-  // rendered, so we can tell when what is on screen has gone out of date.
+  // The rendered document (or Tools schedule / multi-firm doc) is only built when
+  // asked — everything in this component before that is "configuration". Holds
+  // the filter signature that was last shown, so we can tell when the on-screen
+  // preview has gone out of date against the current controls.
   const [renderedSig, setRenderedSig] = useState(null);
   const [nstbComparative, setNstbComparative] = useState(false);
   const [nstbThreshold, setNstbThreshold] = useState('');
@@ -112,6 +115,9 @@ function ReportsView({ institutes, clients }) {
   const [enssureToolsLevel, setEnssureToolsLevel] = useState(f.enssureToolsLevel || 'Level 1');
   const [enssureEvents, setEnssureEvents] = useState(f.enssureEvents || 1);
   const [enssureToolsData, setEnssureToolsData] = useState([]);
+
+  // Which configuration section the right-hand panel is showing.
+  const [activeSection, setActiveSection] = useState('firms');
 
   // Persist key filter state to sessionStorage
   useEffect(() => { saveFilters({ familyId, selectedInst, reportId, fromFY, toFY, turnFromFY, turnToFY, portfolioFromFY, portfolioToFY, eoiToolsLevel, eoiEventsByOcc, eoiToolCols, eoiToolTypes, eoiSpecificOccs, eoiCombineTools, eoiSingleTable, filterDuration, enssureOccIds, enssureToolsOccId, enssureToolsLevel, enssureEvents }); },
@@ -163,7 +169,8 @@ function ReportsView({ institutes, clients }) {
 
   // Load multi-institute data for firm-wise
   const isMultiInst = !!family.multiInstitute;
-  const filtersOnTop = !!family.filtersOnTop;
+  const filtersOnTop = !!family.filtersOnTop; // still read; no longer changes layout, kept for compatibility
+  const noInstitute = !!family.noInstitute;
   useEffect(() => {
     if (!isMultiInst) return;
     const token = getSession()?.token;
@@ -354,7 +361,6 @@ function ReportsView({ institutes, clients }) {
     (report.requiredFields || []).filter(([key]) => !exp[key]).map(([, label]) => label);
 
   const fyRangeLabel = fromFY || toFY ? `FY ${fromFY || '…'} – ${toFY || '…'}` : null;
-  const noInstitute = !!family.noInstitute;
   const enssureOccs = enssureOccIds.map(id => occupations.find(o => String(o.id) === String(id))?.name).filter(Boolean);
 
   // Count C1 rows with missing skill test pass or employment data
@@ -413,14 +419,19 @@ function ReportsView({ institutes, clients }) {
       .map(inst => ({ inst, exps: fwExpsFor(inst) }));
   };
 
-  // Everything the rendered document depends on. Compared against renderedSig to
-  // show whether what is on screen still matches the filters.
+  // Everything the rendered preview depends on, across every family (single
+  // firm, multi-firm, or the firm-less Tools schedule) — compared against
+  // renderedSig to show whether what is on screen still matches the controls.
   const filterSig = JSON.stringify([
-    reportId, fwInstIds, fwLeadId, fromFY, toFY, turnFromFY, turnToFY, portfolioFromFY, portfolioToFY,
-    selectedOccs, eoiSpecificOccs, filterDuration, filterDonorTypes,
-    eoiToolsLevel, eoiEventsByOcc, eoiToolCols, eoiToolTypes,
+    reportId, familyId, selectedInst, fwInstIds, fwLeadId,
+    fromFY, toFY, turnFromFY, turnToFY, portfolioFromFY, portfolioToFY,
+    selectedOccs, eoiSpecificOccs, filterDuration, filterDonorTypes, filterTrainingTypes, sortBy,
+    eoiToolsLevel, eoiEventsByOcc, eoiToolCols, eoiToolTypes, eoiCombineTools, eoiSingleTable,
+    toolsOccIds, toolsLevel, toolsTypeFilter, toolsColumns, toolsLayout, numGroups,
+    enssureOccIds, enssureToolsOccId, enssureToolsLevel, enssureEvents,
   ]);
   const isStale = renderedSig !== null && renderedSig !== filterSig;
+  const previewReady = renderedSig !== null;
   const showReport = () => setRenderedSig(filterSig);
 
   // A different report or firm set invalidates what is on screen rather than
@@ -446,6 +457,14 @@ function ReportsView({ institutes, clients }) {
   const canPrint = noInstitute
     ? (toolsOccIds.length > 0 && !!toolsLevel)
     : isAggregate ? !!fullInst : activeExps.length > 0;
+
+  // Whether the "Preview Report" action is available at all — same gate as
+  // canPrint for single-firm/no-firm reports, plus a firm-count gate for
+  // multi-firm ones.
+  const canPreview = noInstitute
+    ? (toolsOccIds.length > 0 && !!toolsLevel)
+    : isMultiInst ? fwInstIds.length > 0
+    : !!fullInst;
 
   const toggleToolsOcc = (id) =>
     setToolsOccIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
@@ -482,323 +501,509 @@ function ReportsView({ institutes, clients }) {
     setTimeout(() => w.print(), 300);
   };
 
-  return (
-    <div className="fade-in" style={{display:'flex', flexDirection:'column', gap:14}}>
+  const handleReset = () => {
+    setFromFY(''); setToFY(''); setFilterDuration('');
+    setFilterTrainingTypes([]); setFilterDonorTypes([]);
+    setSelectedOccs([]); setEoiSpecificOccs([]); setSelectedIds(null);
+    setOccSearch(''); setToolsOccSearch2(''); setFirmSearch('');
+    setRenderedSig(null);
+  };
 
-      {/* ── Top selector bar ── */}
-      <div className="card" style={{padding:'14px 18px', display:'flex', alignItems:'center', gap:16, flexWrap:'wrap'}}>
-        <div style={{display:'flex', alignItems:'center', gap:8}}>
-          <span style={{fontSize:12, fontWeight:600, color:'var(--text3)', whiteSpace:'nowrap'}}>REPORT FAMILY</span>
-          <select className="form-input" style={{width:'auto', minWidth:160}} value={familyId} onChange={e => setFamilyId(e.target.value)}>
-            {REPORT_FAMILIES.map(f => <option key={f.id} value={f.id}>{f.label}</option>)}
-          </select>
+  // ── Which setup sections apply to the current family/report ──────────────
+  const hasOccSection = report.hasOccupationFilter || report.hasSpecificOccFilter || noInstitute || (familyId === 'enssure' && !!fullInst);
+  const hasToolsSection = report.hasToolsPicker || noInstitute || (familyId === 'enssure' && !!fullInst);
+  const hasToolTypesSection = report.hasToolsPicker || noInstitute;
+  const hasColumnsSection = report.hasToolsPicker || noInstitute;
+  const hasFiltersSection = !noInstitute && (fullInst || isMultiInst);
+  const hasAdvancedSection = !noInstitute && !isMultiInst && !!fullInst;
+
+  const SECTIONS = [
+    { id: 'firms', label: 'Firms', show: true },
+    { id: 'occupations', label: 'Occupations', show: hasOccSection },
+    { id: 'tools', label: 'Training Tools', show: hasToolsSection },
+    { id: 'toolTypes', label: 'Tool Types', show: hasToolTypesSection },
+    { id: 'columns', label: 'Columns', show: hasColumnsSection },
+    { id: 'filters', label: 'Filters', show: hasFiltersSection },
+    { id: 'advanced', label: 'Advanced', show: hasAdvancedSection },
+  ].filter(s => s.show);
+
+  useEffect(() => {
+    if (!SECTIONS.some(s => s.id === activeSection)) setActiveSection('firms');
+  }, [familyId, reportId]);
+
+  // ── Summary bar — dynamic, clickable chips ────────────────────────────────
+  const firmsCount = isMultiInst ? fwInstIds.length : (selectedInst ? 1 : 0);
+  const occCount = (report.hasSpecificOccFilter ? eoiSpecificOccs.length : 0)
+    + (report.hasOccupationFilter && !report.hasSpecificOccFilter ? selectedOccs.length : 0)
+    + (report.hasOccupationFilter && report.hasSpecificOccFilter && report.hasToolsPicker ? selectedOccs.length : 0)
+    + (familyId === 'enssure' ? enssureOccIds.length : 0);
+  const levelLabel = report.hasToolsPicker ? eoiToolsLevel
+    : noInstitute ? (toolsLevel || 'No level')
+    : familyId === 'enssure' ? enssureToolsLevel
+    : null;
+  const toolTypesCount = report.hasToolsPicker ? (eoiToolTypes.length || TOOL_TYPE_OPTIONS.length)
+    : noInstitute ? 1
+    : null;
+  const columnsCount = report.hasToolsPicker ? eoiToolCols.length
+    : noInstitute ? toolsColumns.length
+    : null;
+  const filtersActiveCount = [
+    !!(fromFY || toFY), !!(turnFromFY || turnToFY), !!(portfolioFromFY || portfolioToFY),
+    !!filterDuration, filterDonorTypes.length > 0, filterTrainingTypes.length > 0,
+  ].filter(Boolean).length;
+
+  const summaryChips = [
+    { section: 'firms', text: `${firmsCount} Firm${firmsCount !== 1 ? 's' : ''}`, show: true },
+    { section: 'occupations', text: `${occCount} Occupation${occCount !== 1 ? 's' : ''}`, show: hasOccSection },
+    { section: 'tools', text: levelLabel, show: hasToolsSection && !!levelLabel },
+    { section: 'toolTypes', text: `${toolTypesCount} Tool Type${toolTypesCount !== 1 ? 's' : ''}`, show: hasToolTypesSection },
+    { section: 'columns', text: `${columnsCount} Column${columnsCount !== 1 ? 's' : ''}`, show: hasColumnsSection },
+    { section: 'filters', text: `Filters · ${filtersActiveCount} active`, show: hasFiltersSection },
+  ].filter(c => c.show);
+
+  // How many assignments the current configuration matches — used for the
+  // prominent results number. Never hard-coded; always the real derived value.
+  const matchingCount = noInstitute ? null
+    : isMultiInst
+      ? fwInstIds.reduce((sum, id) => sum + (fwFullInsts[id] ? fwExpsFor(fwFullInsts[id]).length : 0), 0)
+      : activeExps.length;
+
+  // Rough progress indicator — purely visual, never blocks navigation.
+  const wizardStepIndex = !selectedInst && !isMultiInst && !fwInstIds.length ? 0
+    : (isMultiInst ? fwInstIds.length === 0 : !fullInst) ? 1
+    : !previewReady ? 2
+    : 3;
+
+  return (
+    <div className="fade-in reports-redesign" style={{display:'flex', flexDirection:'column', gap:18, paddingBottom:8}}>
+
+      {/* ── Header ── */}
+      <div>
+        <div style={{fontSize:23, fontWeight:700, color:'var(--text)', letterSpacing:-.3}}>Reports</div>
+        <div style={{fontSize:13, color:'var(--text3)', marginTop:4}}>
+          Create, configure and generate professional reports from your procurement and training data.
         </div>
-        <div style={{width:1, height:28, background:'var(--border)'}}/>
-        <div style={{display:'flex', alignItems:'center', gap:8}}>
-          <span style={{fontSize:12, fontWeight:600, color:'var(--text3)', whiteSpace:'nowrap'}}>REPORT TYPE</span>
-          <select className="form-input" style={{width:'auto', minWidth:240}} value={reportId} onChange={e => setReportId(e.target.value)}>
-            {family.reports.map(r => <option key={r.id} value={r.id}>{r.label}</option>)}
-          </select>
+        <div style={{display:'flex', alignItems:'center', gap:6, marginTop:12, fontSize:11.5, fontWeight:600, flexWrap:'wrap'}}>
+          {WIZARD_STEPS.map((s, i) => (
+            <span key={s} style={{display:'flex', alignItems:'center', gap:6}}>
+              {i > 0 && <span style={{color:'var(--border)'}}>→</span>}
+              <span style={{
+                color: i === wizardStepIndex ? 'var(--primary)' : i < wizardStepIndex ? 'var(--text2)' : 'var(--text3)',
+                padding:'3px 9px', borderRadius:100,
+                background: i === wizardStepIndex ? 'var(--primary-light,#eff6ff)' : 'transparent',
+              }}>
+                {String(i + 1).padStart(2, '0')} {s}
+              </span>
+            </span>
+          ))}
         </div>
-        {!noInstitute && !isMultiInst && <>
-          <div style={{width:1, height:28, background:'var(--border)'}}/>
-          <div style={{display:'flex', alignItems:'center', gap:8}}>
-            <span style={{fontSize:12, fontWeight:600, color:'var(--text3)', whiteSpace:'nowrap'}}>FIRM</span>
-            <select className="form-input" style={{width:'auto', minWidth:180}} value={selectedInst} onChange={e => setSelectedInst(e.target.value)}>
-              <option value="">— Select —</option>
-              {institutes.map(i => <option key={i.id} value={i.id}>{i.name}{i.acronym ? ` (${i.acronym})` : ''}</option>)}
-            </select>
-          </div>
-        </>}
       </div>
 
-      {/* ── Second row: FY range + duration ── */}
-      {!noInstitute && (fullInst || isMultiInst) && (
-        <div className="card" style={{padding:'10px 18px', display:'flex', alignItems:'center', gap:16, flexWrap:'wrap'}}>
-          {allFYs.length > 0 && (
-            <div style={{display:'flex', alignItems:'center', gap:8}}>
-              <span style={{fontSize:11, fontWeight:600, color:'var(--text3)', whiteSpace:'nowrap'}}
-                title={report.hasTurnoverFY ? 'Fiscal years of the assignments shown in the experience sections' : undefined}>
-                {report.hasTurnoverFY ? 'EXPERIENCE FY' : 'FY RANGE'}
-              </span>
-              <select className="form-input" style={{width:'auto', minWidth:90, padding:'4px 8px', fontSize:12}} value={fromFY} onChange={e => { setFromFY(e.target.value); setSelectedIds(null); }}>
-                <option value="">From</option>
-                {allFYs.map(fy => <option key={fy} value={fy}>{fy}</option>)}
-              </select>
-              <span style={{color:'var(--text3)', fontSize:12}}>→</span>
-              <select className="form-input" style={{width:'auto', minWidth:90, padding:'4px 8px', fontSize:12}} value={toFY} onChange={e => { setToFY(e.target.value); setSelectedIds(null); }}>
-                <option value="">To</option>
-                {allFYs.map(fy => <option key={fy} value={fy}>{fy}</option>)}
-              </select>
-              {(fromFY || toFY) && (
-                <Btn className="btn btn-ghost btn-sm" style={{fontSize:10, padding:'2px 6px'}}
-                  onClick={() => { setFromFY(''); setToFY(''); setSelectedIds(null); }}>✕</Btn>
+      {/* ── Report configuration ── */}
+      <div className="card" style={{padding:'18px 20px'}}>
+        <div style={{fontWeight:600, fontSize:14, marginBottom:14, color:'var(--text)'}}>Report Configuration</div>
+        <div style={{display:'flex', gap:16, flexWrap:'wrap'}}>
+          <div>
+            <div style={{fontSize:11, fontWeight:600, color:'var(--text3)', marginBottom:5}}>REPORT FAMILY</div>
+            <select className="form-input" style={{width:'auto', minWidth:200}} value={familyId} onChange={e => setFamilyId(e.target.value)}>
+              {REPORT_FAMILIES.map(fam => <option key={fam.id} value={fam.id}>{fam.label}</option>)}
+            </select>
+          </div>
+          <div>
+            <div style={{fontSize:11, fontWeight:600, color:'var(--text3)', marginBottom:5}}>REPORT TYPE</div>
+            <select className="form-input" style={{width:'auto', minWidth:260}} value={reportId} onChange={e => setReportId(e.target.value)}>
+              {family.reports.map(r => <option key={r.id} value={r.id}>{r.label}</option>)}
+            </select>
+          </div>
+        </div>
+        {report.description && (
+          <div style={{fontSize:12, color:'var(--text3)', marginTop:12, fontStyle:'italic'}}>{report.description}</div>
+        )}
+      </div>
+
+      {/* ── Configuration workspace: left nav + right panel ── */}
+      <div className="card" style={{display:'flex', overflow:'hidden', padding:0, minHeight:360}}>
+        <div style={{width:180, flexShrink:0, borderRight:'1px solid var(--border)', padding:'16px 0', background:'var(--bg,#f8fafc)'}}>
+          <div style={{fontSize:10.5, fontWeight:700, color:'var(--text3)', letterSpacing:'.6px', padding:'0 18px 10px'}}>REPORT SETUP</div>
+          {SECTIONS.map(s => (
+            <button key={s.id} onClick={() => setActiveSection(s.id)}
+              style={{
+                display:'flex', alignItems:'center', gap:9, width:'100%', textAlign:'left',
+                padding:'10px 18px', border:'none', cursor:'pointer', fontSize:13,
+                background: activeSection === s.id ? 'var(--primary-light,#eff6ff)' : 'transparent',
+                borderLeft: activeSection === s.id ? '3px solid var(--primary)' : '3px solid transparent',
+                fontWeight: activeSection === s.id ? 600 : 500,
+                color: activeSection === s.id ? 'var(--primary)' : 'var(--text2)',
+              }}>
+              <span style={{fontSize:9, lineHeight:1}}>{activeSection === s.id ? '●' : '○'}</span>
+              <span>{s.label}</span>
+            </button>
+          ))}
+        </div>
+
+        <div style={{flex:1, minWidth:0, padding:'20px 22px', overflowY:'auto'}}>
+
+          {/* ── FIRMS ── */}
+          {activeSection === 'firms' && (
+            <div>
+              <div style={{fontWeight:600, fontSize:14, marginBottom:12}}>Select Firms</div>
+
+              {isMultiInst ? (
+                <>
+                  <div style={{display:'flex', alignItems:'center', gap:8, marginBottom:8}}>
+                    <input className="form-input" value={fwInstSearch} onChange={e => setFwInstSearch(e.target.value)}
+                      placeholder="Search firms…" style={{flex:1}}/>
+                    {fwInstIds.length > 0 && (
+                      <Btn className="btn btn-ghost btn-sm" onClick={() => { setFwInstIds([]); setFwLeadId(null); }}>Clear</Btn>
+                    )}
+                  </div>
+
+                  {fwInstIds.length > 0 && (
+                    <div style={{marginBottom:12, border:'1px solid var(--border)', borderRadius:10, overflow:'hidden', background:'var(--surface)'}}>
+                      <div style={{fontSize:10.5, fontWeight:600, color:'var(--text3)', textTransform:'uppercase',
+                        letterSpacing:'.4px', padding:'6px 10px', background:'var(--bg2)'}}>
+                        {fwInstIds.length > 1 ? `Selected (${fwInstIds.length}) — mark the lead firm` : 'Selected (1)'}
+                      </div>
+                      {fwInstIds.map(id => {
+                        const i = institutes.find(x => x.id === id);
+                        if (!i) return null;
+                        const isLead = fwLeadId === id;
+                        return (
+                          <div key={id} style={{display:'flex', alignItems:'center', gap:8, padding:'7px 10px',
+                            borderTop:'1px solid var(--border)', fontSize:12.5}}>
+                            {fwInstIds.length > 1 && (
+                              <label style={{display:'flex', alignItems:'center', gap:5, margin:0,
+                                flexShrink:0, cursor:'pointer', whiteSpace:'nowrap'}}
+                                title={isLead ? 'Lead firm' : 'Mark as lead firm'}>
+                                <input type="radio" name="fw-lead" checked={isLead} onChange={() => setFwLeadId(id)} style={{margin:0}}/>
+                                <span style={{fontSize:10, fontWeight:700, width:30, display:'inline-block',
+                                  color: isLead ? 'var(--primary)' : 'var(--text3)'}}>
+                                  {isLead ? 'LEAD' : 'JV'}
+                                </span>
+                              </label>
+                            )}
+                            <span style={{flex:1, minWidth:0, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap'}}
+                              title={i.name}>{i.acronym || i.name}</span>
+                            <button onClick={() => toggleFwInst(id)} aria-label={`Remove ${i.acronym || i.name}`}
+                              style={{background:'none', border:'none', cursor:'pointer', color:'var(--text3)', padding:0, lineHeight:1}}>
+                              <span className="material-icons-round" style={{fontSize:15}}>close</span>
+                            </button>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+
+                  <div className="multi-select-list" style={{maxHeight:280, overflowY:'auto'}}>
+                    {institutes.filter(i => !fwInstSearch || i.name.toLowerCase().includes(fwInstSearch.toLowerCase()) || (i.acronym||'').toLowerCase().includes(fwInstSearch.toLowerCase())).map(i => (
+                      <label key={i.id} className="multi-select-item">
+                        <input type="checkbox" checked={fwInstIds.includes(i.id)} onChange={() => toggleFwInst(i.id)}/>
+                        <span>{i.acronym || i.name}</span>
+                      </label>
+                    ))}
+                  </div>
+                  <div style={{fontSize:12, color:'var(--text3)', marginTop:10}}>{fwInstIds.length} firm{fwInstIds.length !== 1 ? 's' : ''} selected</div>
+                </>
+              ) : noInstitute ? (
+                <div style={{fontSize:12.5, color:'var(--text3)'}}>This report doesn't require a firm — configure the occupations and tools below instead.</div>
+              ) : (
+                <>
+                  <input className="form-input" value={firmSearch} onChange={e => setFirmSearch(e.target.value)}
+                    placeholder="Search firms…" style={{width:'100%', marginBottom:8}}/>
+                  <div className="multi-select-list" style={{maxHeight:320, overflowY:'auto'}}>
+                    {institutes
+                      .filter(i => !firmSearch || i.name.toLowerCase().includes(firmSearch.toLowerCase()) || (i.acronym||'').toLowerCase().includes(firmSearch.toLowerCase()))
+                      .map(i => (
+                        <label key={i.id} className="multi-select-item">
+                          <input type="radio" name="single-firm" checked={String(selectedInst) === String(i.id)}
+                            onChange={() => setSelectedInst(i.id)}/>
+                          <span>{i.acronym ? `${i.acronym} — ` : ''}{i.name}</span>
+                        </label>
+                      ))}
+                  </div>
+                  <div style={{fontSize:12, color:'var(--text3)', marginTop:10}}>{selectedInst ? '1 firm selected' : 'No firm selected'}</div>
+                  {loadingInst && <div style={{fontSize:12, color:'var(--text3)', marginTop:6}}>Loading firm data…</div>}
+                </>
               )}
             </div>
           )}
 
-          {/* Turnover years, independent of the experience years above. */}
-          {report.hasTurnoverFY && allFYs.length > 0 && (
-            <>
-              <div style={{width:1, height:24, background:'var(--border)'}}/>
-              <div style={{display:'flex', alignItems:'center', gap:8}}>
-                <span style={{fontSize:11, fontWeight:600, color:'var(--text3)', whiteSpace:'nowrap'}}
-                  title="Fiscal years of the turnover rows in 4(A) Financial Capacity">TURNOVER FY</span>
-                <select className="form-input" style={{width:'auto', minWidth:90, padding:'4px 8px', fontSize:12}} value={turnFromFY} onChange={e => setTurnFromFY(e.target.value)}>
-                  <option value="">From</option>
-                  {allFYs.map(fy => <option key={fy} value={fy}>{fy}</option>)}
-                </select>
-                <span style={{color:'var(--text3)', fontSize:12}}>→</span>
-                <select className="form-input" style={{width:'auto', minWidth:90, padding:'4px 8px', fontSize:12}} value={turnToFY} onChange={e => setTurnToFY(e.target.value)}>
-                  <option value="">To</option>
-                  {allFYs.map(fy => <option key={fy} value={fy}>{fy}</option>)}
-                </select>
-                {(turnFromFY || turnToFY) && (
-                  <Btn className="btn btn-ghost btn-sm" style={{fontSize:10, padding:'2px 6px'}}
-                    onClick={() => { setTurnFromFY(''); setTurnToFY(''); }}>✕</Btn>
-                )}
-              </div>
-            </>
-          )}
+          {/* ── OCCUPATIONS ── */}
+          {activeSection === 'occupations' && (
+            <div style={{display:'flex', flexDirection:'column', gap:22}}>
 
-          {/* Portfolio years (bagmati B.1), independent of the experience years above. */}
-          {report.hasPortfolioFY && allFYs.length > 0 && (
-            <>
-              <div style={{width:1, height:24, background:'var(--border)'}}/>
-              <div style={{display:'flex', alignItems:'center', gap:8}}>
-                <span style={{fontSize:11, fontWeight:600, color:'var(--text3)', whiteSpace:'nowrap'}}
-                  title="Fiscal years of the assignments shown in B.1 Current Portfolio">PORTFOLIO FY</span>
-                <select className="form-input" style={{width:'auto', minWidth:90, padding:'4px 8px', fontSize:12}} value={portfolioFromFY} onChange={e => setPortfolioFromFY(e.target.value)}>
-                  <option value="">From</option>
-                  {allFYs.map(fy => <option key={fy} value={fy}>{fy}</option>)}
-                </select>
-                <span style={{color:'var(--text3)', fontSize:12}}>→</span>
-                <select className="form-input" style={{width:'auto', minWidth:90, padding:'4px 8px', fontSize:12}} value={portfolioToFY} onChange={e => setPortfolioToFY(e.target.value)}>
-                  <option value="">To</option>
-                  {allFYs.map(fy => <option key={fy} value={fy}>{fy}</option>)}
-                </select>
-                {(portfolioFromFY || portfolioToFY) && (
-                  <Btn className="btn btn-ghost btn-sm" style={{fontSize:10, padding:'2px 6px'}}
-                    onClick={() => { setPortfolioFromFY(''); setPortfolioToFY(''); }}>✕</Btn>
-                )}
-              </div>
-            </>
-          )}
-
-          <div style={{width:1, height:24, background:'var(--border)'}}/>
-          <div style={{display:'flex', alignItems:'center', gap:8}}>
-            <span style={{fontSize:11, fontWeight:600, color:'var(--text3)', whiteSpace:'nowrap'}}
-              title={family.selfFilters ? 'Narrows 3(B) Specific Experience only' : undefined}>DURATION</span>
-            <select className="form-input" style={{width:'auto', minWidth:140, padding:'4px 8px', fontSize:12}} value={filterDuration} onChange={e => setFilterDuration(e.target.value)}>
-              <option value="">All trainings</option>
-              <option value="160plus">160 hours or more</option>
-              <option value="390plus">390 hours or more</option>
-              <option value="390more">More than 390 hours</option>
-            </select>
-          </div>
-          <div style={{marginLeft:'auto', fontSize:12, color:'var(--text3)'}}>
-            {activeExps.length} assignment{activeExps.length !== 1 ? 's' : ''}
-          </div>
-        </div>
-      )}
-
-      {/* Sidebar beside the results, or a full-width setup bar above them when the
-          family asks for it (bolpatra — see filtersOnTop). */}
-      <div style={filtersOnTop
-        ? {display:'flex', flexDirection:'column', gap:16}
-        : {display:'flex', gap:20, alignItems:'flex-start'}}>
-
-        {/* ── Filter panel ── */}
-        <div className={filtersOnTop ? 'filter-panel filter-panel-top' : 'filter-panel'}>
-          <div className="filter-panel-header">
-            <span className="filter-panel-header-title">{filtersOnTop ? 'Set up the document' : 'Filters'}</span>
-          </div>
-          <div className={filtersOnTop ? 'filter-panel-body filter-grid' : 'filter-panel-body'}>
-
-            {/* ENSSURE — missing data warning badge */}
-            {familyId === 'enssure' && fullInst && enssureMissingCount > 0 && (
-              <div style={{background:'#fff3cd', border:'1px solid #ffc107', borderRadius:6, padding:'8px 12px', marginBottom:8, fontSize:12, color:'#856404'}}>
-                <strong>⚠ {enssureMissingCount} occupation row{enssureMissingCount !== 1 ? 's' : ''}</strong> missing skill test pass or employment data — C1 will show "—" for those fields.
-              </div>
-            )}
-
-            {/* ENSSURE — D2/D3 tools occupation + level + events */}
-            {familyId === 'enssure' && fullInst && (
-              <div className="filter-section" style={{borderBottom:'2px solid var(--accent)', marginBottom:8, paddingBottom:12}}>
-                <div className="filter-label" style={{fontWeight:700, color:'var(--accent)', marginBottom:6}}>D2/D3 — Tools Occupation</div>
-                <input className="form-input" value={enssureToolsOccSearch} onChange={e => setEnssureToolsOccSearch(e.target.value)}
-                  placeholder="Search occupation…" style={{fontSize:12, marginBottom:4}}/>
-                <select className="form-input" style={{marginBottom:6}}
-                  value={enssureToolsOccId}
-                  onChange={e => setEnssureToolsOccId(e.target.value)}>
-                  <option value="">— Select occupation —</option>
-                  {occupations
-                    .filter(o => !enssureToolsOccSearch || o.name.toLowerCase().includes(enssureToolsOccSearch.toLowerCase()))
-                    .map(o => <option key={o.id} value={o.id}>{o.name}{o.level ? ` (${o.level})` : ''}</option>)}
-                </select>
-                <div className="filter-label" style={{marginBottom:4}}>Level</div>
-                <select className="form-input" style={{marginBottom:6}} value={enssureToolsLevel} onChange={e => setEnssureToolsLevel(e.target.value)}>
-                  <option>N/A</option><option>Level 1</option><option>Level 2</option><option>Level 3</option><option>Professional</option><option>Technician</option>
-                </select>
-                <div className="filter-label" style={{marginBottom:4}}>Number of Events (multiplier)</div>
-                <input type="number" min="1" className="form-input" value={enssureEvents}
-                  onChange={e => setEnssureEvents(Math.max(1, parseInt(e.target.value) || 1))}/>
-                {enssureToolsOccId && <div style={{fontSize:10, color:'var(--text3)', marginTop:4}}>Quantities × {enssureEvents} shown in D2/D3.</div>}
-              </div>
-            )}
-
-            {/* ENSSURE — Proposed Occupations selector (C2) */}
-            {familyId === 'enssure' && fullInst && (
-              <div className="filter-section" style={{borderBottom:'1px solid var(--border)', marginBottom:8, paddingBottom:12}}>
-                <div className="filter-label" style={{justifyContent:'space-between', fontWeight:700, color:'var(--accent)'}}>
-                  <span>Proposed Occupations (C2)</span>
-                  {enssureOccIds.length > 0 && (
-                    <Btn className="btn btn-ghost btn-sm" style={{fontSize:10, padding:'1px 5px'}} onClick={() => setEnssureOccIds([])}>Clear</Btn>
-                  )}
-                </div>
-                <input className="form-input" value={enssureOccSearch} onChange={e => setEnssureOccSearch(e.target.value)}
-                  placeholder="Search…" style={{fontSize:12, marginBottom:6}}/>
-                <div className="multi-select-list" style={{maxHeight:180, overflowY:'auto'}}>
-                  {occupations.filter(o => !enssureOccSearch || o.name.toLowerCase().includes(enssureOccSearch.toLowerCase())).map(o => (
-                    <label key={o.id} className="multi-select-item">
-                      <input type="checkbox" checked={enssureOccIds.includes(o.id)}
-                        onChange={() => toggleEnssureOcc(o.id)}/>
-                      <span>{o.name}{o.level ? ` (${o.level})` : ''}</span>
-                    </label>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Multi-institute selector (firm-wise) */}
-            {isMultiInst && (
-              <div className="filter-section">
-                <div className="filter-label" style={{justifyContent:'space-between'}}>
-                  <span>Firms</span>
-                  {fwInstIds.length > 0 && (
-                    <Btn className="btn btn-ghost btn-sm" style={{fontSize:10, padding:'1px 5px'}}
-                      onClick={() => { setFwInstIds([]); setFwLeadId(null); }}>Clear</Btn>
-                  )}
-                </div>
-
-                {/* Selected firms, with the JV lead chosen explicitly rather than
-                    inferred from which box happened to be ticked first. */}
-                {fwInstIds.length > 0 && (
-                  <div style={{marginBottom:8, border:'1px solid var(--border)', borderRadius:6, overflow:'hidden',
-                    background:'var(--surface)'}}>
-                    <div style={{fontSize:10, fontWeight:600, color:'var(--text3)', textTransform:'uppercase',
-                      letterSpacing:'.4px', padding:'5px 8px', background:'var(--bg2)'}}>
-                      {fwInstIds.length > 1
-                        ? `Selected (${fwInstIds.length}) — mark the lead firm`
-                        : 'Selected (1)'}
-                    </div>
-                    {fwInstIds.map(id => {
-                      const i = institutes.find(x => x.id === id);
-                      if (!i) return null;
-                      const isLead = fwLeadId === id;
-                      return (
-                        <div key={id} style={{display:'flex', alignItems:'center', gap:8, padding:'6px 8px',
-                          borderTop:'1px solid var(--border)', fontSize:12}}>
-                          {fwInstIds.length > 1 && (
-                            /* margin:0 overrides the global `label { display:block;
-                               margin-bottom:6px }`, which pushed this out of the row
-                               and let the firm name overlap the role chip. */
-                            <label style={{display:'flex', alignItems:'center', gap:5, margin:0,
-                              flexShrink:0, cursor:'pointer', whiteSpace:'nowrap'}}
-                              title={isLead ? 'Lead firm' : 'Mark as lead firm'}>
-                              <input type="radio" name="fw-lead" checked={isLead} onChange={() => setFwLeadId(id)}
-                                style={{margin:0}}/>
-                              <span style={{fontSize:10, fontWeight:700, width:30, display:'inline-block',
-                                color: isLead ? 'var(--accent)' : 'var(--text3)'}}>
-                                {isLead ? 'LEAD' : 'JV'}
-                              </span>
-                            </label>
-                          )}
-                          <span style={{flex:1, minWidth:0, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap'}}
-                            title={i.name}>{i.acronym || i.name}</span>
-                          <button onClick={() => toggleFwInst(id)} aria-label={`Remove ${i.acronym || i.name}`}
-                            style={{background:'none', border:'none', cursor:'pointer', color:'var(--text3)', padding:0, lineHeight:1}}>
-                            <span className="material-icons-round" style={{fontSize:15}}>close</span>
-                          </button>
-                        </div>
-                      );
-                    })}
+              {familyId === 'enssure' && fullInst && (
+                <div>
+                  <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:8}}>
+                    <div style={{fontWeight:600, fontSize:13.5}}>Proposed Occupations (C2)</div>
+                    {enssureOccIds.length > 0 && (
+                      <Btn className="btn btn-ghost btn-sm" onClick={() => setEnssureOccIds([])}>Clear</Btn>
+                    )}
                   </div>
-                )}
-
-                <input className="form-input" value={fwInstSearch} onChange={e => setFwInstSearch(e.target.value)}
-                  placeholder="Search to add…" style={{fontSize:12, marginBottom:6}}/>
-                <div className="multi-select-list" style={{maxHeight:200, overflowY:'auto'}}>
-                  {institutes.filter(i => !fwInstSearch || i.name.toLowerCase().includes(fwInstSearch.toLowerCase()) || (i.acronym||'').toLowerCase().includes(fwInstSearch.toLowerCase())).map(i => (
-                    <label key={i.id} className="multi-select-item">
-                      <input type="checkbox" checked={fwInstIds.includes(i.id)} onChange={() => toggleFwInst(i.id)}/>
-                      <span>{i.acronym || i.name}</span>
-                    </label>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* 4(B) tools level — occupation_tools are stored per level, and the
-                occupations themselves come from the shared Occupation filter. */}
-            {report.hasToolsPicker && (
-              <div className="filter-section">
-                <div className="filter-label">Tools level — 4(B)</div>
-                <select className="form-input" value={eoiToolsLevel} onChange={e => setEoiToolsLevel(e.target.value)}>
-                  <option>N/A</option><option>Level 1</option><option>Level 2</option>
-                  <option>Level 3</option><option>Professional</option><option>Technician</option>
-                </select>
-                <label className="filter-inline-check" style={{marginTop:10}}>
-                  <input type="checkbox" checked={eoiCombineTools}
-                    onChange={e => setEoiCombineTools(e.target.checked)}/>
-                  <span>
-                    Combine into one schedule
-                    <em>Merges every selected occupation into a single tools and
-                      equipment list, summing quantities for repeated items.</em>
-                  </span>
-                </label>
-                <label className="filter-inline-check">
-                  <input type="checkbox" checked={eoiSingleTable}
-                    onChange={e => setEoiSingleTable(e.target.checked)}/>
-                  <span>
-                    All types in one table
-                    <em>Tools, equipment, consumables, stationery and safety gear
-                      share a single table instead of one per type. Adds a Type
-                      column so the rows stay distinguishable.</em>
-                  </span>
-                </label>
-                <div className="filter-label" style={{marginTop:12}}>Training events per occupation</div>
-                {eoiOccIds.length === 0 ? (
-                  <div className="input-hint">Pick occupations below to list their tools.</div>
-                ) : (
-                  <>
-                    {eoiOccIds.map(id => {
-                      const o = occupations.find(x => x.id === id);
-                      const n = eoiEventsByOcc[id] ?? 1;
-                      return (
-                        <div key={id} style={{display:'flex', alignItems:'center', gap:8, marginBottom:6}}>
-                          <span style={{flex:1, minWidth:0, fontSize:12, overflow:'hidden',
-                            textOverflow:'ellipsis', whiteSpace:'nowrap'}} title={o?.name}>{o?.name || id}</span>
-                          <input type="number" min="1" className="form-input" value={n}
-                            style={{width:68, flexShrink:0, padding:'4px 8px', fontSize:12}}
-                            onChange={e => setEoiEventsByOcc(prev => ({
-                              ...prev, [id]: Math.max(1, parseInt(e.target.value) || 1),
-                            }))}/>
-                        </div>
-                      );
-                    })}
-                    <div className="input-hint" style={{marginTop:2}}>
-                      Quantities are per event and scale by each occupation&rsquo;s count.
+                  <input className="form-input" value={enssureOccSearch} onChange={e => setEnssureOccSearch(e.target.value)}
+                    placeholder="Search…" style={{marginBottom:8}}/>
+                  <div className="multi-select-list" style={{maxHeight:220, overflowY:'auto'}}>
+                    {occupations.filter(o => !enssureOccSearch || o.name.toLowerCase().includes(enssureOccSearch.toLowerCase())).map(o => (
+                      <label key={o.id} className="multi-select-item">
+                        <input type="checkbox" checked={enssureOccIds.includes(o.id)} onChange={() => toggleEnssureOcc(o.id)}/>
+                        <span>{o.name}{o.level ? ` (${o.level})` : ''}</span>
+                      </label>
+                    ))}
+                  </div>
+                  <div style={{fontSize:12, color:'var(--text3)', marginTop:8}}>{enssureOccIds.length} occupation{enssureOccIds.length !== 1 ? 's' : ''} selected</div>
+                  {enssureOccIds.length > 0 && (
+                    <div style={{display:'flex', flexWrap:'wrap', gap:6, marginTop:8}}>
+                      {enssureOccs.map((name, i) => (
+                        <span key={i} style={{display:'flex', alignItems:'center', gap:5, fontSize:11.5,
+                          background:'var(--primary-light,#eff6ff)', color:'var(--primary)', borderRadius:100, padding:'3px 6px 3px 10px'}}>
+                          {name}
+                          <button onClick={() => toggleEnssureOcc(enssureOccIds[i])}
+                            style={{background:'none', border:'none', cursor:'pointer', color:'inherit', display:'flex', padding:0}}>
+                            <span className="material-icons-round" style={{fontSize:13}}>close</span>
+                          </button>
+                        </span>
+                      ))}
                     </div>
-                  </>
-                )}
+                  )}
+                </div>
+              )}
 
-              </div>
-            )}
+              {report.hasSpecificOccFilter && allMasterOccNames.length > 0 && (
+                <div>
+                  <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:8}}>
+                    <div style={{fontWeight:600, fontSize:13.5}}>Occupation — 3(B) Specific Experience</div>
+                    {eoiSpecificOccs.length > 0 && (
+                      <Btn className="btn btn-ghost btn-sm" onClick={() => setEoiSpecificOccs([])}>Clear</Btn>
+                    )}
+                  </div>
+                  <input className="form-input" value={occSearch} onChange={e => setOccSearch(e.target.value)}
+                    placeholder="Search…" style={{marginBottom:8}}/>
+                  <div className="multi-select-list" style={{maxHeight:220, overflowY:'auto'}}>
+                    {allMasterOccNames.filter(n => !occSearch || n.toLowerCase().includes(occSearch.toLowerCase())).map(name => (
+                      <label key={name} className="multi-select-item">
+                        <input type="checkbox" checked={eoiSpecificOccs.includes(name)} onChange={() => toggleSpecificOcc(name)}/>
+                        <span>{name}</span>
+                      </label>
+                    ))}
+                  </div>
+                  <div style={{fontSize:12, color:'var(--text3)', marginTop:8}}>{eoiSpecificOccs.length} selected</div>
+                </div>
+              )}
 
-            {report.hasToolsPicker && (
-              <div className="filter-section">
-                <div className="filter-label">Include types</div>
+              {report.hasOccupationFilter && !report.hasSpecificOccFilter && (report.hasToolsPicker ? allMasterOccNames : allOccNames).length > 0 && (
+                <div>
+                  <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:8}}>
+                    <div style={{fontWeight:600, fontSize:13.5}}>{report.hasToolsPicker ? 'Occupation — 4(B) Tools' : 'Occupations'}</div>
+                    {selectedOccs.length > 0 && (
+                      <Btn className="btn btn-ghost btn-sm" onClick={() => setSelectedOccs([])}>Clear</Btn>
+                    )}
+                  </div>
+                  <input className="form-input" value={occSearch} onChange={e => setOccSearch(e.target.value)}
+                    placeholder="Search…" style={{marginBottom:8}}/>
+                  <div className="multi-select-list" style={{maxHeight:220, overflowY:'auto'}}>
+                    {(report.hasToolsPicker ? allMasterOccNames : allOccNames).filter(n => !occSearch || n.toLowerCase().includes(occSearch.toLowerCase())).map(name => (
+                      <label key={name} className="multi-select-item">
+                        <input type="checkbox" checked={selectedOccs.includes(name)} onChange={() => toggleOcc(name)}/>
+                        <span>{name}</span>
+                      </label>
+                    ))}
+                  </div>
+                  <div style={{fontSize:12, color:'var(--text3)', marginTop:8}}>{selectedOccs.length} selected</div>
+                  {selectedOccs.length > 0 && (
+                    <div style={{display:'flex', flexWrap:'wrap', gap:6, marginTop:8}}>
+                      {selectedOccs.map(name => (
+                        <span key={name} style={{display:'flex', alignItems:'center', gap:5, fontSize:11.5,
+                          background:'var(--primary-light,#eff6ff)', color:'var(--primary)', borderRadius:100, padding:'3px 6px 3px 10px'}}>
+                          {name}
+                          <button onClick={() => toggleOcc(name)}
+                            style={{background:'none', border:'none', cursor:'pointer', color:'inherit', display:'flex', padding:0}}>
+                            <span className="material-icons-round" style={{fontSize:13}}>close</span>
+                          </button>
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {report.hasOccupationFilter && report.hasSpecificOccFilter && report.hasToolsPicker && allMasterOccNames.length > 0 && (
+                <div>
+                  <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:8}}>
+                    <div style={{fontWeight:600, fontSize:13.5}}>Occupation — 4(B) Tools</div>
+                    {selectedOccs.length > 0 && (
+                      <Btn className="btn btn-ghost btn-sm" onClick={() => setSelectedOccs([])}>Clear</Btn>
+                    )}
+                  </div>
+                  <input className="form-input" value={toolsOccSearch2} onChange={e => setToolsOccSearch2(e.target.value)}
+                    placeholder="Search…" style={{marginBottom:8}}/>
+                  <div className="multi-select-list" style={{maxHeight:220, overflowY:'auto'}}>
+                    {allMasterOccNames.filter(n => !toolsOccSearch2 || n.toLowerCase().includes(toolsOccSearch2.toLowerCase())).map(name => (
+                      <label key={name} className="multi-select-item">
+                        <input type="checkbox" checked={selectedOccs.includes(name)} onChange={() => toggleOcc(name)}/>
+                        <span>{name}</span>
+                      </label>
+                    ))}
+                  </div>
+                  <div style={{fontSize:12, color:'var(--text3)', marginTop:8}}>{selectedOccs.length} selected</div>
+                </div>
+              )}
+
+              {noInstitute && (
+                <div>
+                  <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:8}}>
+                    <div style={{fontWeight:600, fontSize:13.5}}>Occupations</div>
+                    {toolsOccIds.length > 0 && (
+                      <Btn className="btn btn-ghost btn-sm" onClick={() => setToolsOccIds([])}>Clear</Btn>
+                    )}
+                  </div>
+                  <input className="form-input" value={toolsOccSearch} onChange={e => setToolsOccSearch(e.target.value)}
+                    placeholder="Search…" style={{marginBottom:8}}/>
+                  <div className="multi-select-list" style={{maxHeight:260, overflowY:'auto'}}>
+                    {occupations.filter(o => !toolsOccSearch || o.name.toLowerCase().includes(toolsOccSearch.toLowerCase())).map(o => (
+                      <label key={o.id} className="multi-select-item">
+                        <input type="checkbox" checked={toolsOccIds.includes(o.id)} onChange={() => toggleToolsOcc(o.id)}/>
+                        <span>{o.name}{o.level ? ` (${o.level})` : ''}</span>
+                      </label>
+                    ))}
+                  </div>
+                  <div style={{fontSize:12, color:'var(--text3)', marginTop:8}}>{toolsOccIds.length} selected</div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* ── TRAINING TOOLS ── */}
+          {activeSection === 'tools' && (
+            <div style={{display:'flex', flexDirection:'column', gap:22}}>
+              <div style={{fontWeight:600, fontSize:14}}>Training Tools</div>
+
+              {familyId === 'enssure' && fullInst && enssureMissingCount > 0 && (
+                <div style={{background:'#fff3cd', border:'1px solid #ffc107', borderRadius:10, padding:'10px 14px', fontSize:12.5, color:'#856404'}}>
+                  <span className="material-icons-round" style={{fontSize:15, verticalAlign:'middle', marginRight:5}}>warning</span>
+                  <strong>{enssureMissingCount} occupation row{enssureMissingCount !== 1 ? 's' : ''}</strong> missing skill test pass or employment data — C1 will show "—" for those fields.
+                </div>
+              )}
+
+              {familyId === 'enssure' && fullInst && (
+                <div>
+                  <div style={{fontWeight:600, fontSize:13.5, marginBottom:8}}>D2/D3 — Tools Occupation</div>
+                  <input className="form-input" value={enssureToolsOccSearch} onChange={e => setEnssureToolsOccSearch(e.target.value)}
+                    placeholder="Search occupation…" style={{marginBottom:8}}/>
+                  <select className="form-input" style={{width:'100%', marginBottom:10}}
+                    value={enssureToolsOccId} onChange={e => setEnssureToolsOccId(e.target.value)}>
+                    <option value="">— Select occupation —</option>
+                    {occupations
+                      .filter(o => !enssureToolsOccSearch || o.name.toLowerCase().includes(enssureToolsOccSearch.toLowerCase()))
+                      .map(o => <option key={o.id} value={o.id}>{o.name}{o.level ? ` (${o.level})` : ''}</option>)}
+                  </select>
+                  <div style={{display:'flex', gap:16, flexWrap:'wrap'}}>
+                    <div>
+                      <div style={{fontSize:11, fontWeight:600, color:'var(--text3)', marginBottom:5}}>LEVEL</div>
+                      <select className="form-input" style={{width:'auto', minWidth:140}} value={enssureToolsLevel} onChange={e => setEnssureToolsLevel(e.target.value)}>
+                        <option>N/A</option><option>Level 1</option><option>Level 2</option><option>Level 3</option><option>Professional</option><option>Technician</option>
+                      </select>
+                    </div>
+                    <div>
+                      <div style={{fontSize:11, fontWeight:600, color:'var(--text3)', marginBottom:5}}>EVENTS (MULTIPLIER)</div>
+                      <input type="number" min="1" className="form-input" style={{width:100}} value={enssureEvents}
+                        onChange={e => setEnssureEvents(Math.max(1, parseInt(e.target.value) || 1))}/>
+                    </div>
+                  </div>
+                  {enssureToolsOccId && <div style={{fontSize:11.5, color:'var(--text3)', marginTop:8}}>Quantities × {enssureEvents} shown in D2/D3.</div>}
+                </div>
+              )}
+
+              {report.hasToolsPicker && (
+                <div>
+                  <div style={{display:'flex', alignItems:'center', gap:10, marginBottom:14}}>
+                    <span style={{fontWeight:600, fontSize:13.5}}>Required Level</span>
+                    <select className="form-input" style={{width:'auto', minWidth:160}} value={eoiToolsLevel} onChange={e => setEoiToolsLevel(e.target.value)}>
+                      <option>N/A</option><option>Level 1</option><option>Level 2</option>
+                      <option>Level 3</option><option>Professional</option><option>Technician</option>
+                    </select>
+                  </div>
+                  <label className="filter-inline-check" style={{marginBottom:6}}>
+                    <input type="checkbox" checked={eoiCombineTools} onChange={e => setEoiCombineTools(e.target.checked)}/>
+                    <span style={{display:'flex', alignItems:'center', gap:5}}>
+                      Combine into one schedule
+                      <span className="material-icons-round" style={{fontSize:14, color:'var(--text3)', cursor:'help'}}
+                        title="Merges every selected occupation into a single tools and equipment list, summing quantities for repeated items.">info</span>
+                    </span>
+                  </label>
+                  <label className="filter-inline-check">
+                    <input type="checkbox" checked={eoiSingleTable} onChange={e => setEoiSingleTable(e.target.checked)}/>
+                    <span style={{display:'flex', alignItems:'center', gap:5}}>
+                      All types in one table
+                      <span className="material-icons-round" style={{fontSize:14, color:'var(--text3)', cursor:'help'}}
+                        title="Tools, equipment, consumables, stationery and safety gear share a single table instead of one per type. Adds a Type column so the rows stay distinguishable.">info</span>
+                    </span>
+                  </label>
+
+                  <div style={{fontWeight:600, fontSize:13, marginTop:18, marginBottom:8}}>Training events per occupation</div>
+                  {eoiOccIds.length === 0 ? (
+                    <div className="input-hint">Pick occupations under the Occupations section to list their tools.</div>
+                  ) : (
+                    <>
+                      {eoiOccIds.map(id => {
+                        const o = occupations.find(x => x.id === id);
+                        const n = eoiEventsByOcc[id] ?? 1;
+                        return (
+                          <div key={id} style={{display:'flex', alignItems:'center', gap:8, marginBottom:8}}>
+                            <span style={{flex:1, minWidth:0, fontSize:12.5, overflow:'hidden',
+                              textOverflow:'ellipsis', whiteSpace:'nowrap'}} title={o?.name}>{o?.name || id}</span>
+                            <input type="number" min="1" className="form-input" value={n}
+                              style={{width:76, flexShrink:0}}
+                              onChange={e => setEoiEventsByOcc(prev => ({
+                                ...prev, [id]: Math.max(1, parseInt(e.target.value) || 1),
+                              }))}/>
+                          </div>
+                        );
+                      })}
+                      <div className="input-hint" style={{marginTop:2}}>
+                        Quantities are per event and scale by each occupation&rsquo;s count.
+                      </div>
+                    </>
+                  )}
+                </div>
+              )}
+
+              {noInstitute && (
+                <div style={{display:'flex', flexDirection:'column', gap:16}}>
+                  <div style={{display:'flex', gap:16, flexWrap:'wrap'}}>
+                    <div>
+                      <div style={{fontSize:11, fontWeight:600, color:'var(--text3)', marginBottom:5}}>LEVEL</div>
+                      <select className="form-input" style={{width:'auto', minWidth:160}} value={toolsLevel} onChange={e => setToolsLevel(e.target.value)}>
+                        <option value="">— Select level —</option>
+                        <option>N/A</option><option>Level 1</option><option>Level 2</option><option>Level 3</option><option>Professional</option>
+                      </select>
+                    </div>
+                    <div>
+                      <div style={{fontSize:11, fontWeight:600, color:'var(--text3)', marginBottom:5}}>LAYOUT</div>
+                      <select className="form-input" style={{width:'auto', minWidth:180}} value={toolsLayout} onChange={e => setToolsLayout(e.target.value)}>
+                        <option value="combined">Combined table</option>
+                        <option value="separate_sections">Separate sections</option>
+                        <option value="separate_tables">Separate tables</option>
+                      </select>
+                    </div>
+                    <div>
+                      <div style={{fontSize:11, fontWeight:600, color:'var(--text3)', marginBottom:5}}>NUMBER OF GROUPS</div>
+                      <input type="number" min="1" className="form-input" style={{width:100}}
+                        value={numGroups} onChange={e => setNumGroups(Math.max(1, parseInt(e.target.value) || 1))}/>
+                    </div>
+                  </div>
+                  <div style={{fontSize:11.5, color:'var(--text3)'}}>
+                    Quantities entered are for 1 group (20 trainees). Total = qty × groups.
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* ── TOOL TYPES ── */}
+          {activeSection === 'toolTypes' && (
+            <div>
+              <div style={{fontWeight:600, fontSize:14, marginBottom:12}}>Tool Types</div>
+              {report.hasToolsPicker && (
                 <div className="multi-select-list">
                   {TOOL_TYPE_OPTIONS.map(t => (
                     <label key={t} className="multi-select-item">
@@ -814,13 +1019,32 @@ function ReportsView({ institutes, clients }) {
                     </label>
                   ))}
                 </div>
+              )}
+              {noInstitute && (
+                <select className="form-input" style={{width:'auto', minWidth:200}} value={toolsTypeFilter} onChange={e => setToolsTypeFilter(e.target.value)}>
+                  <option value="all">All types</option>
+                  <option value="tools">Tools only</option>
+                  <option value="consumables">Consumables only</option>
+                  <option value="safety">Safety Tools only</option>
+                  <option value="stationery">Stationery only</option>
+                </select>
+              )}
+            </div>
+          )}
 
+          {/* ── COLUMNS ── */}
+          {activeSection === 'columns' && (
+            <div>
+              <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:12}}>
+                <div style={{fontWeight:600, fontSize:14}}>Report Columns</div>
+                {report.hasToolsPicker && eoiToolCols.length > 2 && (
+                  <Btn className="btn btn-ghost btn-sm" onClick={() => setEoiToolCols(['sn', 'name'])}>Clear</Btn>
+                )}
+                {noInstitute && toolsColumns.length > 2 && (
+                  <Btn className="btn btn-ghost btn-sm" onClick={() => setToolsColumns(['sn', 'name'])}>Clear</Btn>
+                )}
               </div>
-            )}
-
-            {report.hasToolsPicker && (
-              <div className="filter-section">
-                <div className="filter-label">Columns</div>
+              {report.hasToolsPicker && (
                 <div className="multi-select-list">
                   {TOOL_COLUMN_OPTIONS.map(c => (
                     <label key={c.key} className="multi-select-item">
@@ -832,274 +1056,244 @@ function ReportsView({ institutes, clients }) {
                     </label>
                   ))}
                 </div>
-              </div>
-            )}
-
-            {/* Tools-specific filters */}
-            {noInstitute && (
-              <>
-                <div className="filter-section">
-                  <div className="filter-label">Level</div>
-                  <select className="form-input" value={toolsLevel} onChange={e => setToolsLevel(e.target.value)}>
-                    <option value="">— Select level —</option>
-                    <option>N/A</option><option>Level 1</option><option>Level 2</option><option>Level 3</option><option>Professional</option>
-                  </select>
-                </div>
-
-                <div className="filter-section">
-                  <div className="filter-label">Occupations</div>
-                  <input className="form-input" value={toolsOccSearch} onChange={e => setToolsOccSearch(e.target.value)}
-                    placeholder="Search…" style={{fontSize:12, marginBottom:6}}/>
-                  <div className="multi-select-list" style={{maxHeight:200, overflowY:'auto'}}>
-                    {occupations.filter(o => !toolsOccSearch || o.name.toLowerCase().includes(toolsOccSearch.toLowerCase())).map(o => (
-                      <label key={o.id} className="multi-select-item">
-                        <input type="checkbox" checked={toolsOccIds.includes(o.id)} onChange={() => toggleToolsOcc(o.id)}/>
-                        <span>{o.name}{o.level ? ` (${o.level})` : ''}</span>
-                      </label>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="filter-section">
-                  <div className="filter-label">Type</div>
-                  <select className="form-input" value={toolsTypeFilter} onChange={e => setToolsTypeFilter(e.target.value)}>
-                    <option value="all">All types</option>
-                    <option value="tools">Tools only</option>
-                    <option value="consumables">Consumables only</option>
-                    <option value="safety">Safety Tools only</option>
-                    <option value="stationery">Stationery only</option>
-                  </select>
-                </div>
-
-                <div className="filter-section">
-                  <div className="filter-label">Layout</div>
-                  <select className="form-input" value={toolsLayout} onChange={e => setToolsLayout(e.target.value)}>
-                    <option value="combined">Combined table</option>
-                    <option value="separate_sections">Separate sections</option>
-                    <option value="separate_tables">Separate tables</option>
-                  </select>
-                </div>
-
-                <div className="filter-section">
-                  <div className="filter-label">Number of Groups</div>
-                  <input
-                    type="number" min="1" className="form-input"
-                    value={numGroups}
-                    onChange={e => setNumGroups(Math.max(1, parseInt(e.target.value) || 1))}
-                    style={{width:'100%'}}
-                  />
-                  <div style={{fontSize:11, color:'var(--text3)', marginTop:3}}>
-                    Quantities entered are for 1 group (20 trainees). Total = qty × groups.
-                  </div>
-                </div>
-
-                <div className="filter-section">
-                  <div className="filter-label">Columns</div>
-                  <div className="multi-select-list">
-                    {TOOLS_ALL_COLS.map(c => (
-                      <label key={c.key} className="multi-select-item">
-                        <input type="checkbox" checked={toolsColumns.includes(c.key)} onChange={() => toggleToolsCol(c.key)}
-                          disabled={c.key === 'sn' || c.key === 'name'}/>
-                        <span>{c.label}</span>
-                      </label>
-                    ))}
-                  </div>
-                </div>
-              </>
-            )}
-
-            {/* Training type */}
-            {!noInstitute && !isMultiInst && fullInst && allTrainingTypes.length > 0 && (
-              <div className="filter-section">
-                <div className="filter-label">Training type</div>
+              )}
+              {noInstitute && (
                 <div className="multi-select-list">
-                  {allTrainingTypes.map(t => (
-                    <label key={t} className="multi-select-item">
-                      <input type="checkbox" checked={filterTrainingTypes.includes(t)} onChange={() => toggleTrainingType(t)}/>
-                      <span>{t}</span>
+                  {TOOLS_ALL_COLS.map(c => (
+                    <label key={c.key} className="multi-select-item">
+                      <input type="checkbox" checked={toolsColumns.includes(c.key)} onChange={() => toggleToolsCol(c.key)}
+                        disabled={c.key === 'sn' || c.key === 'name'}/>
+                      <span>{c.label}</span>
                     </label>
                   ))}
                 </div>
+              )}
+              <div className="input-hint" style={{marginTop:10}}>
+                S.N. and Name always stay enabled — every column layout needs them. Column order follows the list above; reordering isn't supported by the underlying report yet.
               </div>
-            )}
+            </div>
+          )}
 
-            {/* Donor type */}
-            {!noInstitute && (fullInst || isMultiInst) && allDonorTypes.length > 0 && (
-              <div className="filter-section">
-                <div className="filter-label">Donor type</div>
-                <div className="multi-select-list">
-                  {allDonorTypes.map(t => (
-                    <label key={t} className="multi-select-item">
-                      <input type="checkbox" checked={filterDonorTypes.includes(t)} onChange={() => toggleDonorType(t)}/>
-                      <span>{t}</span>
-                    </label>
-                  ))}
+          {/* ── FILTERS ── */}
+          {activeSection === 'filters' && (
+            <div style={{display:'flex', flexDirection:'column', gap:22}}>
+              <div style={{fontWeight:600, fontSize:14}}>Filters</div>
+
+              {allFYs.length > 0 && (
+                <div>
+                  <div style={{fontSize:11, fontWeight:600, color:'var(--text3)', marginBottom:8}}
+                    title={report.hasTurnoverFY ? 'Fiscal years of the assignments shown in the experience sections' : undefined}>
+                    {report.hasTurnoverFY ? 'EXPERIENCE FY' : 'FY RANGE'}
+                  </div>
+                  <div style={{display:'flex', alignItems:'center', gap:8}}>
+                    <select className="form-input" style={{width:'auto', minWidth:100}} value={fromFY} onChange={e => { setFromFY(e.target.value); setSelectedIds(null); }}>
+                      <option value="">From</option>
+                      {allFYs.map(fy => <option key={fy} value={fy}>{fy}</option>)}
+                    </select>
+                    <span style={{color:'var(--text3)'}}>→</span>
+                    <select className="form-input" style={{width:'auto', minWidth:100}} value={toFY} onChange={e => { setToFY(e.target.value); setSelectedIds(null); }}>
+                      <option value="">To</option>
+                      {allFYs.map(fy => <option key={fy} value={fy}>{fy}</option>)}
+                    </select>
+                    {(fromFY || toFY) && (
+                      <Btn className="btn btn-ghost btn-sm" onClick={() => { setFromFY(''); setToFY(''); setSelectedIds(null); }}>✕</Btn>
+                    )}
+                  </div>
                 </div>
-              </div>
-            )}
+              )}
 
-            {/* Sort — Table 2 only */}
-            {!noInstitute && !isMultiInst && fullInst && report.id === 'h2' && (
-              <div className="filter-section">
-                <div className="filter-label">Sort by</div>
-                <select className="form-input" value={sortBy} onChange={e => setSortBy(e.target.value)}>
-                  <option value="default">Data order</option>
-                  <option value="alpha">Alphabetical</option>
-                  <option value="fy">Fiscal year</option>
+              {report.hasTurnoverFY && allFYs.length > 0 && (
+                <div>
+                  <div style={{fontSize:11, fontWeight:600, color:'var(--text3)', marginBottom:8}}
+                    title="Fiscal years of the turnover rows in 4(A) Financial Capacity">TURNOVER FY</div>
+                  <div style={{display:'flex', alignItems:'center', gap:8}}>
+                    <select className="form-input" style={{width:'auto', minWidth:100}} value={turnFromFY} onChange={e => setTurnFromFY(e.target.value)}>
+                      <option value="">From</option>
+                      {allFYs.map(fy => <option key={fy} value={fy}>{fy}</option>)}
+                    </select>
+                    <span style={{color:'var(--text3)'}}>→</span>
+                    <select className="form-input" style={{width:'auto', minWidth:100}} value={turnToFY} onChange={e => setTurnToFY(e.target.value)}>
+                      <option value="">To</option>
+                      {allFYs.map(fy => <option key={fy} value={fy}>{fy}</option>)}
+                    </select>
+                    {(turnFromFY || turnToFY) && (
+                      <Btn className="btn btn-ghost btn-sm" onClick={() => { setTurnFromFY(''); setTurnToFY(''); }}>✕</Btn>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {report.hasPortfolioFY && allFYs.length > 0 && (
+                <div>
+                  <div style={{fontSize:11, fontWeight:600, color:'var(--text3)', marginBottom:8}}
+                    title="Fiscal years of the assignments shown in B.1 Current Portfolio">PORTFOLIO FY</div>
+                  <div style={{display:'flex', alignItems:'center', gap:8}}>
+                    <select className="form-input" style={{width:'auto', minWidth:100}} value={portfolioFromFY} onChange={e => setPortfolioFromFY(e.target.value)}>
+                      <option value="">From</option>
+                      {allFYs.map(fy => <option key={fy} value={fy}>{fy}</option>)}
+                    </select>
+                    <span style={{color:'var(--text3)'}}>→</span>
+                    <select className="form-input" style={{width:'auto', minWidth:100}} value={portfolioToFY} onChange={e => setPortfolioToFY(e.target.value)}>
+                      <option value="">To</option>
+                      {allFYs.map(fy => <option key={fy} value={fy}>{fy}</option>)}
+                    </select>
+                    {(portfolioFromFY || portfolioToFY) && (
+                      <Btn className="btn btn-ghost btn-sm" onClick={() => { setPortfolioFromFY(''); setPortfolioToFY(''); }}>✕</Btn>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              <div>
+                <div style={{fontSize:11, fontWeight:600, color:'var(--text3)', marginBottom:8}}
+                  title={family.selfFilters ? 'Narrows 3(B) Specific Experience only' : undefined}>TRAINING DURATION</div>
+                <select className="form-input" style={{width:'auto', minWidth:200}} value={filterDuration} onChange={e => setFilterDuration(e.target.value)}>
+                  <option value="">All trainings</option>
+                  <option value="160plus">160 hours or more</option>
+                  <option value="390plus">390 hours or more</option>
+                  <option value="390more">More than 390 hours</option>
                 </select>
               </div>
-            )}
 
-
-            {/* Occupation — 3(B) Specific Experience. Its own selection, separate
-                from the one below that scopes 4(B) tools. */}
-            {!noInstitute && (fullInst || isMultiInst) && report.hasSpecificOccFilter && allMasterOccNames.length > 0 && (
-              <div className="filter-section">
-                <div className="filter-label">Occupation — 3(B) Specific Experience</div>
-                <input className="form-input" value={occSearch} onChange={e => setOccSearch(e.target.value)}
-                  placeholder="Search…" style={{fontSize:12, marginBottom:6}}/>
-                <div className="multi-select-list" style={{maxHeight:200, overflowY:'auto'}}>
-                  {allMasterOccNames.filter(n => !occSearch || n.toLowerCase().includes(occSearch.toLowerCase())).map(name => (
-                    <label key={name} className="multi-select-item">
-                      <input type="checkbox" checked={eoiSpecificOccs.includes(name)} onChange={() => toggleSpecificOcc(name)}/>
-                      <span>{name}</span>
-                    </label>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Occupation — general filter. For 'full'/'4b' this scopes the 4(B)
-                tools list; for other report families (Helvetas, Firm-wise) it's
-                the sole occupation filter for that table. */}
-            {!noInstitute && (fullInst || isMultiInst) && report.hasOccupationFilter && !report.hasSpecificOccFilter && (report.hasToolsPicker ? allMasterOccNames : allOccNames).length > 0 && (
-              <div className="filter-section">
-                <div className="filter-label">{report.hasToolsPicker ? 'Occupation — 4(B) Tools' : 'Occupation'}</div>
-                <input className="form-input" value={occSearch} onChange={e => setOccSearch(e.target.value)}
-                  placeholder="Search…" style={{fontSize:12, marginBottom:6}}/>
-                <div className="multi-select-list" style={{maxHeight:200, overflowY:'auto'}}>
-                  {(report.hasToolsPicker ? allMasterOccNames : allOccNames).filter(n => !occSearch || n.toLowerCase().includes(occSearch.toLowerCase())).map(name => (
-                    <label key={name} className="multi-select-item">
-                      <input type="checkbox" checked={selectedOccs.includes(name)} onChange={() => toggleOcc(name)}/>
-                      <span>{name}</span>
-                    </label>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Occupation — 4(B) Tools, shown alongside the 3(B) picker above
-                when the report has both sections (the 'full' Complete EOI doc). */}
-            {!noInstitute && (fullInst || isMultiInst) && report.hasOccupationFilter && report.hasSpecificOccFilter && report.hasToolsPicker && allMasterOccNames.length > 0 && (
-              <div className="filter-section">
-                <div className="filter-label">Occupation — 4(B) Tools</div>
-                <input className="form-input" value={toolsOccSearch2} onChange={e => setToolsOccSearch2(e.target.value)}
-                  placeholder="Search…" style={{fontSize:12, marginBottom:6}}/>
-                <div className="multi-select-list" style={{maxHeight:200, overflowY:'auto'}}>
-                  {allMasterOccNames.filter(n => !toolsOccSearch2 || n.toLowerCase().includes(toolsOccSearch2.toLowerCase())).map(name => (
-                    <label key={name} className="multi-select-item">
-                      <input type="checkbox" checked={selectedOccs.includes(name)} onChange={() => toggleOcc(name)}/>
-                      <span>{name}</span>
-                    </label>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Assignments */}
-            {!noInstitute && !isMultiInst && fullInst && (
-              <div className="filter-section">
-                <div className="filter-label" style={{justifyContent:'space-between'}}>
-                  <span>Assignments</span>
-                  <span style={{display:'flex', gap:4, fontSize:10, fontWeight:400, letterSpacing:0}}>
-                    <Btn className="btn btn-ghost btn-sm" style={{fontSize:10, padding:'1px 5px'}} onClick={selectAll}>All</Btn>
-                    <Btn className="btn btn-ghost btn-sm" style={{fontSize:10, padding:'1px 5px'}} onClick={clearAll}>None</Btn>
-                  </span>
-                </div>
-                {rangeFiltered.length === 0 ? (
-                  <div style={{fontSize:12, color:'var(--text3)', padding:'6px 0'}}>No assignments in range.</div>
-                ) : (
-                  <div className="multi-select-list" style={{maxHeight:200, overflowY:'auto'}}>
-                    {rangeFiltered.map(exp => (
-                      <label key={exp.id} className="multi-select-item">
-                        <input type="checkbox"
-                          checked={selectedIds === null || selectedIds.includes(exp.id)}
-                          onChange={() => toggleSelected(exp.id)}/>
-                        <span>{exp.assignmentName || '(unnamed)'} <span style={{color:'var(--text3)', fontSize:10}}>· {exp.fy}</span></span>
+              {!isMultiInst && fullInst && allTrainingTypes.length > 0 && (
+                <div>
+                  <div style={{fontSize:11, fontWeight:600, color:'var(--text3)', marginBottom:8}}>TRAINING TYPE</div>
+                  <div className="multi-select-list">
+                    {allTrainingTypes.map(t => (
+                      <label key={t} className="multi-select-item">
+                        <input type="checkbox" checked={filterTrainingTypes.includes(t)} onChange={() => toggleTrainingType(t)}/>
+                        <span>{t}</span>
                       </label>
                     ))}
                   </div>
-                )}
-              </div>
-            )}
-          </div>
+                </div>
+              )}
 
-          {/* Reset */}
-          {!noInstitute && (fullInst || isMultiInst) && (
-            <button className="filter-reset-btn" onClick={() => {
-              setFromFY(''); setToFY(''); setFilterDuration('');
-              setFilterTrainingTypes([]); setFilterDonorTypes([]);
-              setSelectedOccs([]); setEoiSpecificOccs([]); setSelectedIds(null);
-              setOccSearch(''); setToolsOccSearch2('');
-            }}>
-              ↻ Reset
-            </button>
+              {(fullInst || isMultiInst) && allDonorTypes.length > 0 && (
+                <div>
+                  <div style={{fontSize:11, fontWeight:600, color:'var(--text3)', marginBottom:8}}>DONOR TYPE</div>
+                  <div className="multi-select-list">
+                    {allDonorTypes.map(t => (
+                      <label key={t} className="multi-select-item">
+                        <input type="checkbox" checked={filterDonorTypes.includes(t)} onChange={() => toggleDonorType(t)}/>
+                        <span>{t}</span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {!isMultiInst && fullInst && report.id === 'h2' && (
+                <div>
+                  <div style={{fontSize:11, fontWeight:600, color:'var(--text3)', marginBottom:8}}>SORT BY</div>
+                  <select className="form-input" style={{width:'auto', minWidth:180}} value={sortBy} onChange={e => setSortBy(e.target.value)}>
+                    <option value="default">Data order</option>
+                    <option value="alpha">Alphabetical</option>
+                    <option value="fy">Fiscal year</option>
+                  </select>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* ── ADVANCED ── */}
+          {activeSection === 'advanced' && (
+            <div>
+              <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:12}}>
+                <div style={{fontWeight:600, fontSize:14}}>Assignments</div>
+                <span style={{display:'flex', gap:6}}>
+                  <Btn className="btn btn-ghost btn-sm" onClick={selectAll}>All</Btn>
+                  <Btn className="btn btn-ghost btn-sm" onClick={clearAll}>None</Btn>
+                </span>
+              </div>
+              <div className="input-hint" style={{marginBottom:10}}>
+                Fine-tune which individual assignments (within the FY range and other filters above) are included.
+              </div>
+              {rangeFiltered.length === 0 ? (
+                <div style={{fontSize:12.5, color:'var(--text3)', padding:'6px 0'}}>No assignments in range.</div>
+              ) : (
+                <div className="multi-select-list" style={{maxHeight:320, overflowY:'auto'}}>
+                  {rangeFiltered.map(exp => (
+                    <label key={exp.id} className="multi-select-item">
+                      <input type="checkbox"
+                        checked={selectedIds === null || selectedIds.includes(exp.id)}
+                        onChange={() => toggleSelected(exp.id)}/>
+                      <span>{exp.assignmentName || '(unnamed)'} <span style={{color:'var(--text3)', fontSize:10.5}}>· {exp.fy}</span></span>
+                    </label>
+                  ))}
+                </div>
+              )}
+            </div>
           )}
         </div>
+      </div>
 
-        {/* ── Results ── */}
-        <div style={{flex:1, minWidth:0}}>
-          {isMultiInst ? (
-            fwInstIds.length === 0 ? (
-              <div className="empty-state" style={{background:'var(--surface)', border:'1px solid var(--border)', borderRadius:'var(--radius-lg)'}}>
-                <div className="empty-state-icon">📊</div>
-                <div className="empty-state-title">Select firms</div>
-                <div className="empty-state-sub">
-                  Pick one or more firms {filtersOnTop ? 'above' : 'in the sidebar'}, set the filters, then show the report
-                </div>
+      {/* ── Configuration summary ── */}
+      {summaryChips.length > 0 && (
+        <div className="card" style={{padding:'12px 18px', display:'flex', alignItems:'center', gap:8, flexWrap:'wrap'}}>
+          {summaryChips.map((c, i) => (
+            <span key={c.section} style={{display:'flex', alignItems:'center', gap:8}}>
+              {i > 0 && <span style={{color:'var(--border)'}}>·</span>}
+              <button onClick={() => setActiveSection(c.section)}
+                style={{background:'none', border:'none', cursor:'pointer', color:'var(--text2)', fontSize:12.5, fontWeight:600, padding:'2px 4px'}}>
+                {c.text}
+              </button>
+            </span>
+          ))}
+        </div>
+      )}
+
+      {/* ── Results count ── */}
+      {matchingCount !== null && (
+        <div className="card" style={{padding:'22px', textAlign:'center'}}>
+          <div style={{fontSize:38, fontWeight:700, color:'var(--text)', lineHeight:1}}>{matchingCount}</div>
+          <div style={{fontSize:11.5, fontWeight:600, color:'var(--text3)', textTransform:'uppercase', letterSpacing:'.5px', marginTop:6}}>
+            Matching Assignment{matchingCount !== 1 ? 's' : ''}
+          </div>
+        </div>
+      )}
+
+      {/* ── Preview ── */}
+      <div className="card" style={{padding:20}}>
+        <div style={{fontWeight:600, fontSize:14, marginBottom:14}}>Report Preview</div>
+
+        {!previewReady ? (
+          <div className="empty-state" style={{background:'var(--bg,#f8fafc)', border:'1px dashed var(--border)', borderRadius:'var(--radius-lg)', padding:'32px 20px'}}>
+            <div className="empty-state-icon">
+              <span className="material-icons-round" style={{fontSize:40, opacity:.35}}>description</span>
+            </div>
+            <div className="empty-state-sub" style={{marginBottom:16}}>
+              Select your firms and configure the report to see a preview.
+            </div>
+            <Btn className="btn btn-primary" onClick={showReport} disabled={!canPreview}>Preview Report</Btn>
+          </div>
+        ) : (
+          <div style={{display:'flex', flexDirection:'column', gap:16}}>
+            {isStale && (
+              <div role="status" style={{display:'flex', alignItems:'center', gap:10, flexWrap:'wrap',
+                padding:'10px 16px', borderRadius:'var(--radius-lg)',
+                background:'color-mix(in srgb, var(--warning,#f59e0b) 12%, var(--surface))',
+                border:'1px solid color-mix(in srgb, var(--warning,#f59e0b) 35%, transparent)'}}>
+                <span className="material-icons-round" style={{fontSize:17, color:'var(--warning,#f59e0b)'}}>update</span>
+                <span style={{fontSize:12.5}}>Settings changed — this preview was built with the previous configuration.</span>
+                <Btn className="btn btn-primary btn-sm" style={{marginLeft:'auto'}} onClick={showReport}>Rebuild</Btn>
               </div>
-            ) : fwLoading ? (
-              <div className="empty-state" style={{background:'var(--surface)', border:'1px solid var(--border)', borderRadius:'var(--radius-lg)'}}>
-                <div className="empty-state-icon">⏳</div>
-                <div className="empty-state-title">Loading…</div>
-              </div>
-            ) : renderedSig === null ? (
-              /* Filters first, document second: nothing is built until asked. */
-              <div className="empty-state" style={{background:'var(--surface)', border:'1px solid var(--border)', borderRadius:'var(--radius-lg)'}}>
-                <div className="empty-state-icon">
-                  <span className="material-icons-round" style={{fontSize:44, opacity:.35}}>tune</span>
+            )}
+
+            {isMultiInst ? (
+              fwLoading ? (
+                <div className="empty-state">
+                  <div className="empty-state-icon">⏳</div>
+                  <div className="empty-state-title">Loading…</div>
                 </div>
-                <div className="empty-state-title">Ready when you are</div>
-                <div className="empty-state-sub" style={{marginBottom:16}}>
-                  {fwInstIds.length} firm{fwInstIds.length !== 1 ? 's' : ''} selected.
-                  Finish setting the filters {filtersOnTop ? 'above' : 'on the left'}, then build the document.
-                </div>
-                <Btn className="btn btn-primary" onClick={showReport}>Show report</Btn>
-              </div>
-            ) : (
-              <div style={{display:'flex', flexDirection:'column', gap:16}}>
-                {/* Filters changed after the document was built — say so rather
-                    than leaving a document on screen that no longer matches. */}
-                {isStale && (
-                  <div role="status" style={{display:'flex', alignItems:'center', gap:10, flexWrap:'wrap',
-                    padding:'10px 16px', borderRadius:'var(--radius-lg)',
-                    background:'color-mix(in srgb, var(--warning,#f59e0b) 12%, var(--surface))',
-                    border:'1px solid color-mix(in srgb, var(--warning,#f59e0b) 35%, transparent)'}}>
-                    <span className="material-icons-round" style={{fontSize:17, color:'var(--warning,#f59e0b)'}}>update</span>
-                    <span style={{fontSize:12.5}}>Filters changed — this document was built with the previous settings.</span>
-                    <Btn className="btn btn-primary btn-sm" style={{marginLeft:'auto'}} onClick={showReport}>Rebuild</Btn>
-                  </div>
-                )}
-                {/* Multi-inst header */}
-                <div className="card" style={{padding:'14px 20px', display:'flex', alignItems:'center', gap:10, flexWrap:'wrap'}}>
-                  <div>
-                    <span style={{fontWeight:600, fontSize:14}}>{report.label}</span>
-                    <span style={{fontSize:12, color:'var(--text3)', marginLeft:8}}>{fwInstIds.length} firm{fwInstIds.length !== 1 ? 's' : ''}</span>
-                    {fyRangeLabel && <span style={{fontSize:11, color:'var(--primary)', background:'var(--primary-light,#eff6ff)', borderRadius:4, padding:'1px 7px', marginLeft:8}}>{fyRangeLabel}</span>}
-                  </div>
-                  <div style={{marginLeft:'auto', display:'flex', alignItems:'center', gap:12}}>
+              ) : (
+                <>
+                  <div style={{display:'flex', alignItems:'center', gap:10, flexWrap:'wrap'}}>
+                    <span style={{fontWeight:600, fontSize:13.5}}>{report.label}</span>
+                    <span style={{fontSize:12, color:'var(--text3)'}}>{fwInstIds.length} firm{fwInstIds.length !== 1 ? 's' : ''}</span>
+                    {fyRangeLabel && <span style={{fontSize:11, color:'var(--primary)', background:'var(--primary-light,#eff6ff)', borderRadius:4, padding:'1px 7px'}}>{fyRangeLabel}</span>}
                     {report.id === 'fw2' && (
-                      <div style={{display:'flex', alignItems:'center', gap:10}}>
+                      <div style={{display:'flex', alignItems:'center', gap:10, marginLeft:'auto'}}>
                         <label style={{display:'flex', alignItems:'center', gap:5, fontSize:12, cursor:'pointer', whiteSpace:'nowrap'}}>
                           <input type="checkbox" checked={nstbComparative} onChange={e => setNstbComparative(e.target.checked)} />
                           Comparative
@@ -1107,229 +1301,219 @@ function ReportsView({ institutes, clients }) {
                         {nstbComparative && (
                           <div style={{display:'flex', alignItems:'center', gap:5}}>
                             <label style={{fontSize:12, whiteSpace:'nowrap', color:'var(--text3)'}}>Threshold ≥</label>
-                            <input
-                              type="number" min="0" placeholder="e.g. 50"
-                              value={nstbThreshold}
+                            <input type="number" min="0" placeholder="e.g. 50" value={nstbThreshold}
                               onChange={e => setNstbThreshold(e.target.value)}
-                              style={{width:70, fontSize:12, padding:'2px 6px', border:'1px solid var(--border)', borderRadius:4}}
-                            />
+                              style={{width:70, fontSize:12, padding:'2px 6px', border:'1px solid var(--border)', borderRadius:4}}/>
                           </div>
                         )}
                       </div>
                     )}
-                    {family.downloadMultiDOCX && (
-                      <Btn className="btn btn-secondary btn-sm"
-                        onClick={() => family.downloadMultiDOCX(fwSelectedFirms(), clients, report.id, opts)}
-                        disabled={fwInstIds.length === 0 || isStale}
-                        title={isStale ? 'Rebuild first — the filters have changed since this was built' : undefined}>⬇ Word (.docx)</Btn>
-                    )}
-                    <Btn className="btn btn-primary btn-sm" onClick={() => {
-                      const firms = fwSelectedFirms();
-                      if (!firms.length) return;
-                      let combined;
-                      if (family.buildMultiPrintHTML) {
-                        // Family controls cross-firm ordering (bolpatra groups by
-                        // section, not by firm).
-                        combined = family.buildMultiPrintHTML(firms, clients, report.id, fyRangeLabel, opts);
-                      } else {
-                        const docs = firms
-                          .map(({ inst, exps }) => family.buildPrintHTML(inst, exps, clients, report.id, fyRangeLabel, opts))
-                          .filter(Boolean);
-                        if (!docs.length) return;
-                        const bodyParts = docs.map(html => {
-                          const m = html.match(/<body[^>]*>([\s\S]*)<\/body>/i);
-                          return m ? m[1] : '';
-                        });
-                        combined = docs[0].replace(/<body[^>]*>[\s\S]*<\/body>/i,
-                          `<body>${bodyParts.join('<div style="page-break-before:always"></div>')}</body>`);
-                      }
-                      const w = window.open('', '_blank');
-                      w.document.write(combined);
-                      w.document.close();
-                      setTimeout(() => w.print(), 300);
-                    }} disabled={fwInstIds.length === 0 || isStale}
-                      title={isStale ? 'Rebuild first — the filters have changed since this was built' : undefined}>🖨 Print / PDF</Btn>
                   </div>
-                </div>
 
-                {/* Cross-firm comparative table for NSTB */}
-                {report.id === 'fw2' && nstbComparative && (() => {
-                  // Collect all occupations and per-firm appeared totals
-                  const firmData = fwInstIds.map(id => {
+                  {report.id === 'fw2' && nstbComparative && (() => {
+                    const firmData = fwInstIds.map(id => {
+                      const inst = fwFullInsts[id];
+                      if (!inst) return null;
+                      const records = (inst.nstb || []).filter(n => fyInRange(n.fy, fromFY || null, toFY || null));
+                      const byOcc = {};
+                      let allAppearedTotal = 0;
+                      for (const n of records) {
+                        const name = (n.occupation || '').trim();
+                        if (!name) continue;
+                        allAppearedTotal += parseInt(n.appeared) || 0;
+                        if (selectedOccs.length && !selectedOccs.some(o => o.toLowerCase() === name.toLowerCase())) continue;
+                        if (!byOcc[name]) byOcc[name] = 0;
+                        byOcc[name] += parseInt(n.appeared) || 0;
+                      }
+                      return { id, name: inst.acronym || inst.name || id, byOcc, allAppearedTotal };
+                    }).filter(Boolean);
+
+                    const allOccs = [...new Set(firmData.flatMap(f => Object.keys(f.byOcc)))].sort();
+                    if (!allOccs.length) return null;
+
+                    const TH2 = { background:'#dce6f1', padding:'6px 8px', border:'1px solid #aab8c8', fontWeight:600, fontSize:11, textAlign:'center' };
+                    const TD2 = { padding:'5px 8px', border:'1px solid #c8d4e0', fontSize:11 };
+                    const TDN2 = { ...TD2, textAlign:'right' };
+                    const threshold = nstbThreshold !== '' ? parseInt(nstbThreshold) : null;
+
+                    return (
+                      <div style={{overflowX:'auto'}}>
+                        <div style={{fontWeight:600, fontSize:13, marginBottom:10}}>
+                          Comparative — Appeared Trainees by Occupation &amp; Firm
+                          {fyRangeLabel && <span style={{fontWeight:400, fontSize:11, marginLeft:8, color:'var(--text3)'}}>({fyRangeLabel})</span>}
+                        </div>
+                        <table style={{borderCollapse:'collapse', width:'100%', minWidth: firmData.length * 120 + 200}}>
+                          <thead>
+                            <tr>
+                              <th style={{...TH2, textAlign:'left'}}>Occupation</th>
+                              {firmData.map(f => (
+                                <th key={f.id} style={TH2}>
+                                  <div>{f.name}</div>
+                                  <div style={{fontWeight:400, fontSize:10, color:'#555'}}>Appeared</div>
+                                </th>
+                              ))}
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {allOccs.map((occ, i) => {
+                              const vals = firmData.map(f => f.byOcc[occ] || 0);
+                              return (
+                                <tr key={occ} style={{background: i % 2 === 0 ? '#fff' : '#f7f9fc'}}>
+                                  <td style={TD2}>{occ}</td>
+                                  {vals.map((v, j) => {
+                                    const highlight = threshold !== null && !isNaN(threshold) && v >= threshold && v > 0;
+                                    return (
+                                      <td key={j} style={{
+                                        ...TDN2,
+                                        background: highlight ? '#d4edda' : undefined,
+                                        color: highlight ? '#155724' : undefined,
+                                        fontWeight: highlight ? 600 : undefined,
+                                      }}>{v || '—'}</td>
+                                    );
+                                  })}
+                                </tr>
+                              );
+                            })}
+                            <tr style={{background:'#e8f0fe', fontWeight:600}}>
+                              <td style={TD2}>Selected Occupations Total</td>
+                              {firmData.map((f, j) => {
+                                const t = allOccs.reduce((s, occ) => s + (f.byOcc[occ] || 0), 0);
+                                return <td key={j} style={TDN2}>{t || '—'}</td>;
+                              })}
+                            </tr>
+                            <tr style={{background:'#d0e4f7', fontWeight:700, borderTop:'2px solid #aab8c8'}}>
+                              <td style={TD2}>Total Skill Test (All Occupations)</td>
+                              {firmData.map((f, j) => (
+                                <td key={j} style={TDN2}>{f.allAppearedTotal || '—'}</td>
+                              ))}
+                            </tr>
+                          </tbody>
+                        </table>
+                      </div>
+                    );
+                  })()}
+
+                  {family.renderMultiAggregate ? (
+                    family.renderMultiAggregate(fwSelectedFirms(), clients, report.id, opts)
+                  ) : fwInstIds.map(id => {
                     const inst = fwFullInsts[id];
                     if (!inst) return null;
-                    const records = (inst.nstb || []).filter(n => fyInRange(n.fy, fromFY || null, toFY || null));
-                    const byOcc = {};
-                    let allAppearedTotal = 0;
-                    for (const n of records) {
-                      const name = (n.occupation || '').trim();
-                      if (!name) continue;
-                      allAppearedTotal += parseInt(n.appeared) || 0;
-                      if (selectedOccs.length && !selectedOccs.some(o => o.toLowerCase() === name.toLowerCase())) continue;
-                      if (!byOcc[name]) byOcc[name] = 0;
-                      byOcc[name] += parseInt(n.appeared) || 0;
-                    }
-                    return { id, name: inst.acronym || inst.name || id, byOcc, allAppearedTotal };
-                  }).filter(Boolean);
-
-                  const allOccs = [...new Set(firmData.flatMap(f => Object.keys(f.byOcc)))].sort();
-                  if (!allOccs.length) return null;
-
-                  const TH2 = { background:'#dce6f1', padding:'6px 8px', border:'1px solid #aab8c8', fontWeight:600, fontSize:11, textAlign:'center' };
-                  const TD2 = { padding:'5px 8px', border:'1px solid #c8d4e0', fontSize:11 };
-                  const TDN2 = { ...TD2, textAlign:'right' };
-
-                  const threshold = nstbThreshold !== '' ? parseInt(nstbThreshold) : null;
-                  return (
-                    <div className="card" style={{padding:20, overflowX:'auto'}}>
-                      <div style={{fontWeight:600, fontSize:13, marginBottom:10}}>
-                        Comparative — Appeared Trainees by Occupation &amp; Firm
-                        {fyRangeLabel && <span style={{fontWeight:400, fontSize:11, marginLeft:8, color:'var(--text3)'}}>({fyRangeLabel})</span>}
+                    const exps = fwExpsFor(inst);
+                    return (
+                      <div key={id} style={{borderTop:'1px solid var(--border)', paddingTop:16}}>
+                        {family.renderAggregateTable(inst, exps, clients, report.id, opts)}
                       </div>
-                      <table style={{borderCollapse:'collapse', width:'100%', minWidth: firmData.length * 120 + 200}}>
-                        <thead>
-                          <tr>
-                            <th style={{...TH2, textAlign:'left'}}>Occupation</th>
-                            {firmData.map(f => (
-                              <th key={f.id} style={TH2}>
-                                <div>{f.name}</div>
-                                <div style={{fontWeight:400, fontSize:10, color:'#555'}}>Appeared</div>
-                              </th>
-                            ))}
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {allOccs.map((occ, i) => {
-                            const vals = firmData.map(f => f.byOcc[occ] || 0);
-                            return (
-                              <tr key={occ} style={{background: i % 2 === 0 ? '#fff' : '#f7f9fc'}}>
-                                <td style={TD2}>{occ}</td>
-                                {vals.map((v, j) => {
-                                  const highlight = threshold !== null && !isNaN(threshold) && v >= threshold && v > 0;
-                                  return (
-                                    <td key={j} style={{
-                                      ...TDN2,
-                                      background: highlight ? '#d4edda' : undefined,
-                                      color: highlight ? '#155724' : undefined,
-                                      fontWeight: highlight ? 600 : undefined,
-                                    }}>{v || '—'}</td>
-                                  );
-                                })}
-                              </tr>
-                            );
-                          })}
-                          <tr style={{background:'#e8f0fe', fontWeight:600}}>
-                            <td style={TD2}>Selected Occupations Total</td>
-                            {firmData.map((f, j) => {
-                              const t = allOccs.reduce((s, occ) => s + (f.byOcc[occ] || 0), 0);
-                              return <td key={j} style={TDN2}>{t || '—'}</td>;
-                            })}
-                          </tr>
-                          <tr style={{background:'#d0e4f7', fontWeight:700, borderTop:'2px solid #aab8c8'}}>
-                            <td style={TD2}>Total Skill Test (All Occupations)</td>
-                            {firmData.map((f, j) => (
-                              <td key={j} style={TDN2}>{f.allAppearedTotal || '—'}</td>
-                            ))}
-                          </tr>
-                        </tbody>
-                      </table>
-                    </div>
-                  );
-                })()}
-
-                {/* Families that order across firms themselves render one block
-                    covering every selected firm (bolpatra groups by section). */}
-                {family.renderMultiAggregate ? (
-                  <div className="card" style={{padding:20}}>
-                    {family.renderMultiAggregate(fwSelectedFirms(), clients, report.id, opts)}
-                  </div>
-                ) : fwInstIds.map(id => {
-                  const inst = fwFullInsts[id];
-                  if (!inst) return null;
-                  const exps = fwExpsFor(inst);
-                  return (
-                    <div key={id} className="card" style={{padding:20}}>
-                      {family.renderAggregateTable(inst, exps, clients, report.id, opts)}
-                    </div>
-                  );
-                })}
-              </div>
-            )
-          ) : !noInstitute && !selectedInst ? (
-            <div className="empty-state" style={{background:'var(--surface)', border:'1px solid var(--border)', borderRadius:'var(--radius-lg)'}}>
-              <div className="empty-state-icon">📊</div>
-              <div className="empty-state-title">Select an institute</div>
-              <div className="empty-state-sub">Choose a firm and report type to generate a report</div>
-            </div>
-          ) : !noInstitute && loadingInst ? (
-            <div className="empty-state" style={{background:'var(--surface)', border:'1px solid var(--border)', borderRadius:'var(--radius-lg)'}}>
-              <div className="empty-state-icon">⏳</div>
-              <div className="empty-state-title">Loading…</div>
-            </div>
-          ) : (
-            <div className="card" style={{padding:0, overflow:'hidden'}}>
-              {/* Header row */}
-              <div style={{padding:'14px 20px', borderBottom:'1px solid var(--border)', display:'flex', alignItems:'center', gap:10, flexWrap:'wrap'}}>
-                <div>
-                  <span style={{fontWeight:600, fontSize:14}}>{report.label}</span>
-                  {fyRangeLabel && <span style={{fontSize:11, color:'var(--primary)', background:'var(--primary-light,#eff6ff)', borderRadius:4, padding:'1px 7px', marginLeft:8}}>{fyRangeLabel}</span>}
+                    );
+                  })}
+                </>
+              )
+            ) : (
+              <>
+                <div style={{display:'flex', alignItems:'center', gap:10, flexWrap:'wrap'}}>
+                  <span style={{fontWeight:600, fontSize:13.5}}>{report.label}</span>
+                  {fyRangeLabel && <span style={{fontSize:11, color:'var(--primary)', background:'var(--primary-light,#eff6ff)', borderRadius:4, padding:'1px 7px'}}>{fyRangeLabel}</span>}
+                  {!isAggregate && <span style={{fontSize:12, color:'var(--text3)'}}>{activeExps.length} assignment{activeExps.length !== 1 ? 's' : ''}</span>}
                 </div>
-                {!isAggregate && (
-                  <span style={{fontSize:12, color:'var(--text3)'}}>{activeExps.length} assignment{activeExps.length !== 1 ? 's' : ''}</span>
+
+                {isAggregate ? (
+                  family.renderAggregateTable(fullInst || null, activeExps, clients, report.id, opts)
+                ) : activeExps.length === 0 ? (
+                  <div className="empty-state">
+                    <div className="empty-state-icon">🔍</div>
+                    <div className="empty-state-title">
+                      {rangeFiltered.length === 0 ? 'No assignments in this FY range' : 'No assignments selected'}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="table-wrap">
+                    <table className="summary-table">
+                      <thead>
+                        <tr>
+                          {report.columns.map(c => <th key={c}>{c}</th>)}
+                          <th>Status</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {activeExps.map((exp, i) => {
+                          const missing = missingFor(exp);
+                          return (
+                            <tr key={exp.id}>
+                              {family.renderRowCells(exp, clients, report.id, i)}
+                              <td style={{fontSize:11}}>
+                                {missing.length > 0
+                                  ? <span style={{color:'var(--warning)'}} title={`Missing: ${missing.join(', ')}`}><span className="material-icons-round" style={{fontSize:12,verticalAlign:'middle'}}>warning</span> {missing.length} field{missing.length !== 1 ? 's' : ''}</span>
+                                  : <span style={{color:'var(--green)'}}><span className="material-icons-round" style={{fontSize:12,verticalAlign:'middle'}}>check_circle</span></span>}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
                 )}
-                <div style={{marginLeft:'auto', display:'flex', gap:8}}>
-                  {!isAggregate && (
-                    <Btn className="btn btn-secondary btn-sm" onClick={handleCSV} disabled={!activeExps.length}>⬇ CSV</Btn>
-                  )}
-                  {isAggregate && family.downloadDOCX && (
-                    <Btn className="btn btn-secondary btn-sm" onClick={handleWord} disabled={!canPrint}>⬇ Word (.docx)</Btn>
-                  )}
-                  <Btn className="btn btn-primary btn-sm" onClick={noInstitute ? handlePrintTools : handlePrint} disabled={!canPrint}>🖨 Print / PDF</Btn>
-                </div>
-              </div>
+              </>
+            )}
+          </div>
+        )}
+      </div>
 
-              {/* Table body */}
-              {isAggregate ? (
-                <div style={{padding:20}}>
-                  {family.renderAggregateTable(fullInst || null, activeExps, clients, report.id, opts)}
-                </div>
-              ) : activeExps.length === 0 ? (
-                <div className="empty-state">
-                  <div className="empty-state-icon">🔍</div>
-                  <div className="empty-state-title">
-                    {rangeFiltered.length === 0 ? 'No assignments in this FY range' : 'No assignments selected'}
-                  </div>
-                </div>
-              ) : (
-                <div className="table-wrap">
-                  <table className="summary-table">
-                    <thead>
-                      <tr>
-                        {report.columns.map(c => <th key={c}>{c}</th>)}
-                        <th>Status</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {activeExps.map((exp, i) => {
-                        const missing = missingFor(exp);
-                        return (
-                          <tr key={exp.id}>
-                            {family.renderRowCells(exp, clients, report.id, i)}
-                            <td style={{fontSize:11}}>
-                              {missing.length > 0
-                                ? <span style={{color:'var(--warning)'}} title={`Missing: ${missing.join(', ')}`}><span className="material-icons-round" style={{fontSize:12,verticalAlign:'middle'}}>warning</span> {missing.length} field{missing.length !== 1 ? 's' : ''}</span>
-                                : <span style={{color:'var(--green)'}}><span className="material-icons-round" style={{fontSize:12,verticalAlign:'middle'}}>check_circle</span></span>}
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
+      {/* ── Sticky action bar ── */}
+      <div style={{
+        position:'sticky', bottom:0, zIndex:5, background:'var(--surface)', borderTop:'1px solid var(--border)',
+        padding:'12px 18px', display:'flex', alignItems:'center', justifyContent:'space-between',
+        borderRadius:'var(--radius-lg)', boxShadow:'var(--shadow)', flexWrap:'wrap', gap:10,
+      }}>
+        {!previewReady ? (
+          <>
+            <Btn className="btn btn-secondary" onClick={handleReset}>Reset</Btn>
+            <Btn className="btn btn-primary" onClick={showReport} disabled={!canPreview}>Preview Report →</Btn>
+          </>
+        ) : (
+          <>
+            <Btn className="btn btn-secondary" onClick={() => setRenderedSig(null)}>← Edit Configuration</Btn>
+            <div style={{display:'flex', gap:8}}>
+              {!isAggregate && (
+                <Btn className="btn btn-secondary" onClick={handleCSV} disabled={!activeExps.length}>Export CSV</Btn>
               )}
+              {isAggregate && !isMultiInst && family.downloadDOCX && (
+                <Btn className="btn btn-secondary" onClick={handleWord} disabled={!canPrint || isStale}
+                  title={isStale ? 'Rebuild first — settings have changed since this was built' : undefined}>Export Word</Btn>
+              )}
+              {isMultiInst && family.downloadMultiDOCX && (
+                <Btn className="btn btn-secondary"
+                  onClick={() => family.downloadMultiDOCX(fwSelectedFirms(), clients, report.id, opts)}
+                  disabled={fwInstIds.length === 0 || isStale}
+                  title={isStale ? 'Rebuild first — settings have changed since this was built' : undefined}>Export Word</Btn>
+              )}
+              <Btn className="btn btn-primary" onClick={() => {
+                if (noInstitute) { handlePrintTools(); return; }
+                if (!isMultiInst) { handlePrint(); return; }
+                const firms = fwSelectedFirms();
+                if (!firms.length) return;
+                let combined;
+                if (family.buildMultiPrintHTML) {
+                  combined = family.buildMultiPrintHTML(firms, clients, report.id, fyRangeLabel, opts);
+                } else {
+                  const docs = firms
+                    .map(({ inst, exps }) => family.buildPrintHTML(inst, exps, clients, report.id, fyRangeLabel, opts))
+                    .filter(Boolean);
+                  if (!docs.length) return;
+                  const bodyParts = docs.map(html => {
+                    const m = html.match(/<body[^>]*>([\s\S]*)<\/body>/i);
+                    return m ? m[1] : '';
+                  });
+                  combined = docs[0].replace(/<body[^>]*>[\s\S]*<\/body>/i,
+                    `<body>${bodyParts.join('<div style="page-break-before:always"></div>')}</body>`);
+                }
+                const w = window.open('', '_blank');
+                w.document.write(combined);
+                w.document.close();
+                setTimeout(() => w.print(), 300);
+              }} disabled={!canPrint || isStale}
+                title={isStale ? 'Rebuild first — settings have changed since this was built' : undefined}>Export PDF</Btn>
             </div>
-          )}
-        </div>
+          </>
+        )}
       </div>
     </div>
   );
