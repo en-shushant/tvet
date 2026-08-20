@@ -650,6 +650,9 @@ function ReportsView({ institutes, clients }) {
 
               {isMultiInst ? (
                 <>
+                  <div style={{fontSize:11, fontWeight:700, color:'var(--primary)', textTransform:'uppercase', letterSpacing:'.4px', marginBottom:8}}>
+                    Step 1 · Search and select firms
+                  </div>
                   <div style={{display:'flex', alignItems:'center', gap:8, marginBottom:8}}>
                     <input className="form-input" value={fwInstSearch} onChange={e => setFwInstSearch(e.target.value)}
                       placeholder="Search firms…" style={{flex:1}}/>
@@ -657,52 +660,53 @@ function ReportsView({ institutes, clients }) {
                       <Btn className="btn btn-ghost btn-sm" onClick={() => { setFwInstIds([]); setFwLeadId(null); }}>Clear</Btn>
                     )}
                   </div>
-
-                  {fwInstIds.length > 0 && (
-                    <div style={{marginBottom:12, border:'1px solid var(--border)', borderRadius:10, overflow:'hidden', background:'var(--surface)'}}>
-                      <div style={{fontSize:10.5, fontWeight:600, color:'var(--text3)', textTransform:'uppercase',
-                        letterSpacing:'.4px', padding:'6px 10px', background:'var(--bg2)'}}>
-                        {fwInstIds.length > 1 ? `Selected (${fwInstIds.length}) — mark the lead firm` : 'Selected (1)'}
-                      </div>
-                      {fwInstIds.map(id => {
-                        const i = institutes.find(x => x.id === id);
-                        if (!i) return null;
-                        const isLead = fwLeadId === id;
-                        return (
-                          <div key={id} style={{display:'flex', alignItems:'center', gap:8, padding:'7px 10px',
-                            borderTop:'1px solid var(--border)', fontSize:12.5}}>
-                            {fwInstIds.length > 1 && (
-                              <label style={{display:'flex', alignItems:'center', gap:5, margin:0,
-                                flexShrink:0, cursor:'pointer', whiteSpace:'nowrap'}}
-                                title={isLead ? 'Lead firm' : 'Mark as lead firm'}>
-                                <input type="radio" name="fw-lead" checked={isLead} onChange={() => setFwLeadId(id)} style={{margin:0}}/>
-                                <span style={{fontSize:10, fontWeight:700, width:30, display:'inline-block',
-                                  color: isLead ? 'var(--primary)' : 'var(--text3)'}}>
-                                  {isLead ? 'LEAD' : 'JV'}
-                                </span>
-                              </label>
-                            )}
-                            <span style={{flex:1, minWidth:0, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap'}}
-                              title={i.name}>{i.acronym || i.name}</span>
-                            <button onClick={() => toggleFwInst(id)} aria-label={`Remove ${i.acronym || i.name}`}
-                              style={{background:'none', border:'none', cursor:'pointer', color:'var(--text3)', padding:0, lineHeight:1}}>
-                              <span className="material-icons-round" style={{fontSize:15}}>close</span>
-                            </button>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
-
                   <div className="multi-select-list" style={{maxHeight:280, overflowY:'auto'}}>
                     {institutes.filter(i => !fwInstSearch || i.name.toLowerCase().includes(fwInstSearch.toLowerCase()) || (i.acronym||'').toLowerCase().includes(fwInstSearch.toLowerCase())).map(i => (
                       <label key={i.id} className="multi-select-item">
                         <input type="checkbox" checked={fwInstIds.includes(i.id)} onChange={() => toggleFwInst(i.id)}/>
-                        <span>{i.acronym || i.name}</span>
+                        <span>{i.name}{i.acronym ? ` (${i.acronym})` : ''}</span>
                       </label>
                     ))}
                   </div>
                   <div style={{fontSize:12, color:'var(--text3)', marginTop:10}}>{fwInstIds.length} firm{fwInstIds.length !== 1 ? 's' : ''} selected</div>
+
+                  {fwInstIds.length > 0 && (
+                    <div style={{marginTop:22, paddingTop:18, borderTop:'1px solid var(--border)'}}>
+                      <div style={{fontSize:11, fontWeight:700, color:'var(--primary)', textTransform:'uppercase', letterSpacing:'.4px', marginBottom:8}}>
+                        {fwInstIds.length > 1 ? 'Step 2 · Mark the lead firm' : 'Step 2 · Selected firm'}
+                      </div>
+                      <div style={{border:'1px solid var(--border)', borderRadius:10, overflow:'hidden', background:'var(--surface)'}}>
+                        {fwInstIds.map((id, i) => {
+                          const inst = institutes.find(x => x.id === id);
+                          if (!inst) return null;
+                          const isLead = fwLeadId === id;
+                          return (
+                            <div key={id} style={{display:'flex', alignItems:'center', gap:8, padding:'8px 10px',
+                              borderTop: i > 0 ? '1px solid var(--border)' : 'none', fontSize:13}}>
+                              {fwInstIds.length > 1 && (
+                                <label style={{display:'flex', alignItems:'center', gap:5, margin:0,
+                                  flexShrink:0, cursor:'pointer', whiteSpace:'nowrap'}}
+                                  title={isLead ? 'Lead firm' : 'Mark as lead firm'}>
+                                  <input type="radio" name="fw-lead" checked={isLead} onChange={() => setFwLeadId(id)} style={{margin:0}}/>
+                                  <span style={{fontSize:10, fontWeight:700, width:34, display:'inline-block',
+                                    color: isLead ? 'var(--primary)' : 'var(--text3)'}}>
+                                    {isLead ? 'LEAD' : 'JV'}
+                                  </span>
+                                </label>
+                              )}
+                              <span style={{flex:1, minWidth:0}} title={inst.name}>
+                                {inst.name}{inst.acronym ? <span style={{color:'var(--text3)'}}> ({inst.acronym})</span> : null}
+                              </span>
+                              <button onClick={() => toggleFwInst(id)} aria-label={`Remove ${inst.name}`}
+                                style={{background:'none', border:'none', cursor:'pointer', color:'var(--text3)', padding:0, lineHeight:1, flexShrink:0}}>
+                                <span className="material-icons-round" style={{fontSize:15}}>close</span>
+                              </button>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
                 </>
               ) : noInstitute ? (
                 <div style={{fontSize:12.5, color:'var(--text3)'}}>This report doesn't require a firm — configure the occupations and tools below instead.</div>
@@ -717,7 +721,7 @@ function ReportsView({ institutes, clients }) {
                         <label key={i.id} className="multi-select-item">
                           <input type="radio" name="single-firm" checked={String(selectedInst) === String(i.id)}
                             onChange={() => setSelectedInst(i.id)}/>
-                          <span>{i.acronym ? `${i.acronym} — ` : ''}{i.name}</span>
+                          <span>{i.name}{i.acronym ? ` (${i.acronym})` : ''}</span>
                         </label>
                       ))}
                   </div>
