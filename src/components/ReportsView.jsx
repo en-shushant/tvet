@@ -21,6 +21,48 @@ function saveFilters(patch) {
 }
 
 
+/**
+ * What is currently chosen, listed above the picker it came from.
+ *
+ * The selections used to sit under a long scrolling list, so checking what you
+ * had picked meant scrolling past everything you had not. Kept deliberately
+ * small — this is a read-back with a remove on each entry, not a second list to
+ * work through.
+ */
+function SelectedTop({ items, onRemove, onClear, label = 'Selected' }) {
+  if (!items.length) return null;
+  return (
+    <div style={{marginBottom:10, border:'1px solid var(--border)', borderRadius:10,
+      background:'var(--bg,#f8fafc)', padding:'8px 10px'}}>
+      <div style={{display:'flex', alignItems:'center', justifyContent:'space-between', gap:8, marginBottom:6}}>
+        <span style={{fontSize:10.5, fontWeight:700, color:'var(--text3)', letterSpacing:'.4px', textTransform:'uppercase'}}>
+          {label} · {items.length}
+        </span>
+        {onClear && (
+          <button onClick={onClear}
+            style={{background:'none', border:'none', cursor:'pointer', color:'var(--text3)',
+              fontSize:11, fontWeight:600, padding:0}}>Clear</button>
+        )}
+      </div>
+      <div style={{display:'flex', flexWrap:'wrap', gap:6}}>
+        {items.map(it => (
+          <span key={it.key} style={{display:'inline-flex', alignItems:'center', gap:4,
+            fontSize:11.5, background:'var(--primary-light,#eff6ff)', color:'var(--primary)',
+            borderRadius:100, padding:'3px 5px 3px 10px', maxWidth:'100%'}}>
+            <span style={{overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap'}} title={it.title || it.label}>
+              {it.label}
+            </span>
+            <button onClick={() => onRemove(it.key)} aria-label={`Remove ${it.label}`}
+              style={{background:'none', border:'none', cursor:'pointer', color:'inherit', display:'flex', padding:0}}>
+              <span className="material-icons-round" style={{fontSize:13}}>close</span>
+            </button>
+          </span>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function ReportsView({ institutes, clients }) {
   const f = loadFilters();
   const [familyId, setFamilyId]         = useState(f.familyId || REPORT_FAMILIES[0].id);
@@ -640,17 +682,53 @@ function ReportsView({ institutes, clients }) {
 
               {isMultiInst ? (
                 <>
-                  <div style={{fontSize:11, fontWeight:700, color:'var(--primary)', textTransform:'uppercase', letterSpacing:'.4px', marginBottom:8}}>
-                    Step 1 · Search and select firms
-                  </div>
-                  <div style={{display:'flex', alignItems:'center', gap:8, marginBottom:8}}>
-                    <input className="form-input" value={fwInstSearch} onChange={e => setFwInstSearch(e.target.value)}
-                      placeholder="Search firms…" style={{flex:1}}/>
-                    {fwInstIds.length > 0 && (
-                      <Btn className="btn btn-ghost btn-sm" onClick={() => { setFwInstIds([]); setFwLeadId(null); }}>Clear</Btn>
-                    )}
-                  </div>
-                  <div className="multi-select-list" style={{maxHeight:280, overflowY:'auto'}}>
+                  {/* Chosen firms lead, because which firm is lead is set here
+                      and used to be buried under the full institute list. */}
+                  {fwInstIds.length > 0 && (
+                    <div style={{marginBottom:10, border:'1px solid var(--border)', borderRadius:10,
+                      background:'var(--bg,#f8fafc)', padding:'8px 10px'}}>
+                      <div style={{display:'flex', alignItems:'center', justifyContent:'space-between', gap:8, marginBottom:6}}>
+                        <span style={{fontSize:10.5, fontWeight:700, color:'var(--text3)', letterSpacing:'.4px', textTransform:'uppercase'}}>
+                          Selected · {fwInstIds.length}{fwInstIds.length > 1 ? ' — mark the lead firm' : ''}
+                        </span>
+                        <button onClick={() => { setFwInstIds([]); setFwLeadId(null); }}
+                          style={{background:'none', border:'none', cursor:'pointer', color:'var(--text3)',
+                            fontSize:11, fontWeight:600, padding:0}}>Clear</button>
+                      </div>
+                      {fwInstIds.map(id => {
+                        const inst = institutes.find(x => x.id === id);
+                        if (!inst) return null;
+                        const isLead = fwLeadId === id;
+                        return (
+                          <div key={id} style={{display:'flex', alignItems:'center', gap:8, padding:'3px 0', fontSize:12.5}}>
+                            {fwInstIds.length > 1 && (
+                              <label style={{display:'flex', alignItems:'center', gap:5, margin:0,
+                                flexShrink:0, cursor:'pointer', whiteSpace:'nowrap'}}
+                                title={isLead ? 'Lead firm' : 'Mark as lead firm'}>
+                                <input type="radio" name="fw-lead" checked={isLead} onChange={() => setFwLeadId(id)} style={{margin:0}}/>
+                                <span style={{fontSize:9.5, fontWeight:700, width:30, display:'inline-block',
+                                  color: isLead ? 'var(--primary)' : 'var(--text3)'}}>
+                                  {isLead ? 'LEAD' : 'JV'}
+                                </span>
+                              </label>
+                            )}
+                            <span style={{flex:1, minWidth:0, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap'}}
+                              title={inst.name}>
+                              {inst.name}{inst.acronym ? <span style={{color:'var(--text3)'}}> ({inst.acronym})</span> : null}
+                            </span>
+                            <button onClick={() => toggleFwInst(id)} aria-label={`Remove ${inst.name}`}
+                              style={{background:'none', border:'none', cursor:'pointer', color:'var(--text3)', padding:0, lineHeight:1, flexShrink:0}}>
+                              <span className="material-icons-round" style={{fontSize:14}}>close</span>
+                            </button>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+
+                  <input className="form-input" value={fwInstSearch} onChange={e => setFwInstSearch(e.target.value)}
+                    placeholder="Search firms…" style={{width:'100%', marginBottom:8}}/>
+                  <div className="multi-select-list" style={{maxHeight:260, overflowY:'auto'}}>
                     {institutes.filter(i => !fwInstSearch || i.name.toLowerCase().includes(fwInstSearch.toLowerCase()) || (i.acronym||'').toLowerCase().includes(fwInstSearch.toLowerCase())).map(i => (
                       <label key={i.id} className="multi-select-item">
                         <input type="checkbox" checked={fwInstIds.includes(i.id)} onChange={() => toggleFwInst(i.id)}/>
@@ -658,53 +736,22 @@ function ReportsView({ institutes, clients }) {
                       </label>
                     ))}
                   </div>
-                  <div style={{fontSize:12, color:'var(--text3)', marginTop:10}}>{fwInstIds.length} firm{fwInstIds.length !== 1 ? 's' : ''} selected</div>
-
-                  {fwInstIds.length > 0 && (
-                    <div style={{marginTop:22, paddingTop:18, borderTop:'1px solid var(--border)'}}>
-                      <div style={{fontSize:11, fontWeight:700, color:'var(--primary)', textTransform:'uppercase', letterSpacing:'.4px', marginBottom:8}}>
-                        {fwInstIds.length > 1 ? 'Step 2 · Mark the lead firm' : 'Step 2 · Selected firm'}
-                      </div>
-                      <div style={{border:'1px solid var(--border)', borderRadius:10, overflow:'hidden', background:'var(--surface)'}}>
-                        {fwInstIds.map((id, i) => {
-                          const inst = institutes.find(x => x.id === id);
-                          if (!inst) return null;
-                          const isLead = fwLeadId === id;
-                          return (
-                            <div key={id} style={{display:'flex', alignItems:'center', gap:8, padding:'8px 10px',
-                              borderTop: i > 0 ? '1px solid var(--border)' : 'none', fontSize:13}}>
-                              {fwInstIds.length > 1 && (
-                                <label style={{display:'flex', alignItems:'center', gap:5, margin:0,
-                                  flexShrink:0, cursor:'pointer', whiteSpace:'nowrap'}}
-                                  title={isLead ? 'Lead firm' : 'Mark as lead firm'}>
-                                  <input type="radio" name="fw-lead" checked={isLead} onChange={() => setFwLeadId(id)} style={{margin:0}}/>
-                                  <span style={{fontSize:10, fontWeight:700, width:34, display:'inline-block',
-                                    color: isLead ? 'var(--primary)' : 'var(--text3)'}}>
-                                    {isLead ? 'LEAD' : 'JV'}
-                                  </span>
-                                </label>
-                              )}
-                              <span style={{flex:1, minWidth:0}} title={inst.name}>
-                                {inst.name}{inst.acronym ? <span style={{color:'var(--text3)'}}> ({inst.acronym})</span> : null}
-                              </span>
-                              <button onClick={() => toggleFwInst(id)} aria-label={`Remove ${inst.name}`}
-                                style={{background:'none', border:'none', cursor:'pointer', color:'var(--text3)', padding:0, lineHeight:1, flexShrink:0}}>
-                                <span className="material-icons-round" style={{fontSize:15}}>close</span>
-                              </button>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  )}
                 </>
               ) : noInstitute ? (
                 <div style={{fontSize:12.5, color:'var(--text3)'}}>This report doesn't require a firm — configure the occupations and tools below instead.</div>
               ) : (
                 <>
+                  <SelectedTop
+                    label="Selected firm"
+                    items={(() => {
+                      const i = institutes.find(x => String(x.id) === String(selectedInst));
+                      return i ? [{ key: i.id, label: `${i.name}${i.acronym ? ` (${i.acronym})` : ''}`, title: i.name }] : [];
+                    })()}
+                    onRemove={() => setSelectedInst('')}
+                  />
                   <input className="form-input" value={firmSearch} onChange={e => setFirmSearch(e.target.value)}
                     placeholder="Search firms…" style={{width:'100%', marginBottom:8}}/>
-                  <div className="multi-select-list" style={{maxHeight:320, overflowY:'auto'}}>
+                  <div className="multi-select-list" style={{maxHeight:300, overflowY:'auto'}}>
                     {institutes
                       .filter(i => !firmSearch || i.name.toLowerCase().includes(firmSearch.toLowerCase()) || (i.acronym||'').toLowerCase().includes(firmSearch.toLowerCase()))
                       .map(i => (
@@ -715,8 +762,7 @@ function ReportsView({ institutes, clients }) {
                         </label>
                       ))}
                   </div>
-                  <div style={{fontSize:12, color:'var(--text3)', marginTop:10}}>{selectedInst ? '1 firm selected' : 'No firm selected'}</div>
-                  {loadingInst && <div style={{fontSize:12, color:'var(--text3)', marginTop:6}}>Loading firm data…</div>}
+                  {loadingInst && <div style={{fontSize:12, color:'var(--text3)', marginTop:8}}>Loading firm data…</div>}
                 </>
               )}
             </div>
@@ -728,12 +774,12 @@ function ReportsView({ institutes, clients }) {
 
               {familyId === 'enssure' && fullInst && (
                 <div>
-                  <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:8}}>
-                    <div style={{fontWeight:600, fontSize:13.5}}>Proposed Occupations (C2)</div>
-                    {enssureOccIds.length > 0 && (
-                      <Btn className="btn btn-ghost btn-sm" onClick={() => setEnssureOccIds([])}>Clear</Btn>
-                    )}
-                  </div>
+                  <div style={{fontWeight:600, fontSize:13.5, marginBottom:8}}>Proposed Occupations (C2)</div>
+                  <SelectedTop
+                    items={enssureOccIds.map((id, i) => ({ key: id, label: enssureOccs[i] || String(id) }))}
+                    onRemove={(id) => toggleEnssureOcc(id)}
+                    onClear={() => setEnssureOccIds([])}
+                  />
                   <input className="form-input" value={enssureOccSearch} onChange={e => setEnssureOccSearch(e.target.value)}
                     placeholder="Search…" style={{marginBottom:8}}/>
                   <div className="multi-select-list" style={{maxHeight:220, overflowY:'auto'}}>
@@ -744,32 +790,17 @@ function ReportsView({ institutes, clients }) {
                       </label>
                     ))}
                   </div>
-                  <div style={{fontSize:12, color:'var(--text3)', marginTop:8}}>{enssureOccIds.length} occupation{enssureOccIds.length !== 1 ? 's' : ''} selected</div>
-                  {enssureOccIds.length > 0 && (
-                    <div style={{display:'flex', flexWrap:'wrap', gap:6, marginTop:8}}>
-                      {enssureOccs.map((name, i) => (
-                        <span key={i} style={{display:'flex', alignItems:'center', gap:5, fontSize:11.5,
-                          background:'var(--primary-light,#eff6ff)', color:'var(--primary)', borderRadius:100, padding:'3px 6px 3px 10px'}}>
-                          {name}
-                          <button onClick={() => toggleEnssureOcc(enssureOccIds[i])}
-                            style={{background:'none', border:'none', cursor:'pointer', color:'inherit', display:'flex', padding:0}}>
-                            <span className="material-icons-round" style={{fontSize:13}}>close</span>
-                          </button>
-                        </span>
-                      ))}
-                    </div>
-                  )}
                 </div>
               )}
 
               {report.hasSpecificOccFilter && allMasterOccNames.length > 0 && (
                 <div>
-                  <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:8}}>
-                    <div style={{fontWeight:600, fontSize:13.5}}>Occupation — 3(B) Specific Experience</div>
-                    {eoiSpecificOccs.length > 0 && (
-                      <Btn className="btn btn-ghost btn-sm" onClick={() => setEoiSpecificOccs([])}>Clear</Btn>
-                    )}
-                  </div>
+                  <div style={{fontWeight:600, fontSize:13.5, marginBottom:8}}>Occupation — 3(B) Specific Experience</div>
+                  <SelectedTop
+                    items={eoiSpecificOccs.map(n => ({ key: n, label: n }))}
+                    onRemove={toggleSpecificOcc}
+                    onClear={() => setEoiSpecificOccs([])}
+                  />
                   <input className="form-input" value={occSearch} onChange={e => setOccSearch(e.target.value)}
                     placeholder="Search…" style={{marginBottom:8}}/>
                   <div className="multi-select-list" style={{maxHeight:220, overflowY:'auto'}}>
@@ -780,18 +811,17 @@ function ReportsView({ institutes, clients }) {
                       </label>
                     ))}
                   </div>
-                  <div style={{fontSize:12, color:'var(--text3)', marginTop:8}}>{eoiSpecificOccs.length} selected</div>
                 </div>
               )}
 
               {report.hasOccupationFilter && !report.hasSpecificOccFilter && (report.hasToolsPicker ? allMasterOccNames : allOccNames).length > 0 && (
                 <div>
-                  <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:8}}>
-                    <div style={{fontWeight:600, fontSize:13.5}}>{report.hasToolsPicker ? 'Occupation — 4(B) Tools' : 'Occupations'}</div>
-                    {selectedOccs.length > 0 && (
-                      <Btn className="btn btn-ghost btn-sm" onClick={() => setSelectedOccs([])}>Clear</Btn>
-                    )}
-                  </div>
+                  <div style={{fontWeight:600, fontSize:13.5, marginBottom:8}}>{report.hasToolsPicker ? 'Occupation — 4(B) Tools' : 'Occupations'}</div>
+                  <SelectedTop
+                    items={selectedOccs.map(n => ({ key: n, label: n }))}
+                    onRemove={toggleOcc}
+                    onClear={() => setSelectedOccs([])}
+                  />
                   <input className="form-input" value={occSearch} onChange={e => setOccSearch(e.target.value)}
                     placeholder="Search…" style={{marginBottom:8}}/>
                   <div className="multi-select-list" style={{maxHeight:220, overflowY:'auto'}}>
@@ -802,32 +832,17 @@ function ReportsView({ institutes, clients }) {
                       </label>
                     ))}
                   </div>
-                  <div style={{fontSize:12, color:'var(--text3)', marginTop:8}}>{selectedOccs.length} selected</div>
-                  {selectedOccs.length > 0 && (
-                    <div style={{display:'flex', flexWrap:'wrap', gap:6, marginTop:8}}>
-                      {selectedOccs.map(name => (
-                        <span key={name} style={{display:'flex', alignItems:'center', gap:5, fontSize:11.5,
-                          background:'var(--primary-light,#eff6ff)', color:'var(--primary)', borderRadius:100, padding:'3px 6px 3px 10px'}}>
-                          {name}
-                          <button onClick={() => toggleOcc(name)}
-                            style={{background:'none', border:'none', cursor:'pointer', color:'inherit', display:'flex', padding:0}}>
-                            <span className="material-icons-round" style={{fontSize:13}}>close</span>
-                          </button>
-                        </span>
-                      ))}
-                    </div>
-                  )}
                 </div>
               )}
 
               {report.hasOccupationFilter && report.hasSpecificOccFilter && report.hasToolsPicker && allMasterOccNames.length > 0 && (
                 <div>
-                  <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:8}}>
-                    <div style={{fontWeight:600, fontSize:13.5}}>Occupation — 4(B) Tools</div>
-                    {selectedOccs.length > 0 && (
-                      <Btn className="btn btn-ghost btn-sm" onClick={() => setSelectedOccs([])}>Clear</Btn>
-                    )}
-                  </div>
+                  <div style={{fontWeight:600, fontSize:13.5, marginBottom:8}}>Occupation — 4(B) Tools</div>
+                  <SelectedTop
+                    items={selectedOccs.map(n => ({ key: n, label: n }))}
+                    onRemove={toggleOcc}
+                    onClear={() => setSelectedOccs([])}
+                  />
                   <input className="form-input" value={toolsOccSearch2} onChange={e => setToolsOccSearch2(e.target.value)}
                     placeholder="Search…" style={{marginBottom:8}}/>
                   <div className="multi-select-list" style={{maxHeight:220, overflowY:'auto'}}>
@@ -838,18 +853,20 @@ function ReportsView({ institutes, clients }) {
                       </label>
                     ))}
                   </div>
-                  <div style={{fontSize:12, color:'var(--text3)', marginTop:8}}>{selectedOccs.length} selected</div>
                 </div>
               )}
 
               {noInstitute && (
                 <div>
-                  <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:8}}>
-                    <div style={{fontWeight:600, fontSize:13.5}}>Occupations</div>
-                    {toolsOccIds.length > 0 && (
-                      <Btn className="btn btn-ghost btn-sm" onClick={() => setToolsOccIds([])}>Clear</Btn>
-                    )}
-                  </div>
+                  <div style={{fontWeight:600, fontSize:13.5, marginBottom:8}}>Occupations</div>
+                  <SelectedTop
+                    items={toolsOccIds.map(id => {
+                      const o = occupations.find(x => x.id === id);
+                      return { key: id, label: o ? `${o.name}${o.level ? ` (${o.level})` : ''}` : String(id) };
+                    })}
+                    onRemove={toggleToolsOcc}
+                    onClear={() => setToolsOccIds([])}
+                  />
                   <input className="form-input" value={toolsOccSearch} onChange={e => setToolsOccSearch(e.target.value)}
                     placeholder="Search…" style={{marginBottom:8}}/>
                   <div className="multi-select-list" style={{maxHeight:260, overflowY:'auto'}}>
@@ -860,7 +877,6 @@ function ReportsView({ institutes, clients }) {
                       </label>
                     ))}
                   </div>
-                  <div style={{fontSize:12, color:'var(--text3)', marginTop:8}}>{toolsOccIds.length} selected</div>
                 </div>
               )}
             </div>
