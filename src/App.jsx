@@ -8,26 +8,57 @@ import ChangePasswordModal from './components/ChangePasswordModal.jsx';
 import CommandPalette from './components/CommandPalette.jsx';
 import { UserManagement } from './components/LoginPage.jsx';
 
+/**
+ * lazy(), but self-healing across deploys.
+ *
+ * Every build emits content-hashed chunk names, and a deploy deletes the old
+ * ones. A tab that was already open still holds the previous entry module, so
+ * the moment it navigates to a split screen it requests a filename that no
+ * longer exists: the import 404s and React throws "Cannot read properties of
+ * undefined (reading 'default')" — a dead screen for anyone who happened to
+ * have the app open while we shipped.
+ *
+ * Reloading picks up the new HTML and the new chunk names. The sessionStorage
+ * latch means we only ever do that once, so a chunk that is genuinely missing
+ * surfaces as a real error instead of an infinite reload loop; a successful
+ * load clears it so the next deploy can heal itself the same way.
+ */
+const CHUNK_RELOAD_KEY = 'tvettrack_chunk_reload';
+const lazyChunk = (factory) => lazy(() =>
+  factory()
+    .then(m => { try { sessionStorage.removeItem(CHUNK_RELOAD_KEY); } catch {} return m; })
+    .catch(err => {
+      let alreadyTried = true;
+      try {
+        alreadyTried = !!sessionStorage.getItem(CHUNK_RELOAD_KEY);
+        if (!alreadyTried) sessionStorage.setItem(CHUNK_RELOAD_KEY, '1');
+      } catch {}
+      if (alreadyTried) throw err;
+      window.location.reload();
+      return new Promise(() => {}); // never settles; the reload takes over
+    })
+);
+
 // Lazy: reached only by navigating, so their cost belongs on that navigation
 // rather than on first paint. One <Suspense> around the screen switch below
 // covers all of them.
-const ShortlistDashboard = lazy(() => import('./components/ShortlistDashboard.jsx'));
-const QuotationsView     = lazy(() => import('./components/QuotationsView.jsx'));
-const InstituteList      = lazy(() => import('./components/InstituteList.jsx'));
-const InstituteDetail    = lazy(() => import('./components/InstituteDetail.jsx'));
-const InstituteForm      = lazy(() => import('./components/InstituteForm.jsx'));
-const AnalyticsView      = lazy(() => import('./components/AnalyticsView.jsx'));
-const ComplianceCentre   = lazy(() => import('./components/ComplianceCentre.jsx'));
-const DocumentsCentre    = lazy(() => import('./components/DocumentsCentre.jsx'));
-const DataQuality        = lazy(() => import('./components/DataQuality.jsx'));
-const ClientsView        = lazy(() => import('./components/ClientsView.jsx'));
-const ProjectCompliance  = lazy(() => import('./components/ProjectCompliance.jsx'));
-const MasterData         = lazy(() => import('./components/MasterData.jsx'));
-const NSTBBulkPage       = lazy(() => import('./components/NSTBForms.jsx').then(m => ({ default: m.NSTBBulkPage })));
+const ShortlistDashboard = lazyChunk(() => import('./components/ShortlistDashboard.jsx'));
+const QuotationsView     = lazyChunk(() => import('./components/QuotationsView.jsx'));
+const InstituteList      = lazyChunk(() => import('./components/InstituteList.jsx'));
+const InstituteDetail    = lazyChunk(() => import('./components/InstituteDetail.jsx'));
+const InstituteForm      = lazyChunk(() => import('./components/InstituteForm.jsx'));
+const AnalyticsView      = lazyChunk(() => import('./components/AnalyticsView.jsx'));
+const ComplianceCentre   = lazyChunk(() => import('./components/ComplianceCentre.jsx'));
+const DocumentsCentre    = lazyChunk(() => import('./components/DocumentsCentre.jsx'));
+const DataQuality        = lazyChunk(() => import('./components/DataQuality.jsx'));
+const ClientsView        = lazyChunk(() => import('./components/ClientsView.jsx'));
+const ProjectCompliance  = lazyChunk(() => import('./components/ProjectCompliance.jsx'));
+const MasterData         = lazyChunk(() => import('./components/MasterData.jsx'));
+const NSTBBulkPage       = lazyChunk(() => import('./components/NSTBForms.jsx').then(m => ({ default: m.NSTBBulkPage })));
 // Design-system reference, reachable at #styleguide. Not in navigation.
-const StyleGuide = lazy(() => import('./components/StyleGuide.jsx'));
-const ReportsView = lazy(() => import('./components/ReportsView.jsx'));
-const Shortlisting = lazy(() => import('./components/Shortlisting.jsx'));
+const StyleGuide = lazyChunk(() => import('./components/StyleGuide.jsx'));
+const ReportsView = lazyChunk(() => import('./components/ReportsView.jsx'));
+const Shortlisting = lazyChunk(() => import('./components/Shortlisting.jsx'));
 import { ErrorBanner } from './components/ui/Modal.jsx';
 import StatusBadge from './components/ui/StatusBadge.jsx';
 import { PROVINCES, OCCUPATIONS, FISCAL_YEARS, getAllDistricts, notifyMasterData } from './constants/data.js';
