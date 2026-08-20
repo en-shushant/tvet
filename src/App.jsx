@@ -1,4 +1,4 @@
-import { useState, useEffect, lazy, Suspense } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 // Eager: needed for the very first paint on any visit — the logged-out entry,
 // the default screen, and the chrome that is always mounted. Everything else is
 // split out below, so a cold load no longer ships all sixteen screens at once.
@@ -7,37 +7,6 @@ import Dashboard from './components/Dashboard.jsx';
 import ChangePasswordModal from './components/ChangePasswordModal.jsx';
 import CommandPalette from './components/CommandPalette.jsx';
 import { UserManagement } from './components/LoginPage.jsx';
-
-/**
- * lazy(), but self-healing across deploys.
- *
- * Every build emits content-hashed chunk names, and a deploy deletes the old
- * ones. A tab that was already open still holds the previous entry module, so
- * the moment it navigates to a split screen it requests a filename that no
- * longer exists: the import 404s and React throws "Cannot read properties of
- * undefined (reading 'default')" — a dead screen for anyone who happened to
- * have the app open while we shipped.
- *
- * Reloading picks up the new HTML and the new chunk names. The sessionStorage
- * latch means we only ever do that once, so a chunk that is genuinely missing
- * surfaces as a real error instead of an infinite reload loop; a successful
- * load clears it so the next deploy can heal itself the same way.
- */
-const CHUNK_RELOAD_KEY = 'tvettrack_chunk_reload';
-const lazyChunk = (factory) => lazy(() =>
-  factory()
-    .then(m => { try { sessionStorage.removeItem(CHUNK_RELOAD_KEY); } catch {} return m; })
-    .catch(err => {
-      let alreadyTried = true;
-      try {
-        alreadyTried = !!sessionStorage.getItem(CHUNK_RELOAD_KEY);
-        if (!alreadyTried) sessionStorage.setItem(CHUNK_RELOAD_KEY, '1');
-      } catch {}
-      if (alreadyTried) throw err;
-      window.location.reload();
-      return new Promise(() => {}); // never settles; the reload takes over
-    })
-);
 
 // Lazy: reached only by navigating, so their cost belongs on that navigation
 // rather than on first paint. One <Suspense> around the screen switch below
@@ -64,6 +33,7 @@ import StatusBadge from './components/ui/StatusBadge.jsx';
 import { PROVINCES, OCCUPATIONS, FISCAL_YEARS, getAllDistricts, notifyMasterData } from './constants/data.js';
 import { getNepaliDate } from './constants/nepali.js';
 
+import { lazyChunk } from './utils/lazyChunk.js';
 import { api, normInst, normClient, instToAPI, nstbToAPI } from './utils/api.js';
 import { preloadLogos } from './utils/logoCache.js';
 import { getSession, setSession as setSessionStorage, clearSession } from './utils/auth.js';
