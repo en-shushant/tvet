@@ -29,7 +29,7 @@ export const REPORTS = [
 
 export const MULTI_INSTITUTE = true;
 
-const TH = { background:'#dce6f1', padding:'7px 10px', border:'1px solid #aab8c8', fontWeight:600, fontSize:12, textAlign:'center', verticalAlign:'middle' };
+const TH = { color:'#111', background:'#dce6f1', padding:'7px 10px', border:'1px solid #aab8c8', fontWeight:600, fontSize:12, textAlign:'center', verticalAlign:'middle' };
 const TD = { padding:'6px 10px', border:'1px solid #c0c8d0', fontSize:12, verticalAlign:'middle' };
 const TDN = { ...TD, textAlign:'right' };
 const TBL = { width:'100%', borderCollapse:'collapse', marginTop:6 };
@@ -76,7 +76,7 @@ function FirmWiseTable({ fullInst, activeExps, occupations, selectedOccs }) {
               <td style={TDN}>{occ.empRate > 0 ? `${occ.empRate}%` : '—'}</td>
             </tr>
           ))}
-          <tr style={{background:'#e8f0fe', fontWeight:600}}>
+          <tr style={{background:'#e8f0fe', color:'#111', fontWeight:600}}>
             <td style={TD}></td>
             <td style={{...TD, fontWeight:600}}>General (All Occupations)</td>
             <td style={TDN}>{grand.trained || '—'}</td>
@@ -164,7 +164,7 @@ function NSTBComparativeTable({ occs, allFYs, grand }) {
             </tr>
           );
         })}
-        <tr style={{ background: '#e8f0fe', fontWeight: 600 }}>
+        <tr style={{ background: '#e8f0fe', color: '#111', fontWeight: 600 }}>
           <td style={TD}></td>
           <td style={TD}>Total</td>
           {fyTotals.map((t, i) => <td key={allFYs[i]} style={TDN}>{t || '—'}</td>)}
@@ -222,7 +222,7 @@ function NSTBTable({ fullInst, activeExps, selectedOccs, opts = {} }) {
                 <td style={TDN}>{pct(occ.subtotal.pass, occ.subtotal.appeared)}</td>
               </tr>
             ))}
-            <tr style={{ background: '#e8f0fe', fontWeight: 600 }}>
+            <tr style={{ background: '#e8f0fe', color: '#111', fontWeight: 600 }}>
               <td style={TD}></td>
               <td style={TD}>Grand Total (All Occupations)</td>
               <td style={TDN}>{grand.applied || '—'}</td>

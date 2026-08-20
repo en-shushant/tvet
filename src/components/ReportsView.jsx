@@ -1365,8 +1365,8 @@ function ReportsView({ institutes, clients }) {
                     const allOccs = [...new Set(firmData.flatMap(f => Object.keys(f.byOcc)))].sort();
                     if (!allOccs.length) return null;
 
-                    const TH2 = { background:'#dce6f1', padding:'6px 8px', border:'1px solid #aab8c8', fontWeight:600, fontSize:11, textAlign:'center' };
-                    const TD2 = { padding:'5px 8px', border:'1px solid #c8d4e0', fontSize:11 };
+                    const TH2 = { color:'#111', background:'#dce6f1', padding:'6px 8px', border:'1px solid #aab8c8', fontWeight:600, fontSize:11, textAlign:'center' };
+                    const TD2 = { color:'#111', padding:'5px 8px', border:'1px solid #c8d4e0', fontSize:11 };
                     const TDN2 = { ...TD2, textAlign:'right' };
                     const threshold = nstbThreshold !== '' ? parseInt(nstbThreshold) : null;
 
@@ -1392,7 +1392,7 @@ function ReportsView({ institutes, clients }) {
                             {allOccs.map((occ, i) => {
                               const vals = firmData.map(f => f.byOcc[occ] || 0);
                               return (
-                                <tr key={occ} style={{background: i % 2 === 0 ? '#fff' : '#f7f9fc'}}>
+                                <tr key={occ} style={{background: i % 2 === 0 ? '#fff' : '#f7f9fc', color:'#111'}}>
                                   <td style={TD2}>{occ}</td>
                                   {vals.map((v, j) => {
                                     const highlight = threshold !== null && !isNaN(threshold) && v >= threshold && v > 0;
@@ -1408,14 +1408,14 @@ function ReportsView({ institutes, clients }) {
                                 </tr>
                               );
                             })}
-                            <tr style={{background:'#e8f0fe', fontWeight:600}}>
+                            <tr style={{background:'#e8f0fe', color:'#111', fontWeight:600}}>
                               <td style={TD2}>Selected Occupations Total</td>
                               {firmData.map((f, j) => {
                                 const t = allOccs.reduce((s, occ) => s + (f.byOcc[occ] || 0), 0);
                                 return <td key={j} style={TDN2}>{t || '—'}</td>;
                               })}
                             </tr>
-                            <tr style={{background:'#d0e4f7', fontWeight:700, borderTop:'2px solid #aab8c8'}}>
+                            <tr style={{background:'#d0e4f7', color:'#111', fontWeight:700, borderTop:'2px solid #aab8c8'}}>
                               <td style={TD2}>Total Skill Test (All Occupations)</td>
                               {firmData.map((f, j) => (
                                 <td key={j} style={TDN2}>{f.allAppearedTotal || '—'}</td>

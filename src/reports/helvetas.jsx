@@ -36,7 +36,7 @@ export const REPORTS = [
 
 // ── Shared table styles ──────────────────────────────────────────────────────
 
-const TH = { background:'#dce6f1', padding:'7px 10px', border:'1px solid #aab8c8', fontWeight:600, fontSize:12, textAlign:'center', verticalAlign:'middle' };
+const TH = { color:'#111', background:'#dce6f1', padding:'7px 10px', border:'1px solid #aab8c8', fontWeight:600, fontSize:12, textAlign:'center', verticalAlign:'middle' };
 const TD = { padding:'6px 10px', border:'1px solid #c0c8d0', fontSize:12, verticalAlign:'middle' };
 const TDN = { ...TD, textAlign:'right' };
 const TBL = { width:'100%', borderCollapse:'collapse', marginTop:6 };

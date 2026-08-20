@@ -53,7 +53,7 @@ function nstbForOcc(lookup, occName, fy) {
 
 // ── Screen component ─────────────────────────────────────────────────────────
 
-const TH = { background:'#dce6f1', padding:'6px 10px', border:'1px solid #aab8c8', fontWeight:600, fontSize:11, textAlign:'center', verticalAlign:'middle' };
+const TH = { color:'#111', background:'#dce6f1', padding:'6px 10px', border:'1px solid #aab8c8', fontWeight:600, fontSize:11, textAlign:'center', verticalAlign:'middle' };
 const TD = { padding:'6px 10px', border:'1px solid #c0c8d0', fontSize:11, verticalAlign:'top' };
 const TDN = { ...TD, textAlign:'right' };
 const TBL = { width:'100%', borderCollapse:'collapse', marginBottom:0 };
