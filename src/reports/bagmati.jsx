@@ -31,16 +31,52 @@ const REPORTS = [
 const SECTION_ORDER = ['b1', 'b2', 'b3', 'b4'];
 const sectionsFor = (reportId) => reportId === 'full' ? SECTION_ORDER : [reportId];
 
-const SECTION_TITLES = {
-  b1: { heading: 'B.1 Current Portfolio',
-        note: 'Details about the current portfolio that the consultants are implementing or have implemented, for the selected fiscal years.' },
-  b2: { heading: 'B.2 General Experience',
-        note: 'General Experience in 160 Hours+ Vocational Skills Training, for the selected fiscal years.' },
-  b3: { heading: 'B.3 Specific Experience',
-        note: 'Specific Experience in Proposed Sector(s) — Training and Skill Testing.' },
-  b4: { heading: 'B.4 Financial Experience',
-        note: 'Tax clearance certificate for the selected fiscal years.' },
+/** "FY 2081/82 and 2082/83" — how B.1's own heading names its two portfolio years. */
+const fyPairText = (fromFY, toFY) => {
+  if (fromFY && toFY && fromFY !== toFY) return `FY ${fromFY} and ${toFY}`;
+  if (fromFY || toFY) return `FY ${fromFY || toFY}`;
+  return '';
 };
+
+/** "FY 2076/077 – 2082/083" — the range form B.2/B.3's headings quote. */
+const fyRangeText = (fromFY, toFY, joiner = ' – ') => {
+  if (fromFY && toFY) return `FY ${fromFY}${joiner}${toFY}`;
+  if (fromFY) return `FY ${fromFY}`;
+  if (toFY) return `FY ${toFY}`;
+  return '';
+};
+
+/**
+ * Section headings quote the actual selected FY range in place of the RFP
+ * form's own example years, so which years a table covers reads directly off
+ * it rather than needing the sidebar filter to confirm.
+ */
+function sectionTitlesFor(opts = {}) {
+  const { fromFY = '', toFY = '', turnoverFromFY = '', turnoverToFY = '' } = opts;
+  const portfolioFY = fyPairText(fromFY, toFY);
+  const rangeFY      = fyRangeText(fromFY, toFY);
+  const turnoverFY   = fyRangeText(turnoverFromFY, turnoverToFY, ' to ');
+
+  return {
+    b1: {
+      heading: 'Table 1: Current Portfolio',
+      note: 'Details about the current portfolio that the consultants are implementing or have implemented'
+        + (portfolioFY ? ` in ${portfolioFY}.` : ', for the selected fiscal years.'),
+    },
+    b2: {
+      heading: `Table 2: General Experience in 160 Hours+ Vocational Skills Training${rangeFY ? ` (${rangeFY})` : ''}`,
+      note: 'Only occupation rows of 160 hours or more are included.',
+    },
+    b3: {
+      heading: `Table 3: Specific Experience in Proposed Sector(s) – Training and Skill Testing${rangeFY ? ` (${rangeFY})` : ''}`,
+      note: 'Scoped to the selected occupation(s) — the sector(s) proposed for this bid.',
+    },
+    b4: {
+      heading: `Table 4: Tax clearance certificate of last 3 (three) Fiscal Years${turnoverFY ? ` (${turnoverFY})` : ''}`,
+      note: 'Tax clearance certificate must be submitted to calculate the turnover of the company.',
+    },
+  };
+}
 
 // ─── Value formatting ────────────────────────────────────────────────────────
 
@@ -234,14 +270,15 @@ function GridTable({ model }) {
 
 function renderAggregateTable(inst, exps, clients, reportId, opts = {}) {
   const sections = sectionsFor(reportId);
+  const titles = sectionTitlesFor(opts);
   return (
     <div>
       <div style={{fontWeight:700, fontSize:14, marginBottom:4}}>{inst?.name || 'Firm'}</div>
       {inst?.acronym && <div style={{fontSize:11, color:'var(--text3)', marginBottom:14}}>{inst.acronym}</div>}
       {sections.map(s => (
         <div key={s} style={{marginBottom:26}}>
-          <div style={{fontWeight:700, fontSize:13, marginBottom:2}}>{SECTION_TITLES[s].heading}</div>
-          <div style={{fontSize:11, color:'var(--text3)', fontStyle:'italic', marginBottom:10}}>{SECTION_TITLES[s].note}</div>
+          <div style={{fontWeight:700, fontSize:13, marginBottom:2}}>{titles[s].heading}</div>
+          <div style={{fontSize:11, color:'var(--text3)', fontStyle:'italic', marginBottom:10}}>{titles[s].note}</div>
           <GridTable model={modelFor(s, exps, clients, inst, opts)} />
         </div>
       ))}
@@ -286,14 +323,15 @@ const printShell = (title, bodyHtml) => `<!DOCTYPE html><html><head><meta charse
 
 function buildPrintHTML(inst, exps, clients, reportId, fyRangeLabel, opts = {}) {
   const sections = sectionsFor(reportId);
+  const titles = sectionTitlesFor(opts);
   const body = `
     <div class="firm">${esc(inst?.name || '')}</div>
     ${inst?.acronym ? `<div class="firm-sub">${esc(inst.acronym)}</div>` : ''}
     ${fyRangeLabel ? `<div class="firm-sub">${esc(fyRangeLabel)}</div>` : ''}
     ${sections.map(s => `
       <div class="section">
-        <h2>${esc(SECTION_TITLES[s].heading)}</h2>
-        <p class="sub">${esc(SECTION_TITLES[s].note)}</p>
+        <h2>${esc(titles[s].heading)}</h2>
+        <p class="sub">${esc(titles[s].note)}</p>
         ${htmlGrid(modelFor(s, exps, clients, inst, opts))}
       </div>`).join('')}`;
   return printShell(`Bagmati Province RFP Format — ${inst?.name || ''}`, body);
@@ -335,6 +373,7 @@ function docxTable(model) {
 
 async function downloadDOCX(fullInst, activeExps, reportId, opts = {}) {
   const sections = sectionsFor(reportId);
+  const titles = sectionTitlesFor(opts);
   const children = [
     new Paragraph({ children: [new TextRun({ text: fullInst?.name || 'Firm', bold: true, size: 28 })], spacing: { after: 60 } }),
   ];
@@ -343,11 +382,11 @@ async function downloadDOCX(fullInst, activeExps, reportId, opts = {}) {
   }
   sections.forEach((s, idx) => {
     children.push(new Paragraph({
-      children: [new TextRun({ text: SECTION_TITLES[s].heading, bold: true, size: 24 })],
+      children: [new TextRun({ text: titles[s].heading, bold: true, size: 24 })],
       spacing: { before: idx === 0 ? 0 : 260, after: 40 },
     }));
     children.push(new Paragraph({
-      children: [new TextRun({ text: SECTION_TITLES[s].note, italics: true, size: 17, color: '444444' })],
+      children: [new TextRun({ text: titles[s].note, italics: true, size: 17, color: '444444' })],
       spacing: { after: 120 },
     }));
     children.push(docxTable(modelFor(s, activeExps, opts.clients || [], fullInst, opts)));
