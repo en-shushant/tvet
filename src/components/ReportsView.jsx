@@ -553,13 +553,20 @@ function ReportsView({ institutes, clients }) {
   ].filter(Boolean).length;
 
   const summaryChips = [
-    { section: 'firms', text: `${firmsCount} Firm${firmsCount !== 1 ? 's' : ''}`, show: true },
-    { section: 'occupations', text: `${occCount} Occupation${occCount !== 1 ? 's' : ''}`, show: hasOccSection },
-    { section: 'tools', text: levelLabel, show: hasToolsSection && !!levelLabel },
-    { section: 'toolTypes', text: `${toolTypesCount} Tool Type${toolTypesCount !== 1 ? 's' : ''}`, show: hasToolTypesSection },
-    { section: 'columns', text: `${columnsCount} Column${columnsCount !== 1 ? 's' : ''}`, show: hasColumnsSection },
-    { section: 'filters', text: `Filters · ${filtersActiveCount} active`, show: hasFiltersSection },
+    { section: 'firms', text: `${firmsCount} Firm${firmsCount !== 1 ? 's' : ''}`, done: firmsCount > 0, show: true },
+    { section: 'occupations', text: `${occCount} Occupation${occCount !== 1 ? 's' : ''}`, done: occCount > 0, show: hasOccSection },
+    { section: 'tools', text: levelLabel, done: !!levelLabel, show: hasToolsSection && !!levelLabel },
+    { section: 'toolTypes', text: `${toolTypesCount} Tool Type${toolTypesCount !== 1 ? 's' : ''}`, done: true, show: hasToolTypesSection },
+    { section: 'columns', text: `${columnsCount} Column${columnsCount !== 1 ? 's' : ''}`, done: true, show: hasColumnsSection },
+    { section: 'filters', text: `Filters · ${filtersActiveCount} active`, done: filtersActiveCount > 0, show: hasFiltersSection },
   ].filter(c => c.show);
+
+  // Which section comes after the one currently shown — powers the "Next
+  // step" prompt so the flow reads like a guided checklist without forcing
+  // the user through it; the left nav still jumps anywhere at any time.
+  const activeSectionIdx = SECTIONS.findIndex(s => s.id === activeSection);
+  const nextSection = activeSectionIdx >= 0 && activeSectionIdx < SECTIONS.length - 1
+    ? SECTIONS[activeSectionIdx + 1] : null;
 
   // How many assignments the current configuration matches — used for the
   // prominent results number. Never hard-coded; always the real derived value.
@@ -1229,21 +1236,44 @@ function ReportsView({ institutes, clients }) {
               )}
             </div>
           )}
+
+          {/* Guided "next step" — a prompt forward, not a gate. The left nav
+              still jumps to any section at any time. */}
+          {nextSection && (
+            <div style={{marginTop:24, paddingTop:16, borderTop:'1px solid var(--border)', display:'flex', justifyContent:'flex-end'}}>
+              <Btn className="btn btn-secondary btn-sm" onClick={() => setActiveSection(nextSection.id)}>
+                Next: {nextSection.label} →
+              </Btn>
+            </div>
+          )}
         </div>
       </div>
 
-      {/* ── Configuration summary ── */}
+      {/* ── Configuration summary — a data-check-style pill bar: each chip
+          shows a filled check when that section has something configured,
+          an outline when it's still empty, and the active section stands out
+          the same way the app's other tab bars (e.g. Data Quality) do. ── */}
       {summaryChips.length > 0 && (
-        <div className="card" style={{padding:'12px 18px', display:'flex', alignItems:'center', gap:8, flexWrap:'wrap'}}>
-          {summaryChips.map((c, i) => (
-            <span key={c.section} style={{display:'flex', alignItems:'center', gap:8}}>
-              {i > 0 && <span style={{color:'var(--border)'}}>·</span>}
-              <button onClick={() => setActiveSection(c.section)}
-                style={{background:'none', border:'none', cursor:'pointer', color:'var(--text2)', fontSize:12.5, fontWeight:600, padding:'2px 4px'}}>
+        <div style={{display:'flex', alignItems:'center', gap:8, flexWrap:'wrap'}}>
+          {summaryChips.map(c => {
+            const isActive = c.section === activeSection;
+            return (
+              <button key={c.section} onClick={() => setActiveSection(c.section)}
+                style={{
+                  display:'inline-flex', alignItems:'center', gap:6,
+                  background: isActive ? 'var(--ink,#111827)' : c.done ? 'var(--primary-light,#eff6ff)' : 'var(--bg2)',
+                  color: isActive ? 'var(--on-ink,#fff)' : c.done ? 'var(--primary)' : 'var(--text2)',
+                  border:'none', borderRadius:'var(--radius-pill,100px)', padding:'7px 14px',
+                  fontSize:12.5, fontWeight: isActive ? 700 : 600, cursor:'pointer',
+                  transition:'background .16s, color .16s',
+                }}>
+                <span className="material-icons-round" style={{fontSize:14, opacity: c.done ? 1 : .5}}>
+                  {c.done ? 'check_circle' : 'radio_button_unchecked'}
+                </span>
                 {c.text}
               </button>
-            </span>
-          ))}
+            );
+          })}
         </div>
       )}
 
