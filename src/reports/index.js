@@ -4,6 +4,7 @@ import tools from './tools.jsx';
 import detailed from './detailed.jsx';
 import enssure from './enssure.jsx';
 import bolpatra from './bolpatra.jsx';
+import bagmati from './bagmati.jsx';
 
 // Add new report families here — each must match the shape in bolpatra.jsx
 const REPORT_FAMILIES = [
@@ -13,6 +14,7 @@ const REPORT_FAMILIES = [
   detailed,
   enssure,
   bolpatra,
+  bagmati,
   // worldbank,
 ];
 
