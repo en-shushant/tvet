@@ -541,12 +541,19 @@ function ReportsView({ institutes, clients }) {
     + (report.hasOccupationFilter && report.hasSpecificOccFilter && report.hasToolsPicker ? selectedOccs.length : 0)
     + (familyId === 'enssure' ? enssureOccIds.length : 0);
   const levelLabel = report.hasToolsPicker ? eoiToolsLevel
-    : noInstitute ? (toolsLevel || 'No level')
+    // Blank rather than "No level": an unset control should leave the tab
+    // quiet, not label itself with its own emptiness.
+    : noInstitute ? toolsLevel
     : familyId === 'enssure' ? enssureToolsLevel
     : null;
-  const toolTypesCount = report.hasToolsPicker ? (eoiToolTypes.length || TOOL_TYPE_OPTIONS.length)
-    : noInstitute ? 1
-    : null;
+  // The Tools family filters types with a single select, not a multi-select,
+  // so a count would be a made-up "1". Show the chosen filter, and nothing
+  // while it is still on the default.
+  const toolTypesBadge = report.hasToolsPicker
+    ? (eoiToolTypes.length || TOOL_TYPE_OPTIONS.length)
+    : noInstitute
+      ? (toolsTypeFilter && toolsTypeFilter !== 'all' ? toolsTypeFilter : undefined)
+      : undefined;
   const columnsCount = report.hasToolsPicker ? eoiToolCols.length
     : noInstitute ? toolsColumns.length
     : null;
@@ -561,7 +568,7 @@ function ReportsView({ institutes, clients }) {
     firms:       firmsCount || undefined,
     occupations: occCount || undefined,
     tools:       levelLabel || undefined,
-    toolTypes:   toolTypesCount || undefined,
+    toolTypes:   toolTypesBadge || undefined,
     columns:     columnsCount || undefined,
     filters:     filtersActiveCount || undefined,
     advanced:    undefined,
