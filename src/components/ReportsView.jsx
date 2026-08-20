@@ -22,7 +22,10 @@ function saveFilters(patch) {
 function ReportsView({ institutes, clients }) {
   const f = loadFilters();
   const [familyId, setFamilyId]         = useState(f.familyId || REPORT_FAMILIES[0].id);
-  const [selectedInst, setSelectedInst] = useState(f.selectedInst || '');
+  // Deliberately not seeded from persisted filters — restoring the last
+  // selected firm here reloads its report the instant the page opens, before
+  // the user has chosen anything this visit.
+  const [selectedInst, setSelectedInst] = useState('');
   const [fullInst, setFullInst]         = useState(null);
   const [loadingInst, setLoadingInst]   = useState(false);
   const [reportId, setReportId]         = useState(f.reportId || REPORT_FAMILIES[0].reports[0].id);
