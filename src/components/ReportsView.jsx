@@ -7,6 +7,7 @@ import { fyInRange, fyYear } from '../reports/helpers.js';
 import { FISCAL_YEARS } from '../constants/data.js';
 import REPORT_FAMILIES from '../reports/index.js';
 import { TOOL_COLUMN_OPTIONS, TOOL_TYPE_OPTIONS, DEFAULT_TOOL_COLS } from '../reports/bolpatra.jsx';
+import { PillTabs } from './ui/primitives.jsx';
 
 const FILTER_KEY = 'tvettrack_reports_filters_v1';
 function loadFilters() {
@@ -19,7 +20,6 @@ function saveFilters(patch) {
   } catch {}
 }
 
-const WIZARD_STEPS = ['Report', 'Data & Filters', 'Configure', 'Preview'];
 
 function ReportsView({ institutes, clients }) {
   const f = loadFilters();
@@ -531,7 +531,10 @@ function ReportsView({ institutes, clients }) {
     if (!SECTIONS.some(s => s.id === activeSection)) setActiveSection('firms');
   }, [familyId, reportId]);
 
-  // ── Summary bar — dynamic, clickable chips ────────────────────────────────
+  // ── Counts shown on the tabs themselves ───────────────────────────────────
+  // These used to drive a separate summary strip under the workspace, which
+  // restated what each panel already said. Folding them into the tab labels
+  // keeps the information and drops the block.
   const firmsCount = isMultiInst ? fwInstIds.length : (selectedInst ? 1 : 0);
   const occCount = (report.hasSpecificOccFilter ? eoiSpecificOccs.length : 0)
     + (report.hasOccupationFilter && !report.hasSpecificOccFilter ? selectedOccs.length : 0)
@@ -552,18 +555,21 @@ function ReportsView({ institutes, clients }) {
     !!filterDuration, filterDonorTypes.length > 0, filterTrainingTypes.length > 0,
   ].filter(Boolean).length;
 
-  const summaryChips = [
-    { section: 'firms', text: `${firmsCount} Firm${firmsCount !== 1 ? 's' : ''}`, done: firmsCount > 0, show: true },
-    { section: 'occupations', text: `${occCount} Occupation${occCount !== 1 ? 's' : ''}`, done: occCount > 0, show: hasOccSection },
-    { section: 'tools', text: levelLabel, done: !!levelLabel, show: hasToolsSection && !!levelLabel },
-    { section: 'toolTypes', text: `${toolTypesCount} Tool Type${toolTypesCount !== 1 ? 's' : ''}`, done: true, show: hasToolTypesSection },
-    { section: 'columns', text: `${columnsCount} Column${columnsCount !== 1 ? 's' : ''}`, done: true, show: hasColumnsSection },
-    { section: 'filters', text: `Filters · ${filtersActiveCount} active`, done: filtersActiveCount > 0, show: hasFiltersSection },
-  ].filter(c => c.show);
+  // Only counts worth reading at a glance; a zero is left blank rather than
+  // shown, so an untouched tab stays quiet instead of announcing "0".
+  const sectionBadges = {
+    firms:       firmsCount || undefined,
+    occupations: occCount || undefined,
+    tools:       levelLabel || undefined,
+    toolTypes:   toolTypesCount || undefined,
+    columns:     columnsCount || undefined,
+    filters:     filtersActiveCount || undefined,
+    advanced:    undefined,
+  };
 
-  // Which section comes after the one currently shown — powers the "Next
-  // step" prompt so the flow reads like a guided checklist without forcing
-  // the user through it; the left nav still jumps anywhere at any time.
+  // Which section comes after the one currently shown — powers the "Next"
+  // prompt so the flow reads like a checklist without forcing anyone through
+  // it; the tabs still jump anywhere at any time.
   const activeSectionIdx = SECTIONS.findIndex(s => s.id === activeSection);
   const nextSection = activeSectionIdx >= 0 && activeSectionIdx < SECTIONS.length - 1
     ? SECTIONS[activeSectionIdx + 1] : null;
@@ -575,12 +581,6 @@ function ReportsView({ institutes, clients }) {
       ? fwInstIds.reduce((sum, id) => sum + (fwFullInsts[id] ? fwExpsFor(fwFullInsts[id]).length : 0), 0)
       : activeExps.length;
 
-  // Rough progress indicator — purely visual, never blocks navigation.
-  const wizardStepIndex = !selectedInst && !isMultiInst && !fwInstIds.length ? 0
-    : (isMultiInst ? fwInstIds.length === 0 : !fullInst) ? 1
-    : !previewReady ? 2
-    : 3;
-
   return (
     <div className="fade-in reports-redesign" style={{display:'flex', flexDirection:'column', gap:18, paddingBottom:8}}>
 
@@ -589,20 +589,6 @@ function ReportsView({ institutes, clients }) {
         <div style={{fontSize:23, fontWeight:700, color:'var(--text)', letterSpacing:-.3}}>Reports</div>
         <div style={{fontSize:13, color:'var(--text3)', marginTop:4}}>
           Create, configure and generate professional reports from your procurement and training data.
-        </div>
-        <div style={{display:'flex', alignItems:'center', gap:6, marginTop:12, fontSize:11.5, fontWeight:600, flexWrap:'wrap'}}>
-          {WIZARD_STEPS.map((s, i) => (
-            <span key={s} style={{display:'flex', alignItems:'center', gap:6}}>
-              {i > 0 && <span style={{color:'var(--border)'}}>→</span>}
-              <span style={{
-                color: i === wizardStepIndex ? 'var(--primary)' : i < wizardStepIndex ? 'var(--text2)' : 'var(--text3)',
-                padding:'3px 9px', borderRadius:100,
-                background: i === wizardStepIndex ? 'var(--primary-light,#eff6ff)' : 'transparent',
-              }}>
-                {String(i + 1).padStart(2, '0')} {s}
-              </span>
-            </span>
-          ))}
         </div>
       </div>
 
@@ -628,27 +614,17 @@ function ReportsView({ institutes, clients }) {
         )}
       </div>
 
-      {/* ── Configuration workspace: left nav + right panel ── */}
-      <div className="card" style={{display:'flex', overflow:'hidden', padding:0, minHeight:360}}>
-        <div style={{width:180, flexShrink:0, borderRight:'1px solid var(--border)', padding:'16px 0', background:'var(--bg,#f8fafc)'}}>
-          <div style={{fontSize:10.5, fontWeight:700, color:'var(--text3)', letterSpacing:'.6px', padding:'0 18px 10px'}}>REPORT SETUP</div>
-          {SECTIONS.map(s => (
-            <button key={s.id} onClick={() => setActiveSection(s.id)}
-              style={{
-                display:'flex', alignItems:'center', gap:9, width:'100%', textAlign:'left',
-                padding:'10px 18px', border:'none', cursor:'pointer', fontSize:13,
-                background: activeSection === s.id ? 'var(--primary-light,#eff6ff)' : 'transparent',
-                borderLeft: activeSection === s.id ? '3px solid var(--primary)' : '3px solid transparent',
-                fontWeight: activeSection === s.id ? 600 : 500,
-                color: activeSection === s.id ? 'var(--primary)' : 'var(--text2)',
-              }}>
-              <span style={{fontSize:9, lineHeight:1}}>{activeSection === s.id ? '●' : '○'}</span>
-              <span>{s.label}</span>
-            </button>
-          ))}
-        </div>
+      {/* ── Configuration: one row of tabs, one panel ──
+          Tabs rather than a left rail: two thirds of the reports here have
+          three sections or fewer, so a sidebar column sat mostly empty. Each
+          tab carries its own count, which is what the separate summary strip
+          below used to duplicate. */}
+      <div>
+        <PillTabs
+          tabs={SECTIONS.map(s => ({ id: s.id, label: s.label, badge: sectionBadges[s.id] }))}
+          value={activeSection} onChange={setActiveSection} ariaLabel="Report setup"/>
 
-        <div style={{flex:1, minWidth:0, padding:'20px 22px', overflowY:'auto'}}>
+        <div className="card" style={{padding:'20px 22px', minHeight:280, overflowY:'auto'}}>
 
           {/* ── FIRMS ── */}
           {activeSection === 'firms' && (
@@ -1249,59 +1225,22 @@ function ReportsView({ institutes, clients }) {
         </div>
       </div>
 
-      {/* ── Configuration summary — a data-check-style pill bar: each chip
-          shows a filled check when that section has something configured,
-          an outline when it's still empty, and the active section stands out
-          the same way the app's other tab bars (e.g. Data Quality) do. ── */}
-      {summaryChips.length > 0 && (
-        <div style={{display:'flex', alignItems:'center', gap:8, flexWrap:'wrap'}}>
-          {summaryChips.map(c => {
-            const isActive = c.section === activeSection;
-            return (
-              <button key={c.section} onClick={() => setActiveSection(c.section)}
-                style={{
-                  display:'inline-flex', alignItems:'center', gap:6,
-                  background: isActive ? 'var(--ink,#111827)' : c.done ? 'var(--primary-light,#eff6ff)' : 'var(--bg2)',
-                  color: isActive ? 'var(--on-ink,#fff)' : c.done ? 'var(--primary)' : 'var(--text2)',
-                  border:'none', borderRadius:'var(--radius-pill,100px)', padding:'7px 14px',
-                  fontSize:12.5, fontWeight: isActive ? 700 : 600, cursor:'pointer',
-                  transition:'background .16s, color .16s',
-                }}>
-                <span className="material-icons-round" style={{fontSize:14, opacity: c.done ? 1 : .5}}>
-                  {c.done ? 'check_circle' : 'radio_button_unchecked'}
-                </span>
-                {c.text}
-              </button>
-            );
-          })}
+      {/* One line instead of three. The count only appears once a firm is
+          chosen — before that it was a large "0" restating the empty panel
+          above it, and the action already lives in the bar at the bottom. */}
+      {matchingCount !== null && firmsCount > 0 && (
+        <div style={{fontSize:13, color:'var(--text3)'}}>
+          <b style={{color:'var(--text)', fontWeight:700}}>{matchingCount}</b>
+          {' '}matching assignment{matchingCount !== 1 ? 's' : ''}
+          {fyRangeLabel ? ` · ${fyRangeLabel}` : ''}
         </div>
       )}
 
-      {/* ── Results count ── */}
-      {matchingCount !== null && (
-        <div className="card" style={{padding:'22px', textAlign:'center'}}>
-          <div style={{fontSize:38, fontWeight:700, color:'var(--text)', lineHeight:1}}>{matchingCount}</div>
-          <div style={{fontSize:11.5, fontWeight:600, color:'var(--text3)', textTransform:'uppercase', letterSpacing:'.5px', marginTop:6}}>
-            Matching Assignment{matchingCount !== 1 ? 's' : ''}
-          </div>
-        </div>
-      )}
-
-      {/* ── Preview ── */}
-      <div className="card" style={{padding:20}}>
-        <div style={{fontWeight:600, fontSize:14, marginBottom:14}}>Report Preview</div>
-
-        {!previewReady ? (
-          <div className="empty-state" style={{background:'var(--bg,#f8fafc)', border:'1px dashed var(--border)', borderRadius:'var(--radius-lg)', padding:'32px 20px'}}>
-            <div className="empty-state-icon">
-              <span className="material-icons-round" style={{fontSize:40, opacity:.35}}>description</span>
-            </div>
-            <div className="empty-state-sub" style={{marginBottom:16}}>
-              Select your firms and configure the report to see a preview.
-            </div>
-            <Btn className="btn btn-primary" onClick={showReport} disabled={!canPreview}>Preview Report</Btn>
-          </div>
-        ) : (
+      {/* ── Preview — only once there is something to show. The empty state
+          used to duplicate the bottom bar's own Preview Report button. ── */}
+      {previewReady && (
+        <div className="card" style={{padding:20}}>
+          <div style={{fontWeight:600, fontSize:14, marginBottom:14}}>Report Preview</div>
           <div style={{display:'flex', flexDirection:'column', gap:16}}>
             {isStale && (
               <div role="status" style={{display:'flex', alignItems:'center', gap:10, flexWrap:'wrap',
@@ -1488,8 +1427,8 @@ function ReportsView({ institutes, clients }) {
               </>
             )}
           </div>
-        )}
-      </div>
+        </div>
+      )}
 
       {/* ── Sticky action bar ── */}
       <div style={{
