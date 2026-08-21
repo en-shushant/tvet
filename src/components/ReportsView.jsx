@@ -128,6 +128,16 @@ function ReportsView({ institutes, clients }) {
   // runs its own number of events, so this is a map of occupation id -> count
   // rather than one figure for the whole bid.
   const [eoiEventsByOcc, setEoiEventsByOcc] = useState(f.eoiEventsByOcc || {});
+  /**
+   * Level per occupation, for the 4(B) tools tables.
+   *
+   * occupation_tools is keyed by occupation *and* level, and a bid frequently
+   * proposes trades at different levels — Level 1 for one, Level 2 for another.
+   * A single level across the whole schedule silently pulled the wrong list for
+   * every occupation that did not run at it. Unset entries fall back to the
+   * level chosen above, which itself starts at Level 1.
+   */
+  const [eoiLevelByOcc, setEoiLevelByOcc] = useState(f.eoiLevelByOcc || {});
   const [eoiToolCols, setEoiToolCols] = useState(f.eoiToolCols || DEFAULT_TOOL_COLS);
   const [eoiToolTypes, setEoiToolTypes] = useState(f.eoiToolTypes || []);  // empty = all types
   // The rendered document (or Tools schedule / multi-firm doc) is only built when
@@ -162,8 +172,8 @@ function ReportsView({ institutes, clients }) {
   const [activeSection, setActiveSection] = useState('firms');
 
   // Persist key filter state to sessionStorage
-  useEffect(() => { saveFilters({ familyId, selectedInst, reportId, fromFY, toFY, turnFromFY, turnToFY, portfolioFromFY, portfolioToFY, eoiToolsLevel, eoiEventsByOcc, eoiToolCols, eoiToolTypes, eoiSpecificOccs, eoiCombineTools, eoiSingleTable, filterDuration, enssureOccIds, enssureToolsOccId, enssureToolsLevel, enssureEvents }); },
-    [familyId, selectedInst, reportId, fromFY, toFY, turnFromFY, turnToFY, portfolioFromFY, portfolioToFY, eoiToolsLevel, eoiEventsByOcc, eoiToolCols, eoiToolTypes, eoiSpecificOccs, eoiCombineTools, eoiSingleTable, filterDuration, enssureOccIds, enssureToolsOccId, enssureToolsLevel, enssureEvents]);
+  useEffect(() => { saveFilters({ familyId, selectedInst, reportId, fromFY, toFY, turnFromFY, turnToFY, portfolioFromFY, portfolioToFY, eoiToolsLevel, eoiLevelByOcc, eoiEventsByOcc, eoiToolCols, eoiToolTypes, eoiSpecificOccs, eoiCombineTools, eoiSingleTable, filterDuration, enssureOccIds, enssureToolsOccId, enssureToolsLevel, enssureEvents }); },
+    [familyId, selectedInst, reportId, fromFY, toFY, turnFromFY, turnToFY, portfolioFromFY, portfolioToFY, eoiToolsLevel, eoiLevelByOcc, eoiEventsByOcc, eoiToolCols, eoiToolTypes, eoiSpecificOccs, eoiCombineTools, eoiSingleTable, filterDuration, enssureOccIds, enssureToolsOccId, enssureToolsLevel, enssureEvents]);
 
   // Fetch tools for explicitly selected D2/D3 occupation + level
   useEffect(() => {
@@ -247,16 +257,22 @@ function ReportsView({ institutes, clients }) {
     return occupations.filter(o => wanted.includes(String(o.name).toLowerCase())).map(o => o.id);
   }, [selectedOccs, occupations]);
 
+  /** An occupation's own level, falling back to the one set for all of them. */
+  const levelForOcc = (id) => eoiLevelByOcc[id] || eoiToolsLevel || 'Level 1';
+  // Exact dependency for the fetch below: which occupations, each at which
+  // level. Re-fetches when either changes, and nothing else.
+  const eoiLevelSig = eoiOccIds.map(id => `${id}:${levelForOcc(id)}`).join(',');
+
   useEffect(() => {
-    if (!report.hasToolsPicker || !eoiOccIds.length || !eoiToolsLevel) { setEoiTools({}); return; }
+    if (!report.hasToolsPicker || !eoiOccIds.length) { setEoiTools({}); return; }
     let cancelled = false;
     const token = getSession()?.token;
     Promise.all(eoiOccIds.map(id =>
-      api('GET', `/occupation-tools/${id}/${encodeURIComponent(eoiToolsLevel)}`, null, token)
+      api('GET', `/occupation-tools/${id}/${encodeURIComponent(levelForOcc(id))}`, null, token)
         .then(d => [id, Array.isArray(d) ? d : []]).catch(() => [id, []])
     )).then(pairs => { if (!cancelled) setEoiTools(Object.fromEntries(pairs)); });
     return () => { cancelled = true; };
-  }, [eoiOccIds.join(','), eoiToolsLevel, report.hasToolsPicker]);
+  }, [eoiLevelSig, report.hasToolsPicker]);
 
   const experience = fullInst?.experience || [];
 
@@ -420,7 +436,7 @@ function ReportsView({ institutes, clients }) {
 
   const opts = { fromFY, toFY, turnoverFromFY: turnFromFY, turnoverToFY: turnToFY,
     portfolioFromFY, portfolioToFY,
-    bolpatraTools: eoiTools, eoiToolsLevel, eoiEventsByOcc, eoiToolCols, eoiToolTypes, selectedOccs,
+    bolpatraTools: eoiTools, eoiToolsLevel, eoiLevelByOcc, eoiEventsByOcc, eoiToolCols, eoiToolTypes, selectedOccs,
     specificOccs: eoiSpecificOccs, eoiCombineTools, eoiSingleTable, occupations, sortBy,
     toolsOccIds, toolsLevel, toolsTypeFilter, toolsColumns, toolsLayout, toolsData, numGroups,
     enssureOccs, enssureOccIds, enssureToolsData, enssureToolsOccId, enssureToolsLevel, enssureEvents,
@@ -468,7 +484,7 @@ function ReportsView({ institutes, clients }) {
     reportId, familyId, selectedInst, fwInstIds, fwLeadId,
     fromFY, toFY, turnFromFY, turnToFY, portfolioFromFY, portfolioToFY,
     selectedOccs, eoiSpecificOccs, filterDuration, filterDonorTypes, filterTrainingTypes, sortBy,
-    eoiToolsLevel, eoiEventsByOcc, eoiToolCols, eoiToolTypes, eoiCombineTools, eoiSingleTable,
+    eoiToolsLevel, eoiLevelByOcc, eoiEventsByOcc, eoiToolCols, eoiToolTypes, eoiCombineTools, eoiSingleTable,
     toolsOccIds, toolsLevel, toolsTypeFilter, toolsColumns, toolsLayout, numGroups,
     enssureOccIds, enssureToolsOccId, enssureToolsLevel, enssureEvents,
   ]);
@@ -926,11 +942,14 @@ function ReportsView({ institutes, clients }) {
               {report.hasToolsPicker && (
                 <div>
                   <div style={{display:'flex', alignItems:'center', gap:10, marginBottom:14}}>
-                    <span style={{fontWeight:600, fontSize:13.5}}>Required Level</span>
-                    <select className="form-input" style={{width:'auto', minWidth:160}} value={eoiToolsLevel} onChange={e => setEoiToolsLevel(e.target.value)}>
+                    <span style={{fontWeight:600, fontSize:13.5}}>Default level</span>
+                    <select className="form-input" style={{width:'auto', minWidth:160}} value={eoiToolsLevel}
+                      onChange={e => { setEoiToolsLevel(e.target.value); setEoiLevelByOcc({}); }}>
                       <option>N/A</option><option>Level 1</option><option>Level 2</option>
                       <option>Level 3</option><option>Professional</option><option>Technician</option>
                     </select>
+                    <span className="material-icons-round" style={{fontSize:14, color:'var(--text3)', cursor:'help'}}
+                      title="Applies to every occupation below. Changing it resets any per-occupation levels you have set.">info</span>
                   </div>
                   <label className="filter-inline-check" style={{marginBottom:6}}>
                     <input type="checkbox" checked={eoiCombineTools} onChange={e => setEoiCombineTools(e.target.checked)}/>
@@ -949,11 +968,16 @@ function ReportsView({ institutes, clients }) {
                     </span>
                   </label>
 
-                  <div style={{fontWeight:600, fontSize:13, marginTop:18, marginBottom:8}}>Training events per occupation</div>
+                  <div style={{fontWeight:600, fontSize:13, marginTop:18, marginBottom:8}}>Level and events per occupation</div>
                   {eoiOccIds.length === 0 ? (
                     <div className="input-hint">Pick occupations under the Occupations section to list their tools.</div>
                   ) : (
                     <>
+                      <div style={{display:'flex', alignItems:'center', gap:8, marginBottom:6}}>
+                        <span style={{flex:1}}/>
+                        <span style={{width:132, flexShrink:0, fontSize:10.5, fontWeight:700, color:'var(--text3)', letterSpacing:'.4px'}}>LEVEL</span>
+                        <span style={{width:76, flexShrink:0, fontSize:10.5, fontWeight:700, color:'var(--text3)', letterSpacing:'.4px'}}>EVENTS</span>
+                      </div>
                       {eoiOccIds.map(id => {
                         const o = occupations.find(x => x.id === id);
                         const n = eoiEventsByOcc[id] ?? 1;
@@ -961,6 +985,12 @@ function ReportsView({ institutes, clients }) {
                           <div key={id} style={{display:'flex', alignItems:'center', gap:8, marginBottom:8}}>
                             <span style={{flex:1, minWidth:0, fontSize:12.5, overflow:'hidden',
                               textOverflow:'ellipsis', whiteSpace:'nowrap'}} title={o?.name}>{o?.name || id}</span>
+                            <select className="form-input" style={{width:132, flexShrink:0}}
+                              value={levelForOcc(id)}
+                              onChange={e => setEoiLevelByOcc(prev => ({ ...prev, [id]: e.target.value }))}>
+                              <option>N/A</option><option>Level 1</option><option>Level 2</option>
+                              <option>Level 3</option><option>Professional</option><option>Technician</option>
+                            </select>
                             <input type="number" min="1" className="form-input" value={n}
                               style={{width:76, flexShrink:0}}
                               onChange={e => setEoiEventsByOcc(prev => ({
