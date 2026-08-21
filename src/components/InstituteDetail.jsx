@@ -614,8 +614,17 @@ function InstituteDetail({institute, clients, onUpdateClients, onBack, onUpdate,
                     onClick={()=>setExpBolpatraFilter(v=>!v)}
                     className={`gap-chip${expBolpatraFilter ? ' gap-chip-on' : ''}`}
                     title="Show only assignments the EOI (Bolpatra) report would print with blank fields">
-                    <span className="material-icons-round" style={{fontSize:14,verticalAlign:'middle'}}>assignment_late</span>
-                    {' '}Bolpatra incomplete{bolpatraGapCount > 0 ? ` (${bolpatraGapCount})` : ''}
+                    <span className="material-icons-round" style={{fontSize:14}}>assignment_late</span>
+                    <span>Bolpatra incomplete</span>
+                    {bolpatraGapCount > 0 && (
+                      // The count is the point of the chip — how much is
+                      // missing, not merely that something is.
+                      <span style={{fontSize:11, fontWeight:700, fontVariantNumeric:'tabular-nums',
+                        padding:'1px 6px', borderRadius:999,
+                        background: expBolpatraFilter ? 'rgba(0,0,0,.10)' : 'var(--bg2)'}}>
+                        {bolpatraGapCount}
+                      </span>
+                    )}
                   </button>
 
                   {anyFilter && (

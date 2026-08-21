@@ -1975,19 +1975,27 @@ md-outlined-button.danger {
 .eoi-hint { margin: -4px 0 12px; font-size: 12px; color: var(--text3); line-height: 1.5; }
 
 /* ── Bolpatra gap filter and flag ───────────────────────────────────────── */
+/* Sits in the Assignments filter bar beside the filter selects, so it matches
+   them: same height, radius and type size, and the same white field on the
+   bar's tinted background. It used to be --bg2 on a --bg2 bar, which left it
+   with no edge of its own. */
 .gap-chip {
-  font-size: 12px;
-  padding: 4px 10px;
-  border-radius: 6px;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12.5px;
+  padding: 6px 11px;
+  border-radius: 8px;
   border: 1px solid var(--border);
-  background: var(--bg2);
+  background: var(--surface);
   color: var(--text2);
   font-family: var(--font);
+  line-height: 1.4;
   cursor: pointer;
   white-space: nowrap;
-  transition: background 140ms ease, color 140ms ease;
+  transition: background 140ms ease, color 140ms ease, border-color 140ms ease;
 }
-.gap-chip:hover { color: var(--text); }
+.gap-chip:hover { color: var(--text); border-color: var(--text3); }
 .gap-chip-on {
   background: var(--warning-light);
   color: #8A5A00;
