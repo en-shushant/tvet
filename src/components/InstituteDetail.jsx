@@ -86,6 +86,51 @@ function InstituteDetail({institute, clients, onUpdateClients, onBack, onUpdate,
     };
   }, [institute]);
 
+  /**
+   * Where this firm has actually delivered training, consolidated.
+   *
+   * The districts were only ever visible one assignment at a time, with the
+   * profile showing a bare count — so answering "have they worked in Banke?"
+   * meant opening every assignment in turn. Grouped by province because that is
+   * how the coverage question is usually asked.
+   *
+   * Trainees are summed per occupation row, and an occupation delivered across
+   * several districts contributes its trainees to each: the row records one
+   * figure for the whole row, so splitting it between districts would be
+   * inventing a breakdown the data does not carry. Assignments are counted
+   * distinctly, so a district is never credited twice for one assignment.
+   */
+  const districtCoverage = useMemo(() => {
+    const byDistrict = new Map();
+    for (const exp of (institute.experience || [])) {
+      for (const occ of (exp.occupations || [])) {
+        const trainees = parseInt(occ.trainees) || 0;
+        for (const loc of (occ.locations || [])) {
+          const name = (loc.district || '').trim();
+          if (!name) continue;
+          if (!byDistrict.has(name)) {
+            byDistrict.set(name, { district: name, province: loc.province || '', assignments: new Set(), trainees: 0 });
+          }
+          const d = byDistrict.get(name);
+          if (!d.province && loc.province) d.province = loc.province;
+          d.assignments.add(exp.id);
+          d.trainees += trainees;
+        }
+      }
+    }
+    const rows = [...byDistrict.values()]
+      .map(d => ({ ...d, assignments: d.assignments.size }))
+      .sort((a, b) => b.trainees - a.trainees || a.district.localeCompare(b.district));
+
+    const provinces = new Map();
+    for (const r of rows) {
+      const key = r.province || 'Province not recorded';
+      if (!provinces.has(key)) provinces.set(key, []);
+      provinces.get(key).push(r);
+    }
+    return { rows, provinces: [...provinces.entries()] };
+  }, [institute]);
+
   // How many assignments would print with a gap — shown on the chip so the
   // number is visible without having to filter first.
   const bolpatraGapCount = useMemo(
@@ -464,6 +509,52 @@ function InstituteDetail({institute, clients, onUpdateClients, onBack, onUpdate,
             ))}
           </div>
         </div>{/* end grid-2 */}
+
+        {/* Where training has actually been delivered — the profile carried a
+            count, but which districts was only visible one assignment at a
+            time. */}
+        {!isShortlistOnly && districtCoverage.rows.length > 0 && (
+          <div className="card" style={{marginTop:16}}>
+            <div style={{display:'flex', alignItems:'baseline', justifyContent:'space-between', gap:10, flexWrap:'wrap'}}>
+              <div className="section-title" style={{marginBottom:0}}>Districts with training experience</div>
+              <div style={{fontSize:12, color:'var(--text3)'}}>
+                {districtCoverage.rows.length} district{districtCoverage.rows.length !== 1 ? 's' : ''}
+                {' · '}{districtCoverage.provinces.length} province{districtCoverage.provinces.length !== 1 ? 's' : ''}
+              </div>
+            </div>
+
+            <div style={{display:'flex', flexDirection:'column', gap:14, marginTop:12}}>
+              {districtCoverage.provinces.map(([province, rows]) => (
+                <div key={province}>
+                  <div style={{fontSize:10.5, fontWeight:700, color:'var(--text3)',
+                    textTransform:'uppercase', letterSpacing:'.5px', marginBottom:7}}>
+                    {province}
+                  </div>
+                  <div style={{display:'flex', flexWrap:'wrap', gap:7}}>
+                    {rows.map(d => (
+                      <span key={d.district}
+                        title={`${d.district} — ${d.assignments} assignment${d.assignments !== 1 ? 's' : ''}, ${fmt(d.trainees)} trainees`}
+                        style={{display:'inline-flex', alignItems:'center', gap:6, fontSize:12.5,
+                          padding:'5px 11px', borderRadius:20, background:'var(--bg2)',
+                          border:'1px solid var(--border)'}}>
+                        <span className="material-icons-round" style={{fontSize:13, color:'var(--text3)'}}>location_on</span>
+                        <span style={{fontWeight:600, color:'var(--text)'}}>{d.district}</span>
+                        <span style={{color:'var(--text3)', fontSize:11.5}}>
+                          {d.assignments}&nbsp;asgn · {fmt(d.trainees)}&nbsp;tr
+                        </span>
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="input-hint" style={{marginTop:12}}>
+              Trainees are counted per occupation row; a row delivered across several districts
+              counts toward each, so these do not sum to the firm&rsquo;s total.
+            </div>
+          </div>
+        )}
 
         </>
       )}
