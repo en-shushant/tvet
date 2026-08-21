@@ -548,52 +548,94 @@ function InstituteDetail({institute, clients, onUpdateClients, onBack, onUpdate,
       {/* Experience tab */}
       {tab==='experience' && (
         <>
-          <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:12, gap:8, flexWrap:'wrap'}}>
-            <div style={{display:'flex', gap:6, alignItems:'center', flexWrap:'wrap'}}>
-              {/* View mode toggle */}
-              <div style={{display:'flex', borderRadius:6, border:'1px solid var(--border)', overflow:'visible'}}>
-                <button onClick={()=>setExpViewMode('fy')} style={{fontSize:12, padding:'5px 14px', whiteSpace:'nowrap', background: expViewMode==='fy' ? 'var(--accent)' : 'var(--bg2)', color: expViewMode==='fy' ? '#fff' : 'var(--text2)', border:'none', cursor:'pointer', borderRadius:'5px 0 0 5px'}}>By FY</button>
-                <button onClick={()=>setExpViewMode('client')} style={{fontSize:12, padding:'5px 14px', whiteSpace:'nowrap', background: expViewMode==='client' ? 'var(--accent)' : 'var(--bg2)', color: expViewMode==='client' ? '#fff' : 'var(--text2)', border:'none', cursor:'pointer', borderLeft:'1px solid var(--border)', borderRadius:'0 5px 5px 0'}}>By Client</button>
+          {/* Filter bar.
+              The selects previously inherited the global `input, select
+              { width: 100% }`, having set only minWidth — so each one filled
+              its own flex line and the row read as three stacked grey slabs.
+              They size to their content now, and an active filter is tinted so
+              a narrowed list never looks like an empty one. */}
+          {(() => {
+            const anyFilter = !!(expClientFilter || expOccFilter || expMissingFilter || expBolpatraFilter);
+            const sel = (active) => ({
+              width:'auto', minWidth:0, fontSize:12.5, padding:'6px 30px 6px 11px',
+              borderRadius:8, cursor:'pointer', lineHeight:1.4,
+              border:`1px solid ${active ? 'var(--primary)' : 'var(--border)'}`,
+              background: active ? 'var(--primary-light,#eff6ff)' : 'var(--surface)',
+              color: active ? 'var(--primary)' : 'var(--text)',
+              fontWeight: active ? 600 : 400,
+            });
+            return (
+              <div style={{display:'flex', justifyContent:'space-between', alignItems:'center',
+                marginBottom:12, gap:10, flexWrap:'wrap',
+                background:'var(--bg2)', border:'1px solid var(--border)',
+                borderRadius:'var(--radius-lg,12px)', padding:'10px 12px'}}>
+                <div style={{display:'flex', gap:8, alignItems:'center', flexWrap:'wrap'}}>
+                  {/* View mode toggle */}
+                  <div style={{display:'flex', borderRadius:8, border:'1px solid var(--border)', overflow:'hidden', background:'var(--surface)'}}>
+                    {[['fy','By FY'], ['client','By Client']].map(([mode,label]) => (
+                      <button key={mode} onClick={()=>setExpViewMode(mode)}
+                        style={{fontSize:12.5, padding:'6px 14px', whiteSpace:'nowrap', border:'none', cursor:'pointer',
+                          background: expViewMode===mode ? 'var(--primary)' : 'transparent',
+                          color: expViewMode===mode ? '#fff' : 'var(--text2)',
+                          fontWeight: expViewMode===mode ? 600 : 500}}>{label}</button>
+                    ))}
+                  </div>
+
+                  <div style={{width:1, height:22, background:'var(--border)'}}/>
+
+                  {/* Client filter — works in both modes */}
+                  <select value={expClientFilter} onChange={e=>setExpClientFilter(e.target.value)}
+                    title="Filter by client" style={sel(!!expClientFilter)}>
+                    <option value="">All clients</option>
+                    {[...new Map(institute.experience.filter(e=>e.clientId).map(e=>[e.clientId, getClient(clients,e.clientId)])).values()].filter(c=>c.id).map(c=>(
+                      <option key={c.id} value={c.id}>{c.shortName||c.fullName}</option>
+                    ))}
+                  </select>
+
+                  <select value={expOccFilter} onChange={e=>setExpOccFilter(e.target.value)}
+                    title="Filter by occupation" style={sel(!!expOccFilter)}>
+                    <option value="">All occupations</option>
+                    <option value="__missing__">Missing occupation</option>
+                    {[...new Set(institute.experience.flatMap(e=>(e.occupations||[]).map(o=>(getOccupation(o.ctevtOccupationId).name||o.nameInLetter))).filter(Boolean))].sort().map(name=>(
+                      <option key={name} value={name}>{name}</option>
+                    ))}
+                  </select>
+
+                  <select value={expMissingFilter} onChange={e=>setExpMissingFilter(e.target.value)}
+                    title="Show only assignments where an occupation is missing that field"
+                    style={sel(!!expMissingFilter)}>
+                    <option value="">Level/duration: all</option>
+                    <option value="level">Missing level</option>
+                    <option value="duration">Missing duration</option>
+                    <option value="either">Missing level or duration</option>
+                  </select>
+
+                  <button
+                    onClick={()=>setExpBolpatraFilter(v=>!v)}
+                    className={`gap-chip${expBolpatraFilter ? ' gap-chip-on' : ''}`}
+                    title="Show only assignments the EOI (Bolpatra) report would print with blank fields">
+                    <span className="material-icons-round" style={{fontSize:14,verticalAlign:'middle'}}>assignment_late</span>
+                    {' '}Bolpatra incomplete{bolpatraGapCount > 0 ? ` (${bolpatraGapCount})` : ''}
+                  </button>
+
+                  {anyFilter && (
+                    <button onClick={()=>{ setExpClientFilter(''); setExpOccFilter(''); setExpMissingFilter(''); setExpBolpatraFilter(false); }}
+                      title="Clear all filters"
+                      style={{display:'inline-flex', alignItems:'center', gap:4, background:'none', border:'none',
+                        cursor:'pointer', color:'var(--text3)', fontSize:12, fontWeight:600, padding:'4px 2px'}}>
+                      <span className="material-icons-round" style={{fontSize:14}}>close</span>Clear
+                    </button>
+                  )}
+                </div>
+
+                <div style={{display:'flex', gap:6}}>
+                  {canEdit && (
+                    <Btn className="btn btn-primary btn-sm" onClick={()=>setModal({type:'addExp'})}>+ Add assignment</Btn>
+                  )}
+                </div>
               </div>
-              {/* Client filter — works in both modes */}
-              <select value={expClientFilter} onChange={e=>setExpClientFilter(e.target.value)} style={{fontSize:12, padding:'4px 8px', borderRadius:6, border:'1px solid var(--border)', background:'var(--bg2)', color:'var(--text1)', minWidth:160}}>
-                <option value="">All clients</option>
-                {[...new Map(institute.experience.filter(e=>e.clientId).map(e=>[e.clientId, getClient(clients,e.clientId)])).values()].filter(c=>c.id).map(c=>(
-                  <option key={c.id} value={c.id}>{c.shortName||c.fullName}</option>
-                ))}
-              </select>
-              <select value={expOccFilter} onChange={e=>setExpOccFilter(e.target.value)} style={{fontSize:12, padding:'4px 8px', borderRadius:6, border:'1px solid var(--border)', background:'var(--bg2)', color:'var(--text1)', minWidth:160}}>
-                <option value="">All occupations</option>
-                <option value="__missing__">Missing occupation</option>
-                {[...new Set(institute.experience.flatMap(e=>(e.occupations||[]).map(o=>(getOccupation(o.ctevtOccupationId).name||o.nameInLetter))).filter(Boolean))].sort().map(name=>(
-                  <option key={name} value={name}>{name}</option>
-                ))}
-              </select>
-              <select value={expMissingFilter} onChange={e=>setExpMissingFilter(e.target.value)}
-                title="Show only assignments where an occupation is missing that field"
-                style={{fontSize:12, padding:'4px 8px', borderRadius:6, border:'1px solid var(--border)',
-                  background: expMissingFilter ? '#fff3cd' : 'var(--bg2)',
-                  color: expMissingFilter ? '#856404' : 'var(--text1)',
-                  fontWeight: expMissingFilter ? 700 : 400, minWidth:150}}>
-                <option value="">Level/duration: all</option>
-                <option value="level">Missing level</option>
-                <option value="duration">Missing duration</option>
-                <option value="either">Missing level or duration</option>
-              </select>
-              <button
-                onClick={()=>setExpBolpatraFilter(v=>!v)}
-                className={`gap-chip${expBolpatraFilter ? ' gap-chip-on' : ''}`}
-                title="Show only assignments the EOI (Bolpatra) report would print with blank fields">
-                <span className="material-icons-round" style={{fontSize:14,verticalAlign:'middle'}}>assignment_late</span>
-                {' '}Bolpatra incomplete{bolpatraGapCount > 0 ? ` (${bolpatraGapCount})` : ''}
-              </button>
-            </div>
-            <div style={{display:'flex', gap:6}}>
-              {canEdit && (
-                <Btn className="btn btn-primary btn-sm" onClick={()=>setModal({type:'addExp'})}>+ Add assignment</Btn>
-              )}
-            </div>
-          </div>
+            );
+          })()}
 
           {institute.experience.length === 0
             ? <div className="empty-state"><div className="empty-state-icon"><span className="material-icons-round" style={{fontSize:44,opacity:0.3}}>assignment</span></div><div className="empty-state-title">No assignments yet</div><div className="empty-state-sub">Add the first experience / assignment record</div></div>
