@@ -14,6 +14,204 @@ import { PageHeader, PillTabs } from './ui/primitives.jsx';
 import { useOccupations } from '../utils/useMasterData.js';
 
 
+/**
+ * The three modal forms live here, at module scope, not inside MasterData.
+ *
+ * Defined inside the component they were a new function identity on every
+ * render, so React saw a different component type each time, unmounted the
+ * open modal and mounted a fresh one — taking the half-typed form state with
+ * it. Any parent re-render while a modal was open (a finishing fetch, an error
+ * banner, a tool list arriving) silently reset the fields.
+ *
+ * They close over nothing but imported constants, so hoisting is enough.
+ */
+const ClientForm = ({client, onSave, onClose}) => {
+  const [form, setForm] = useState(client || {fullName:'', shortName:'', type:'Government', address:'', remarks:'', phone:'', email:'', website:'', signatoryName:'', signatoryPosition:'', letterhead:null, nameNp:'', addressNp:'', includesOjt:false});
+  const set = (k,v) => setForm(f=>({...f,[k]:v}));
+  return (
+    <Modal title={client ? 'Edit client' : 'Add new client'} onClose={onClose}
+      footer={<>
+        <Btn className="btn btn-secondary" onClick={onClose}>Cancel</Btn>
+        <Btn className="btn btn-primary" onClick={()=>onSave(form)}>Save client</Btn>
+      </>}>
+      <div className="form-group">
+        <MdTextField label="Full name *" value={form.fullName} onChange={e=>set('fullName',e.target.value)} placeholder="Official full name"/>
+      </div>
+      <div className="form-row form-row-2">
+        <div className="form-group">
+          <MdTextField label="Short name / acronym *" value={form.shortName} onChange={e=>set('shortName',e.target.value)} placeholder="e.g. PCTVET, FEB"/>
+        </div>
+        <div className="form-group">
+          <MdSelect label="Client type" value={form.type} onChange={e=>set('type',e.target.value)}>
+            {CLIENT_TYPES.map(t=><MdOption key={t} value={t}>{t}</MdOption>)}
+          </MdSelect>
+        </div>
+      </div>
+      <div className="form-group">
+        <MdTextField label="Address" value={form.address||''} onChange={e=>set('address',e.target.value)}/>
+      </div>
+      <div className="form-row form-row-2">
+        <div className="form-group">
+          <MdTextField label="Phone" value={form.phone||''} onChange={e=>set('phone',e.target.value)} placeholder="Office phone number"/>
+        </div>
+        <div className="form-group">
+          <MdTextField type="email" label="Email" value={form.email||''} onChange={e=>set('email',e.target.value)} placeholder="Office email"/>
+        </div>
+      </div>
+      <div className="form-group">
+        <MdTextField label="Website (optional)" value={form.website||''} onChange={e=>set('website',e.target.value)} placeholder="https://"/>
+      </div>
+
+      {/* Letter generation fields */}
+      <div style={{margin:'16px 0 10px', borderTop:'1px solid var(--border)', paddingTop:14}}>
+        <div style={{fontSize:12.5, fontWeight:600, color:'var(--text2)', marginBottom:10, letterSpacing:'0.2px'}}>
+          Letter Generation
+        </div>
+        <div style={{fontSize:11.5, color:'var(--text3)', marginBottom:12}}>
+          Used in the recipient and signature blocks when generating shortlisting letters for this organization.
+        </div>
+        <div className="form-row form-row-2">
+          <div className="form-group">
+            <MdTextField label="Name in Nepali (नाम)" value={form.nameNp||''} onChange={e=>set('nameNp',e.target.value)} placeholder="e.g. नागार्जुन नगरपालिका"/>
+          </div>
+          <div className="form-group">
+            <MdTextField label="Address in Nepali (ठेगाना)" value={form.addressNp||''} onChange={e=>set('addressNp',e.target.value)} placeholder="e.g. काठमाडौँ"/>
+          </div>
+        </div>
+        <div style={{fontSize:11.5, color:'var(--text3)', marginTop:-4, marginBottom:12}}>
+          Shown in the letter's श्री … block. Falls back to the English name and address when blank.
+        </div>
+        <div className="form-row form-row-2">
+          <div className="form-group">
+            <MdTextField label="Authorized Signatory Name" value={form.signatoryName||''} onChange={e=>set('signatoryName',e.target.value)} placeholder="e.g. Ram Prasad Sharma"/>
+          </div>
+          <div className="form-group">
+            <MdTextField label="Signatory Position / Designation" value={form.signatoryPosition||''} onChange={e=>set('signatoryPosition',e.target.value)} placeholder="e.g. Project Director"/>
+          </div>
+        </div>
+        <label style={{display:'flex', alignItems:'flex-start', gap:10, padding:'10px 12px',
+          border:'1px solid var(--border)', borderRadius:8, marginBottom:14, cursor:'pointer'}}>
+          <input type="checkbox" style={{marginTop:2}} checked={!!form.includesOjt}
+            onChange={e=>set('includesOjt', e.target.checked)}/>
+          <span>
+            <span style={{fontWeight:600, fontSize:13}}>Assignments include on-the-job training</span>
+            <span style={{display:'block', fontSize:12, color:'var(--text3)', marginTop:2}}>
+              Tick for projects that run an OJT phase — EVENT, RERP/SAMRIDDHI and ENSSURE.
+              The 3(B) services templates then include the OJT step for this client's assignments.
+            </span>
+          </span>
+        </label>
+        <div className="form-group">
+          <label>Letterhead Image <span style={{fontWeight:400,color:'var(--text3)'}}>(optional — shown at top of generated letters)</span></label>
+          <div style={{display:'flex', alignItems:'center', gap:12}}>
+            {form.letterhead && <img src={form.letterhead} alt="letterhead" style={{height:48, maxWidth:220, objectFit:'contain', border:'1px solid var(--border)', borderRadius:6, background:'#fff', padding:4}}/>}
+            <label style={{cursor:'pointer'}}>
+              <input type="file" accept="image/*" style={{display:'none'}} onChange={e=>{
+                const file=e.target.files[0]; if(!file) return;
+                const reader=new FileReader();
+                reader.onload=ev=>set('letterhead',ev.target.result);
+                reader.readAsDataURL(file);
+              }}/>
+              <span className="btn btn-secondary btn-sm">{form.letterhead ? <><span className="material-icons-round" style={{fontSize:14,verticalAlign:'middle',marginRight:4}}>sync</span>Change</> : <><span className="material-icons-round" style={{fontSize:14,verticalAlign:'middle',marginRight:4}}>photo_camera</span>Upload letterhead</>}</span>
+            </label>
+            {form.letterhead && <span className="btn btn-ghost btn-sm" style={{cursor:'pointer'}} onClick={()=>set('letterhead',null)}><span className="material-icons-round" style={{fontSize:14,verticalAlign:'middle',marginRight:4}}>close</span>Remove</span>}
+          </div>
+          <div className="input-hint">PNG or JPG — recommended width 600–800px, height 80–120px. Max ~500 KB.</div>
+        </div>
+      </div>
+
+      <div className="form-group">
+        <MdTextField type="textarea" label="Remarks" value={form.remarks||''} onChange={e=>set('remarks',e.target.value)} rows={2}/>
+      </div>
+    </Modal>
+  );
+};
+
+const OccupationForm = ({occ, onSave, onClose}) => {
+  const [form, setForm] = useState(occ || {name:'', sector: SECTORS[0]||'', duration:'', level:''});
+  const set = (k,v) => setForm(f=>({...f,[k]:v}));
+  return (
+    <Modal title={occ ? 'Edit occupation' : 'Add occupation'} onClose={onClose}
+      footer={<>
+        <Btn className="btn btn-secondary" onClick={onClose}>Cancel</Btn>
+        <Btn className="btn btn-primary" onClick={()=>onSave(form)}>Save</Btn>
+      </>}>
+      <div className="form-group">
+        <MdTextField label="Occupation name *" value={form.name} onChange={e=>set('name',e.target.value)} placeholder="Full occupation name"/>
+      </div>
+      <div className="form-row form-row-2">
+        <div className="form-group">
+          <MdSelect label="Sector *" value={form.sector} onChange={e=>set('sector',e.target.value)}>
+            {SECTORS.map(s=><MdOption key={s} value={s}>{s}</MdOption>)}
+          </MdSelect>
+        </div>
+        <div className="form-group">
+          <MdSelect label="Level (optional)" value={form.level||''} onChange={e=>set('level',e.target.value)}>
+            <MdOption value="">— Not specified —</MdOption>
+            <MdOption value="N/A">N/A</MdOption>
+            <MdOption value="Level 1">Level 1</MdOption>
+            <MdOption value="Level 2">Level 2</MdOption>
+            <MdOption value="Level 3">Level 3</MdOption>
+            <MdOption value="Professional">Professional</MdOption>
+          </MdSelect>
+        </div>
+      </div>
+      <div className="form-group">
+        <MdTextField type="number" label="Duration (hrs) (optional)" value={form.duration||''} onChange={e=>set('duration',e.target.value)} placeholder="e.g. 390"/>
+      </div>
+    </Modal>
+  );
+};
+
+const ToolForm = ({tool, onSave, onClose}) => {
+  const [form, setForm] = useState(tool || {name:'', description:'', unit:'', quantity:'', ownership:'Own', type:'Tool', remarks:''});
+  const set = (k,v) => setForm(f=>({...f,[k]:v}));
+  return (
+    <Modal title={tool ? 'Edit item' : 'Add tool / consumable'} onClose={onClose}
+      footer={<>
+        <Btn className="btn btn-secondary" onClick={onClose}>Cancel</Btn>
+        <Btn className="btn btn-primary" onClick={()=>onSave(form)}>Save</Btn>
+      </>}>
+      <div className="form-row form-row-2">
+        <div className="form-group">
+          <MdTextField label="Name *" value={form.name||''} onChange={e=>set('name',e.target.value)} placeholder="e.g. Wire Stripper"/>
+        </div>
+        <div className="form-group">
+          <MdTextField label="Description" value={form.description||''} onChange={e=>set('description',e.target.value)} placeholder="e.g. 6 inch insulated handle"/>
+        </div>
+      </div>
+      <div className="form-row form-row-2">
+        <div className="form-group">
+          <MdTextField label="Unit" value={form.unit||''} onChange={e=>set('unit',e.target.value)} placeholder="e.g. Piece, Meter, Set"/>
+        </div>
+        <div className="form-group">
+          <MdTextField type="number" label="Quantity" value={form.quantity||''} onChange={e=>set('quantity',e.target.value)} placeholder="e.g. 10"/>
+        </div>
+      </div>
+      <div className="form-row form-row-2">
+        <div className="form-group">
+          <MdSelect label="Ownership" value={form.ownership||'Own'} onChange={e=>set('ownership',e.target.value)}>
+            <MdOption value="Own">Own</MdOption>
+            <MdOption value="Rented">Rented</MdOption>
+          </MdSelect>
+        </div>
+        <div className="form-group">
+          <MdSelect label="Type" value={form.type||'Tool'} onChange={e=>set('type',e.target.value)}>
+            <MdOption value="Tool">Tool</MdOption>
+            <MdOption value="Consumable">Consumable</MdOption>
+            <MdOption value="Safety Tool">Safety Tool</MdOption>
+            <MdOption value="Stationery">Stationery</MdOption>
+          </MdSelect>
+        </div>
+      </div>
+      <div className="form-group">
+        <MdTextField label="Remarks" value={form.remarks||''} onChange={e=>set('remarks',e.target.value)}/>
+      </div>
+    </Modal>
+  );
+};
+
+
 function MasterData({clients, onUpdateClients, token, isAdmin, isEditor, isSuperAdmin, onGoToClients, initialTab}) {
   // Deep-linked from the command palette (#master/tools and friends), so
   // "go to tools" lands on the tab rather than on Clients.
@@ -180,107 +378,6 @@ function MasterData({clients, onUpdateClients, token, isAdmin, isEditor, isSuper
   const removeFY = (i) => saveFY(fiscalYears.filter((_,idx)=>idx!==i));
   const updateFY = (i, v) => { if (!/^\d{4}\/\d{2}$/.test(v)) return; const l=[...fiscalYears]; l[i]=v; saveFY(l.sort()); setEditFy(null); };
 
-  const ClientForm = ({client, onSave, onClose}) => {
-    const [form, setForm] = useState(client || {fullName:'', shortName:'', type:'Government', address:'', remarks:'', phone:'', email:'', website:'', signatoryName:'', signatoryPosition:'', letterhead:null, nameNp:'', addressNp:'', includesOjt:false});
-    const set = (k,v) => setForm(f=>({...f,[k]:v}));
-    return (
-      <Modal title={client ? 'Edit client' : 'Add new client'} onClose={onClose}
-        footer={<>
-          <Btn className="btn btn-secondary" onClick={onClose}>Cancel</Btn>
-          <Btn className="btn btn-primary" onClick={()=>onSave(form)}>Save client</Btn>
-        </>}>
-        <div className="form-group">
-          <MdTextField label="Full name *" value={form.fullName} onChange={e=>set('fullName',e.target.value)} placeholder="Official full name"/>
-        </div>
-        <div className="form-row form-row-2">
-          <div className="form-group">
-            <MdTextField label="Short name / acronym *" value={form.shortName} onChange={e=>set('shortName',e.target.value)} placeholder="e.g. PCTVET, FEB"/>
-          </div>
-          <div className="form-group">
-            <MdSelect label="Client type" value={form.type} onChange={e=>set('type',e.target.value)}>
-              {CLIENT_TYPES.map(t=><MdOption key={t} value={t}>{t}</MdOption>)}
-            </MdSelect>
-          </div>
-        </div>
-        <div className="form-group">
-          <MdTextField label="Address" value={form.address||''} onChange={e=>set('address',e.target.value)}/>
-        </div>
-        <div className="form-row form-row-2">
-          <div className="form-group">
-            <MdTextField label="Phone" value={form.phone||''} onChange={e=>set('phone',e.target.value)} placeholder="Office phone number"/>
-          </div>
-          <div className="form-group">
-            <MdTextField type="email" label="Email" value={form.email||''} onChange={e=>set('email',e.target.value)} placeholder="Office email"/>
-          </div>
-        </div>
-        <div className="form-group">
-          <MdTextField label="Website (optional)" value={form.website||''} onChange={e=>set('website',e.target.value)} placeholder="https://"/>
-        </div>
-
-        {/* Letter generation fields */}
-        <div style={{margin:'16px 0 10px', borderTop:'1px solid var(--border)', paddingTop:14}}>
-          <div style={{fontSize:12.5, fontWeight:600, color:'var(--text2)', marginBottom:10, letterSpacing:'0.2px'}}>
-            Letter Generation
-          </div>
-          <div style={{fontSize:11.5, color:'var(--text3)', marginBottom:12}}>
-            Used in the recipient and signature blocks when generating shortlisting letters for this organization.
-          </div>
-          <div className="form-row form-row-2">
-            <div className="form-group">
-              <MdTextField label="Name in Nepali (नाम)" value={form.nameNp||''} onChange={e=>set('nameNp',e.target.value)} placeholder="e.g. नागार्जुन नगरपालिका"/>
-            </div>
-            <div className="form-group">
-              <MdTextField label="Address in Nepali (ठेगाना)" value={form.addressNp||''} onChange={e=>set('addressNp',e.target.value)} placeholder="e.g. काठमाडौँ"/>
-            </div>
-          </div>
-          <div style={{fontSize:11.5, color:'var(--text3)', marginTop:-4, marginBottom:12}}>
-            Shown in the letter's श्री … block. Falls back to the English name and address when blank.
-          </div>
-          <div className="form-row form-row-2">
-            <div className="form-group">
-              <MdTextField label="Authorized Signatory Name" value={form.signatoryName||''} onChange={e=>set('signatoryName',e.target.value)} placeholder="e.g. Ram Prasad Sharma"/>
-            </div>
-            <div className="form-group">
-              <MdTextField label="Signatory Position / Designation" value={form.signatoryPosition||''} onChange={e=>set('signatoryPosition',e.target.value)} placeholder="e.g. Project Director"/>
-            </div>
-          </div>
-          <label style={{display:'flex', alignItems:'flex-start', gap:10, padding:'10px 12px',
-            border:'1px solid var(--border)', borderRadius:8, marginBottom:14, cursor:'pointer'}}>
-            <input type="checkbox" style={{marginTop:2}} checked={!!form.includesOjt}
-              onChange={e=>set('includesOjt', e.target.checked)}/>
-            <span>
-              <span style={{fontWeight:600, fontSize:13}}>Assignments include on-the-job training</span>
-              <span style={{display:'block', fontSize:12, color:'var(--text3)', marginTop:2}}>
-                Tick for projects that run an OJT phase — EVENT, RERP/SAMRIDDHI and ENSSURE.
-                The 3(B) services templates then include the OJT step for this client's assignments.
-              </span>
-            </span>
-          </label>
-          <div className="form-group">
-            <label>Letterhead Image <span style={{fontWeight:400,color:'var(--text3)'}}>(optional — shown at top of generated letters)</span></label>
-            <div style={{display:'flex', alignItems:'center', gap:12}}>
-              {form.letterhead && <img src={form.letterhead} alt="letterhead" style={{height:48, maxWidth:220, objectFit:'contain', border:'1px solid var(--border)', borderRadius:6, background:'#fff', padding:4}}/>}
-              <label style={{cursor:'pointer'}}>
-                <input type="file" accept="image/*" style={{display:'none'}} onChange={e=>{
-                  const file=e.target.files[0]; if(!file) return;
-                  const reader=new FileReader();
-                  reader.onload=ev=>set('letterhead',ev.target.result);
-                  reader.readAsDataURL(file);
-                }}/>
-                <span className="btn btn-secondary btn-sm">{form.letterhead ? <><span className="material-icons-round" style={{fontSize:14,verticalAlign:'middle',marginRight:4}}>sync</span>Change</> : <><span className="material-icons-round" style={{fontSize:14,verticalAlign:'middle',marginRight:4}}>photo_camera</span>Upload letterhead</>}</span>
-              </label>
-              {form.letterhead && <span className="btn btn-ghost btn-sm" style={{cursor:'pointer'}} onClick={()=>set('letterhead',null)}><span className="material-icons-round" style={{fontSize:14,verticalAlign:'middle',marginRight:4}}>close</span>Remove</span>}
-            </div>
-            <div className="input-hint">PNG or JPG — recommended width 600–800px, height 80–120px. Max ~500 KB.</div>
-          </div>
-        </div>
-
-        <div className="form-group">
-          <MdTextField type="textarea" label="Remarks" value={form.remarks||''} onChange={e=>set('remarks',e.target.value)} rows={2}/>
-        </div>
-      </Modal>
-    );
-  };
 
   const [masterErr, setMasterErr] = useState('');
   const saveClient = async (form) => {
@@ -299,89 +396,7 @@ function MasterData({clients, onUpdateClients, token, isAdmin, isEditor, isSuper
     }
   };
 
-  const OccupationForm = ({occ, onSave, onClose}) => {
-    const [form, setForm] = useState(occ || {name:'', sector: SECTORS[0]||'', duration:'', level:''});
-    const set = (k,v) => setForm(f=>({...f,[k]:v}));
-    return (
-      <Modal title={occ ? 'Edit occupation' : 'Add occupation'} onClose={onClose}
-        footer={<>
-          <Btn className="btn btn-secondary" onClick={onClose}>Cancel</Btn>
-          <Btn className="btn btn-primary" onClick={()=>onSave(form)}>Save</Btn>
-        </>}>
-        <div className="form-group">
-          <MdTextField label="Occupation name *" value={form.name} onChange={e=>set('name',e.target.value)} placeholder="Full occupation name"/>
-        </div>
-        <div className="form-row form-row-2">
-          <div className="form-group">
-            <MdSelect label="Sector *" value={form.sector} onChange={e=>set('sector',e.target.value)}>
-              {SECTORS.map(s=><MdOption key={s} value={s}>{s}</MdOption>)}
-            </MdSelect>
-          </div>
-          <div className="form-group">
-            <MdSelect label="Level (optional)" value={form.level||''} onChange={e=>set('level',e.target.value)}>
-              <MdOption value="">— Not specified —</MdOption>
-              <MdOption value="N/A">N/A</MdOption>
-              <MdOption value="Level 1">Level 1</MdOption>
-              <MdOption value="Level 2">Level 2</MdOption>
-              <MdOption value="Level 3">Level 3</MdOption>
-              <MdOption value="Professional">Professional</MdOption>
-            </MdSelect>
-          </div>
-        </div>
-        <div className="form-group">
-          <MdTextField type="number" label="Duration (hrs) (optional)" value={form.duration||''} onChange={e=>set('duration',e.target.value)} placeholder="e.g. 390"/>
-        </div>
-      </Modal>
-    );
-  };
 
-  const ToolForm = ({tool, onSave, onClose}) => {
-    const [form, setForm] = useState(tool || {name:'', description:'', unit:'', quantity:'', ownership:'Own', type:'Tool', remarks:''});
-    const set = (k,v) => setForm(f=>({...f,[k]:v}));
-    return (
-      <Modal title={tool ? 'Edit item' : 'Add tool / consumable'} onClose={onClose}
-        footer={<>
-          <Btn className="btn btn-secondary" onClick={onClose}>Cancel</Btn>
-          <Btn className="btn btn-primary" onClick={()=>onSave(form)}>Save</Btn>
-        </>}>
-        <div className="form-row form-row-2">
-          <div className="form-group">
-            <MdTextField label="Name *" value={form.name||''} onChange={e=>set('name',e.target.value)} placeholder="e.g. Wire Stripper"/>
-          </div>
-          <div className="form-group">
-            <MdTextField label="Description" value={form.description||''} onChange={e=>set('description',e.target.value)} placeholder="e.g. 6 inch insulated handle"/>
-          </div>
-        </div>
-        <div className="form-row form-row-2">
-          <div className="form-group">
-            <MdTextField label="Unit" value={form.unit||''} onChange={e=>set('unit',e.target.value)} placeholder="e.g. Piece, Meter, Set"/>
-          </div>
-          <div className="form-group">
-            <MdTextField type="number" label="Quantity" value={form.quantity||''} onChange={e=>set('quantity',e.target.value)} placeholder="e.g. 10"/>
-          </div>
-        </div>
-        <div className="form-row form-row-2">
-          <div className="form-group">
-            <MdSelect label="Ownership" value={form.ownership||'Own'} onChange={e=>set('ownership',e.target.value)}>
-              <MdOption value="Own">Own</MdOption>
-              <MdOption value="Rented">Rented</MdOption>
-            </MdSelect>
-          </div>
-          <div className="form-group">
-            <MdSelect label="Type" value={form.type||'Tool'} onChange={e=>set('type',e.target.value)}>
-              <MdOption value="Tool">Tool</MdOption>
-              <MdOption value="Consumable">Consumable</MdOption>
-              <MdOption value="Safety Tool">Safety Tool</MdOption>
-              <MdOption value="Stationery">Stationery</MdOption>
-            </MdSelect>
-          </div>
-        </div>
-        <div className="form-group">
-          <MdTextField label="Remarks" value={form.remarks||''} onChange={e=>set('remarks',e.target.value)}/>
-        </div>
-      </Modal>
-    );
-  };
 
   const saveOccupation = async (form) => {
     try {
