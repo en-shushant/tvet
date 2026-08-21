@@ -91,8 +91,11 @@ function InstituteDetail({institute, clients, onUpdateClients, onBack, onUpdate,
    *
    * The districts were only ever visible one assignment at a time, with the
    * profile showing a bare count — so answering "have they worked in Banke?"
-   * meant opening every assignment in turn. Grouped by province because that is
-   * how the coverage question is usually asked.
+   * meant opening every assignment in turn.
+   *
+   * The figures behind each district stay on the tooltip rather than on the
+   * chip, so the list reads as coverage at a glance; the province is carried
+   * only to count how many are covered, not to group by.
    *
    * Trainees are summed per occupation row, and an occupation delivered across
    * several districts contributes its trainees to each: the row records one
@@ -109,9 +112,10 @@ function InstituteDetail({institute, clients, onUpdateClients, onBack, onUpdate,
           const name = (loc.district || '').trim();
           if (!name) continue;
           if (!byDistrict.has(name)) {
-            byDistrict.set(name, { district: name, assignments: new Set(), trainees: 0 });
+            byDistrict.set(name, { district: name, province: loc.province || '', assignments: new Set(), trainees: 0 });
           }
           const d = byDistrict.get(name);
+          if (!d.province && loc.province) d.province = loc.province;
           d.assignments.add(exp.id);
           d.trainees += trainees;
         }
@@ -510,7 +514,17 @@ function InstituteDetail({institute, clients, onUpdateClients, onBack, onUpdate,
           <div className="card" style={{marginTop:16}}>
             <div style={{display:'flex', alignItems:'baseline', justifyContent:'space-between', gap:10, flexWrap:'wrap'}}>
               <div className="section-title" style={{marginBottom:0}}>Districts with training experience</div>
-              <div style={{fontSize:12, color:'var(--text3)'}}>{districtCoverage.length}</div>
+              {/* Blank provinces are not counted — an unrecorded province is
+                  not a province covered. */}
+              {(() => {
+                const provinces = new Set(districtCoverage.map(d => d.province).filter(Boolean)).size;
+                return (
+                  <div style={{fontSize:12, color:'var(--text3)'}}>
+                    {districtCoverage.length} district{districtCoverage.length !== 1 ? 's' : ''}
+                    {provinces > 0 && <> · {provinces} province{provinces !== 1 ? 's' : ''}</>}
+                  </div>
+                );
+              })()}
             </div>
             {/* Names only. The assignment and trainee figures stay on the
                 tooltip: useful when asked for, noise when not. */}

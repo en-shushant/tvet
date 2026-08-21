@@ -72,6 +72,14 @@ describe('district coverage', () => {
     assertNoConsoleErrors();
   });
 
+  it('heads the list with the district and province counts', async () => {
+    await mount();
+    // Kaski(Gandaki) + Banke,Dang(Lumbini) = 3 districts across 2 provinces.
+    // The fourth assignment has a province but a blank district, so it
+    // contributes neither.
+    expect(container.textContent).toMatch(/3 districts · 2 provinces/);
+  });
+
   it('shows the district name only, keeping the figures on the tooltip', async () => {
     await mount();
     expect(chip('Kaski').textContent.trim()).toBe('Kaski');
