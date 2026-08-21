@@ -638,7 +638,7 @@ export default function Shortlisting({ institutes, clients, isAdmin, isEditor, i
 
   /** Filter select: sized to content, tinted while it is actually narrowing. */
   const fSel = (active, min) => ({
-    width:'auto', minWidth:min, flexShrink:0, fontSize:12.5,
+    width:'auto', minWidth:min, maxWidth:210, flexShrink:0, fontSize:12.5,
     padding:'6px 30px 6px 11px', borderRadius:8, cursor:'pointer', lineHeight:1.4,
     border:`1px solid ${active ? 'var(--primary)' : 'var(--border)'}`,
     background: active ? 'var(--primary-light,#eff6ff)' : 'var(--surface)',
@@ -657,10 +657,18 @@ export default function Shortlisting({ institutes, clients, isAdmin, isEditor, i
   useEffect(() => {
     if (fyDefaulted || loading || !rows.length) return;
     setFyDefaulted(true);
-    if (!currentFY) return;
-    const present = rows.some(r => (r.fy || '') === currentFY)
-      || standingLists.some(l => (l.fy || '') === currentFY);
-    if (present) setFilterFY(currentFY);
+    const years = new Set([
+      ...rows.map(r => r.fy).filter(Boolean),
+      ...standingLists.map(l => l.fy).filter(Boolean),
+    ]);
+    if (!years.size) return;
+    // The year set in Master Data when there is one; otherwise the newest year
+    // actually on record, so "the active year" still means something on a
+    // registry where nobody has configured it.
+    const target = currentFY && years.has(currentFY)
+      ? currentFY
+      : [...years].sort().at(-1);
+    if (target) setFilterFY(target);
   }, [rows, standingLists, loading, currentFY, fyDefaulted]);
 
   /**

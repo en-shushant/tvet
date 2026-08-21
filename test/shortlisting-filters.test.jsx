@@ -89,6 +89,21 @@ describe('Shortlisting filters reach standing-list firms', () => {
     expect(selByFirstOption('All FYs').value).toBe('2081/82');
   });
 
+  it('falls back to the newest year on record when no active FY is configured', async () => {
+    // Real registries exist where nobody has set one in Master Data; defaulting
+    // to nothing there would leave the filter the user asked for switched off.
+    globalThis.localStorage.removeItem('tvettrack_current_fy');
+    await mount();
+    expect(selByFirstOption('All FYs').value).toBe('2082/83');
+  });
+
+  it('leaves the filter off when the configured year has no records', async () => {
+    // Otherwise the page opens empty behind a filter the user never set.
+    globalThis.localStorage.setItem('tvettrack_current_fy', '2099/00');
+    await mount();
+    expect(selByFirstOption('All FYs').value).toBe('2082/83'); // newest present, not the empty year
+  });
+
   it('changing FY re-filters the standing-list firms', async () => {
     await mount();
     await act(async () => { setSel(selByFirstOption('All FYs'), '2082/83'); });
