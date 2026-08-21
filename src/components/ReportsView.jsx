@@ -257,6 +257,31 @@ function ReportsView({ institutes, clients }) {
     return occupations.filter(o => wanted.includes(String(o.name).toLowerCase())).map(o => o.id);
   }, [selectedOccs, occupations]);
 
+  /**
+   * How many tools exist for each occupation/level pair.
+   *
+   * One grouped count for the whole table, so the Tools report can say up front
+   * that a chosen occupation has nothing recorded at the chosen level. That
+   * family only fetches the tools themselves at print time, so without this it
+   * could only find out by producing an empty document.
+   */
+  const [toolCounts, setToolCounts] = useState(null);
+  useEffect(() => {
+    if (!noInstitute) return;
+    let alive = true;
+    api('GET', '/occupation-tools/counts', null, getSession()?.token)
+      .then(rows => { if (alive) setToolCounts(rows || []); })
+      .catch(() => { if (alive) setToolCounts([]); });
+    return () => { alive = false; };
+  }, [noInstitute]);
+
+  /** null while unknown, so "not loaded" never reads as "nothing there". */
+  const toolsCountFor = (occId, level) => {
+    if (!toolCounts || !level) return null;
+    const row = toolCounts.find(r => String(r.occupation_id) === String(occId) && r.level === level);
+    return row ? row.count : 0;
+  };
+
   /** An occupation's own level, falling back to the one set for all of them. */
   const levelForOcc = (id) => eoiLevelByOcc[id] || eoiToolsLevel || 'Level 1';
   // Exact dependency for the fetch below: which occupations, each at which
@@ -570,8 +595,9 @@ function ReportsView({ institutes, clients }) {
   // ── Which setup sections apply to the current family/report ──────────────
   const hasOccSection = report.hasOccupationFilter || report.hasSpecificOccFilter || noInstitute || (familyId === 'enssure' && !!fullInst);
   const hasToolsSection = report.hasToolsPicker || noInstitute || (familyId === 'enssure' && !!fullInst);
-  const hasToolTypesSection = report.hasToolsPicker || noInstitute;
-  const hasColumnsSection = report.hasToolsPicker || noInstitute;
+  // Types and columns both describe the shape of the same tools table, so they
+  // live under one tab rather than two that must be visited in turn.
+  const hasToolTableSection = report.hasToolsPicker || noInstitute;
   const hasFiltersSection = !noInstitute && (fullInst || isMultiInst);
   const hasAdvancedSection = !noInstitute && !isMultiInst && !!fullInst;
 
@@ -579,8 +605,7 @@ function ReportsView({ institutes, clients }) {
     { id: 'firms', label: 'Firms', show: true },
     { id: 'occupations', label: 'Occupations', show: hasOccSection },
     { id: 'tools', label: 'Training Tools', show: hasToolsSection },
-    { id: 'toolTypes', label: 'Tool Types', show: hasToolTypesSection },
-    { id: 'columns', label: 'Columns', show: hasColumnsSection },
+    { id: 'toolTable', label: 'Tool Table', show: hasToolTableSection },
     { id: 'filters', label: 'Filters', show: hasFiltersSection },
     { id: 'advanced', label: 'Advanced', show: hasAdvancedSection },
   ].filter(s => s.show);
@@ -626,8 +651,9 @@ function ReportsView({ institutes, clients }) {
     firms:       firmsCount || undefined,
     occupations: occCount || undefined,
     tools:       levelLabel || undefined,
-    toolTypes:   toolTypesBadge || undefined,
-    columns:     columnsCount || undefined,
+    // The column count is the concrete "what will the table look like"; the
+    // type filter is a refinement and shows inside the panel.
+    toolTable:   columnsCount || undefined,
     filters:     filtersActiveCount || undefined,
     advanced:    undefined,
   };
@@ -893,6 +919,19 @@ function ReportsView({ institutes, clients }) {
                       </label>
                     ))}
                   </div>
+                  {/* Flagged against the level chosen on the Training Tools tab,
+                      which is what the schedule is actually built from. */}
+                  {toolsLevel && toolsOccIds.some(id => toolsCountFor(id, toolsLevel) === 0) && (
+                    <div style={{display:'flex', alignItems:'flex-start', gap:6, marginTop:8,
+                      fontSize:11.5, color:'var(--warning,#f59e0b)'}}>
+                      <span className="material-icons-round" style={{fontSize:13, marginTop:1}}>info</span>
+                      <span>
+                        Tools list is not present at {toolsLevel} for:{' '}
+                        {toolsOccIds.filter(id => toolsCountFor(id, toolsLevel) === 0)
+                          .map(id => occupations.find(o => o.id === id)?.name || id).join(', ')}.
+                      </span>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
@@ -981,21 +1020,37 @@ function ReportsView({ institutes, clients }) {
                       {eoiOccIds.map(id => {
                         const o = occupations.find(x => x.id === id);
                         const n = eoiEventsByOcc[id] ?? 1;
+                        // undefined = still fetching; [] = fetched and there is
+                        // nothing recorded for this occupation at this level.
+                        const fetched = eoiTools[id];
+                        const noTools = Array.isArray(fetched) && fetched.length === 0;
                         return (
-                          <div key={id} style={{display:'flex', alignItems:'center', gap:8, marginBottom:8}}>
-                            <span style={{flex:1, minWidth:0, fontSize:12.5, overflow:'hidden',
-                              textOverflow:'ellipsis', whiteSpace:'nowrap'}} title={o?.name}>{o?.name || id}</span>
-                            <select className="form-input" style={{width:132, flexShrink:0}}
-                              value={levelForOcc(id)}
-                              onChange={e => setEoiLevelByOcc(prev => ({ ...prev, [id]: e.target.value }))}>
-                              <option>N/A</option><option>Level 1</option><option>Level 2</option>
-                              <option>Level 3</option><option>Professional</option><option>Technician</option>
-                            </select>
-                            <input type="number" min="1" className="form-input" value={n}
-                              style={{width:76, flexShrink:0}}
-                              onChange={e => setEoiEventsByOcc(prev => ({
-                                ...prev, [id]: Math.max(1, parseInt(e.target.value) || 1),
-                              }))}/>
+                          <div key={id} style={{marginBottom:8}}>
+                            <div style={{display:'flex', alignItems:'center', gap:8}}>
+                              <span style={{flex:1, minWidth:0, fontSize:12.5, overflow:'hidden',
+                                textOverflow:'ellipsis', whiteSpace:'nowrap'}} title={o?.name}>{o?.name || id}</span>
+                              <select className="form-input" style={{width:132, flexShrink:0}}
+                                value={levelForOcc(id)}
+                                onChange={e => setEoiLevelByOcc(prev => ({ ...prev, [id]: e.target.value }))}>
+                                <option>N/A</option><option>Level 1</option><option>Level 2</option>
+                                <option>Level 3</option><option>Professional</option><option>Technician</option>
+                              </select>
+                              <input type="number" min="1" className="form-input" value={n}
+                                style={{width:76, flexShrink:0}}
+                                onChange={e => setEoiEventsByOcc(prev => ({
+                                  ...prev, [id]: Math.max(1, parseInt(e.target.value) || 1),
+                                }))}/>
+                            </div>
+                            {/* Said here rather than left to the preview: this is
+                                where the level is chosen, so it is where finding
+                                out there is nothing at it is useful. */}
+                            {noTools && (
+                              <div style={{display:'flex', alignItems:'center', gap:5, marginTop:3,
+                                fontSize:11.5, color:'var(--warning,#f59e0b)'}}>
+                                <span className="material-icons-round" style={{fontSize:13}}>info</span>
+                                Tools list is not present for {o?.name || 'this occupation'} at {levelForOcc(id)}.
+                              </div>
+                            )}
                           </div>
                         );
                       })}
@@ -1034,15 +1089,33 @@ function ReportsView({ institutes, clients }) {
                   <div style={{fontSize:11.5, color:'var(--text3)'}}>
                     Quantities entered are for 1 group (20 trainees). Total = qty × groups.
                   </div>
+                  {toolsLevel && toolsOccIds.length > 0 && (() => {
+                    const missing = toolsOccIds.filter(id => toolsCountFor(id, toolsLevel) === 0);
+                    if (!missing.length) return null;
+                    return (
+                      <div style={{display:'flex', alignItems:'flex-start', gap:6,
+                        fontSize:11.5, color:'var(--warning,#f59e0b)'}}>
+                        <span className="material-icons-round" style={{fontSize:13, marginTop:1}}>info</span>
+                        <span>
+                          Tools list is not present at {toolsLevel} for{' '}
+                          {missing.map(id => occupations.find(o => o.id === id)?.name || id).join(', ')}
+                          {missing.length === toolsOccIds.length
+                            ? ' — the schedule would come out empty.' : '.'}
+                        </span>
+                      </div>
+                    );
+                  })()}
                 </div>
               )}
             </div>
           )}
 
           {/* ── TOOL TYPES ── */}
-          {activeSection === 'toolTypes' && (
-            <div>
-              <div style={{fontWeight:600, fontSize:14, marginBottom:12}}>Tool Types</div>
+          {activeSection === 'toolTable' && (
+            <div style={{display:'flex', flexDirection:'column', gap:22}}>
+              <div>
+              <div style={{fontWeight:600, fontSize:13.5, marginBottom:4}}>Include types</div>
+              <div className="input-hint" style={{marginBottom:8}}>Which kinds of item appear in the table.</div>
               {report.hasToolsPicker && (
                 <div className="multi-select-list">
                   {TOOL_TYPE_OPTIONS.map(t => (
@@ -1069,14 +1142,11 @@ function ReportsView({ institutes, clients }) {
                   <option value="stationery">Stationery only</option>
                 </select>
               )}
-            </div>
-          )}
+              </div>
 
-          {/* ── COLUMNS ── */}
-          {activeSection === 'columns' && (
-            <div>
+              <div>
               <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:12}}>
-                <div style={{fontWeight:600, fontSize:14}}>Report Columns</div>
+                <div style={{fontWeight:600, fontSize:13.5}}>Columns</div>
                 {report.hasToolsPicker && eoiToolCols.length > 2 && (
                   <Btn className="btn btn-ghost btn-sm" onClick={() => setEoiToolCols(['sn', 'name'])}>Clear</Btn>
                 )}
@@ -1110,6 +1180,7 @@ function ReportsView({ institutes, clients }) {
               )}
               <div className="input-hint" style={{marginTop:10}}>
                 S.N. and Name always stay enabled — every column layout needs them. Column order follows the list above; reordering isn't supported by the underlying report yet.
+              </div>
               </div>
             </div>
           )}
