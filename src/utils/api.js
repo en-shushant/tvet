@@ -52,6 +52,29 @@ export async function api(method, path, body, token, _retry = 0) {
     const e = new Error(msg);
     e.status = res.status;
     e.rawBody = raw;
+
+    /**
+     * A gateway error whose body is not ours never reached the API — retry it.
+     *
+     * Measured against production: a POST sent on an upstream connection that
+     * has been idle ~30s comes back 502 with nginx's HTML page in about 45ms,
+     * and the identical request immediately after succeeds. nginx retries
+     * idempotent requests itself but excludes non-idempotent ones by default,
+     * so GETs never showed this while POSTs silently failed — which is how a
+     * bulk save could drop only its first row and keep the rest.
+     *
+     * Gated on a non-JSON body, so anything the API itself answered is left
+     * alone. That is also what makes the retry safe for a POST: the response
+     * came from the proxy, so the request was never delivered and cannot have
+     * been applied.
+     */
+    const neverDelivered = (res.status === 502 || res.status === 503 || res.status === 504)
+      && raw && !raw.trimStart().startsWith('{') && !raw.trimStart().startsWith('[');
+    if (neverDelivered && _retry < 2) {
+      await new Promise(r => setTimeout(r, 250 * (_retry + 1)));
+      return api(method, path, body, token, _retry + 1);
+    }
+
     if (res.status === 401 && _retry === 0 && token) {
       // Try to silently refresh the token once before giving up
       try {
