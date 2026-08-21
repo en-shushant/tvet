@@ -428,7 +428,15 @@ export default function Shortlisting({ institutes, clients, isAdmin, isEditor, i
   const [filterOrg, setFilterOrg] = useState('');
   const [filterFirm, setFilterFirm] = useState('');
   const [filterStatus, setFilterStatus] = useState('');
+  /**
+   * Starts on the current fiscal year, which is what people are working in.
+   *
+   * Applied lazily rather than as the initial value: if the registry holds
+   * nothing for that year the filter is left off instead of opening on an empty
+   * screen with a filter the user did not set. See the effect below.
+   */
   const [filterFY, setFilterFY] = useState('');
+  const [fyDefaulted, setFyDefaulted] = useState(false);
   const [search, setSearch] = useState('');
 
   const load = useCallback(async () => {
@@ -445,8 +453,57 @@ export default function Shortlisting({ institutes, clients, isAdmin, isEditor, i
 
   useEffect(() => { load(); }, [load]);
 
-  // Firms currently assigned to each standing list
+  /**
+   * Does one assigned firm pass the filter bar?
+   *
+   * Organisation is matched by name, not client_id: firms are attached to a
+   * standing list by POST /standing-lists/:id/firms, which copies the list's
+   * client_name_manual and never sets client_id — so every one of these rows
+   * has client_id NULL and an id comparison could only ever match nothing.
+   */
+  const firmMatches = useCallback((r, list) => {
+    if (filterFirm && String(r.institute_id) !== filterFirm) return false;
+    if (filterStatus && (r.status || list?.status) !== filterStatus) return false;
+    if (filterFY) {
+      const fy = r.fy || list?.fy || '';
+      if (fy !== filterFY) return false;
+    }
+    if (filterOrg) {
+      const c = clients.find(x => String(x.id) === String(filterOrg));
+      const names = [c?.shortName, c?.short_name, c?.fullName, c?.full_name]
+        .filter(Boolean).map(n => String(n).toLowerCase());
+      const onRow = String(r.client_name_manual || list?.client_name_manual || '').toLowerCase();
+      const byId = r.client_id != null && String(r.client_id) === String(filterOrg);
+      if (!byId && !(onRow && names.some(n => onRow.includes(n) || n.includes(onRow)))) return false;
+    }
+    if (search) {
+      const q = search.toLowerCase();
+      const hay = [r.institute_name, r.institute_acronym, r.client_name, r.client_short,
+        r.client_name_manual, list?.client_name_manual, r.standing_list_name, list?.name,
+        r.fy || list?.fy, r.remarks].filter(Boolean).join(' ').toLowerCase();
+      if (!hay.includes(q)) return false;
+    }
+    return true;
+  }, [filterFirm, filterStatus, filterFY, filterOrg, search, clients]);
+
+  // Firms assigned to each standing list, with the filter bar applied.
+  // Previously built straight off `rows`, so the only section with any data in
+  // it ignored every filter on the page.
   const firmsByList = useMemo(() => {
+    const byId = new Map(standingLists.map(l => [String(l.id), l]));
+    const m = new Map();
+    for (const r of rows) {
+      if (!r.standing_list_id) continue;
+      const k = String(r.standing_list_id);
+      if (!firmMatches(r, byId.get(k))) continue;
+      if (!m.has(k)) m.set(k, []);
+      m.get(k).push(r);
+    }
+    return m;
+  }, [rows, standingLists, firmMatches]);
+
+  /** Unfiltered membership, for counts and actions that must ignore filtering. */
+  const allFirmsByList = useMemo(() => {
     const m = new Map();
     for (const r of rows) {
       if (!r.standing_list_id) continue;
@@ -579,7 +636,56 @@ export default function Shortlisting({ institutes, clients, isAdmin, isEditor, i
   const sortedInstitutes = useMemo(() =>
     [...institutes].sort((a,b) => a.name.localeCompare(b.name)), [institutes]);
 
+  /** Filter select: sized to content, tinted while it is actually narrowing. */
+  const fSel = (active, min) => ({
+    width:'auto', minWidth:min, flexShrink:0, fontSize:12.5,
+    padding:'6px 30px 6px 11px', borderRadius:8, cursor:'pointer', lineHeight:1.4,
+    border:`1px solid ${active ? 'var(--primary)' : 'var(--border)'}`,
+    background: active ? 'var(--primary-light,#eff6ff)' : 'var(--surface)',
+    color: active ? 'var(--primary)' : 'var(--text)',
+    fontWeight: active ? 600 : 400,
+  });
+
   const currentFY = getCurrentFY();
+
+  /**
+   * Open on the current fiscal year, but only once the data is in and only if
+   * that year is actually represented. Defaulting blind would greet anyone
+   * whose registry has nothing for the current year with an empty page and a
+   * filter they never set.
+   */
+  useEffect(() => {
+    if (fyDefaulted || loading || !rows.length) return;
+    setFyDefaulted(true);
+    if (!currentFY) return;
+    const present = rows.some(r => (r.fy || '') === currentFY)
+      || standingLists.some(l => (l.fy || '') === currentFY);
+    if (present) setFilterFY(currentFY);
+  }, [rows, standingLists, loading, currentFY, fyDefaulted]);
+
+  /**
+   * Standing lists to show. With a filter on, a list with nothing matching is
+   * hidden rather than left as an empty header implying it has no firms at all.
+   */
+  const visibleStandingLists = useMemo(() => {
+    const anyFilter = !!(filterOrg || filterFirm || filterStatus || filterFY || search);
+    if (!anyFilter) return standingLists;
+    return standingLists.filter(l => (firmsByList.get(String(l.id)) || []).length > 0);
+  }, [standingLists, firmsByList, filterOrg, filterFirm, filterStatus, filterFY, search]);
+
+  /**
+   * Everything on screen: the firms under each visible standing list, plus any
+   * legacy rows that belong to no list.
+   *
+   * The count and the print action used to read `filtered`, which excludes
+   * every row carrying a standing_list_id — and since all 143 rows in this
+   * registry sit under a list, that read "0 entries" permanently and printed
+   * nothing, whatever the filters said.
+   */
+  const visibleRows = useMemo(() => {
+    const fromLists = visibleStandingLists.flatMap(l => firmsByList.get(String(l.id)) || []);
+    return [...fromLists, ...filtered];
+  }, [visibleStandingLists, firmsByList, filtered]);
 
   return (
     <div className="fade-in" style={{display:'flex', flexDirection:'column', gap:20}}>
@@ -610,9 +716,9 @@ export default function Shortlisting({ institutes, clients, isAdmin, isEditor, i
       </div>
 
       {/* ── Standing lists: create the list, then assign firms to it ── */}
-      {!loading && standingLists.length > 0 && (
+      {!loading && visibleStandingLists.length > 0 && (
         <div style={{display:'flex', flexDirection:'column', gap:10, marginBottom:16}}>
-          {standingLists.map(list => {
+          {visibleStandingLists.map(list => {
             const firms = firmsByList.get(String(list.id)) || [];
             const open  = expanded[`sl:${list.id}`] === true;
             return (
@@ -687,7 +793,7 @@ export default function Shortlisting({ institutes, clients, isAdmin, isEditor, i
       )}
 
       {listModal?.type === 'delete' ? (() => {
-        const n = (firmsByList.get(String(listModal.data.id)) || []).length;
+        const n = (allFirmsByList.get(String(listModal.data.id)) || []).length;
         return (
           <Modal title="Delete shortlist" onClose={() => setListModal(null)} footer={<>
             <Btn className="btn btn-secondary" onClick={() => setListModal(null)}>Cancel</Btn>
@@ -711,7 +817,7 @@ export default function Shortlisting({ institutes, clients, isAdmin, isEditor, i
         <AssignFirmsModal
           list={listModal.data}
           institutes={sortedInstitutes}
-          assignedIds={new Set((firmsByList.get(String(listModal.data.id)) || []).map(r => r.institute_id))}
+          assignedIds={new Set((allFirmsByList.get(String(listModal.data.id)) || []).map(r => r.institute_id))}
           onSave={handleAssignFirms}
           onClose={() => setListModal(null)}
           saving={saving}
@@ -741,30 +847,41 @@ export default function Shortlisting({ institutes, clients, isAdmin, isEditor, i
         </div>
 
         {/* Filter: Org */}
-        <select value={filterOrg} onChange={e => setFilterOrg(e.target.value)} style={{minWidth:160}}>
+        <select value={filterOrg} onChange={e => setFilterOrg(e.target.value)} style={fSel(!!filterOrg, 170)}>
           <option value="">All organizations</option>
           {clients.map(c => <option key={c.id} value={c.id}>{c.shortName || c.short_name || c.fullName || c.full_name}</option>)}
         </select>
 
         {/* Filter: Firm */}
-        <select value={filterFirm} onChange={e => setFilterFirm(e.target.value)} style={{minWidth:160}}>
+        <select value={filterFirm} onChange={e => setFilterFirm(e.target.value)} style={fSel(!!filterFirm, 170)}>
           <option value="">All firms</option>
           {sortedInstitutes.map(i => <option key={i.id} value={i.id}>{i.acronym ? `[${i.acronym}] ` : ''}{i.name}</option>)}
         </select>
 
         {/* Filter: FY */}
-        <select value={filterFY} onChange={e => setFilterFY(e.target.value)} style={{minWidth:120}}>
+        <select value={filterFY} onChange={e => setFilterFY(e.target.value)} style={fSel(!!filterFY, 120)}>
           <option value="">All FYs</option>
           {FYS.map(fy => <option key={fy} value={fy}>{fy}</option>)}
         </select>
 
         {/* Filter: Status */}
-        <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)} style={{minWidth:120}}>
+        <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)} style={fSel(!!filterStatus, 130)}>
           <option value="">All statuses</option>
           <option value="Active">Active</option>
           <option value="Expired">Expired</option>
           <option value="Pending">Pending</option>
         </select>
+
+        {/* The FY filter applies itself on load, so there has to be an obvious
+            way out of it — otherwise a year with no data looks like a bug. */}
+        {(filterOrg || filterFirm || filterFY || filterStatus) && (
+          <button onClick={() => { setFilterOrg(''); setFilterFirm(''); setFilterFY(''); setFilterStatus(''); }}
+            title="Clear all filters"
+            style={{display:'inline-flex', alignItems:'center', gap:4, background:'none', border:'none',
+              cursor:'pointer', color:'var(--text3)', fontSize:12, fontWeight:600, padding:'4px 2px', flexShrink:0}}>
+            <span className="material-icons-round" style={{fontSize:14}}>close</span>Clear
+          </button>
+        )}
 
         <div style={{height:28, width:1, background:'var(--border)', flexShrink:0}}/>
 
@@ -803,14 +920,14 @@ export default function Shortlisting({ institutes, clients, isAdmin, isEditor, i
         </div>
 
         <div style={{fontSize:12, color:'var(--text3)', whiteSpace:'nowrap', flexShrink:0}}>
-          {filtered.length} {filtered.length === 1 ? 'entry' : 'entries'}
+          {visibleRows.length} {visibleRows.length === 1 ? 'entry' : 'entries'}
         </div>
 
         {/* Print report — only for firm/org views, not FY */}
-        {groupBy !== 'fy' && filtered.length > 0 && (
+        {groupBy !== 'fy' && visibleRows.length > 0 && (
           <button
             title="Print report"
-            onClick={() => printShortlistReport(filtered, groupBy, {
+            onClick={() => printShortlistReport(visibleRows, groupBy, {
               org:    filterOrg    ? (clients.find(c => String(c.id) === filterOrg)?.short_name || filterOrg) : '',
               firm:   filterFirm   ? (sortedInstitutes.find(i => String(i.id) === filterFirm)?.name || filterFirm) : '',
               fy:     filterFY,
