@@ -64,6 +64,74 @@ function SelectedTop({ items, onRemove, onClear, label = 'Selected' }) {
   );
 }
 
+/** A believable value per column, so the preview reads as a real table. */
+const COLUMN_SAMPLE = {
+  sn: '1', name: 'Drill machine', description: '13 mm, corded', unit: 'Piece',
+  quantity: '4', ownership: 'Own', type: 'Tool', remarks: 'With chuck key',
+};
+
+/**
+ * The column picker, drawn as the table it configures.
+ *
+ * A vertical checklist described the layout in words and left the reader to
+ * imagine it; the columns are what is being chosen, so showing them as columns
+ * answers "what will this look like" directly. Clicking a heading adds or drops
+ * that column, and the ones the report cannot do without are fixed.
+ */
+function ColumnLayoutPicker({ options, selected, onToggle, locked = ['sn', 'name'] }) {
+  const th = (on, isLocked) => ({
+    padding: '7px 10px', textAlign: 'left', whiteSpace: 'nowrap',
+    fontSize: 11.5, fontWeight: on ? 700 : 500,
+    borderBottom: '1px solid var(--border)',
+    borderRight: '1px solid var(--border)',
+    background: on ? 'var(--primary-light,#eff6ff)' : 'var(--bg2)',
+    color: on ? 'var(--primary)' : 'var(--text3)',
+    cursor: isLocked ? 'default' : 'pointer',
+    userSelect: 'none',
+  });
+  const td = (on) => ({
+    padding: '7px 10px', fontSize: 11.5, whiteSpace: 'nowrap',
+    borderRight: '1px solid var(--border)',
+    color: on ? 'var(--text2)' : 'var(--text3)',
+    background: on ? 'var(--surface)' : 'var(--bg2)',
+    opacity: on ? 1 : .45,
+    textDecoration: on ? 'none' : 'line-through',
+  });
+  return (
+    <div style={{overflowX: 'auto', border: '1px solid var(--border)', borderRadius: 10}}>
+      <table style={{borderCollapse: 'collapse', width: '100%'}}>
+        <thead>
+          <tr>
+            {options.map(c => {
+              const on = selected.includes(c.key);
+              const isLocked = locked.includes(c.key);
+              return (
+                <th key={c.key} style={th(on, isLocked)}
+                  onClick={() => { if (!isLocked) onToggle(c.key); }}
+                  title={isLocked ? 'Always included' : on ? 'Click to remove this column' : 'Click to add this column'}>
+                  <span style={{display: 'inline-flex', alignItems: 'center', gap: 5}}>
+                    <span className="material-icons-round" style={{fontSize: 13, opacity: isLocked ? .45 : 1}}>
+                      {isLocked ? 'lock' : on ? 'check_box' : 'check_box_outline_blank'}
+                    </span>
+                    {c.label}
+                  </span>
+                </th>
+              );
+            })}
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            {options.map(c => (
+              <td key={c.key} style={td(selected.includes(c.key))}>{COLUMN_SAMPLE[c.key] ?? '—'}</td>
+            ))}
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
 function ReportsView({ institutes, clients }) {
   const f = loadFilters();
   const [familyId, setFamilyId]         = useState(f.familyId || REPORT_FAMILIES[0].id);
@@ -1152,31 +1220,22 @@ function ReportsView({ institutes, clients }) {
                 )}
               </div>
               {report.hasToolsPicker && (
-                <div className="multi-select-list">
-                  {TOOL_COLUMN_OPTIONS.map(c => (
-                    <label key={c.key} className="multi-select-item">
-                      <input type="checkbox" checked={eoiToolCols.includes(c.key)}
-                        disabled={c.key === 'sn' || c.key === 'name'}
-                        onChange={() => setEoiToolCols(prev => prev.includes(c.key)
-                          ? prev.filter(x => x !== c.key) : [...prev, c.key])}/>
-                      <span>{c.label}</span>
-                    </label>
-                  ))}
-                </div>
+                <ColumnLayoutPicker
+                  options={TOOL_COLUMN_OPTIONS}
+                  selected={eoiToolCols}
+                  onToggle={key => setEoiToolCols(prev => prev.includes(key)
+                    ? prev.filter(x => x !== key) : [...prev, key])}/>
               )}
               {noInstitute && (
-                <div className="multi-select-list">
-                  {TOOLS_ALL_COLS.map(c => (
-                    <label key={c.key} className="multi-select-item">
-                      <input type="checkbox" checked={toolsColumns.includes(c.key)} onChange={() => toggleToolsCol(c.key)}
-                        disabled={c.key === 'sn' || c.key === 'name'}/>
-                      <span>{c.label}</span>
-                    </label>
-                  ))}
-                </div>
+                <ColumnLayoutPicker
+                  options={TOOLS_ALL_COLS}
+                  selected={toolsColumns}
+                  onToggle={toggleToolsCol}/>
               )}
               <div className="input-hint" style={{marginTop:10}}>
-                S.N. and Name always stay enabled — every column layout needs them. Column order follows the list above; reordering isn't supported by the underlying report yet.
+                Click a heading to add or drop that column. S. No and Description are always
+                included — every layout needs them. The order shown is the order the report
+                prints; reordering isn't supported by the underlying report yet.
               </div>
               </div>
             </div>
