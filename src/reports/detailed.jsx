@@ -1,4 +1,4 @@
-import { esc, fyYear } from './helpers.js';
+import { esc, fyYear, occLetterName } from './helpers.js';
 import {
   Document, Packer, Table, TableRow, TableCell, Paragraph, TextRun,
   WidthType, AlignmentType, VerticalAlign, HeadingLevel, BorderStyle,
@@ -20,12 +20,19 @@ function getClientType(exp, clients) {
   const c = (clients || []).find(c => String(c.id) === String(exp.clientId));
   return c?.type || '—';
 }
+/**
+ * What this report prints for an occupation: the client's own wording from the
+ * assignment letter, with the master occupation's level appended when it is
+ * known. Reads "Building Electrician (Level 2)" rather than "Electrician",
+ * which is what the attached evidence actually says.
+ */
 function getOccName(occ, occupations) {
-  if (occupations?.length && occ.ctevtOccupationId) {
-    const found = occupations.find(o => String(o.id) === String(occ.ctevtOccupationId));
-    if (found) return `${found.name}${found.level ? ` (${found.level})` : ''}`;
-  }
-  return occ.nameInLetter || '—';
+  const label = occLetterName(occ, occupations);
+  const master = occupations?.length && occ.ctevtOccupationId
+    ? occupations.find(o => String(o.id) === String(occ.ctevtOccupationId))
+    : null;
+  if (!label) return '—';
+  return `${label}${master?.level ? ` (${master.level})` : ''}`;
 }
 function locationStr(occ) {
   return (occ.locations || []).map(l => [l.district, l.province].filter(Boolean).join(', ')).filter(Boolean).join('; ') || '—';

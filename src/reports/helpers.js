@@ -38,3 +38,29 @@ export const fyInRange = (fy, from, to) => {
   if (to && y > fyYear(to)) return false;
   return true;
 };
+
+/**
+ * An occupation row carries two names, and reports need different ones.
+ *
+ * `ctevt_occupation_id` points at the master occupation — "Electrician" — which
+ * is what pickers, filters and grouping match on, since that is the only name
+ * shared across firms. `name_in_letter` is what the client's own letter called
+ * the same training: "Building Electrician", "House Wiring". A generated
+ * document has to quote the client's wording, or it will not agree with the
+ * evidence attached to it.
+ *
+ * So: match on occMasterName, print occLetterName.
+ */
+export const occMasterName = (occ, occupations) => {
+  if (occupations?.length && occ.ctevtOccupationId) {
+    const found = occupations.find(o => String(o.id) === String(occ.ctevtOccupationId));
+    if (found) return found.name;
+  }
+  return (occ.nameInLetter || '').trim();
+};
+
+/** What the client's letter called it, falling back to the master name. */
+export const occLetterName = (occ, occupations) => {
+  const inLetter = (occ.nameInLetter || '').trim();
+  return inLetter || occMasterName(occ, occupations);
+};

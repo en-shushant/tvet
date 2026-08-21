@@ -4,7 +4,7 @@ import {
   WidthType, AlignmentType, VerticalAlign, HeadingLevel, BorderStyle, ShadingType,
 } from 'docx';
 import { saveAs } from 'file-saver';
-import { fyInRange } from './helpers.js';
+import { fyInRange, occLetterName } from './helpers.js';
 import { api } from '../utils/api.js';
 import { getSession } from '../utils/auth.js';
 
@@ -12,12 +12,9 @@ import { getSession } from '../utils/auth.js';
 
 const fmt = (n) => n != null && n !== '' ? Number(n).toLocaleString('en-IN') : '—';
 
+/** Printed name: the client's own wording from the assignment letter. */
 function getOccName(occ, occupations) {
-  if (occupations?.length && occ.ctevtOccupationId) {
-    const found = occupations.find(o => String(o.id) === String(occ.ctevtOccupationId));
-    if (found) return found.name;
-  }
-  return occ.nameInLetter || '—';
+  return occLetterName(occ, occupations) || '—';
 }
 
 function getOccLevel(occ, occupations) {

@@ -3,7 +3,7 @@ import {
   WidthType, AlignmentType, VerticalAlign, BorderStyle,
 } from 'docx';
 import { saveAs } from 'file-saver';
-import { getClient, esc, fyInRange } from './helpers.js';
+import { getClient, esc, fyInRange, occMasterName, occLetterName } from './helpers.js';
 
 // ─── Bagmati Province RFP Format ─────────────────────────────────────────────
 // Mirrors the Bagmati Province RFP's "B - Consultant's Experience" annex:
@@ -95,13 +95,21 @@ const clientNameOf = (exp, clients) => {
   return c.fullName || exp.clientName || '';
 };
 
-/** Occupation name + sector, resolved through the master list when possible. */
+/**
+ * Both names for an occupation row, plus its sector.
+ *
+ *   name  — the master occupation, what the picker filters on
+ *   label — what the client's letter called it, what the table prints
+ */
 const occInfo = (occ, occupations) => {
-  if (occupations?.length && occ.ctevtOccupationId) {
-    const found = occupations.find(o => String(o.id) === String(occ.ctevtOccupationId));
-    if (found) return { name: found.name, sector: found.sector || '' };
-  }
-  return { name: occ.nameInLetter || '', sector: '' };
+  const found = occupations?.length && occ.ctevtOccupationId
+    ? occupations.find(o => String(o.id) === String(occ.ctevtOccupationId))
+    : null;
+  return {
+    name:  occMasterName(occ, occupations),
+    label: occLetterName(occ, occupations),
+    sector: found?.sector || '',
+  };
 };
 
 // ─── Section models ──────────────────────────────────────────────────────────
@@ -130,7 +138,7 @@ function modelB1(inst, clients, occupations, opts = {}) {
       rows.push([
         String(rows.length + 1),
         dash(exp.assignmentName),
-        occInfo(occ, occupations).name,
+        occInfo(occ, occupations).label,
         dash(occ.trainees),
         dash(exp.startDate),
         dash(exp.endDate),
@@ -172,7 +180,7 @@ function modelB2(exps, clients, occupations) {
         dash(exp.fy),
         dash(exp.assignmentName),
         info.sector,
-        info.name,
+        info.label,
         dash(occ.trainees),
         dash(occ.skillTestAppeared),
         occ.employmentActual !== '' && occ.employmentActual != null ? `${occ.employmentActual}%` : '',
@@ -210,7 +218,7 @@ function modelB3(exps, clients, occupations, selectedOccs = []) {
         clientNameOf(exp, clients),
         dash(exp.fy),
         dash(exp.assignmentName),
-        info.name,
+        info.label,
         dash(occ.trainees),
         dash(occ.skillTestAppeared),
       ]);
