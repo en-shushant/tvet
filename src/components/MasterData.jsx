@@ -654,6 +654,11 @@ function MasterData({clients, onUpdateClients, token, isAdmin, isEditor, isSuper
                   <th style={{width:80}}>Level 2</th>
                   <th style={{width:80}}>Level 3</th>
                   <th style={{width:90}}>Professional</th>
+                  {/* Not a grade, but a real bucket: tools that are not
+                      level-specific are filed here, and two occupations keep
+                      their entire list this way. Without a column they were
+                      counted in Total and reachable nowhere. */}
+                  <th style={{width:70}}>N/A</th>
                   <th style={{width:60}}>Total</th>
                 </tr>
               </thead>
@@ -669,12 +674,18 @@ function MasterData({clients, onUpdateClients, token, isAdmin, isEditor, isSuper
                       <td className="mono text-muted" style={{fontSize:11}}>{idx+1}</td>
                       <td>
                         <span style={{fontWeight:500, fontSize:13, cursor:'pointer', color:'var(--primary)'}}
-                          onClick={()=>{ setToolsOccId(String(o.id)); setToolsLevel('Level 1'); loadTools(String(o.id), 'Level 1'); }}>
+                          onClick={()=>{
+                            // Open a level this occupation actually has, rather
+                            // than always Level 1 — the ones whose whole list is
+                            // filed under N/A otherwise open on an empty panel.
+                            const lv = (getOccLevelsWithTools(o.id).find(x => x.count > 0) || {}).level || 'Level 1';
+                            setToolsOccId(String(o.id)); setToolsLevel(lv); loadTools(String(o.id), lv);
+                          }}>
                           {o.name}
                         </span>
                       </td>
                       <td><span className="badge badge-gray" style={{fontSize:10}}>{o.sector}</span></td>
-                      {['Level 1','Level 2','Level 3','Professional'].map(lv => {
+                      {['Level 1','Level 2','Level 3','Professional','N/A'].map(lv => {
                         const cnt = getToolCount(o.id, lv);
                         return (
                           <td key={lv} style={{textAlign:'center'}}>
