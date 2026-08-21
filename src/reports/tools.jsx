@@ -6,6 +6,7 @@ import {
 import { saveAs } from 'file-saver';
 import { esc } from './helpers.js';
 import { api } from '../utils/api.js';
+import { fetchToolsFor } from '../utils/occupationTools.js';
 import { getSession } from '../utils/auth.js';
 import { toast } from '../components/ui/Feedback.jsx';
 
@@ -48,7 +49,7 @@ function ToolsReport({ opts }) {
     const token = getSession()?.token;
     for (const occId of toolsOccIds) {
       try {
-        const items = await api('GET', `/occupation-tools/${occId}/${encodeURIComponent(toolsLevel)}`, null, token);
+        const items = await fetchToolsFor(occId, toolsLevel, token);
         result[occId] = items || [];
       } catch { result[occId] = []; }
     }
@@ -269,7 +270,7 @@ async function downloadToolsDOCX(fullInst, activeExps, reportId, opts = {}) {
   const allData = {};
   for (const occId of toolsOccIds) {
     try {
-      allData[occId] = await api('GET', `/occupation-tools/${occId}/${encodeURIComponent(toolsLevel)}`, null, token);
+      allData[occId] = await fetchToolsFor(occId, toolsLevel, token);
     } catch { allData[occId] = []; }
   }
 

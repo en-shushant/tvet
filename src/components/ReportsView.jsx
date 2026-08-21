@@ -8,6 +8,7 @@ import { FISCAL_YEARS } from '../constants/data.js';
 import REPORT_FAMILIES from '../reports/index.js';
 import { TOOL_COLUMN_OPTIONS, TOOL_TYPE_OPTIONS, DEFAULT_TOOL_COLS } from '../reports/bolpatra.jsx';
 import { PillTabs } from './ui/primitives.jsx';
+import { fetchToolsFor, countToolsFor } from '../utils/occupationTools.js';
 
 const FILTER_KEY = 'tvettrack_reports_filters_v1';
 function loadFilters() {
@@ -178,8 +179,8 @@ function ReportsView({ institutes, clients }) {
   // Fetch tools for explicitly selected D2/D3 occupation + level
   useEffect(() => {
     if (!enssureToolsOccId || !enssureToolsLevel) { setEnssureToolsData([]); return; }
-    api('GET', `/occupation-tools/${enssureToolsOccId}/${encodeURIComponent(enssureToolsLevel)}`, null, getSession()?.token)
-      .then(d => setEnssureToolsData(Array.isArray(d) ? d : []))
+    fetchToolsFor(enssureToolsOccId, enssureToolsLevel, getSession()?.token)
+      .then(d => setEnssureToolsData(d))
       .catch(() => setEnssureToolsData([]));
   }, [enssureToolsOccId, enssureToolsLevel]);
 
@@ -276,11 +277,7 @@ function ReportsView({ institutes, clients }) {
   }, [noInstitute]);
 
   /** null while unknown, so "not loaded" never reads as "nothing there". */
-  const toolsCountFor = (occId, level) => {
-    if (!toolCounts || !level) return null;
-    const row = toolCounts.find(r => String(r.occupation_id) === String(occId) && r.level === level);
-    return row ? row.count : 0;
-  };
+  const toolsCountFor = (occId, level) => countToolsFor(toolCounts, occId, level);
 
   /** An occupation's own level, falling back to the one set for all of them. */
   const levelForOcc = (id) => eoiLevelByOcc[id] || eoiToolsLevel || 'Level 1';
@@ -293,8 +290,8 @@ function ReportsView({ institutes, clients }) {
     let cancelled = false;
     const token = getSession()?.token;
     Promise.all(eoiOccIds.map(id =>
-      api('GET', `/occupation-tools/${id}/${encodeURIComponent(levelForOcc(id))}`, null, token)
-        .then(d => [id, Array.isArray(d) ? d : []]).catch(() => [id, []])
+      fetchToolsFor(id, levelForOcc(id), token)
+        .then(d => [id, d]).catch(() => [id, []])
     )).then(pairs => { if (!cancelled) setEoiTools(Object.fromEntries(pairs)); });
     return () => { cancelled = true; };
   }, [eoiLevelSig, report.hasToolsPicker]);
@@ -569,7 +566,7 @@ function ReportsView({ institutes, clients }) {
     const result = {};
     for (const occId of toolsOccIds) {
       try {
-        result[occId] = await api('GET', `/occupation-tools/${occId}/${encodeURIComponent(toolsLevel)}`, null, token);
+        result[occId] = await fetchToolsFor(occId, toolsLevel, token);
       } catch { result[occId] = []; }
     }
     return result;

@@ -57,7 +57,10 @@ describe('per-occupation level', () => {
     // one "default level" + one per occupation
     expect(lvls.length).toBeGreaterThanOrEqual(3);
     for (const s of lvls) expect(s.value).toBe('Level 1');
-    expect(toolCalls.every(c=>c.endsWith('Level%201'))).toBe(true);
+    // Each occupation is asked for its own level *and* for the level-agnostic
+    // "N/A" list, which is where two occupations keep their entire schedule.
+    const lv=toolCalls.map(c=>decodeURIComponent(c.split('/')[1]));
+    expect(new Set(lv)).toEqual(new Set(['Level 1','N/A']));
     assertNoConsoleErrors();
   });
 
@@ -70,6 +73,7 @@ describe('per-occupation level', () => {
     const levels=toolCalls.map(c=>decodeURIComponent(c.split('/')[1]));
     expect(levels).toContain('Level 3');
     expect(levels).toContain('Level 1');   // the other occupation is untouched
+    expect(levels).toContain('N/A');       // level-agnostic tools come along too
     assertNoConsoleErrors();
   });
 
