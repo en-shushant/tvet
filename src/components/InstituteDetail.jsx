@@ -109,26 +109,19 @@ function InstituteDetail({institute, clients, onUpdateClients, onBack, onUpdate,
           const name = (loc.district || '').trim();
           if (!name) continue;
           if (!byDistrict.has(name)) {
-            byDistrict.set(name, { district: name, province: loc.province || '', assignments: new Set(), trainees: 0 });
+            byDistrict.set(name, { district: name, assignments: new Set(), trainees: 0 });
           }
           const d = byDistrict.get(name);
-          if (!d.province && loc.province) d.province = loc.province;
           d.assignments.add(exp.id);
           d.trainees += trainees;
         }
       }
     }
-    const rows = [...byDistrict.values()]
+    // Alphabetical: the question this answers is "have they worked in X?", and
+    // with the figures kept to the tooltip any other order just looks arbitrary.
+    return [...byDistrict.values()]
       .map(d => ({ ...d, assignments: d.assignments.size }))
-      .sort((a, b) => b.trainees - a.trainees || a.district.localeCompare(b.district));
-
-    const provinces = new Map();
-    for (const r of rows) {
-      const key = r.province || 'Province not recorded';
-      if (!provinces.has(key)) provinces.set(key, []);
-      provinces.get(key).push(r);
-    }
-    return { rows, provinces: [...provinces.entries()] };
+      .sort((a, b) => a.district.localeCompare(b.district));
   }, [institute]);
 
   // How many assignments would print with a gap — shown on the chip so the
@@ -513,45 +506,24 @@ function InstituteDetail({institute, clients, onUpdateClients, onBack, onUpdate,
         {/* Where training has actually been delivered — the profile carried a
             count, but which districts was only visible one assignment at a
             time. */}
-        {!isShortlistOnly && districtCoverage.rows.length > 0 && (
+        {!isShortlistOnly && districtCoverage.length > 0 && (
           <div className="card" style={{marginTop:16}}>
             <div style={{display:'flex', alignItems:'baseline', justifyContent:'space-between', gap:10, flexWrap:'wrap'}}>
               <div className="section-title" style={{marginBottom:0}}>Districts with training experience</div>
-              <div style={{fontSize:12, color:'var(--text3)'}}>
-                {districtCoverage.rows.length} district{districtCoverage.rows.length !== 1 ? 's' : ''}
-                {' · '}{districtCoverage.provinces.length} province{districtCoverage.provinces.length !== 1 ? 's' : ''}
-              </div>
+              <div style={{fontSize:12, color:'var(--text3)'}}>{districtCoverage.length}</div>
             </div>
-
-            <div style={{display:'flex', flexDirection:'column', gap:14, marginTop:12}}>
-              {districtCoverage.provinces.map(([province, rows]) => (
-                <div key={province}>
-                  <div style={{fontSize:10.5, fontWeight:700, color:'var(--text3)',
-                    textTransform:'uppercase', letterSpacing:'.5px', marginBottom:7}}>
-                    {province}
-                  </div>
-                  <div style={{display:'flex', flexWrap:'wrap', gap:7}}>
-                    {rows.map(d => (
-                      <span key={d.district}
-                        title={`${d.district} — ${d.assignments} assignment${d.assignments !== 1 ? 's' : ''}, ${fmt(d.trainees)} trainees`}
-                        style={{display:'inline-flex', alignItems:'center', gap:6, fontSize:12.5,
-                          padding:'5px 11px', borderRadius:20, background:'var(--bg2)',
-                          border:'1px solid var(--border)'}}>
-                        <span className="material-icons-round" style={{fontSize:13, color:'var(--text3)'}}>location_on</span>
-                        <span style={{fontWeight:600, color:'var(--text)'}}>{d.district}</span>
-                        <span style={{color:'var(--text3)', fontSize:11.5}}>
-                          {d.assignments}&nbsp;asgn · {fmt(d.trainees)}&nbsp;tr
-                        </span>
-                      </span>
-                    ))}
-                  </div>
-                </div>
+            {/* Names only. The assignment and trainee figures stay on the
+                tooltip: useful when asked for, noise when not. */}
+            <div style={{display:'flex', flexWrap:'wrap', gap:5, marginTop:10}}>
+              {districtCoverage.map(d => (
+                <span key={d.district}
+                  title={`${d.district} — ${d.assignments} assignment${d.assignments !== 1 ? 's' : ''}, ${fmt(d.trainees)} trainees`}
+                  style={{fontSize:12, fontWeight:500, color:'var(--text)',
+                    padding:'3px 9px', borderRadius:20, background:'var(--bg2)',
+                    border:'1px solid var(--border)', whiteSpace:'nowrap'}}>
+                  {d.district}
+                </span>
               ))}
-            </div>
-
-            <div className="input-hint" style={{marginTop:12}}>
-              Trainees are counted per occupation row; a row delivered across several districts
-              counts toward each, so these do not sum to the firm&rsquo;s total.
             </div>
           </div>
         )}
