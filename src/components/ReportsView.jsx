@@ -178,6 +178,16 @@ function ReportsView({ institutes, clients }) {
   const [filterTrainingTypes, setFilterTrainingTypes] = useState([]); // Helvetas training type filter
   const [filterDuration, setFilterDuration] = useState(f.filterDuration || ''); // Helvetas duration filter
   const [filterDonorTypes, setFilterDonorTypes] = useState([]); // Donor/client type filter
+  /**
+   * Whether superadmin-only assignments belong in this document.
+   *
+   * Nobody else is ever sent them, so this is a report decision rather than a
+   * fetch one — and it defaults to including them, which is both what a
+   * superadmin already gets today and the reason the restricted flag exists.
+   * The point of the switch is the other direction: producing a clean copy to
+   * hand outside, where they must not appear.
+   */
+  const [includeRestricted, setIncludeRestricted] = useState(true);
   const [occSearch, setOccSearch] = useState('');
   const [toolsOccSearch2, setToolsOccSearch2] = useState(''); // search for the separate 4(B) tools occupation picker (bolpatra 'full')
   const [firmSearch, setFirmSearch] = useState(''); // single-firm search list (UI only, not persisted)
@@ -364,7 +374,23 @@ function ReportsView({ institutes, clients }) {
     return () => { cancelled = true; };
   }, [eoiLevelSig, report.hasToolsPicker]);
 
-  const experience = fullInst?.experience || [];
+  // One gate for every path into the report. Restricted assignments are only
+  // ever present for a superadmin, so this is a no-op for everyone else.
+  const dropRestricted = (exps) => includeRestricted ? exps : exps.filter(e => !e.isSuperAdminOnly);
+
+  const experience = useMemo(
+    () => dropRestricted(fullInst?.experience || []),
+    [fullInst, includeRestricted]);
+
+  // How many are on offer, whether or not they are currently included — the
+  // switch has to stay reachable to turn them back on.
+  const restrictedCount = useMemo(() => {
+    const count = (exps) => (exps || []).filter(e => e.isSuperAdminOnly).length;
+    if (isMultiInst) {
+      return Object.values(fwFullInsts).reduce((n, i) => n + count(i.experience), 0);
+    }
+    return count(fullInst?.experience);
+  }, [fullInst, isMultiInst, fwFullInsts]);
 
   // All FYs across assignments + tax clearance + NSTB records, plus the
   // app-wide fiscal years list — so a range filter (especially the
@@ -374,7 +400,7 @@ function ReportsView({ institutes, clients }) {
     if (isMultiInst) {
       const fys = new Set(FISCAL_YEARS);
       for (const inst of Object.values(fwFullInsts)) {
-        for (const e of (inst.experience || [])) if (e.fy) fys.add(e.fy);
+        for (const e of dropRestricted(inst.experience || [])) if (e.fy) fys.add(e.fy);
         for (const n of (inst.nstb || [])) if (n.fy) fys.add(n.fy);
         for (const t of (inst.taxClearance || [])) if (t.fy) fys.add(t.fy);
       }
@@ -384,7 +410,7 @@ function ReportsView({ institutes, clients }) {
     const nstbFYs = (fullInst?.nstb || []).map(n => n.fy).filter(Boolean);
     const expFYs  = experience.map(e => e.fy).filter(Boolean);
     return [...new Set([...FISCAL_YEARS, ...expFYs, ...taxFYs, ...nstbFYs])].sort();
-  }, [experience, fullInst, isMultiInst, fwFullInsts]);
+  }, [experience, fullInst, isMultiInst, fwFullInsts, includeRestricted]);
 
   // Assignments visible in the checklist (FY range applied)
   const rangeFiltered = useMemo(() =>
@@ -439,12 +465,12 @@ function ReportsView({ institutes, clients }) {
       }
     };
     if (isMultiInst) {
-      for (const inst of Object.values(fwFullInsts)) addFromExps(inst.experience || []);
+      for (const inst of Object.values(fwFullInsts)) addFromExps(dropRestricted(inst.experience || []));
     } else {
       addFromExps(rangeFiltered);
     }
     return [...types].sort();
-  }, [rangeFiltered, clients, isMultiInst, fwFullInsts]);
+  }, [rangeFiltered, clients, isMultiInst, fwFullInsts, includeRestricted]);
 
   const toggleDonorType = (t) =>
     setFilterDonorTypes(prev => prev.includes(t) ? prev.filter(x => x !== t) : [...prev, t]);
@@ -471,7 +497,7 @@ function ReportsView({ institutes, clients }) {
     };
     if (isMultiInst) {
       for (const inst of Object.values(fwFullInsts)) {
-        if (reportId !== 'fw2') addFromExps(inst.experience || []);
+        if (reportId !== 'fw2') addFromExps(dropRestricted(inst.experience || []));
         if (reportId === 'fw2') addFromNSTB(inst);
       }
     } else {
@@ -479,7 +505,7 @@ function ReportsView({ institutes, clients }) {
       if (reportId === 'fw2' && fullInst) addFromNSTB(fullInst);
     }
     return [...names].sort();
-  }, [activeExps, occupations, isMultiInst, fwFullInsts, reportId, fullInst]);
+  }, [activeExps, occupations, isMultiInst, fwFullInsts, reportId, fullInst, includeRestricted]);
 
   // Every occupation in the master list, not just the ones the firm already has
   // recorded experience in. The bolpatra pickers (3(B) and 4(B) tools) need the
@@ -536,7 +562,7 @@ function ReportsView({ institutes, clients }) {
   // applied. Shared by the per-firm render, the print path and the Word export so
   // all three always agree on what is included.
   const fwExpsFor = (inst) => {
-    let exps = (inst.experience || []).filter(e => fyInRange(e.fy, fromFY, toFY));
+    let exps = dropRestricted(inst.experience || []).filter(e => fyInRange(e.fy, fromFY, toFY));
     if (filterDonorTypes.length > 0) {
       exps = exps.filter(e => {
         const client = (clients || []).find(c => c.id === e.clientId);
@@ -574,6 +600,9 @@ function ReportsView({ institutes, clients }) {
     reportId, familyId, selectedInst, fwInstIds, fwLeadId,
     fromFY, toFY, turnFromFY, turnToFY, portfolioFromFY, portfolioToFY,
     selectedOccs, eoiSpecificOccs, filterDuration, filterDonorTypes, filterTrainingTypes, sortBy,
+    // Without this, flipping it would silently leave a stale preview on screen
+    // that still contained the assignments it was meant to drop.
+    includeRestricted,
     eoiToolsLevel, eoiLevelByOcc, eoiEventsByOcc, eoiToolCols, eoiToolTypes, eoiCombineTools, eoiSingleTable,
     toolsOccIds, toolsLevel, toolsTypeFilter, toolsColumns, toolsLayout, numGroups,
     enssureOccIds, enssureToolsOccId, enssureToolsLevel, enssureEvents,
@@ -651,7 +680,7 @@ function ReportsView({ institutes, clients }) {
 
   const handleReset = () => {
     setFromFY(''); setToFY(''); setFilterDuration('');
-    setFilterTrainingTypes([]); setFilterDonorTypes([]);
+    setFilterTrainingTypes([]); setFilterDonorTypes([]); setIncludeRestricted(true);
     setSelectedOccs([]); setEoiSpecificOccs([]); setSelectedIds(null);
     setOccSearch(''); setToolsOccSearch2(''); setFirmSearch('');
     setRenderedSig(null);
@@ -708,6 +737,9 @@ function ReportsView({ institutes, clients }) {
   const filtersActiveCount = [
     !!(fromFY || toFY), !!(turnFromFY || turnToFY), !!(portfolioFromFY || portfolioToFY),
     !!filterDuration, filterDonorTypes.length > 0, filterTrainingTypes.length > 0,
+    // Excluding them is a deliberate narrowing of the document and should be
+    // as countable as any other filter; including them is the default.
+    restrictedCount > 0 && !includeRestricted,
   ].filter(Boolean).length;
 
   // Only counts worth reading at a glance; a zero is left blank rather than
@@ -1311,6 +1343,30 @@ function ReportsView({ institutes, clients }) {
                 </div>
               )}
 
+              {/* No role check needed: nobody but a superadmin is ever sent a
+                  restricted assignment, so a non-zero count is itself the
+                  proof of who is asking. */}
+              {restrictedCount > 0 && (
+                <div>
+                  <div style={{fontSize:11, fontWeight:600, color:'var(--text3)', marginBottom:8}}>RESTRICTED ASSIGNMENTS</div>
+                  <label className="multi-select-item" style={{alignItems:'flex-start'}}>
+                    <input type="checkbox" checked={includeRestricted}
+                      onChange={() => setIncludeRestricted(v => !v)}/>
+                    <span>
+                      <span style={{display:'inline-flex', alignItems:'center', gap:5, fontWeight:600}}>
+                        <span className="material-icons-round" style={{fontSize:14, lineHeight:1}}>lock</span>
+                        Include {restrictedCount} superadmin-only assignment{restrictedCount > 1 ? 's' : ''}
+                      </span>
+                      <span style={{display:'block', fontSize:11, color:'var(--text3)', marginTop:2}}>
+                        {includeRestricted
+                          ? 'Uncheck before exporting a copy for anyone outside.'
+                          : `Left out of every table, total and export in this report.`}
+                      </span>
+                    </span>
+                  </label>
+                </div>
+              )}
+
               <div>
                 <div style={{fontSize:11, fontWeight:600, color:'var(--text3)', marginBottom:8}}
                   title={family.selfFilters ? 'Narrows 3(B) Specific Experience only' : undefined}>TRAINING DURATION</div>
@@ -1385,7 +1441,16 @@ function ReportsView({ institutes, clients }) {
                       <input type="checkbox"
                         checked={selectedIds === null || selectedIds.includes(exp.id)}
                         onChange={() => toggleSelected(exp.id)}/>
-                      <span>{exp.assignmentName || '(unnamed)'} <span style={{color:'var(--text3)', fontSize:10.5}}>· {exp.fy}</span></span>
+                      <span>{exp.assignmentName || '(unnamed)'} <span style={{color:'var(--text3)', fontSize:10.5}}>· {exp.fy}</span>
+                        {/* Which of the listed assignments are the restricted
+                            ones, so the export is a considered choice rather
+                            than whatever happened to be ticked. */}
+                        {exp.isSuperAdminOnly && (
+                          <span title="Superadmin only — nobody else can see this assignment"
+                            className="material-icons-round"
+                            style={{fontSize:12, verticalAlign:'middle', marginLeft:5, color:'var(--text3)'}}>lock</span>
+                        )}
+                      </span>
                     </label>
                   ))}
                 </div>
