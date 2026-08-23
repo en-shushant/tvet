@@ -127,6 +127,69 @@ const ClientForm = ({client, onSave, onClose}) => {
   );
 };
 
+/**
+ * Reconcile one typed-in client name.
+ *
+ * Two different jobs behind one button, and the modal has to make clear which
+ * one is happening. When the name already matches a client in master data
+ * there is nothing to fill in — the records just get pointed at it, and
+ * offering a form here would invite a duplicate of the very thing being
+ * matched. Only a genuinely missing client asks for details.
+ *
+ * Kept at module scope, like the other forms in this file: declared inside
+ * MasterData it would be a new component type on every render, so React would
+ * discard the DOM and every keystroke with it.
+ */
+const AdoptClientModal = ({ state, setState, busy, onConfirm }) => {
+  const { row, form } = state;
+  const set = (k, v) => setState(s => ({ ...s, form: { ...s.form, [k]: v } }));
+  const existing = !!row.match_id;
+  const canSave = existing || !!form.shortName.trim();
+
+  return (
+    <Modal title={existing ? 'Link to an existing client' : 'Add client to master data'}
+      onClose={() => setState(null)}
+      footer={<>
+        <Btn className="btn btn-secondary" onClick={() => setState(null)}>Cancel</Btn>
+        <Btn className="btn btn-primary" disabled={busy || !canSave} onClick={() => onConfirm(form)}>
+          {busy ? 'Working…' : existing ? 'Link records' : 'Add and link'}
+        </Btn>
+      </>}>
+      <p style={{fontSize:13, color:'var(--text2)', margin:'0 0 14px'}}>
+        <strong>{row.name}</strong> was typed into {row.uses} record{row.uses === 1 ? '' : 's'}.
+        {existing
+          ? <> It already exists in master data as <strong>{row.match_short_name}</strong>, so those
+              records will be pointed at it rather than a second copy being created.</>
+          : <> Adding it here will also point those records at the new client, so the
+              name stops being free text.</>}
+      </p>
+      {!existing && (
+        <>
+          <div className="form-group">
+            <MdTextField label="Full name *" value={form.fullName}
+              onChange={e => set('fullName', e.target.value)}/>
+          </div>
+          <div className="form-row form-row-2">
+            <div className="form-group">
+              <MdTextField label="Short name / acronym *" value={form.shortName}
+                onChange={e => set('shortName', e.target.value)} placeholder="e.g. PCTVET"/>
+            </div>
+            <div className="form-group">
+              <MdSelect label="Client type" value={form.type} onChange={e => set('type', e.target.value)}>
+                {CLIENT_TYPES.map(t => <MdOption key={t} value={t}>{t}</MdOption>)}
+              </MdSelect>
+            </div>
+          </div>
+          <div className="form-group">
+            <MdTextField label="Address" value={form.address}
+              onChange={e => set('address', e.target.value)}/>
+          </div>
+        </>
+      )}
+    </Modal>
+  );
+};
+
 const OccupationForm = ({occ, onSave, onClose}) => {
   const [form, setForm] = useState(occ || {name:'', sector: SECTORS[0]||'', duration:'', level:''});
   const set = (k,v) => setForm(f=>({...f,[k]:v}));
@@ -231,6 +294,20 @@ function MasterData({clients, onUpdateClients, token, isAdmin, isEditor, isSuper
   const [selectedOccIds, setSelectedOccIds] = useState(() => new Set());
   const [occUsage, setOccUsage] = useState({});
   const [merging, setMerging] = useState(false);
+  /**
+   * The same problem the occupation list has, for clients: the registry holds
+   * "PCTVET", "P-CTVET" and "Province CTVET" as three clients because each was
+   * typed on a different day. Merging needs the usage counts for the same
+   * reason — which one the records are actually attached to decides which one
+   * should survive.
+   */
+  const [selectedClientIds, setSelectedClientIds] = useState(() => new Set());
+  const [clientUsage, setClientUsage] = useState({});
+  // Client names typed into assignments instead of picked from this list.
+  const [unlinked, setUnlinked] = useState([]);
+  const [showUnlinked, setShowUnlinked] = useState(false);
+  const [adoptModal, setAdoptModal] = useState(null);
+  const [adopting, setAdopting] = useState(false);
   const [trainingTypes, setTrainingTypes] = useState(getTrainingTypes());
   const [ttInput, setTtInput] = useState('');
   const [editTt, setEditTt] = useState(null);
@@ -264,6 +341,16 @@ function MasterData({clients, onUpdateClients, token, isAdmin, isEditor, isSuper
   };
 
   useEffect(() => { if (tab === 'tools') loadToolCounts(); }, [tab]);
+
+  const loadClientMeta = () => {
+    api('GET', '/clients/usage', null, token)
+      .then(rows => setClientUsage(Object.fromEntries(rows.map(r => [r.id, r]))))
+      .catch(() => setClientUsage({}));
+    api('GET', '/clients/unlinked', null, token)
+      .then(rows => setUnlinked(rows || []))
+      .catch(() => setUnlinked([]));
+  };
+  useEffect(() => { if (tab === 'clients') loadClientMeta(); }, [tab, token]);
 
   // Usage counts drive the merge dialog's "which one should survive" hint.
   useEffect(() => {
@@ -394,6 +481,70 @@ function MasterData({clients, onUpdateClients, token, isAdmin, isEditor, isSuper
     } catch(err) {
       setMasterErr('Failed to save client: ' + err.message);
     }
+  };
+
+  const toggleClientSelect = (id) => setSelectedClientIds(prev => {
+    const next = new Set(prev);
+    next.has(id) ? next.delete(id) : next.add(id);
+    return next;
+  });
+
+  const mergeClients = async (targetId) => {
+    const sourceIds = [...selectedClientIds].filter(id => id !== targetId);
+    const target = clients.find(c => c.id === targetId);
+    const names = sourceIds.map(id => clients.find(c => c.id === id)?.shortName).filter(Boolean);
+    const totals = sourceIds.reduce((n, id) => n + (clientUsage[id]?.records || 0), 0);
+
+    const ok = await confirmDialog({
+      title: `Merge into “${target?.shortName}”?`,
+      message:
+        `${names.join(', ')} will be folded into ${target?.shortName}. ` +
+        `${totals} record${totals === 1 ? '' : 's'} will be repointed across assignments, ` +
+        `shortlists, standing lists, contracts and documents. ` +
+        `The merged clients are deactivated, not deleted.`,
+      confirmLabel: 'Merge', danger: true,
+    });
+    if (!ok) return;
+
+    setMasterErr(''); setMerging(true);
+    try {
+      const res = await api('POST', '/clients/merge', { targetId, sourceIds }, token);
+      const gone = new Set(res.merged.map(m => m.id));
+      onUpdateClients(clients.filter(c => !gone.has(c.id)));
+      setSelectedClientIds(new Set());
+      setClientModal(null);
+      loadClientMeta();
+      toast(`Merged into ${res.target.short_name} — ${res.movedTotal} record${res.movedTotal === 1 ? '' : 's'} repointed.`);
+    } catch (err) {
+      setMasterErr('Merge failed: ' + err.message);
+    } finally { setMerging(false); }
+  };
+
+  /**
+   * Take a typed-in name into master data, or onto the client it already
+   * matches. `row.matchId` present means master data already has it and the
+   * name was simply typed rather than picked — linking is right, a second copy
+   * is not.
+   */
+  const adoptClient = async (row, form) => {
+    setMasterErr(''); setAdopting(true);
+    try {
+      const body = row.match_id
+        ? { name: row.name, clientId: row.match_id }
+        : { name: row.name, full_name: form.fullName, short_name: form.shortName,
+            type: form.type, address: form.address };
+      const res = await api('POST', '/clients/adopt', body, token);
+      if (res.created && !clients.some(c => c.id === res.client.id)) {
+        onUpdateClients([...clients, normClient(res.client)]);
+      }
+      setAdoptModal(null);
+      loadClientMeta();
+      toast(res.created
+        ? `${res.client.short_name} added — ${res.linked} record${res.linked === 1 ? '' : 's'} linked to it.`
+        : `${res.linked} record${res.linked === 1 ? '' : 's'} linked to ${res.client.short_name}.`);
+    } catch (err) {
+      setMasterErr('Could not add the client: ' + err.message);
+    } finally { setAdopting(false); }
   };
 
 
@@ -527,16 +678,102 @@ function MasterData({clients, onUpdateClients, token, isAdmin, isEditor, isSuper
             )}
             <Btn className="btn btn-primary btn-sm" onClick={()=>setClientModal({type:'add'})}>+ Add client</Btn>
           </div>
+
+          {/* Names typed into records instead of picked from this list. Shown
+              as a prompt rather than a warning: a typed name is not a fault,
+              it just has not been reconciled yet. */}
+          {unlinked.length > 0 && (
+            <div className="card" style={{padding:'12px 14px', marginBottom:16}}>
+              <button type="button" onClick={()=>setShowUnlinked(v=>!v)}
+                style={{display:'flex', alignItems:'center', gap:8, width:'100%', background:'none',
+                  border:'none', padding:0, cursor:'pointer', font:'inherit', textAlign:'left'}}>
+                <span className="material-icons-round" style={{fontSize:18, color:'var(--text3)'}}>
+                  {showUnlinked ? 'expand_more' : 'chevron_right'}</span>
+                <span style={{fontWeight:600, fontSize:13}}>
+                  {unlinked.length} client name{unlinked.length===1?'':'s'} not in this list
+                </span>
+                <span style={{fontSize:12, color:'var(--text3)'}}>
+                  · typed into records instead of picked
+                </span>
+                {unlinked.some(u => u.match_id) && (
+                  <span className="badge badge-info" style={{marginLeft:'auto', fontSize:10}}>
+                    {unlinked.filter(u => u.match_id).length} already exist
+                  </span>
+                )}
+              </button>
+              {showUnlinked && (
+                <table style={{marginTop:12}}>
+                  <thead><tr><th>Typed name</th><th>Used by</th><th>Status</th><th></th></tr></thead>
+                  <tbody>
+                    {unlinked.map(u => (
+                      <tr key={u.key}>
+                        <td style={{fontSize:12.5, fontWeight:500}}>{u.name}</td>
+                        <td className="mono" style={{fontSize:11.5, color:'var(--text3)'}}>
+                          {u.uses} record{u.uses===1?'':'s'}
+                          {u.assignments > 0 && u.assignments !== u.uses && ` · ${u.assignments} assignment${u.assignments===1?'':'s'}`}
+                        </td>
+                        <td>
+                          {u.match_id
+                            ? <span className="badge badge-info" style={{fontSize:10}}>Already in list as {u.match_short_name}</span>
+                            : <span className="badge badge-gray" style={{fontSize:10}}>Missing</span>}
+                        </td>
+                        <td style={{textAlign:'right'}}>
+                          <Btn className="btn btn-secondary btn-sm" disabled={adopting}
+                            onClick={()=>setAdoptModal({
+                              row: u,
+                              form: { fullName: u.name, shortName: '', type: 'Government', address: '' },
+                            })}>
+                            {u.match_id ? 'Link' : 'Add to list'}
+                          </Btn>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
+          )}
+
+          {isAdmin && selectedClientIds.size > 0 && (
+            <div className="bulk-bar">
+              <span className="bulk-count">
+                {selectedClientIds.size} selected
+                {selectedClientIds.size < 2 && <span className="bulk-note"> · pick at least two to merge</span>}
+              </span>
+              <Btn className="btn btn-secondary btn-sm" disabled={selectedClientIds.size < 2 || merging}
+                onClick={() => { if (selectedClientIds.size >= 2 && !merging) setClientModal({ type:'merge' }); }}>
+                {merging ? 'Merging…' : 'Merge…'}
+              </Btn>
+              <Btn className="btn btn-ghost btn-sm" onClick={() => setSelectedClientIds(new Set())}>Clear</Btn>
+            </div>
+          )}
           <div className="card" style={{padding:0, overflow:'hidden'}}>
             <table>
-              <thead><tr><th>Short name</th><th>Full name</th><th>Type</th><th>Address</th><th></th></tr></thead>
+              <thead><tr>
+                {isAdmin && <th style={{width:34}}></th>}
+                <th>Short name</th><th>Full name</th><th>Type</th><th>Address</th>
+                <th style={{textAlign:'right'}}>Used by</th><th></th>
+              </tr></thead>
               <tbody>
                 {clientPagination.paged.map(c=>(
                   <tr key={c.id}>
+                    {isAdmin && (
+                      <td>
+                        <input type="checkbox" style={{width:'auto', margin:0}}
+                          checked={selectedClientIds.has(c.id)}
+                          onChange={() => toggleClientSelect(c.id)}
+                          aria-label={`Select ${c.shortName} for merging`}/>
+                      </td>
+                    )}
                     <td><strong className="mono">{c.shortName}</strong></td>
                     <td style={{fontSize:12}}>{c.fullName}</td>
                     <td><span className="badge badge-info">{c.type}</span></td>
                     <td style={{fontSize:12, color:'var(--text3)'}}>{c.address}</td>
+                    <td className="mono" style={{textAlign:'right', fontSize:11.5, color:'var(--text3)'}}>
+                      {clientUsage[c.id]
+                        ? `${clientUsage[c.id].records} record${clientUsage[c.id].records === 1 ? '' : 's'}`
+                        : '—'}
+                    </td>
                     <td><Btn className="btn btn-ghost btn-sm" onClick={()=>setClientModal({type:'edit', data:c})}><span className="material-icons-round" style={{fontSize:14}}>edit</span></Btn></td>
                   </tr>
                 ))}
@@ -544,6 +781,38 @@ function MasterData({clients, onUpdateClients, token, isAdmin, isEditor, isSuper
             </table>
           </div>
           <Pagination {...clientPagination} label="clients"/>
+          {clientModal?.type === 'merge' && (
+            <Modal title="Merge clients" onClose={()=>setClientModal(null)}
+              footer={<Btn className="btn btn-secondary" onClick={()=>setClientModal(null)}>Cancel</Btn>}>
+              <p style={{fontSize:13, color:'var(--text2)', margin:'0 0 14px'}}>
+                Choose the one to keep. The others are folded into it: their assignments,
+                shortlists, standing lists, contracts and documents are repointed, then
+                they are deactivated.
+              </p>
+              <div className="merge-options">
+                {[...selectedClientIds].map(id => {
+                  const c = clients.find(x => x.id === id);
+                  if (!c) return null;
+                  const use = clientUsage[id] || { records: 0, assignments: 0 };
+                  return (
+                    <button key={id} type="button" className="merge-option"
+                      disabled={merging} onClick={() => mergeClients(id)}>
+                      <span className="merge-option-name">{c.shortName}</span>
+                      <span className="merge-option-meta">
+                        {c.fullName} · {c.type} · {use.records} record{use.records === 1 ? '' : 's'}
+                        {use.assignments ? ` (${use.assignments} assignment${use.assignments === 1 ? '' : 's'})` : ''}
+                      </span>
+                      <span className="merge-option-cta">Keep this one</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </Modal>
+          )}
+          {adoptModal && (
+            <AdoptClientModal state={adoptModal} setState={setAdoptModal} busy={adopting}
+              onConfirm={(form) => adoptClient(adoptModal.row, form)}/>
+          )}
           {clientModal?.type === 'add' && <ClientForm onSave={saveClient} onClose={()=>setClientModal(null)}/>}
           {clientModal?.type === 'edit' && <ClientForm client={clientModal.data} onSave={saveClient} onClose={()=>setClientModal(null)}/>}
         </>
