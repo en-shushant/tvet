@@ -34,6 +34,16 @@ function ExpCard({exp, clients, institute, showFY, setModal, deleteExperience, c
               }}>FY {exp.fy}{fyToAD(exp.fy)?` · ${fyToAD(exp.fy)}`:''}</span>
             )}
             <span style={{fontWeight:600, fontSize:14, color:'var(--text)', lineHeight:1.4}}>{exp.assignmentName}</span>
+            {/* Only a superadmin ever receives a restricted assignment, so this
+                needs no role check — but it must be visible, or they cannot tell
+                which rows are missing from the reports they generate. */}
+            {exp.isSuperAdminOnly && (
+              <span title="Superadmin only — hidden from every other user and excluded from all reports"
+                style={{fontSize:10, fontWeight:700, color:'var(--text2)', background:'var(--bg2)',
+                  border:'1px solid var(--border)', borderRadius:100, padding:'2px 8px',
+                  whiteSpace:'nowrap', alignSelf:'center',
+                }}><span className="material-icons-round" style={{fontSize:10,verticalAlign:'middle'}}>lock</span> Superadmin only</span>
+            )}
             {missingOccs.length > 0 && (
               <span title={missingOccs.map(o=>getOccupation(o.ctevtOccupationId).name||o.nameInLetter).join(', ') + ' — missing level or duration'}
                 style={{fontSize:10, fontWeight:600, color:'var(--warning)', background:'var(--warning-light)',

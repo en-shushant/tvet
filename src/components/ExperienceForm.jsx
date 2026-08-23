@@ -138,12 +138,64 @@ const BLANK_ASSIGNMENT = {
   fy:'2081/82', assignmentName:'', trainingType:'Short Term',
   contractValue:'', startDate:'', endDate:'', startFY:'', endFY:'', remarks:'',
   isGesi:false, isResidential:false, isJV:false, jvRole:'Lead', jvPartners:'',
+  isSuperAdminOnly:false,
   occupations:[], locations:[], referenceFile:null, referenceFileName:'',
   country:'Nepal', descriptionOfWork:'', durationMonths:'', totalPersonMonths:'',
   ownServiceValue:'', jvPartnerNames:'', jvPartnerPersonMonths:'',
   narrativeDescription:'', actualServicesDescription:'',
   numGroups:'', durationDays:'', staffCount:'', seniorStaffDescription:''
 };
+
+/**
+ * Who this assignment exists for. Superadmin-only, and shown above the step nav
+ * rather than inside a step, because it governs the whole record — putting it in
+ * "Basic information" would let someone save a restricted assignment without
+ * ever having seen the setting.
+ *
+ * The consequence line under the choice is the point: "Superadmin only" is not
+ * merely a hidden row, it removes the assignment from every report and total,
+ * which is easy to pick by accident and hard to notice afterwards.
+ */
+function VisibilityPicker({ value, onChange }) {
+  const options = [
+    { v:false, icon:'group',     label:'Everyone',
+      note:'Anyone who can open this firm sees this assignment, and it counts in reports and totals.' },
+    { v:true,  icon:'lock',      label:'Superadmin only',
+      note:'Hidden from every other user — excluded from all reports, counts and exports.' },
+  ];
+  const active = options.find(o => o.v === value);
+  return (
+    <div style={{
+      display:'flex', alignItems:'center', gap:14, flexWrap:'wrap',
+      padding:'10px 14px', marginBottom:14,
+      background: value ? 'var(--warn-bg, #fff6e5)' : 'var(--bg2)',
+      borderRadius:'var(--radius-md, 12px)',
+    }}>
+      <span style={{fontSize:12, fontWeight:700, color:'var(--text2)', letterSpacing:'.03em'}}>
+        Visibility
+      </span>
+      <div role="radiogroup" aria-label="Assignment visibility" style={{display:'flex', gap:6}}>
+        {options.map(o => (
+          <button key={String(o.v)} type="button" role="radio" aria-checked={o.v === value}
+            onClick={()=>onChange(o.v)}
+            style={{
+              display:'inline-flex', alignItems:'center', gap:6,
+              background: o.v === value ? 'var(--ink)' : 'transparent',
+              color: o.v === value ? 'var(--on-ink)' : 'var(--text2)',
+              border: o.v === value ? 'none' : '1px solid var(--border)',
+              borderRadius:'var(--radius-pill, 999px)', padding:'6px 14px',
+              fontSize:12.5, fontWeight: o.v === value ? 700 : 500,
+              fontFamily:'var(--font)', cursor:'pointer',
+            }}>
+            <span className="material-icons-round" style={{fontSize:15, lineHeight:1}}>{o.icon}</span>
+            {o.label}
+          </button>
+        ))}
+      </div>
+      <span style={{flex:1, minWidth:200, fontSize:12, color:'var(--text2)'}}>{active?.note}</span>
+    </div>
+  );
+}
 
 /**
  * The form is long enough that everything at once buries the occupation table,
@@ -255,6 +307,7 @@ function ExperienceForm({exp, clients, institute, onSave, onClose, onDuplicate, 
   const _sess = getSession();
   const token = _sess?.token;
   const canManageOccs = _sess?.role === 'admin' || _sess?.role === 'editor' || _sess?.role === 'superadmin';
+  const isSuperAdmin = _sess?.role === 'superadmin';
   const [quickAddOcc, setQuickAddOcc] = useState(null); // {name, occIdx}
   // Subscribed rather than read directly, so an occupation added through the
   // quick-add modal appears in this dropdown without remounting the form.
@@ -330,6 +383,10 @@ function ExperienceForm({exp, clients, institute, onSave, onClose, onDuplicate, 
           ...BLANK_ASSIGNMENT,
           clientId: f.clientId, clientName: f.clientName, manualClient: f.manualClient,
           fy: f.fy, trainingType: f.trainingType,
+          // Carried over deliberately. Resetting it would quietly drop the next
+          // assignment in a restricted batch back to visible-to-everyone, and
+          // the whole point is that these are not meant to be seen.
+          isSuperAdminOnly: f.isSuperAdminOnly,
         }));
         setStep(0);
         toast('Assignment saved. Starting the next one.');
@@ -463,6 +520,8 @@ function ExperienceForm({exp, clients, institute, onSave, onClose, onDuplicate, 
         <Btn className="btn btn-primary" onClick={()=>saveAssignment(false)}>Save assignment</Btn>
       </>}>
       <ErrorBanner msg={formErr} onDismiss={()=>setFormErr('')}/>
+
+      {isSuperAdmin && <VisibilityPicker value={!!form.isSuperAdminOnly} onChange={v=>set('isSuperAdminOnly', v)}/>}
 
       <nav ref={bodyRef} className="step-nav" aria-label="Assignment sections">
         {STEPS.map((st, i) => {

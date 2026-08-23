@@ -109,6 +109,9 @@ async function runMigrations() {
     `ALTER TABLE institutes ADD COLUMN IF NOT EXISTS desc_template_id TEXT`,
     `ALTER TABLE institutes ADD COLUMN IF NOT EXISTS narrative_template_id TEXT`,
     `ALTER TABLE institutes ADD COLUMN IF NOT EXISTS services_template_id TEXT`,
+    // Restricted assignments: only a superadmin may create, see or report on
+    // these. Defaults FALSE so every existing row stays visible to everyone.
+    `ALTER TABLE assignments ADD COLUMN IF NOT EXISTS is_superadmin_only BOOLEAN DEFAULT FALSE`,
     `ALTER TABLE assignments ADD COLUMN IF NOT EXISTS num_groups INTEGER`,
     `ALTER TABLE assignments ADD COLUMN IF NOT EXISTS duration_days INTEGER`,
     // Bolpatra / Standard EOI — Section 2 (Applicant's Information Form) firm profile

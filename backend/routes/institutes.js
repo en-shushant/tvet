@@ -1,6 +1,7 @@
 // routes/institutes.js
 const { pool } = require('../db/pool');
 const { authenticate, requireAdmin, requireWriter } = require('../middleware/auth');
+const { assignmentScope } = require('../middleware/visibility');
 
 async function plugin(fastify, opts) {
   fastify.addHook('preHandler', authenticate);
@@ -25,6 +26,7 @@ async function plugin(fastify, opts) {
                                   'm:'  || NULLIF(a.client_name_manual, ''))) AS total_clients
         FROM assignments a
         JOIN assignment_occupations ao ON ao.assignment_id = a.id
+        WHERE 1=1${assignmentScope(request.user, 'a')}
         GROUP BY a.institute_id
       ),
       aff_stats AS (
@@ -107,6 +109,7 @@ async function plugin(fastify, opts) {
                ) FILTER (WHERE ao.id IS NOT NULL) AS occupations
         FROM assignments a
         LEFT JOIN assignment_occupations ao ON ao.assignment_id = a.id
+        WHERE 1=1${assignmentScope(request.user, 'a')}
         GROUP BY a.id`),
       pool.query('SELECT institute_id, fiscal_year, turnover FROM tax_clearances'),
     ]);
@@ -199,13 +202,13 @@ async function plugin(fastify, opts) {
         SELECT i.*,
           COALESCE((SELECT SUM(ao.trainees)
                     FROM assignments a JOIN assignment_occupations ao ON ao.assignment_id = a.id
-                    WHERE a.institute_id = i.id), 0)            AS total_trainees,
+                    WHERE a.institute_id = i.id${assignmentScope(request.user, 'a')}), 0) AS total_trainees,
           COALESCE((SELECT SUM(ao.skill_test_appeared)
                     FROM assignments a JOIN assignment_occupations ao ON ao.assignment_id = a.id
-                    WHERE a.institute_id = i.id), 0)            AS total_st_appeared,
+                    WHERE a.institute_id = i.id${assignmentScope(request.user, 'a')}), 0) AS total_st_appeared,
           COALESCE((SELECT COUNT(DISTINCT COALESCE('id:' || a.client_id::text,
                                                    'm:'  || NULLIF(a.client_name_manual, '')))
-                    FROM assignments a WHERE a.institute_id = i.id), 0) AS total_clients,
+                    FROM assignments a WHERE a.institute_id = i.id${assignmentScope(request.user, 'a')}), 0) AS total_clients,
           COALESCE((SELECT COUNT(ap.id)
                     FROM affiliations af JOIN affiliation_programs ap ON ap.affiliation_id = af.id
                     WHERE af.institute_id = i.id), 0)           AS total_aff_programs
@@ -217,7 +220,7 @@ async function plugin(fastify, opts) {
         FROM assignments a
         LEFT JOIN assignment_occupations ao ON ao.assignment_id = a.id
         LEFT JOIN assignment_locations al ON al.assignment_id = a.id
-        WHERE a.institute_id = $1
+        WHERE a.institute_id = $1${assignmentScope(request.user, 'a')}
         GROUP BY a.id ORDER BY a.fiscal_year DESC, a.id`, [id]),
       pool.query('SELECT * FROM nstb_records WHERE institute_id = $1 ORDER BY fiscal_year DESC', [id]),
       pool.query('SELECT * FROM tax_clearances WHERE institute_id = $1 ORDER BY fiscal_year DESC', [id]),

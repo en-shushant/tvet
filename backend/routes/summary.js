@@ -1,6 +1,7 @@
 // routes/summary.js
 const { pool } = require('../db/pool');
 const { authenticate } = require('../middleware/auth');
+const { assignmentScope } = require('../middleware/visibility');
 
 async function plugin(fastify, opts) {
   fastify.addHook('preHandler', authenticate);
@@ -22,7 +23,7 @@ async function plugin(fastify, opts) {
       LEFT JOIN occupations o ON o.id = ao.ctevt_occupation_id
       LEFT JOIN clients c ON c.id = a.client_id
       LEFT JOIN assignment_locations al ON al.assignment_id = a.id
-      WHERE a.institute_id = $1`;
+      WHERE a.institute_id = $1` + assignmentScope(request.user, 'a');
 
     const expParams = [institute_id];
     if (fyList.length) { expParams.push(fyList); expQ += ` AND a.fiscal_year = ANY($${expParams.length})`; }

@@ -220,6 +220,7 @@ export function normExp(r) {
     referenceFileName: r.reference_file_name || r.letter_file_name || '',
     isGesi: !!r.is_gesi,
     isResidential: !!r.is_residential,
+    isSuperAdminOnly: !!r.is_superadmin_only,
     isJV: !!r.is_jv,
     jvRole: r.jv_role || 'Lead',
     jvPartners: r.jv_partners != null ? String(r.jv_partners) : '',
@@ -399,6 +400,8 @@ export function expToAPI(f, instituteId) {
     reference_file_name: f.referenceFileName || '',
     is_gesi: !!f.isGesi,
     is_residential: !!f.isResidential,
+    // Ignored by the server unless the caller is a superadmin.
+    is_superadmin_only: !!f.isSuperAdminOnly,
     is_jv: !!f.isJV,
     jv_role: f.isJV ? (f.jvRole || 'Lead') : null,
     jv_partners: f.isJV ? (f.jvPartners || null) : null,
