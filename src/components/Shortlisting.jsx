@@ -465,8 +465,13 @@ export default function Shortlisting({ institutes, clients, isAdmin, isEditor, i
     if (filterFirm && String(r.institute_id) !== filterFirm) return false;
     if (filterStatus && (r.status || list?.status) !== filterStatus) return false;
     if (filterFY) {
+      // Absent, not blank: a fiscal year is optional on both the entry and the
+      // list it belongs to, and a record that names no year cannot contradict
+      // a year filter. Treating '' as unequal hid the firms under a list that
+      // had just been created without one — so the list appeared and looked
+      // empty, which is worse than either outcome on its own.
       const fy = r.fy || list?.fy || '';
-      if (fy !== filterFY) return false;
+      if (fy && fy !== filterFY) return false;
     }
     if (filterOrg) {
       const c = clients.find(x => String(x.id) === String(filterOrg));
@@ -482,6 +487,42 @@ export default function Shortlisting({ institutes, clients, isAdmin, isEditor, i
         r.client_name_manual, list?.client_name_manual, r.standing_list_name, list?.name,
         r.fy || list?.fy, r.remarks].filter(Boolean).join(' ').toLowerCase();
       if (!hay.includes(q)) return false;
+    }
+    return true;
+  }, [filterFirm, filterStatus, filterFY, filterOrg, search, clients]);
+
+  /**
+   * Does a standing list pass the filter bar on its own attributes?
+   *
+   * Needed for a list with no firms assigned yet. `firmMatches` can only ever
+   * answer "no" for one of those — there is nothing to match — so judging a
+   * list purely by its firms made every newly created list vanish the moment
+   * any filter was on, including the fiscal year this screen sets for itself on
+   * load. It came back under "All FYs" only because that clears the last filter
+   * and takes the unfiltered path.
+   *
+   * A blank field is not a mismatch: fy and status are optional on a standing
+   * list, and a list that records no year cannot contradict a year filter. The
+   * alternative — treating absent as unequal — hides exactly the half-filled
+   * record someone has just created and is looking for.
+   */
+  const listMatchesAlone = useCallback((l) => {
+    // Asking for one firm's entries: a list with no firms holds none of them.
+    if (filterFirm) return false;
+    if (filterStatus && l.status && l.status !== filterStatus) return false;
+    if (filterFY && l.fy && l.fy !== filterFY) return false;
+    if (filterOrg) {
+      const c = clients.find(x => String(x.id) === String(filterOrg));
+      const names = [c?.shortName, c?.short_name, c?.fullName, c?.full_name]
+        .filter(Boolean).map(n => String(n).toLowerCase());
+      const onList = String(l.client_name_manual || '').toLowerCase();
+      const byId = l.client_id != null && String(l.client_id) === String(filterOrg);
+      if (!byId && !(onList && names.some(n => onList.includes(n) || n.includes(onList)))) return false;
+    }
+    if (search) {
+      const hay = [l.client_name_manual, l.name, l.fy, l.remarks]
+        .filter(Boolean).join(' ').toLowerCase();
+      if (!hay.includes(search.toLowerCase())) return false;
     }
     return true;
   }, [filterFirm, filterStatus, filterFY, filterOrg, search, clients]);
@@ -678,8 +719,16 @@ export default function Shortlisting({ institutes, clients, isAdmin, isEditor, i
   const visibleStandingLists = useMemo(() => {
     const anyFilter = !!(filterOrg || filterFirm || filterStatus || filterFY || search);
     if (!anyFilter) return standingLists;
-    return standingLists.filter(l => (firmsByList.get(String(l.id)) || []).length > 0);
-  }, [standingLists, firmsByList, filterOrg, filterFirm, filterStatus, filterFY, search]);
+    return standingLists.filter(l => {
+      if ((firmsByList.get(String(l.id)) || []).length > 0) return true;
+      // No firms at all is different from firms that were filtered out: the
+      // first is a list that has not been populated yet and must be judged on
+      // its own, the second is a list this filter is deliberately excluding.
+      const hasAnyFirm = (allFirmsByList.get(String(l.id)) || []).length > 0;
+      return !hasAnyFirm && listMatchesAlone(l);
+    });
+  }, [standingLists, firmsByList, allFirmsByList, listMatchesAlone,
+      filterOrg, filterFirm, filterStatus, filterFY, search]);
 
   /**
    * Everything on screen: the firms under each visible standing list, plus any
