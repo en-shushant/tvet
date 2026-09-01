@@ -1,6 +1,6 @@
 import {
   Document, Packer, Table, TableRow, TableCell, Paragraph, TextRun,
-  WidthType, AlignmentType, VerticalAlign, BorderStyle,
+  WidthType, AlignmentType, VerticalAlign, BorderStyle, VerticalMergeType,
 } from 'docx';
 import { saveAs } from 'file-saver';
 import { getClient, esc, fyInRange, occMasterName, occLetterName } from './helpers.js';
@@ -112,19 +112,42 @@ const occInfo = (occ, occupations) => {
   };
 };
 
+// ─── Table cells that span rows ──────────────────────────────────────────────
+//
+// A cell is normally just a string. Where one value covers several rows — an
+// assignment's dates repeated down its occupations — it becomes { text, rowSpan }
+// and the rows beneath carry SPANNED in that position instead.
+//
+// The three renderers differ in what they need: HTML and JSX omit the covered
+// cell entirely, while Word requires it to be present and marked as a merge
+// continuation. Keeping the placeholder in the model rather than letting each
+// renderer infer it is what lets all three agree.
+
+/** Marks a cell covered by a rowSpan from a row above it. */
+const SPANNED = { spanned: true };
+/** A cell covering `n` rows; a span of one is just the value. */
+const span = (text, n) => (n > 1 ? { text, rowSpan: n } : text);
+
+const isSpanned = (v) => !!v && typeof v === 'object' && v.spanned === true;
+const cellText  = (v) => (!!v && typeof v === 'object' && 'text' in v) ? v.text : v;
+const cellSpan  = (v) => ((!!v && typeof v === 'object' && v.rowSpan) || 1);
+
 // ─── Section models ──────────────────────────────────────────────────────────
 // Each returns { columns, rows, totalRow? } — a shape the JSX, print-HTML and
 // DOCX renderers all consume the same way, so the three stay in sync.
 
 /**
- * B.1 — one row per assignment.
+ * B.1 — one row per occupation, with the assignment's own columns merged down.
  *
- * It used to emit one row per occupation, which repeated the assignment name,
- * dates, client and — the damaging part — the contract amount once per trade.
- * A single contract run for four occupations read as four contracts worth four
- * times the money. The occupations are what varies within an assignment, so
- * they are the thing that collapses into one cell; everything else on the row
- * belongs to the assignment and is stated once.
+ * The first version repeated every column per occupation, so one contract run
+ * for four trades read as four contracts and totalled to four times the money.
+ * Collapsing to one row per assignment fixed that but lost the per-trade
+ * trainee counts, which the form asks for.
+ *
+ * So: Occupation and No. Of Trainees get a row each, and the columns that
+ * belong to the assignment — S.N., name, dates, contract amount, client — span
+ * those rows and are stated once. The reader sees each trade's numbers without
+ * the contract value ever appearing twice.
  *
  * Reads the firm's full experience list (not the `exps` the other sections
  * get, which is already narrowed to the experience FY range) and applies its
@@ -139,31 +162,28 @@ function modelB1(inst, clients, occupations, opts = {}) {
   const exps = (inst?.experience || [])
     .filter(e => !fromFY && !toFY ? true : fyInRange(e.fy, fromFY, toFY));
   const rows = [];
+  // Counts assignments, not rows: an assignment covering four trades is one
+  // entry in the portfolio and takes one serial number.
+  let sn = 0;
   for (const exp of exps) {
-    const occs = exp.occupations || [];
-    // Distinct, in the order they were entered: the same trade recorded twice
-    // on one assignment is one trade, but the sequence is how the firm listed
-    // them and re-sorting would not match their own paperwork.
-    const names = [];
-    for (const occ of occs) {
-      const label = occInfo(occ, occupations).label;
-      if (label && label !== '—' && !names.includes(label)) names.push(label);
-    }
-    // Summed across the assignment's occupations. Left blank rather than shown
-    // as 0 when not one occupation records a count — 0 trainees is a claim,
-    // and an unrecorded figure is not.
-    const counted = occs.filter(o => o.trainees !== '' && o.trainees != null);
-    const trainees = counted.reduce((n, o) => n + (parseInt(o.trainees) || 0), 0);
-    rows.push([
-      String(rows.length + 1),
-      dash(exp.assignmentName),
-      names.length ? names.join(', ') : '—',
-      counted.length ? String(trainees) : '—',
-      dash(exp.startDate),
-      dash(exp.endDate),
-      fmtNrs(exp.contractValue),
-      clientNameOf(exp, clients),
-    ]);
+    sn += 1;
+    // An assignment with nothing recorded still belongs in the portfolio, so it
+    // gets a single row with the occupation columns left blank.
+    const occs = (exp.occupations || []).length ? exp.occupations : [{}];
+    const n = occs.length;
+    occs.forEach((occ, i) => {
+      const own = (v) => (i === 0 ? span(v, n) : SPANNED);
+      rows.push([
+        own(String(sn)),
+        own(dash(exp.assignmentName)),
+        occInfo(occ, occupations).label || '—',
+        dash(occ.trainees),
+        own(dash(exp.startDate)),
+        own(dash(exp.endDate)),
+        own(fmtNrs(exp.contractValue)),
+        own(clientNameOf(exp, clients)),
+      ]);
+    });
   }
   return {
     columns: ['S.N.', 'Assignment Name', 'Occupation', 'No. Of Trainees', 'Start Date', 'End Date', 'Contract Amount', 'Client'],
@@ -301,7 +321,11 @@ function GridTable({ model }) {
         <thead><tr>{model.columns.map(c => <th key={c} style={TH}>{c}</th>)}</tr></thead>
         <tbody>
           {model.rows.map((row, i) => (
-            <tr key={i}>{row.map((v, j) => <td key={j} style={TD}>{v || empty}</td>)}</tr>
+            <tr key={i}>{row.map((v, j) => isSpanned(v) ? null : (
+              <td key={j} style={TD} rowSpan={cellSpan(v) > 1 ? cellSpan(v) : undefined}>
+                {cellText(v) || empty}
+              </td>
+            ))}</tr>
           ))}
           {model.totalRow && (
             <tr>{model.totalRow.map((v, j) => <td key={j} style={TOTAL_TD}>{v || ''}</td>)}</tr>
@@ -339,7 +363,9 @@ const htmlGrid = (model) => {
     <thead><tr>${model.columns.map(c => `<th>${esc(c)}</th>`).join('')}</tr></thead>
     <tbody>
       ${model.rows.length
-        ? model.rows.map(r => `<tr>${r.map(v => `<td>${esc(v) || empty}</td>`).join('')}</tr>`).join('')
+        ? model.rows.map(r => `<tr>${r.map(v => isSpanned(v) ? '' :
+            `<td${cellSpan(v) > 1 ? ` rowspan="${cellSpan(v)}"` : ''}>${esc(cellText(v)) || empty}</td>`
+          ).join('')}</tr>`).join('')
         : `<tr><td colspan="${model.columns.length}">No records in range.</td></tr>`}
       ${model.totalRow ? `<tr class="total-row">${model.totalRow.map(v => `<td>${esc(v) || ''}</td>`).join('')}</tr>` : ''}
     </tbody>
@@ -394,13 +420,20 @@ const TOTAL_FILL = 'EEF3FB';
 
 function docxCell(text, opts = {}) {
   const empty = opts.empty || '—';
+  // Word merges vertically by keeping the covered cell and marking it CONTINUE,
+  // rather than dropping it the way an HTML rowspan does. A continuation cell
+  // must also be empty — text in one shows up beneath the merged value.
+  const merge = opts.merge;
   return new TableCell({
     shading: opts.fill ? { fill: opts.fill } : undefined,
     borders: ALL_BORDERS,
     verticalAlign: VerticalAlign.TOP,
     margins: CELL_MARGIN,
+    verticalMerge: merge,
     children: [new Paragraph({
-      children: [new TextRun({ text: String(text ?? '') || empty, bold: !!opts.bold, size: 17 })],
+      children: merge === VerticalMergeType.CONTINUE
+        ? []
+        : [new TextRun({ text: String(text ?? '') || empty, bold: !!opts.bold, size: 17 })],
     })],
   });
 }
@@ -412,7 +445,11 @@ function docxTable(model) {
     children: model.columns.map(c => docxCell(c, { bold: true, fill: HDR_FILL })),
   });
   const body = model.rows.length
-    ? model.rows.map(r => new TableRow({ children: r.map(v => docxCell(v, { empty })) }))
+    ? model.rows.map(r => new TableRow({
+        children: r.map(v => isSpanned(v)
+          ? docxCell('', { empty, merge: VerticalMergeType.CONTINUE })
+          : docxCell(cellText(v), { empty, merge: cellSpan(v) > 1 ? VerticalMergeType.RESTART : undefined })),
+      }))
     : [new TableRow({ children: [docxCell('No records in range.', {})] })];
   const totalRow = model.totalRow
     ? [new TableRow({ children: model.totalRow.map(v => docxCell(v, { bold: true, fill: TOTAL_FILL })) })]
