@@ -64,3 +64,25 @@ export const occLetterName = (occ, occupations) => {
   const inLetter = (occ.nameInLetter || '').trim();
   return inLetter || occMasterName(occ, occupations);
 };
+
+/**
+ * Assignments that count as experience.
+ *
+ * An assignment marked "Currently running" is work in progress: it belongs in a
+ * portfolio, which lists what a firm is doing, but not in an experience table,
+ * which reports what it achieved. Every experience section across every report
+ * family asks for finished outcomes — trainees graduated, skill tests sat,
+ * employment secured — and a training that has not ended has produced none of
+ * them. Counting it would either publish zeroes as results or claim numbers
+ * that do not exist yet.
+ *
+ * Applied once in ReportsView, where the FY range, donor type and duration
+ * filters already narrow the set every family receives, rather than per family.
+ * The one place that deliberately looks past it is Bagmati's Current Portfolio,
+ * which reads the firm's own experience list instead of this narrowed set.
+ *
+ * An assignment recorded before the flag existed has no value for it and is
+ * treated as finished, so nothing already in the registry changes.
+ */
+export const isOngoingAssignment = (exp) => !!exp?.isOngoing;
+export const completedOnly = (exps) => (exps || []).filter(e => !isOngoingAssignment(e));

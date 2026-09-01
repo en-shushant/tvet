@@ -296,20 +296,16 @@ function modelB4(inst, opts = {}) {
 function modelFor(section, exps, clients, inst, opts) {
   const occupations = opts.occupations || [];
   /**
-   * Work still running counts as portfolio, not as experience.
+   * B.1 deliberately reads the firm's own experience list rather than `exps`.
    *
-   * B.1's own note is "implementing or have implemented", so an assignment
-   * under way belongs there. B.2 and B.3 are the opposite: they report how many
-   * trainees graduated, sat the skill test and found work — outcomes a training
-   * that has not finished cannot have produced. Including it would either
-   * publish zeroes as results or claim numbers that do not exist yet.
-   *
-   * Untick "Currently running" when the work is done and it joins these tables.
+   * `exps` is what the report builder hands every family, and running work has
+   * already been dropped from it — it is not experience in any family. The
+   * Current Portfolio is the one table that wants it back: its own note is
+   * "implementing or have implemented", so work under way belongs there.
    */
-  const completed = (exps || []).filter(e => !e.isOngoing);
   if (section === 'b1') return modelB1(inst, clients, occupations, opts);
-  if (section === 'b2') return modelB2(completed, clients, occupations);
-  if (section === 'b3') return modelB3(completed, clients, occupations, opts.selectedOccs);
+  if (section === 'b2') return modelB2(exps, clients, occupations);
+  if (section === 'b3') return modelB3(exps, clients, occupations, opts.selectedOccs);
   if (section === 'b4') return modelB4(inst, opts);
   return { columns: [], rows: [] };
 }

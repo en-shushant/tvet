@@ -3,7 +3,7 @@ import { getSession } from '../utils/auth.js';
 import { api, normInst } from '../utils/api.js';
 import { exportToCSV } from '../utils/export.js';
 import { Btn } from '../md.jsx';
-import { fyInRange, fyYear } from '../reports/helpers.js';
+import { fyInRange, fyYear, completedOnly } from '../reports/helpers.js';
 import { FISCAL_YEARS } from '../constants/data.js';
 import REPORT_FAMILIES from '../reports/index.js';
 import { TOOL_COLUMN_OPTIONS, TOOL_TYPE_OPTIONS, DEFAULT_TOOL_COLS } from '../reports/bolpatra.jsx';
@@ -443,7 +443,10 @@ function ReportsView({ institutes, clients }) {
         });
       });
     }
-    return filtered;
+    // Last, so it applies whatever else narrowed the set: running work is not
+    // experience in any family. Bagmati's Current Portfolio reads the firm's
+    // own list rather than this one, which is how it still shows them.
+    return completedOnly(filtered);
   }, [rangeFiltered, selectedIds, filterTrainingTypes, filterDuration, filterDonorTypes, clients]);
 
   // All training types present in range-filtered assignments
@@ -580,7 +583,7 @@ function ReportsView({ institutes, clients }) {
         return true;
       }));
     }
-    return exps;
+    return completedOnly(exps);
   };
 
   // Lead first, then the rest in selection order — report families take position 0

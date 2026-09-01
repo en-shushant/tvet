@@ -1,17 +1,20 @@
 /**
- * Work still running counts as portfolio, not as experience.
+ * Where running work shows up in the Bagmati report.
  *
- * Table 1's own note is "implementing or have implemented", so an assignment
- * under way belongs there. Tables 2 and 3 are the opposite: they report how
- * many trainees graduated, sat the skill test and found work — outcomes a
- * training that has not finished cannot have produced. Including one would
- * either publish zeroes as results or claim numbers that do not exist yet.
+ * The rule that running work is not experience is applied once, in the report
+ * builder, for every family — see report-ongoing-experience.test.js. What is
+ * specific to Bagmati, and tested here, is the one table that deliberately
+ * looks past it: Current Portfolio reads the firm's own experience list rather
+ * than the narrowed set the builder hands over, because its own note is
+ * "implementing or have implemented".
  *
- * Untick "Currently running" and the same assignment joins the experience
- * tables, with nothing else about it changed.
+ * So B.1 shows an assignment the experience tables have already dropped. That
+ * asymmetry is the whole feature, and it is invisible unless both halves are
+ * driven from the same fixture.
  */
 import { describe, it, expect } from 'vitest';
 import bagmati from '../src/reports/bagmati.jsx';
+import { completedOnly } from '../src/reports/helpers.js';
 import { expToAPI, normExp } from '../src/utils/api.js';
 
 const occupations = [{ id: 1, name: 'Barista', sector: 'Hospitality', level: 'Level 1' }];
@@ -37,36 +40,55 @@ const html = (section, exps, opts = {}) => bagmati.buildPrintHTML(
   inst(exps), exps, clients, section, null,
   { clients, occupations, portfolioFromFY: '', portfolioToFY: '', ...opts });
 
-describe('an assignment marked as currently running', () => {
-  it('appears in Table 1: Current Portfolio', () => {
-    expect(html('b1', [RUNNING])).toContain('Ongoing barista training');
+/**
+ * What the builder hands the family: experience with running work removed.
+ * The firm's own list, on `inst`, still holds everything.
+ */
+const asBuilder = (all) => [inst(all), completedOnly(all)];
+
+describe('an assignment the builder has dropped as still running', () => {
+  it('still appears in Table 1: Current Portfolio', () => {
+    const [firm, exps] = asBuilder([DONE, RUNNING]);
+    const out = bagmati.buildPrintHTML(firm, exps, clients, 'b1', null,
+      { clients, occupations, portfolioFromFY: '', portfolioToFY: '' });
+    expect(out).toContain('Ongoing barista training');
+    expect(out).toContain('Finished barista training');
   });
 
-  it('is left out of Table 2: General Experience', () => {
-    const out = html('b2', [RUNNING]);
+  it('is absent from Table 2: General Experience', () => {
+    const [firm, exps] = asBuilder([DONE, RUNNING]);
+    const out = bagmati.buildPrintHTML(firm, exps, clients, 'b2', null, { clients, occupations });
     expect(out).not.toContain('Ongoing barista training');
+    expect(out).toContain('Finished barista training');
   });
 
-  it('is left out of Table 3: Specific Experience', () => {
-    const out = html('b3', [RUNNING], { selectedOccs: ['Barista'] });
+  it('is absent from Table 3: Specific Experience', () => {
+    const [firm, exps] = asBuilder([DONE, RUNNING]);
+    const out = bagmati.buildPrintHTML(firm, exps, clients, 'b3', null,
+      { clients, occupations, selectedOccs: ['Barista'] });
     expect(out).not.toContain('Ongoing barista training');
   });
 
   it('does not contribute its trainees to the experience totals', () => {
     // The real damage: an unfinished training inflating the graduate and
     // skill-test counts a bid is judged on.
-    const both = html('b2', [DONE, RUNNING]);
-    const alone = html('b2', [DONE]);
-    const totals = (out) => (out.match(/<td[^>]*>(\d+)<\/td>/g) || []).join('|');
-    expect(totals(both)).toBe(totals(alone));
+    const totals = (all) => {
+      const [firm, exps] = asBuilder(all);
+      const out = bagmati.buildPrintHTML(firm, exps, clients, 'b2', null, { clients, occupations });
+      return (out.match(/<td[^>]*>(\d+)<\/td>/g) || []).join('|');
+    };
+    expect(totals([DONE, RUNNING])).toBe(totals([DONE]));
   });
 });
 
 describe('unticking the mark', () => {
   it('brings the same assignment into the experience tables', () => {
     const finished = { ...RUNNING, isOngoing: false };
-    expect(html('b2', [finished])).toContain('Ongoing barista training');
-    expect(html('b3', [finished], { selectedOccs: ['Barista'] })).toContain('Ongoing barista training');
+    const [firm, exps] = asBuilder([finished]);
+    expect(bagmati.buildPrintHTML(firm, exps, clients, 'b2', null, { clients, occupations }))
+      .toContain('Ongoing barista training');
+    expect(bagmati.buildPrintHTML(firm, exps, clients, 'b3', null,
+      { clients, occupations, selectedOccs: ['Barista'] })).toContain('Ongoing barista training');
   });
 
   it('leaves it in the portfolio either way', () => {
@@ -80,7 +102,10 @@ describe('assignments with no mark at all', () => {
   it('are treated as finished, so nothing already recorded changes', () => {
     const legacy = asg({ assignmentName: 'Recorded before the flag existed' });
     delete legacy.isOngoing;
-    expect(html('b2', [legacy])).toContain('Recorded before the flag existed');
+    const [firm, exps] = asBuilder([legacy]);
+    expect(exps, 'a legacy row must survive the filter').toHaveLength(1);
+    expect(bagmati.buildPrintHTML(firm, exps, clients, 'b2', null, { clients, occupations }))
+      .toContain('Recorded before the flag existed');
     expect(html('b1', [legacy])).toContain('Recorded before the flag existed');
   });
 });
