@@ -117,7 +117,14 @@ const occInfo = (occ, occupations) => {
 // DOCX renderers all consume the same way, so the three stay in sync.
 
 /**
- * B.1 — one row per occupation on an assignment, not per assignment.
+ * B.1 — one row per assignment.
+ *
+ * It used to emit one row per occupation, which repeated the assignment name,
+ * dates, client and — the damaging part — the contract amount once per trade.
+ * A single contract run for four occupations read as four contracts worth four
+ * times the money. The occupations are what varies within an assignment, so
+ * they are the thing that collapses into one cell; everything else on the row
+ * belongs to the assignment and is stated once.
  *
  * Reads the firm's full experience list (not the `exps` the other sections
  * get, which is already narrowed to the experience FY range) and applies its
@@ -133,19 +140,30 @@ function modelB1(inst, clients, occupations, opts = {}) {
     .filter(e => !fromFY && !toFY ? true : fyInRange(e.fy, fromFY, toFY));
   const rows = [];
   for (const exp of exps) {
-    const occs = (exp.occupations || []).length ? exp.occupations : [{}];
+    const occs = exp.occupations || [];
+    // Distinct, in the order they were entered: the same trade recorded twice
+    // on one assignment is one trade, but the sequence is how the firm listed
+    // them and re-sorting would not match their own paperwork.
+    const names = [];
     for (const occ of occs) {
-      rows.push([
-        String(rows.length + 1),
-        dash(exp.assignmentName),
-        occInfo(occ, occupations).label,
-        dash(occ.trainees),
-        dash(exp.startDate),
-        dash(exp.endDate),
-        fmtNrs(exp.contractValue),
-        clientNameOf(exp, clients),
-      ]);
+      const label = occInfo(occ, occupations).label;
+      if (label && label !== '—' && !names.includes(label)) names.push(label);
     }
+    // Summed across the assignment's occupations. Left blank rather than shown
+    // as 0 when not one occupation records a count — 0 trainees is a claim,
+    // and an unrecorded figure is not.
+    const counted = occs.filter(o => o.trainees !== '' && o.trainees != null);
+    const trainees = counted.reduce((n, o) => n + (parseInt(o.trainees) || 0), 0);
+    rows.push([
+      String(rows.length + 1),
+      dash(exp.assignmentName),
+      names.length ? names.join(', ') : '—',
+      counted.length ? String(trainees) : '—',
+      dash(exp.startDate),
+      dash(exp.endDate),
+      fmtNrs(exp.contractValue),
+      clientNameOf(exp, clients),
+    ]);
   }
   return {
     columns: ['S.N.', 'Assignment Name', 'Occupation', 'No. Of Trainees', 'Start Date', 'End Date', 'Contract Amount', 'Client'],
