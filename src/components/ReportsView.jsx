@@ -382,6 +382,28 @@ function ReportsView({ institutes, clients }) {
     () => dropRestricted(fullInst?.experience || []),
     [fullInst, includeRestricted]);
 
+  /**
+   * The firm as a report may see it.
+   *
+   * A family is handed both a narrowed `exps` list and the firm itself, and a
+   * section that wants something the filters removed reads the firm instead —
+   * Bagmati's Current Portfolio does exactly that, which is how running work
+   * and assignments outside the experience FY range still reach Table 1.
+   *
+   * That door has to stay shut for restricted assignments, though. They are not
+   * a filter someone chose to narrow a table with; they are records that must
+   * not appear in a document at all when the switch says so. Dropping them from
+   * `experience` alone left Table 1 printing them regardless.
+   *
+   * Only that one exclusion is applied here. Everything else — the FY range,
+   * duration, donor and training type, the per-assignment checklist — narrows
+   * the experience tables and is deliberately absent from the portfolio.
+   */
+  const reportInstFor = (i) => (i && !includeRestricted)
+    ? { ...i, experience: dropRestricted(i.experience || []) }
+    : i;
+  const reportInst = useMemo(() => reportInstFor(fullInst), [fullInst, includeRestricted]);
+
   // How many are on offer, whether or not they are currently included — the
   // switch has to stay reachable to turn them back on.
   const restrictedCount = useMemo(() => {
@@ -593,7 +615,7 @@ function ReportsView({ institutes, clients }) {
       ? [fwLeadId, ...fwInstIds.filter(id => id !== fwLeadId)]
       : fwInstIds;
     return ordered.map(id => fwFullInsts[id]).filter(Boolean)
-      .map(inst => ({ inst, exps: fwExpsFor(inst) }));
+      .map(inst => ({ inst: reportInstFor(inst), exps: fwExpsFor(inst) }));
   };
 
   // Everything the rendered preview depends on, across every family (single
@@ -620,7 +642,7 @@ function ReportsView({ institutes, clients }) {
 
   const handlePrint = () => {
     const w = window.open('', '_blank');
-    w.document.write(family.buildPrintHTML(fullInst, activeExps, clients, report.id, fyRangeLabel, opts));
+    w.document.write(family.buildPrintHTML(reportInst, activeExps, clients, report.id, fyRangeLabel, opts));
     w.document.close();
     setTimeout(() => w.print(), 300);
   };
@@ -632,7 +654,7 @@ function ReportsView({ institutes, clients }) {
     exportToCSV(rows, fname);
   };
 
-  const handleWord = () => family.downloadDOCX(fullInst, activeExps, report.id, opts);
+  const handleWord = () => family.downloadDOCX(reportInst, activeExps, report.id, opts);
 
   const canPrint = noInstitute
     ? (toolsOccIds.length > 0 && !!toolsLevel)
@@ -1620,9 +1642,10 @@ function ReportsView({ institutes, clients }) {
                     const inst = fwFullInsts[id];
                     if (!inst) return null;
                     const exps = fwExpsFor(inst);
+                    const shown = reportInstFor(inst);
                     return (
                       <div key={id} style={{borderTop:'1px solid var(--border)', paddingTop:16}}>
-                        {family.renderAggregateTable(inst, exps, clients, report.id, opts)}
+                        {family.renderAggregateTable(shown, exps, clients, report.id, opts)}
                       </div>
                     );
                   })}
@@ -1637,7 +1660,7 @@ function ReportsView({ institutes, clients }) {
                 </div>
 
                 {isAggregate ? (
-                  family.renderAggregateTable(fullInst || null, activeExps, clients, report.id, opts)
+                  family.renderAggregateTable(reportInst || null, activeExps, clients, report.id, opts)
                 ) : activeExps.length === 0 ? (
                   <div className="empty-state">
                     <div className="empty-state-icon"><span className="material-icons-round" style={{fontSize:42, color:'var(--text3)', opacity:.4}}>search_off</span></div>
