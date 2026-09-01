@@ -138,6 +138,7 @@ const BLANK_ASSIGNMENT = {
   fy:'2081/82', assignmentName:'', trainingType:'Short Term',
   contractValue:'', startDate:'', endDate:'', startFY:'', endFY:'', remarks:'',
   isGesi:false, isResidential:false, isJV:false, jvRole:'Lead', jvPartners:'',
+  isOngoing:false,
   isSuperAdminOnly:false,
   occupations:[], locations:[], referenceFile:null, referenceFileName:'',
   country:'Nepal', descriptionOfWork:'', durationMonths:'', totalPersonMonths:'',
@@ -610,6 +611,19 @@ function ExperienceForm({exp, clients, institute, onSave, onClose, onDuplicate, 
           <div>
             <div style={{fontSize:13, fontWeight:600}}>Residential</div>
             <div style={{fontSize:11, color:'var(--text3)'}}>Trainees provided accommodation</div>
+          </div>
+        </label>
+        {/* Ongoing work belongs in the Current Portfolio — which is explicitly
+            "implementing or have implemented" — but not in the experience
+            tables, which report skill-test and employment outcomes a training
+            still running has not produced. Untick it once the work is done and
+            the assignment joins the experience tables on the next report. */}
+        <label style={{display:'flex', alignItems:'center', gap:8, cursor:'pointer', userSelect:'none'}}>
+          <input type="checkbox" checked={!!form.isOngoing} onChange={e=>set('isOngoing', e.target.checked)}
+            style={{width:16, height:16, accentColor:'var(--green,#16a34a)', cursor:'pointer'}}/>
+          <div>
+            <div style={{fontSize:13, fontWeight:600}}>Currently running</div>
+            <div style={{fontSize:11, color:'var(--text3)'}}>Portfolio only, not yet counted as experience</div>
           </div>
         </label>
         <label style={{display:'flex', alignItems:'center', gap:8, cursor:'pointer', userSelect:'none'}}>

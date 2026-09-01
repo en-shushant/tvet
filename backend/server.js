@@ -109,6 +109,11 @@ async function runMigrations() {
     `ALTER TABLE institutes ADD COLUMN IF NOT EXISTS desc_template_id TEXT`,
     `ALTER TABLE institutes ADD COLUMN IF NOT EXISTS narrative_template_id TEXT`,
     `ALTER TABLE institutes ADD COLUMN IF NOT EXISTS services_template_id TEXT`,
+    // Work still in progress. It belongs in the Current Portfolio, which is
+    // explicitly "implementing or have implemented", but not in the experience
+    // tables — those report skill-test and employment outcomes that a training
+    // still running has not produced yet.
+    `ALTER TABLE assignments ADD COLUMN IF NOT EXISTS is_ongoing BOOLEAN DEFAULT FALSE`,
     // Restricted assignments: only a superadmin may create, see or report on
     // these. Defaults FALSE so every existing row stays visible to everyone.
     `ALTER TABLE assignments ADD COLUMN IF NOT EXISTS is_superadmin_only BOOLEAN DEFAULT FALSE`,

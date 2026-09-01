@@ -34,6 +34,14 @@ function ExpCard({exp, clients, institute, showFY, setModal, deleteExperience, c
               }}>FY {exp.fy}{fyToAD(exp.fy)?` · ${fyToAD(exp.fy)}`:''}</span>
             )}
             <span style={{fontWeight:600, fontSize:14, color:'var(--text)', lineHeight:1.4}}>{exp.assignmentName}</span>
+            {exp.isOngoing && (
+              <span title="Currently running — in the portfolio, not yet counted as completed experience"
+                style={{fontSize:10, fontWeight:700, color:'var(--green,#16a34a)',
+                  background:'color-mix(in srgb, var(--green,#16a34a) 12%, transparent)',
+                  border:'1px solid color-mix(in srgb, var(--green,#16a34a) 30%, transparent)',
+                  borderRadius:100, padding:'2px 8px', whiteSpace:'nowrap', alignSelf:'center',
+                }}><span className="material-icons-round" style={{fontSize:10,verticalAlign:'middle'}}>autorenew</span> Running</span>
+            )}
             {/* Only a superadmin ever receives a restricted assignment, so this
                 needs no role check — but it must be visible, or they cannot tell
                 which rows are missing from the reports they generate. */}
