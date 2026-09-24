@@ -134,14 +134,14 @@ function LoginPage({ onLogin }) {
     <div style={{minHeight:'100vh', display:'flex', fontFamily:'var(--font)', background:'var(--bg)'}}>
       {/* Left branding panel */}
       <div className="login-panel-left" style={{
-        width:'45%', background:'var(--sidebar-bg)',
+        width:'45%', background:'var(--panel-dark)',
         display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center',
         padding:'48px', position:'relative', overflow:'hidden',
         flexShrink:0,
       }}>
         {/* decorative circles */}
-        <div style={{position:'absolute',top:-80,right:-80,width:320,height:320,borderRadius:'50%',background:'rgba(93,135,255,0.08)'}}/>
-        <div style={{position:'absolute',bottom:-60,left:-60,width:240,height:240,borderRadius:'50%',background:'rgba(93,135,255,0.06)'}}/>
+        <div style={{position:'absolute',top:-80,right:-80,width:320,height:320,borderRadius:'50%',background:'rgba(255,255,255,0.05)'}}/>
+        <div style={{position:'absolute',bottom:-60,left:-60,width:240,height:240,borderRadius:'50%',background:'rgba(255,255,255,0.04)'}}/>
         <div style={{position:'relative',zIndex:1,textAlign:'center',maxWidth:340}}>
           <div style={{display:'flex',justifyContent:'center',marginBottom:28}}>
             <img src="/logo.png" alt="TVETtrack" style={{width:'100%',maxWidth:300,filter:'brightness(0) invert(1)'}}/>

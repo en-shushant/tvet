@@ -77,3 +77,16 @@ describe('the institute card', () => {
     expect(list).not.toMatch(/boxShadow: hover \?/);
   });
 });
+
+describe('dark panels', () => {
+  it('do not borrow the sidebar colour, which is now light', () => {
+    // The login panel, the summary table header and an institute dialog header
+    // carry white text. They took --sidebar-bg, which went light with the new
+    // sidebar and left white on near-white.
+    for (const f of ['src/components/LoginPage.jsx', 'src/components/InstituteDetail.jsx', 'src/index.css']) {
+      const src = read(f).replace(/--sidebar-bg:[^;]*;/g, '');
+      expect(src, f).not.toMatch(/var\(--sidebar-bg\)/);
+    }
+    expect(read('src/index.css')).toMatch(/--panel-dark: #1f2937;/);
+  });
+});

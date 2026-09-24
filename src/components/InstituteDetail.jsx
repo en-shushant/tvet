@@ -929,7 +929,7 @@ function InstituteDetail({institute, clients, onUpdateClients, onBack, onUpdate,
           <div className="modal-overlay" onClick={()=>setModal(null)}>
             <div className="modal modal-lg" onClick={e=>e.stopPropagation()} style={{maxHeight:'90vh'}}>
               {/* Header */}
-              <div className="modal-header" style={{background:'linear-gradient(135deg,var(--sidebar-bg) 0%,#2a4a6b 100%)', borderRadius:'var(--radius-xl) var(--radius-xl) 0 0', border:'none', padding:'22px 28px'}}>
+              <div className="modal-header" style={{background:'linear-gradient(135deg,var(--panel-dark) 0%,#374151 100%)', borderRadius:'var(--radius-xl) var(--radius-xl) 0 0', border:'none', padding:'22px 28px'}}>
                 <div style={{flex:1}}>
                   <div style={{display:'flex', alignItems:'center', gap:10, marginBottom:6}}>
                     <span style={{background:'rgba(93,135,255,0.25)', color:'#a8c4ff', fontSize:11, fontWeight:700, padding:'2px 10px', borderRadius:20, letterSpacing:'0.5px', textTransform:'uppercase'}}>
