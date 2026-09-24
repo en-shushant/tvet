@@ -4,11 +4,24 @@ const { pool } = require('../db/pool');
 const { signToken, authenticate } = require('../middleware/auth');
 
 async function verifyTurnstileToken(token, remoteip) {
-  if (!token) return { ok: false, reason: 'Please complete the CAPTCHA verification.' };
+  /*
+   * No secret configured means this instance does not do CAPTCHA at all —
+   * a local build or a self-hosted copy without a Cloudflare account.
+   *
+   * The token check used to come first, which made that half-true: the server
+   * announced it was skipping verification and then refused the login anyway
+   * for want of a token it had just decided not to check. The widget only
+   * renders on the domain its site key is registered against, so on any other
+   * host there was no token to send and no way in at all.
+   *
+   * Production sets the secret, so both the token and the verification stay
+   * required there.
+   */
   if (!process.env.TURNSTILE_SECRET) {
-    console.warn('TURNSTILE_SECRET not set — skipping Turnstile verification');
+    console.warn('TURNSTILE_SECRET not set — CAPTCHA disabled on this instance');
     return { ok: true };
   }
+  if (!token) return { ok: false, reason: 'Please complete the CAPTCHA verification.' };
   try {
     const r = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
       method: 'POST',
@@ -58,13 +71,17 @@ async function plugin(fastify, opts) {
     const match = await bcrypt.compare(password, user.password);
     if (!match) return reply.code(401).send({ error: 'Invalid credentials' });
     const { password: _, ...userOut } = user;
-    const tokenPayload = { id: user.id, name: user.name, email: user.email, role: user.role };
+    // `hr` rides along so the client knows whether to show the pool in the nav.
+    // It never authorises anything: requireHRAccess re-reads the database, so
+    // revoking access takes effect at once rather than when this token expires.
+    const tokenPayload = { id: user.id, name: user.name, email: user.email, role: user.role,
+                           hr: !!user.can_access_hr };
     return { user: userOut, token: signToken(tokenPayload) };
   });
 
   fastify.post('/refresh', { preHandler: authenticate }, async (request, reply) => {
     const { rows } = await pool.query(
-      'SELECT id, name, email, role FROM users WHERE id = $1', [request.user.id]
+      'SELECT id, name, email, role, can_access_hr AS hr FROM users WHERE id = $1', [request.user.id]
     );
     if (!rows.length) return reply.code(401).send({ error: 'User not found' });
     return { token: signToken(rows[0]) };

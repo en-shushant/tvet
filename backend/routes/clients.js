@@ -20,6 +20,7 @@ const CLIENT_REFS = [
   { table: 'shortlists',     manual: 'client_name_manual' },
   { table: 'standing_lists', manual: 'client_name_manual' },
   { table: 'contracts',      manual: 'client_name_manual' },
+  { table: 'tenders',        manual: 'client_name_manual' },
   { table: 'institute_documents', manual: 'client_name' },
 ];
 

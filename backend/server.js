@@ -134,6 +134,462 @@ async function runMigrations() {
     `ALTER TABLE assignments ADD COLUMN IF NOT EXISTS staff_count INTEGER`,
     `ALTER TABLE assignments ADD COLUMN IF NOT EXISTS senior_staff_description TEXT`,
     `ALTER TABLE institutes ADD COLUMN IF NOT EXISTS key_staff JSONB DEFAULT '[]'`,
+
+    // ─── Human resource pool ─────────────────────────────────────────────────
+    // Trainers and support staff the organisation can propose against a tender.
+    // One pool for the whole system rather than one roster per institute: the
+    // same trainer is put forward by whichever firm is bidding, and duplicating
+    // the person per firm would mean their certificates diverge.
+    //
+    // Personal data — citizenship numbers, CVs, addresses — so access is a
+    // permission granted per user rather than a role tier.
+    `ALTER TABLE users ADD COLUMN IF NOT EXISTS can_access_hr BOOLEAN DEFAULT FALSE`,
+    `CREATE TABLE IF NOT EXISTS hr_people (
+      id                 SERIAL PRIMARY KEY,
+      person_type        TEXT NOT NULL DEFAULT 'Trainer',
+      full_name          TEXT NOT NULL,
+      full_name_np       TEXT,
+      father_name        TEXT,
+      grandfather_name   TEXT,
+      citizenship_no     TEXT,
+      citizenship_district TEXT,
+      date_of_birth      TEXT,
+      gender             TEXT,
+      phone              TEXT,
+      email              TEXT,
+      permanent_address  TEXT,
+      temporary_address  TEXT,
+      designation        TEXT,
+      photo              TEXT,
+      remarks            TEXT,
+      is_active          BOOLEAN DEFAULT TRUE,
+      created_by         UUID,
+      created_at         TIMESTAMPTZ DEFAULT NOW(),
+      updated_at         TIMESTAMPTZ DEFAULT NOW()
+    )`,
+    /*
+     * What a named qualification qualifies someone to train.
+     *
+     * Two shapes, because the two examples behave differently. An academic
+     * qualification is broad — a Diploma in Civil Engineering covers plumber,
+     * mason, shuttering carpenter and building painter alike — so it grants a
+     * sector, or a curated list where a sector is too wide. A trade certificate
+     * is narrow and names its own occupation: a Building Electrician Level 2
+     * certificate qualifies for Building Electrician and nothing else, so the
+     * rule grants "whatever occupation is on the certificate" rather than a
+     * fixed list, and one rule covers every trade.
+     */
+    `CREATE TABLE IF NOT EXISTS hr_qualification_rules (
+      id           SERIAL PRIMARY KEY,
+      name         TEXT NOT NULL,
+      kind         TEXT NOT NULL DEFAULT 'Academic',
+      grant_scope  TEXT NOT NULL DEFAULT 'occupations',
+      sector       TEXT,
+      max_level    TEXT,
+      notes        TEXT,
+      is_active    BOOLEAN DEFAULT TRUE,
+      created_at   TIMESTAMPTZ DEFAULT NOW()
+    )`,
+    `CREATE TABLE IF NOT EXISTS hr_rule_occupations (
+      rule_id       INTEGER REFERENCES hr_qualification_rules(id) ON DELETE CASCADE,
+      occupation_id INTEGER REFERENCES occupations(id) ON DELETE CASCADE,
+      PRIMARY KEY (rule_id, occupation_id)
+    )`,
+    // Academic degrees, trainings, TOT and skill-test certificates all live
+    // here — they differ by `kind` and by which columns they fill, not in shape.
+    `CREATE TABLE IF NOT EXISTS hr_qualifications (
+      id             SERIAL PRIMARY KEY,
+      person_id      INTEGER NOT NULL REFERENCES hr_people(id) ON DELETE CASCADE,
+      kind           TEXT NOT NULL DEFAULT 'Academic',
+      rule_id        INTEGER REFERENCES hr_qualification_rules(id) ON DELETE SET NULL,
+      title          TEXT,
+      institution    TEXT,
+      board          TEXT,
+      occupation_id  INTEGER REFERENCES occupations(id) ON DELETE SET NULL,
+      level          TEXT,
+      passed_year    TEXT,
+      duration_hours INTEGER,
+      division       TEXT,
+      certificate_no TEXT,
+      remarks        TEXT,
+      sort_order     INTEGER DEFAULT 0
+    )`,
+    `CREATE TABLE IF NOT EXISTS hr_experience (
+      id            SERIAL PRIMARY KEY,
+      person_id     INTEGER NOT NULL REFERENCES hr_people(id) ON DELETE CASCADE,
+      organisation  TEXT,
+      position      TEXT,
+      occupation_id INTEGER REFERENCES occupations(id) ON DELETE SET NULL,
+      from_date     TEXT,
+      to_date       TEXT,
+      is_current    BOOLEAN DEFAULT FALSE,
+      description   TEXT,
+      sort_order    INTEGER DEFAULT 0
+    )`,
+    /*
+     * Only the decisions someone made by hand.
+     *
+     * Eligibility is derived from the qualifications every time it is read, so
+     * correcting a rule corrects everyone who holds that qualification. Storing
+     * the derived list instead would freeze it at the moment it was computed.
+     * What cannot be re-derived is a human judgement — a trainer whose field
+     * experience earns them a trade the rules do not grant, or one who must not
+     * be put forward for a trade the rules do — so only those are recorded.
+     */
+    `CREATE TABLE IF NOT EXISTS hr_person_occupations (
+      person_id     INTEGER NOT NULL REFERENCES hr_people(id) ON DELETE CASCADE,
+      occupation_id INTEGER NOT NULL REFERENCES occupations(id) ON DELETE CASCADE,
+      mode          TEXT NOT NULL DEFAULT 'add',
+      note          TEXT,
+      PRIMARY KEY (person_id, occupation_id)
+    )`,
+    `CREATE TABLE IF NOT EXISTS hr_documents (
+      id             SERIAL PRIMARY KEY,
+      person_id      INTEGER NOT NULL REFERENCES hr_people(id) ON DELETE CASCADE,
+      qualification_id INTEGER REFERENCES hr_qualifications(id) ON DELETE SET NULL,
+      experience_id  INTEGER REFERENCES hr_experience(id) ON DELETE SET NULL,
+      doc_type       TEXT NOT NULL DEFAULT 'Other',
+      file_name      TEXT NOT NULL,
+      file_key       TEXT NOT NULL,
+      file_size      INTEGER,
+      content_type   TEXT,
+      file_data      TEXT,
+      uploaded_by    UUID,
+      uploaded_at    TIMESTAMPTZ DEFAULT NOW()
+    )`,
+    `CREATE INDEX IF NOT EXISTS idx_hr_qual_person ON hr_qualifications(person_id)`,
+    `CREATE INDEX IF NOT EXISTS idx_hr_exp_person ON hr_experience(person_id)`,
+    `CREATE INDEX IF NOT EXISTS idx_hr_docs_person ON hr_documents(person_id)`,
+
+    // Fields the Standard EOI "Form 5 — Curriculum Vitae" asks for that a
+    // person's basic record does not already hold. Kept on the person because
+    // they describe the individual; anything the *bid* decides — proposed
+    // position, the tasks they are being put forward for — lives on the tender.
+    `ALTER TABLE hr_people ADD COLUMN IF NOT EXISTS profession TEXT`,
+    `ALTER TABLE hr_people ADD COLUMN IF NOT EXISTS nationality TEXT DEFAULT 'Nepali'`,
+    `ALTER TABLE hr_people ADD COLUMN IF NOT EXISTS years_with_entity TEXT`,
+    `ALTER TABLE hr_people ADD COLUMN IF NOT EXISTS professional_memberships TEXT`,
+    `ALTER TABLE hr_people ADD COLUMN IF NOT EXISTS key_qualifications TEXT`,
+    `ALTER TABLE hr_qualifications ADD COLUMN IF NOT EXISTS specialisation TEXT`,
+    // The form prints durations as people write them — "10 Days, 2015",
+    // "2-13 June 2014" — which an hours column cannot hold.
+    `ALTER TABLE hr_qualifications ADD COLUMN IF NOT EXISTS duration_text TEXT`,
+    `ALTER TABLE hr_experience ADD COLUMN IF NOT EXISTS country TEXT`,
+    `ALTER TABLE hr_experience ADD COLUMN IF NOT EXISTS project_name TEXT`,
+    `ALTER TABLE hr_experience ADD COLUMN IF NOT EXISTS reference_text TEXT`,
+    `CREATE TABLE IF NOT EXISTS hr_languages (
+      id         SERIAL PRIMARY KEY,
+      person_id  INTEGER NOT NULL REFERENCES hr_people(id) ON DELETE CASCADE,
+      language   TEXT NOT NULL,
+      speaking   TEXT,
+      reading    TEXT,
+      writing    TEXT,
+      sort_order INTEGER DEFAULT 0
+    )`,
+    `CREATE INDEX IF NOT EXISTS idx_hr_lang_person ON hr_languages(person_id)`,
+
+    // ─── Tenders ─────────────────────────────────────────────────────────────
+    // A bid the organisation is putting together: which firm is bidding, what
+    // the notice asks for, and who is being proposed. The EOI and RFP documents
+    // are still produced by the existing report families — a tender carries the
+    // choices that drive them rather than generating a second copy of each.
+    `CREATE TABLE IF NOT EXISTS tenders (
+      id                 SERIAL PRIMARY KEY,
+      title              TEXT NOT NULL,
+      reference_no       TEXT,
+      client_id          INTEGER REFERENCES clients(id) ON DELETE SET NULL,
+      client_name_manual TEXT,
+      institute_id       INTEGER REFERENCES institutes(id) ON DELETE SET NULL,
+      fy                 TEXT,
+      stage              TEXT DEFAULT 'EOI',
+      status             TEXT DEFAULT 'Preparing',
+      published_date     TEXT,
+      submission_date    TEXT,
+      authorized_rep     TEXT,
+      notes              TEXT,
+      created_by         UUID,
+      created_at         TIMESTAMPTZ DEFAULT NOW(),
+      updated_at         TIMESTAMPTZ DEFAULT NOW()
+    )`,
+    `CREATE TABLE IF NOT EXISTS tender_occupations (
+      tender_id     INTEGER REFERENCES tenders(id) ON DELETE CASCADE,
+      occupation_id INTEGER REFERENCES occupations(id) ON DELETE CASCADE,
+      PRIMARY KEY (tender_id, occupation_id)
+    )`,
+    /*
+     * Someone proposed on a bid, and what they are proposed *as*.
+     *
+     * Proposed position, the tasks assigned and the key-qualifications write-up
+     * are per tender, not per person: the same trainer put forward on two bids
+     * is a Main Trainer on one and a Training Coordinator on the other, with a
+     * different task list each time. Leaving them blank falls back to what the
+     * person's own record says, so a straightforward bid needs no retyping.
+     */
+    `CREATE TABLE IF NOT EXISTS tender_people (
+      id                 SERIAL PRIMARY KEY,
+      tender_id          INTEGER NOT NULL REFERENCES tenders(id) ON DELETE CASCADE,
+      person_id          INTEGER NOT NULL REFERENCES hr_people(id) ON DELETE CASCADE,
+      occupation_id      INTEGER REFERENCES occupations(id) ON DELETE SET NULL,
+      proposed_position  TEXT,
+      detailed_tasks     TEXT,
+      key_qualifications TEXT,
+      sort_order         INTEGER DEFAULT 0,
+      UNIQUE (tender_id, person_id, occupation_id)
+    )`,
+    /*
+     * House wording for the CV's two prose sections, kept per firm.
+     *
+     * The pool is organisation-wide, so one trainer is put forward by more than
+     * one firm — and each firm words "Detailed Tasks Assigned" and "Key
+     * Qualifications" its own way. Same idea as the 3(B) narrative variations an
+     * institute already picks from, and the same reason: the text is the firm's
+     * voice, not a fact about the person.
+     *
+     * Varies by proposed position as well as by firm, because a Main Trainer's
+     * task list and a Store Keeper's have nothing in common. institute_id NULL
+     * is a shared variant every firm can draw on.
+     */
+    `CREATE TABLE IF NOT EXISTS cv_text_variants (
+      id           SERIAL PRIMARY KEY,
+      institute_id INTEGER REFERENCES institutes(id) ON DELETE CASCADE,
+      field        TEXT NOT NULL DEFAULT 'detailed_tasks',
+      label        TEXT NOT NULL,
+      person_type  TEXT,
+      position     TEXT,
+      body         TEXT NOT NULL DEFAULT '',
+      is_active    BOOLEAN DEFAULT TRUE,
+      created_at   TIMESTAMPTZ DEFAULT NOW()
+    )`,
+    `CREATE INDEX IF NOT EXISTS idx_cv_variants_inst ON cv_text_variants(institute_id, field)`,
+    // Which variant a proposed person is using, when they are not using bespoke
+    // text typed for this bid alone.
+    `ALTER TABLE tender_people ADD COLUMN IF NOT EXISTS tasks_variant_id INTEGER REFERENCES cv_text_variants(id) ON DELETE SET NULL`,
+    `ALTER TABLE tender_people ADD COLUMN IF NOT EXISTS quals_variant_id INTEGER REFERENCES cv_text_variants(id) ON DELETE SET NULL`,
+    /*
+     * One CV per person per role on a bid.
+     *
+     * The table's own UNIQUE (tender_id, person_id, occupation_id) does not
+     * cover it: Postgres treats NULLs as distinct, so proposing the same person
+     * twice without naming an occupation slipped through and printed their CV
+     * twice in the pack. COALESCE gives the absent occupation a value to
+     * collide on.
+     */
+    `CREATE UNIQUE INDEX IF NOT EXISTS idx_tender_people_unique
+       ON tender_people (tender_id, person_id, COALESCE(occupation_id, 0))`,
+    // Firms bid several times in a year, so the list is read one firm and one
+    // fiscal year at a time.
+    /*
+     * A bid moves through stages: EOI 1, if shortlisted, becomes RFP 1.
+     *
+     * Each stage is its own row rather than a `stage` column flipped in place,
+     * because they are separate submissions — their own reference number, their
+     * own deadline, their own status, and usually their own proposed team. One
+     * row per bid would mean the EOI's dates were overwritten the day it
+     * progressed, and the pack actually submitted could no longer be rebuilt.
+     *
+     * The link is what makes it one bid rather than two: EOI 1 → RFP 1 sits in
+     * the same chain, while EOI 2 → RFP 2 is a different one for the same firm
+     * and client.
+     */
+    `ALTER TABLE tenders ADD COLUMN IF NOT EXISTS parent_tender_id INTEGER REFERENCES tenders(id) ON DELETE SET NULL`,
+    `CREATE INDEX IF NOT EXISTS idx_tenders_parent ON tenders(parent_tender_id)`,
+
+    /*
+     * Which of our firms are bidding this notice.
+     *
+     * A tender is published before anyone decides who answers it, and more than
+     * one firm in the group may — separately, or together as a joint venture,
+     * which this notice type explicitly allows. A single institute_id column on
+     * the tender forced that decision at the moment of creation and could only
+     * ever hold one answer.
+     */
+    `CREATE TABLE IF NOT EXISTS tender_firms (
+      tender_id    INTEGER NOT NULL REFERENCES tenders(id) ON DELETE CASCADE,
+      institute_id INTEGER NOT NULL REFERENCES institutes(id) ON DELETE CASCADE,
+      role         TEXT DEFAULT 'Lead',
+      sort_order   INTEGER DEFAULT 0,
+      PRIMARY KEY (tender_id, institute_id)
+    )`,
+    `CREATE INDEX IF NOT EXISTS idx_tender_firms_inst ON tender_firms(institute_id)`,
+
+    // Proposed staff belong to a firm's submission, not to the notice: two
+    // firms bidding the same tender each put forward their own people.
+    `ALTER TABLE tender_people ADD COLUMN IF NOT EXISTS institute_id INTEGER REFERENCES institutes(id) ON DELETE CASCADE`,
+    /*
+     * Move anything recorded under the old single-firm shape across, then take
+     * the column away so there is only one answer to "who is bidding".
+     *
+     * Wrapped in DO blocks because a plain guard cannot work here: Postgres
+     * parses the whole statement before any WHERE is evaluated, so an
+     * information_schema check still fails with "column does not exist" once
+     * the column is gone. EXECUTE defers parsing until the branch is taken, so
+     * these go quiet after the one boot that needs them instead of warning on
+     * every start forever.
+     */
+    `DO $do$ BEGIN
+       IF EXISTS (SELECT 1 FROM information_schema.columns
+                   WHERE table_name='tenders' AND column_name='institute_id') THEN
+         EXECUTE 'INSERT INTO tender_firms (tender_id, institute_id, role)
+                    SELECT id, institute_id, ''Lead'' FROM tenders
+                     WHERE institute_id IS NOT NULL ON CONFLICT DO NOTHING';
+         EXECUTE 'UPDATE tender_people tp SET institute_id = t.institute_id
+                    FROM tenders t WHERE t.id = tp.tender_id AND tp.institute_id IS NULL';
+       END IF;
+     END $do$;`,
+    `ALTER TABLE tenders DROP COLUMN IF EXISTS institute_id`,
+    `DROP INDEX IF EXISTS idx_tender_people_unique`,
+    // One CV per person per role per firm.
+    `CREATE UNIQUE INDEX IF NOT EXISTS idx_tender_people_unique
+       ON tender_people (tender_id, COALESCE(institute_id, 0), person_id, COALESCE(occupation_id, 0))`,
+    /*
+     * The separate entities competing for one notice.
+     *
+     * A tender is answered by bidders, and a bidder is not the same thing as a
+     * firm: WLTTI may bid alone, UTTE may bid alone, and CHRA and IC may bid
+     * together as a joint venture — three bidders, four firms, one notice. A
+     * flat list of firms on the tender could not say which of them were bidding
+     * together, so a JV was indistinguishable from two rivals.
+     *
+     * Each bidder carries its own outcome, because they are judged separately:
+     * one can be shortlisted while the others are not, and only a shortlisted
+     * bidder goes on to submit a proposal.
+     */
+    `CREATE TABLE IF NOT EXISTS tender_bidders (
+      id         SERIAL PRIMARY KEY,
+      tender_id  INTEGER NOT NULL REFERENCES tenders(id) ON DELETE CASCADE,
+      label      TEXT,
+      status     TEXT DEFAULT 'Preparing',
+      remarks    TEXT,
+      sort_order INTEGER DEFAULT 0
+    )`,
+    `CREATE TABLE IF NOT EXISTS tender_bidder_firms (
+      bidder_id    INTEGER NOT NULL REFERENCES tender_bidders(id) ON DELETE CASCADE,
+      institute_id INTEGER NOT NULL REFERENCES institutes(id) ON DELETE CASCADE,
+      role         TEXT DEFAULT 'Lead',
+      sort_order   INTEGER DEFAULT 0,
+      PRIMARY KEY (bidder_id, institute_id)
+    )`,
+    `CREATE INDEX IF NOT EXISTS idx_tender_bidders_tender ON tender_bidders(tender_id)`,
+    `ALTER TABLE tender_people ADD COLUMN IF NOT EXISTS bidder_id INTEGER REFERENCES tender_bidders(id) ON DELETE CASCADE`,
+    // Anything recorded under the flat firm list becomes a solo bidder, so
+    // nothing entered before this is lost.
+    `INSERT INTO tender_bidders (tender_id, sort_order)
+       SELECT tender_id, sort_order FROM tender_firms
+        WHERE EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name='tender_firms')
+          AND NOT EXISTS (SELECT 1 FROM tender_bidders b WHERE b.tender_id = tender_firms.tender_id)`,
+    `INSERT INTO tender_bidder_firms (bidder_id, institute_id, role)
+       SELECT b.id, tf.institute_id, tf.role
+         FROM tender_firms tf
+         JOIN tender_bidders b ON b.tender_id = tf.tender_id
+        WHERE NOT EXISTS (SELECT 1 FROM tender_bidder_firms x WHERE x.bidder_id = b.id)
+       ON CONFLICT DO NOTHING`,
+    `UPDATE tender_people tp SET bidder_id = b.id
+       FROM tender_bidders b
+       JOIN tender_bidder_firms bf ON bf.bidder_id = b.id
+      WHERE b.tender_id = tp.tender_id AND bf.institute_id = tp.institute_id
+        AND tp.bidder_id IS NULL`,
+    `DROP TABLE IF EXISTS tender_firms`,
+    `DROP INDEX IF EXISTS idx_tender_people_unique`,
+    // One CV per person per role per bidder.
+    `CREATE UNIQUE INDEX IF NOT EXISTS idx_tender_people_unique
+       ON tender_people (tender_id, COALESCE(bidder_id, 0), person_id, COALESCE(occupation_id, 0))`,
+
+    /*
+     * The staff a notice demands, and what it demands of them.
+     *
+     * A Request for EOI does not ask for "some trainers" — it names posts and
+     * sets a bar for each: Team Leader, one, Master's degree, ten years; two
+     * Database Officers with +2, computer training and three years. Recording
+     * them as rows rather than prose is what lets the pool be checked against
+     * them and the slots filled from it.
+     *
+     * `count` carries the trainer numbers too. A row reading "Main Trainer, 4"
+     * is the same kind of statement as "Team Leader, 1", so it is the same
+     * shape; `category` only decides which list it is shown under.
+     */
+    `CREATE TABLE IF NOT EXISTS tender_positions (
+      id                   SERIAL PRIMARY KEY,
+      tender_id            INTEGER NOT NULL REFERENCES tenders(id) ON DELETE CASCADE,
+      title                TEXT NOT NULL,
+      category             TEXT NOT NULL DEFAULT 'Key expert',
+      count                INTEGER NOT NULL DEFAULT 1,
+      min_education        TEXT,
+      min_experience_years INTEGER,
+      required_training    TEXT,
+      occupation_id        INTEGER REFERENCES occupations(id) ON DELETE SET NULL,
+      notes                TEXT,
+      sort_order           INTEGER DEFAULT 0
+    )`,
+    `CREATE INDEX IF NOT EXISTS idx_tender_positions_tender ON tender_positions(tender_id)`,
+    /*
+     * What a post accepts, as alternatives.
+     *
+     * "Diploma or PCL in related subject or NSTB Level-3, OR Pre-Diploma or
+     * NSTB Level-2" is two alternatives of two options each. A single minimum
+     * degree cannot say it, and the vocational half cannot be said at all.
+     */
+    `ALTER TABLE tender_positions ADD COLUMN IF NOT EXISTS education_options JSONB DEFAULT '[]'`,
+    // Which post a proposed person is being put forward against. Nullable: a
+    // bid may propose someone the notice never named a post for.
+    `ALTER TABLE tender_people ADD COLUMN IF NOT EXISTS position_id INTEGER
+       REFERENCES tender_positions(id) ON DELETE SET NULL`,
+    /*
+     * Academic standing, which `level` cannot carry.
+     *
+     * That column already means the NSTB trade level of a skill certificate.
+     * Ranking a Master's against a Building Electrician Level 2 in one column
+     * would be comparing two unrelated ladders.
+     */
+    `ALTER TABLE hr_qualifications ADD COLUMN IF NOT EXISTS education_level TEXT`,
+    /*
+     * General or vocational — which ladder an academic qualification is on.
+     *
+     * An NSTB certificate is academic in the sense that matters (it goes under
+     * Education on the Form 5 CV, not Training) but it is not on the degree
+     * ladder a tender's minimum is stated against. So both are kind 'Academic'
+     * and this says which ladder. The old 'Skill Test' kind was the vocational
+     * stream under another name, and folds into it.
+     */
+    `ALTER TABLE hr_qualifications ADD COLUMN IF NOT EXISTS stream TEXT`,
+    `UPDATE hr_qualifications SET kind = 'Academic', stream = 'Vocational' WHERE kind = 'Skill Test'`,
+    // Rows entered before the toggle: an NSTB level and no degree level was a
+    // vocational certificate; anything else academic was general education.
+    `UPDATE hr_qualifications
+        SET stream = CASE WHEN coalesce(level, '') <> '' AND coalesce(education_level, '') = ''
+                          THEN 'Vocational' ELSE 'General' END
+      WHERE kind = 'Academic' AND stream IS NULL`,
+
+
+    /*
+     * What the notice itself states, taken from a real Request for EOI.
+     *
+     * Kept as fields rather than buried in the notes because they are the
+     * things a bid is judged and timed by — the weights say where the effort
+     * belongs, the pass mark says whether it is worth entering, and the
+     * deadline is the one date that cannot be got wrong.
+     *
+     * Dates are free text and stored as the notice prints them. e-GP notices
+     * are in AD while the firm's own fiscal year is BS, and converting between
+     * them on the way in would mean guessing which calendar a typed date meant.
+     */
+    `ALTER TABLE tenders ADD COLUMN IF NOT EXISTS project_name TEXT`,
+    `ALTER TABLE tenders ADD COLUMN IF NOT EXISTS method TEXT DEFAULT 'National'`,
+    `ALTER TABLE tenders ADD COLUMN IF NOT EXISTS office_address TEXT`,
+    `ALTER TABLE tenders ADD COLUMN IF NOT EXISTS funding_agency TEXT`,
+    `ALTER TABLE tenders ADD COLUMN IF NOT EXISTS submission_time TEXT`,
+    `ALTER TABLE tenders ADD COLUMN IF NOT EXISTS document_deadline TEXT`,
+    `ALTER TABLE tenders ADD COLUMN IF NOT EXISTS submission_portal TEXT`,
+    `ALTER TABLE tenders ADD COLUMN IF NOT EXISTS client_website TEXT`,
+    `ALTER TABLE tenders ADD COLUMN IF NOT EXISTS association_allowed BOOLEAN DEFAULT TRUE`,
+    // "EOI will be assessed based on Qualification 40%, Experience 50% and
+    // Capacity 10%", with a minimum score to pass.
+    `ALTER TABLE tenders ADD COLUMN IF NOT EXISTS weight_qualification NUMERIC`,
+    `ALTER TABLE tenders ADD COLUMN IF NOT EXISTS weight_experience NUMERIC`,
+    `ALTER TABLE tenders ADD COLUMN IF NOT EXISTS weight_capacity NUMERIC`,
+    `ALTER TABLE tenders ADD COLUMN IF NOT EXISTS minimum_score NUMERIC`,
+    `DROP INDEX IF EXISTS idx_tenders_firm_fy`,
+    `CREATE INDEX IF NOT EXISTS idx_tenders_fy ON tenders(fy)`,
+    `CREATE INDEX IF NOT EXISTS idx_tender_people_tender ON tender_people(tender_id)`,
     // Projects whose assignments include on-the-job training (EVENT, RERP/SAMRIDDHI,
     // ENSSURE). Drives the OJT step in the 3(B) services templates.
     `ALTER TABLE clients ADD COLUMN IF NOT EXISTS includes_ojt BOOLEAN DEFAULT FALSE`,
@@ -359,6 +815,8 @@ fastify.register(require('./routes/nstb'),            { prefix: '/api/nstb' });
 fastify.register(require('./routes/tax'),             { prefix: '/api/tax' });
 fastify.register(require('./routes/affiliations'),    { prefix: '/api/affiliations' });
 fastify.register(require('./routes/clients'),         { prefix: '/api/clients' });
+fastify.register(require('./routes/hr'),              { prefix: '/api/hr' });
+fastify.register(require('./routes/tenders'),         { prefix: '/api/tenders' });
 fastify.register(require('./routes/occupations'),     { prefix: '/api/occupations' });
 fastify.register(require('./routes/templates'),       { prefix: '/api/templates' });
 fastify.register(require('./routes/summary'),         { prefix: '/api/summary' });

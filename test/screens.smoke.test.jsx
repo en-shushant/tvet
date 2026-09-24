@@ -40,6 +40,7 @@ import ProjectCompliance from '../src/components/ProjectCompliance.jsx';
 import MasterData from '../src/components/MasterData.jsx';
 import QuotationsView from '../src/components/QuotationsView.jsx';
 import ReportsView from '../src/components/ReportsView.jsx';
+import TrainerPool from '../src/components/TrainerPool.jsx';
 import CommandPalette from '../src/components/CommandPalette.jsx';
 import StyleGuide from '../src/components/StyleGuide.jsx';
 import Shortlisting from '../src/components/Shortlisting.jsx';
@@ -110,6 +111,7 @@ const SCREENS = {
                           isEditor={false} isShortlistOnly={false} />,
   'Reports':            <ReportsView institutes={institutes} clients={clients} />,
   'Command palette':    <CommandPalette open onClose={noop} institutes={institutes} clients={clients} actions={[]} />,
+  'Trainer pool':       <TrainerPool isAdmin />,
   'Style guide':        <StyleGuide />,
   // Lazy-loaded behind Suspense in App.jsx, which is why it was missing here.
   'Shortlisting':       <Shortlisting institutes={institutes} clients={clients} isAdmin
@@ -151,6 +153,7 @@ describe('screens survive empty data', () => {
     'Summary':            <SummaryView institutes={[]} clients={[]} />,
     'Comparison':         <ComparisonView institutes={[]} clients={[]} />,
     'Reports':            <ReportsView institutes={[]} clients={[]} />,
+    'Trainer pool':       <TrainerPool isAdmin />,
     'Shortlisting':       <Shortlisting institutes={[]} clients={[]} isAdmin
                             isEditor={false} isShortlistOnly={false} isSuperAdmin token={token} />,
   };

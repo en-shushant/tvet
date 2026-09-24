@@ -4,6 +4,7 @@ import { api, normInst } from '../utils/api.js';
 import { exportToCSV } from '../utils/export.js';
 import { Btn } from '../md.jsx';
 import { fyInRange, fyYear, completedOnly } from '../reports/helpers.js';
+import { takeTenderContext } from '../utils/tenderContext.js';
 import { FISCAL_YEARS } from '../constants/data.js';
 import REPORT_FAMILIES from '../reports/index.js';
 import { TOOL_COLUMN_OPTIONS, TOOL_TYPE_OPTIONS, DEFAULT_TOOL_COLS } from '../reports/bolpatra.jsx';
@@ -188,6 +189,66 @@ function ReportsView({ institutes, clients }) {
    * hand outside, where they must not appear.
    */
   const [includeRestricted, setIncludeRestricted] = useState(true);
+  // Set when Tenders sent us here, so the builder can say why it is pre-filled.
+  const [fromTender, setFromTender] = useState(null);
+
+  /**
+   * Open on a tender's choices, when Tenders sent us here.
+   *
+   * The two screens are separate lazy chunks and one replaces the other, so
+   * there is no shared render to pass props through — Tenders leaves the
+   * context in sessionStorage and it is consumed exactly once here. Cleared
+   * immediately so a later visit to Reports is not silently re-filtered by a
+   * bid someone looked at last week.
+   */
+  useEffect(() => {
+    // Nothing is read until the firm list is here. takeTenderContext consumes
+    // the handoff, so running early would swallow it against an empty list and
+    // leave the builder blank with nothing left to retry from.
+    if (!institutes?.length) return;
+    const ctx = takeTenderContext();
+    if (!ctx?.instituteId) return;
+    // The format the tender screen was told to use. Older handoffs, and any
+    // that name a format this build no longer has, fall back to the one the
+    // stage usually asks for rather than landing on an empty builder.
+    const known = REPORT_FAMILIES.find(f => f.id === ctx.familyId);
+    const targetFamily = known ? known.id : (ctx.kind === 'RFP' ? 'bagmati' : 'bolpatra');
+    const fam = REPORT_FAMILIES.find(f => f.id === targetFamily);
+    setFamilyId(targetFamily);
+    // Every family opens on its whole document; not all of them call it 'full'.
+    setReportId(fam?.reports?.some(r => r.id === 'full') ? 'full' : fam?.reports?.[0]?.id);
+    // Which state holds the firm depends on the family. A Bolpatra EOI can be
+    // submitted by a joint venture, so its firm picker is a multi-select backed
+    // by fwInstIds; Bagmati takes one firm in selectedInst. Setting only the
+    // latter left the EOI builder looking pre-filled while no firm was chosen.
+    // Take the id from the list rather than from the tender, so it is the same
+    // value and the same type the firm picker compares against. The multi-firm
+    // list tests `fwInstIds.includes(i.id)` — a stringified id counts towards
+    // the tab badge and still leaves every checkbox unticked.
+    const resolve = (v) => {
+      const m = institutes.find(i => String(i.id) === String(v));
+      return m ? m.id : v;
+    };
+    const lead = resolve(ctx.instituteId);
+    // A joint venture bids as one entity, so its EOI is built from every member
+    // firm with the lead first — which is what the multi-firm families already
+    // do. A single-firm family can only take the lead.
+    const all = (ctx.instituteIds?.length ? ctx.instituteIds : [ctx.instituteId]).map(resolve);
+    if (REPORT_FAMILIES.find(f => f.id === targetFamily)?.multiInstitute) {
+      setFwInstIds(all);
+      setFwLeadId(lead);
+    } else {
+      setSelectedInst(lead);
+    }
+    if (ctx.fy) { setFromFY(ctx.fy); setToFY(ctx.fy); }
+    if (ctx.occupationNames?.length) {
+      setSelectedOccs(ctx.occupationNames);
+      setEoiSpecificOccs(ctx.occupationNames);
+    }
+    setFromTender(ctx);
+    // Waits for the firm list: taking the id from it is what keeps the picker's
+    // comparison working, and on a cold load it arrives after the first render.
+  }, [institutes]);
   const [occSearch, setOccSearch] = useState('');
   const [toolsOccSearch2, setToolsOccSearch2] = useState(''); // search for the separate 4(B) tools occupation picker (bolpatra 'full')
   const [firmSearch, setFirmSearch] = useState(''); // single-firm search list (UI only, not persisted)
@@ -799,8 +860,8 @@ function ReportsView({ institutes, clients }) {
 
       {/* ── Header ── */}
       <div>
-        <div style={{fontSize:23, fontWeight:700, color:'var(--text)', letterSpacing:-.3}}>Reports</div>
-        <div style={{fontSize:13, color:'var(--text3)', marginTop:4}}>
+        <h1 className="page-title">Reports</h1>
+        <div className="shell-head-sub">
           Create, configure and generate professional reports from your procurement and training data.
         </div>
       </div>
@@ -808,6 +869,26 @@ function ReportsView({ institutes, clients }) {
       {/* ── Report configuration ── */}
       <div className="card" style={{padding:'18px 20px'}}>
         <div style={{fontWeight:600, fontSize:14, marginBottom:14, color:'var(--text)'}}>Report Configuration</div>
+        {/* Say why the builder arrived pre-filled, or the selections look like
+            someone else's leftovers. Dismissible, since the choices stay. */}
+        {fromTender && (
+          <div style={{display:'flex', alignItems:'center', gap:10, marginBottom:14, padding:'9px 13px',
+            background:'var(--primary-light,#eff6ff)', borderRadius:'var(--radius-md,12px)'}}>
+            <span className="material-icons-round" style={{fontSize:17, color:'var(--primary)'}}>gavel</span>
+            <span style={{flex:1, fontSize:12.5, color:'var(--text2)'}}>
+              Set up for the <strong>{fromTender.kind}</strong> on{' '}
+              <strong>{fromTender.title}</strong>
+              {fromTender.bidderName ? <> for <strong>{fromTender.bidderName}</strong></> : null}
+              {' '}— firm, fiscal year and the occupations that tender asks for are already selected.
+              Change anything you like.
+            </span>
+            <button type="button" onClick={() => setFromTender(null)} aria-label="Dismiss"
+              style={{background:'none', border:'none', cursor:'pointer', color:'var(--text3)',
+                display:'flex', padding:0}}>
+              <span className="material-icons-round" style={{fontSize:17}}>close</span>
+            </button>
+          </div>
+        )}
         <div style={{display:'flex', gap:16, flexWrap:'wrap'}}>
           <div>
             <div style={{fontSize:11, fontWeight:600, color:'var(--text3)', marginBottom:5}}>REPORT FAMILY</div>

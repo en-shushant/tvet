@@ -40,16 +40,13 @@ function InstLogo({ inst, size = 42 }) {
 /* ── Card ────────────────────────────────────────────────────────────────── */
 
 function InstituteCard({ inst, onSelect, showStats }) {
-  const [hover, setHover] = useState(false);
   return (
+    // Hover lives in .hover-lift. It was inline, and its hover shadow was a
+    // second boxShadow key that overwrote the card's frame on every render.
     <div onClick={() => onSelect(inst)}
-      onMouseEnter={() => setHover(true)} onMouseLeave={() => setHover(false)}
-      role="button" tabIndex={0}
+      role="button" tabIndex={0} className="card hover-lift"
       onKeyDown={e => { if (e.key === 'Enter') onSelect(inst); }}
-      style={{background:'var(--canvas-card)', borderRadius:'var(--radius-card)', padding:'18px 20px',
-        cursor:'pointer', transition:'transform .16s, box-shadow .16s',
-        transform: hover ? 'translateY(-2px)' : 'none',
-        boxShadow: hover ? 'var(--shadow-hover)' : 'var(--shadow-flat)'}}>
+      style={{padding:'18px 20px'}}>
 
       <div style={{display:'flex', alignItems:'flex-start', gap:12, marginBottom:14}}>
         <InstLogo inst={inst}/>
@@ -100,7 +97,7 @@ function InstituteTable({ rows, onSelect, showStats, selected, onToggle, onToggl
   const TD = { padding:'11px 12px', fontSize:'var(--fs-body)', color:'var(--text2)',
     borderTop:'1px solid var(--border)' };
   return (
-    <div style={{background:'var(--canvas-card)', borderRadius:'var(--radius-card)', overflow:'hidden'}}>
+    <div style={{background:'var(--surface)', border:'.5px solid var(--border)', borderRadius:'var(--radius-lg)', boxShadow:'var(--card-frame)', margin:5, overflow:'hidden'}}>
       <div style={{overflowX:'auto'}}>
         <table style={{width:'100%', borderCollapse:'collapse', minWidth:720}}>
           <thead>
@@ -306,7 +303,7 @@ function InstituteList({ institutes, onSelect, onAdd, initialSearch = '', isShor
       </div>
 
       {filtered.length === 0 ? (
-        <div style={{background:'var(--canvas-card)', borderRadius:'var(--radius-card)'}}>
+        <div style={{background:'var(--surface)', border:'.5px solid var(--border)', borderRadius:'var(--radius-lg)', boxShadow:'var(--card-frame)', margin:5}}>
           <EmptyState icon="account_balance"
             title={search || statusFilter !== 'All' ? 'No institutes match' : 'No institutes yet'}
             body={search || statusFilter !== 'All'

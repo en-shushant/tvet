@@ -20,16 +20,15 @@ import { useState } from 'react';
  */
 export function PageHeader({ title, emphasis, sub, breadcrumb, actions }) {
   return (
-    <header style={{display:'flex', alignItems:'flex-start', gap:16, flexWrap:'wrap', marginBottom:22}}>
+    <header className="shell-head">
       <div style={{flex:1, minWidth:0}}>
         {breadcrumb && (
           <nav style={{fontSize:'var(--fs-meta)', color:'var(--text3)', marginBottom:6}}>{breadcrumb}</nav>
         )}
-        {/* Title and emphasis are one family at two weights — see .page-title. */}
         <h1 className="page-title">
           {title}{emphasis && <strong> {emphasis}</strong>}
         </h1>
-        {sub && <p style={{fontSize:'var(--fs-body)', color:'var(--text3)', margin:'6px 0 0'}}>{sub}</p>}
+        {sub && <div className="shell-head-sub">{sub}</div>}
       </div>
       {actions && <div style={{display:'flex', gap:8, alignItems:'center', flexShrink:0}}>{actions}</div>}
     </header>
@@ -39,63 +38,50 @@ export function PageHeader({ title, emphasis, sub, breadcrumb, actions }) {
 /* ── KPI card ────────────────────────────────────────────────────────────── */
 
 /**
- * Large metric on a pastel surface.
- * `value` is rendered oversized; `unit` sits small and muted beside it, the way
- * "780 / 1 000" reads in the reference.
+ * A metric in the reference's frame: the label and its icon sit in the pale
+ * frame, the number on the white panel below it. `tone` is accepted for the
+ * screens that still pass one, but every tile now shares the neutral frame —
+ * one card language across the app rather than a colour per tile.
  */
-export function KpiCard({ label, value, unit, icon, tone = 'periwinkle', footer, onClick }) {
-  const [hover, setHover] = useState(false);
+export function KpiCard({ label, value, unit, icon, tone, footer, onClick }) {
   const interactive = typeof onClick === 'function';
   return (
     <div
+      className={`frame${interactive ? ' is-link' : ''}`}
       onClick={onClick}
-      onMouseEnter={() => setHover(true)}
-      onMouseLeave={() => setHover(false)}
       role={interactive ? 'button' : undefined}
       tabIndex={interactive ? 0 : undefined}
-      onKeyDown={interactive ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onClick(); } } : undefined}
-      style={{
-        background:`var(--pastel-${tone})`,
-        borderRadius:'var(--radius-card)',
-        padding:'18px 20px 20px',
-        cursor: interactive ? 'pointer' : 'default',
-        transition:'transform .16s, box-shadow .16s',
-        transform: interactive && hover ? 'translateY(-2px)' : 'none',
-        boxShadow: interactive && hover ? 'var(--shadow-hover)' : 'none',
-        minWidth:0,
-      }}>
-      <div style={{display:'flex', alignItems:'center', gap:10, marginBottom:14}}>
-        {icon && (
-          <span style={{width:30, height:30, borderRadius:'var(--radius-pill)', flexShrink:0,
-            background:'var(--canvas-card)', display:'flex', alignItems:'center', justifyContent:'center'}}>
-            <span className="material-icons-round" style={{fontSize:16, color:'var(--on-pastel)'}}>{icon}</span>
-          </span>
-        )}
-        <span style={{fontSize:'var(--fs-card)', fontWeight:700, color:'var(--on-pastel)',
-          overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap'}}>{label}</span>
+      onKeyDown={interactive ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onClick(); } } : undefined}>
+      <div className="frame-head">
+        <span style={{overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap'}}>{label}</span>
+        {icon && <span className="frame-head-action"><span className="material-icons-round" aria-hidden="true">{icon}</span></span>}
       </div>
-      <div style={{display:'flex', alignItems:'baseline', gap:8}}>
-        <span style={{fontSize:'var(--fs-kpi)', fontWeight:800, lineHeight:1,
-          letterSpacing:'-0.03em', color:'var(--on-pastel)'}}>{value}</span>
-        {unit && <span style={{fontSize:'var(--fs-body)', color:'var(--on-pastel-muted)'}}>{unit}</span>}
+      <div className="frame-body">
+        <div style={{display:'flex', alignItems:'baseline', flexWrap:'wrap'}}>
+          <span className="kpi-value">{value}</span>
+          {unit && <span className="kpi-unit">{unit}</span>}
+        </div>
+        {footer && <div className="kpi-foot">{footer}</div>}
       </div>
-      {footer && (
-        <div style={{marginTop:12, fontSize:'var(--fs-meta)', color:'var(--on-pastel-muted)'}}>{footer}</div>
-      )}
     </div>
   );
 }
 
 /* ── Emphasis card ───────────────────────────────────────────────────────── */
 
-/** The single high-contrast card per screen — carries the primary action. */
+/**
+ * The one card per screen that carries the primary action. In the reference
+ * the strong colour is saved for the active control, so this is a framed card
+ * with a near-black accent line rather than a solid black slab.
+ */
 export function InkCard({ title, sub, children, style }) {
   return (
-    <div style={{background:'var(--ink)', color:'var(--on-ink)', borderRadius:'var(--radius-card)',
-      padding:'20px 22px', display:'flex', flexDirection:'column', ...style}}>
-      {title && <div style={{fontSize:'var(--fs-title)', fontWeight:700, lineHeight:1.25}}>{title}</div>}
-      {sub && <div style={{fontSize:'var(--fs-meta)', color:'var(--on-ink-muted)', marginTop:6}}>{sub}</div>}
-      {children && <div style={{marginTop:'auto', paddingTop:16}}>{children}</div>}
+    <div className="frame" style={style}>
+      <div className="frame-body" style={{display:'flex', flexDirection:'column'}}>
+        {title && <div style={{fontSize:'var(--fs-card)', fontWeight:600, lineHeight:1.35, color:'var(--text)'}}>{title}</div>}
+        {sub && <div style={{fontSize:'var(--fs-meta)', color:'var(--text3)', marginTop:4}}>{sub}</div>}
+        {children && <div style={{marginTop:'auto', paddingTop:14}}>{children}</div>}
+      </div>
     </div>
   );
 }
@@ -103,20 +89,20 @@ export function InkCard({ title, sub, children, style }) {
 /* ── Status badge ────────────────────────────────────────────────────────── */
 
 const STATUS_TONES = {
-  success: { bg:'var(--success-light)', fg:'var(--success-dark, #0b7a68)', dot:'var(--success)' },
-  warning: { bg:'var(--warning-light)', fg:'#8A5A00',                      dot:'var(--warning)' },
-  error:   { bg:'var(--error-light)',   fg:'#B3261E',                      dot:'var(--error)' },
-  info:    { bg:'var(--primary-light)', fg:'var(--primary-dark)',          dot:'var(--primary)' },
-  neutral: { bg:'var(--bg2)',           fg:'var(--text2)',                 dot:'var(--text3)' },
+  success: { bg:'var(--success-light)', fg:'var(--success-dark)', dot:'var(--success)', line:'color-mix(in srgb, var(--success) 22%, transparent)' },
+  warning: { bg:'var(--warning-light)', fg:'#92400e',            dot:'var(--warning)', line:'color-mix(in srgb, var(--warning) 25%, transparent)' },
+  error:   { bg:'var(--error-light)',   fg:'var(--red)',          dot:'var(--error)',   line:'color-mix(in srgb, var(--error) 20%, transparent)' },
+  info:    { bg:'var(--surface)',       fg:'var(--text)',         dot:'var(--text2)',   line:'var(--border)' },
+  neutral: { bg:'var(--surface)',       fg:'var(--text2)',        dot:'var(--text3)',   line:'var(--border)' },
 };
 
-/** Small pill with a leading dot. `tone` is semantic, not a colour name. */
+/** Small squared tag with a leading dot. `tone` is semantic, not a colour name. */
 export function StatusBadge({ tone = 'neutral', children, title }) {
   const t = STATUS_TONES[tone] || STATUS_TONES.neutral;
   return (
-    <span title={title} style={{display:'inline-flex', alignItems:'center', gap:6,
-      background:t.bg, color:t.fg, borderRadius:'var(--radius-pill)',
-      padding:'3px 10px', fontSize:'var(--fs-meta)', fontWeight:600, whiteSpace:'nowrap'}}>
+    <span title={title} style={{display:'inline-flex', alignItems:'center', gap:6, height:22,
+      background:t.bg, color:t.fg, border:`.5px solid ${t.line}`, borderRadius:6,
+      padding:'0 8px', fontSize:'var(--fs-meta)', fontWeight:500, whiteSpace:'nowrap'}}>
       <span aria-hidden="true" style={{width:6, height:6, borderRadius:'50%', background:t.dot, flexShrink:0}}/>
       {children}
     </span>
@@ -126,29 +112,21 @@ export function StatusBadge({ tone = 'neutral', children, title }) {
 /* ── Pill tabs ───────────────────────────────────────────────────────────── */
 
 /**
- * Rounded tab strip. The active tab is solid ink; the rest are a pale fill with
- * no border. `tabs` is [{ id, label, badge }].
+ * The reference's segmented control: equal segments in a hairline tray, the
+ * current one filled near-black. `tabs` is [{ id, label, badge }].
  */
 export function PillTabs({ tabs, value, onChange, ariaLabel = 'Sections' }) {
   return (
-    <div role="tablist" aria-label={ariaLabel}
-      style={{display:'flex', gap:8, flexWrap:'wrap', marginBottom:18}}>
+    <div role="tablist" aria-label={ariaLabel} className="seg"
+      style={{display:'inline-flex', marginBottom:16, maxWidth:'100%', flexWrap:'wrap'}}>
       {tabs.map(t => {
         const active = t.id === value;
         return (
-          <button key={t.id} role="tab" aria-selected={active} onClick={() => onChange(t.id)}
-            style={{
-              display:'inline-flex', alignItems:'center', gap:7,
-              background: active ? 'var(--ink)' : 'var(--bg2)',
-              color: active ? 'var(--on-ink)' : 'var(--text2)',
-              border:'none', borderRadius:'var(--radius-pill)',
-              padding:'9px 18px', fontSize:'var(--fs-body)',
-              fontWeight: active ? 700 : 500,
-              fontFamily:'var(--font)', cursor:'pointer', transition:'background .16s, color .16s',
-            }}>
+          <button key={t.id} type="button" role="tab" aria-selected={active} onClick={() => onChange(t.id)}
+            style={{flex:'0 0 auto', padding:'0 14px', display:'inline-flex', alignItems:'center', gap:6}}>
             {t.label}
             {t.badge != null && (
-              <span style={{fontSize:11, fontWeight:700, opacity:.65}}>{t.badge}</span>
+              <span style={{fontSize:11, fontWeight:500, opacity: active ? .7 : .6}}>{t.badge}</span>
             )}
           </button>
         );
@@ -187,22 +165,22 @@ export function SegmentedProgress({ filled, total, tone = 'var(--primary)', labe
 
 export function EmptyState({ icon = 'inbox', title, body, action }) {
   return (
-    <div style={{textAlign:'center', padding:'56px 24px'}}>
-      <span className="material-icons-round" aria-hidden="true"
-        style={{fontSize:42, color:'var(--text3)', opacity:.4}}>{icon}</span>
-      <div style={{fontSize:'var(--fs-card)', fontWeight:700, color:'var(--text)', marginTop:12}}>{title}</div>
+    <div style={{textAlign:'center', padding:'48px 24px'}}>
+      <span aria-hidden="true" style={{display:'inline-flex', width:40, height:40, borderRadius:10,
+        alignItems:'center', justifyContent:'center', border:'.5px solid var(--border)',
+        background:'var(--surface)', boxShadow:'0 4px 7px rgba(0,0,0,.04)'}}>
+        <span className="material-icons-round" style={{fontSize:20, color:'var(--text3)'}}>{icon}</span>
+      </span>
+      <div style={{fontSize:'var(--fs-card)', fontWeight:500, color:'var(--text)', marginTop:12}}>{title}</div>
       {body && (
-        <div style={{fontSize:'var(--fs-body)', color:'var(--text3)', marginTop:6,
-          maxWidth:380, marginLeft:'auto', marginRight:'auto', lineHeight:1.55}}>{body}</div>
+        <div style={{fontSize:'var(--fs-body)', color:'var(--text3)', marginTop:4,
+          maxWidth:400, marginLeft:'auto', marginRight:'auto', lineHeight:1.55}}>{body}</div>
       )}
-      {action && <div style={{marginTop:18}}>{action}</div>}
+      {action && <div style={{marginTop:16}}>{action}</div>}
     </div>
   );
 }
 
-/* ── Skeletons ───────────────────────────────────────────────────────────── */
-
-/** Placeholder block. Prefer these over a full-screen spinner. */
 export function Skeleton({ w = '100%', h = 14, r = 8, style }) {
   return <div className="skeleton" style={{width:w, height:h, borderRadius:r, ...style}}/>;
 }

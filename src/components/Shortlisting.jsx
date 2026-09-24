@@ -751,8 +751,8 @@ export default function Shortlisting({ institutes, clients, isAdmin, isEditor, i
       {/* ── Header ── */}
       <div style={{display:'flex', alignItems:'flex-start', justifyContent:'space-between', gap:16, flexWrap:'wrap'}}>
         <div>
-          <div style={{fontSize:22, fontWeight:600, color:'var(--text)', letterSpacing:-0.3}}>Shortlisting</div>
-          <div style={{fontSize:13, color:'var(--text3)', marginTop:3}}>
+          <h1 className="page-title">Shortlisting</h1>
+          <div className="shell-head-sub">
             Track firms shortlisted for standing lists across organizations
           </div>
         </div>

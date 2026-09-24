@@ -24,35 +24,40 @@ import {
 
 /* ── Trainees by fiscal year ─────────────────────────────────────────────── */
 
-/** Rounded-top bars, no gridlines, value shown on hover. */
+/**
+ * Soft grey bars with one in the dark gradient — the latest year, or whichever
+ * is hovered — and its value in a small flag above it, as in the reference.
+ */
 function FyChart({ rows }) {
   const [hover, setHover] = useState(null);
   if (!rows?.length) return null;
   const max = Math.max(...rows.map(r => r.trainees), 1);
+  const focus = hover ?? rows.length - 1;
 
   return (
-    <div style={{display:'flex', alignItems:'flex-end', gap:10, height:180, paddingTop:26}}>
+    <div style={{display:'flex', alignItems:'flex-end', gap:10, height:200, paddingTop:30}}>
       {rows.map((r, i) => {
         const pct = Math.max((r.trainees / max) * 100, 2);
-        const on = hover === i;
+        const on = focus === i;
         return (
           <div key={r.fy} style={{flex:1, minWidth:0, display:'flex', flexDirection:'column',
             alignItems:'center', gap:8, height:'100%'}}
             onMouseEnter={() => setHover(i)} onMouseLeave={() => setHover(null)}>
             <div style={{flex:1, width:'100%', display:'flex', alignItems:'flex-end', position:'relative'}}>
               {on && (
-                <div style={{position:'absolute', top:-26, left:'50%', transform:'translateX(-50%)',
-                  background:'var(--ink)', color:'var(--on-ink)', borderRadius:'var(--radius-pill)',
-                  padding:'3px 10px', fontSize:11, fontWeight:600, whiteSpace:'nowrap', zIndex:1}}>
-                  {fmt(r.trainees)}
+                <div style={{position:'absolute', bottom:`calc(${pct}% + 8px)`, left:'50%', transform:'translateX(-50%)',
+                  background:'#1f2937', color:'#fff', borderRadius:6,
+                  padding:'2px 8px', fontSize:11, fontWeight:500, whiteSpace:'nowrap', zIndex:1}}>
+                  {r.fy} : {fmt(r.trainees)}
                 </div>
               )}
               <div title={`FY ${r.fy}: ${fmt(r.trainees)} trainees, ${r.assignments} assignments`}
-                style={{width:'100%', height:`${pct}%`, borderRadius:'10px 10px 4px 4px',
-                  background: on ? 'var(--primary)' : 'var(--pastel-periwinkle)',
+                style={{width:'100%', height:`${pct}%`, borderRadius:'8px 8px 4px 4px',
+                  background: on ? 'var(--ink-gradient)' : 'linear-gradient(180deg, #e6e6e6 0%, rgba(230,230,230,.6) 100%)',
+                  boxShadow: on ? '0 2px 10px rgba(31,41,55,.08)' : 'none',
                   transition:'background .16s'}}/>
             </div>
-            <div style={{fontSize:11, color:'var(--text3)', whiteSpace:'nowrap',
+            <div style={{fontSize:12, color: on ? 'var(--text)' : 'var(--text3)', whiteSpace:'nowrap',
               overflow:'hidden', textOverflow:'ellipsis', maxWidth:'100%'}}>{r.fy}</div>
           </div>
         );
@@ -66,12 +71,12 @@ function FyChart({ rows }) {
 function AttentionRow({ count, label, tone, onClick, active }) {
   if (!count) return null;
   return (
-    <button onClick={onClick}
+    <button onClick={onClick} className="row-hover"
       style={{display:'flex', alignItems:'center', gap:12, width:'100%', textAlign:'left',
-        padding:'10px 12px', borderRadius:12, cursor:'pointer', fontFamily:'var(--font)',
-        border:'1px solid ' + (active ? 'var(--primary)' : 'transparent'),
+        padding:'9px 10px', borderRadius:8, cursor:'pointer', fontFamily:'var(--font)',
+        border:'.5px solid ' + (active ? 'var(--border2)' : 'transparent'),
         background: active ? 'var(--bg2)' : 'transparent', transition:'background .14s'}}>
-      <span style={{fontSize:20, fontWeight:800, minWidth:34, color:'var(--text)'}}>{count}</span>
+      <span style={{fontSize:20, fontWeight:500, minWidth:30, color:'var(--text)', fontVariantNumeric:'tabular-nums'}}>{count}</span>
       <span style={{flex:1, fontSize:13, color:'var(--text2)'}}>{label}</span>
       <StatusBadge tone={tone}>Review</StatusBadge>
     </button>
@@ -86,7 +91,7 @@ function AlertRow({ type, msg, onClick }) {
   return (
     <button onClick={onClick}
       style={{display:'flex', alignItems:'center', gap:10, width:'100%', textAlign:'left',
-        padding:'9px 12px', border:'none', borderRadius:10, cursor:'pointer',
+        padding:'8px 10px', border:'none', borderRadius:8, cursor:'pointer',
         background:'transparent', fontFamily:'var(--font)', fontSize:13, color:'var(--text2)'}}
       onMouseEnter={e => e.currentTarget.style.background = 'var(--bg2)'}
       onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
@@ -165,13 +170,13 @@ function Dashboard({ institutes, isEditor, onNavigate }) {
 
       {/* ── Registry figures ── */}
       <div style={{display:'grid', gap:14, marginBottom:14,
-        gridTemplateColumns:'repeat(auto-fit, minmax(210px, 1fr))'}}>
+        gridTemplateColumns:'repeat(auto-fit, minmax(170px, 1fr))'}}>
         <KpiCard label="Institutes" value={alertable.length} icon="account_balance" tone="periwinkle"
           footer={`${s.active} active · ${s.pending} pending · ${s.expired} expired`}
           onClick={() => onNavigate('institutes')}/>
         <KpiCard label="Trainees" value={fmt(s.trainees)} icon="groups" tone="mint"
           footer="Across all institutes and fiscal years"/>
-        <KpiCard label="Skill test appeared" value={fmt(s.stAppeared)} icon="school" tone="blue"
+        <KpiCard label="Skill test appeared" value={fmt(s.stAppeared)} icon="workspace_premium" tone="blue"
           footer="Total candidates appeared"/>
         {/* Only rendered once real totals arrive — never a placeholder zero. */}
         {totals ? (
@@ -183,12 +188,12 @@ function Dashboard({ institutes, isEditor, onNavigate }) {
           </>
         ) : totalsFailed ? null : (
           <>
-            <div style={{background:'var(--pastel-lilac)', borderRadius:'var(--radius-card)', padding:'18px 20px'}}>
-              <Skeleton w="45%" h={12}/><Skeleton w="60%" h={30} style={{marginTop:16}}/>
-            </div>
-            <div style={{background:'var(--pastel-cream)', borderRadius:'var(--radius-card)', padding:'18px 20px'}}>
-              <Skeleton w="45%" h={12}/><Skeleton w="60%" h={30} style={{marginTop:16}}/>
-            </div>
+            {[0, 1].map(k => (
+              <div key={k} className="frame">
+                <div className="frame-head"><Skeleton w="45%" h={12}/></div>
+                <div className="frame-body"><Skeleton w="60%" h={26}/></div>
+              </div>
+            ))}
           </>
         )}
       </div>
@@ -198,11 +203,13 @@ function Dashboard({ institutes, isEditor, onNavigate }) {
         gridTemplateColumns:'minmax(280px, 1fr) minmax(320px, 1.6fr)'}}>
 
         {attentionTotal > 0 ? (
-          <div style={{background:'var(--canvas-card)', borderRadius:'var(--radius-card)', padding:'18px 16px'}}>
-            <div style={{display:'flex', alignItems:'baseline', gap:8, padding:'0 6px', marginBottom:10}}>
-              <span style={{fontSize:'var(--fs-card)', fontWeight:700}}>Needs attention</span>
-              <span style={{fontSize:'var(--fs-meta)', color:'var(--text3)'}}>{attentionTotal} items</span>
+          <section className="frame">
+            <div className="frame-head">
+              <span className="material-icons-round" aria-hidden="true">notification_important</span>
+              Needs attention
+              <span className="frame-head-action" style={{fontSize:12, color:'var(--text3)', fontWeight:400}}>{attentionTotal} items</span>
             </div>
+            <div className="frame-body" style={{padding:6}}>
             <AttentionRow count={s.pending} label="Renewal due soon" tone="warning"
               onClick={() => focusAlerts('renewal')} active={alertFilter === 'renewal'}/>
             <AttentionRow count={s.missingTax} label={`Tax clearance missing for FY ${COMPLIANCE_FY}`} tone="error"
@@ -211,42 +218,52 @@ function Dashboard({ institutes, isEditor, onNavigate }) {
               onClick={() => focusAlerts('affiliation')} active={alertFilter === 'affiliation'}/>
             <AttentionRow count={s.missingNSTB} label={`NSTB data missing for FY ${COMPLIANCE_FY}`} tone="info"
               onClick={() => focusAlerts('nstb')} active={alertFilter === 'nstb'}/>
-          </div>
+            </div>
+          </section>
         ) : (
           <InkCard title="Everything is current" sub={`No renewals due and no records missing for FY ${COMPLIANCE_FY}.`}>
             <Btn className="btn btn-sm on-ink" onClick={() => onNavigate('institutes')}>Browse institutes</Btn>
           </InkCard>
         )}
 
-        <div style={{background:'var(--canvas-card)', borderRadius:'var(--radius-card)', padding:'18px 20px'}}>
-          <div style={{display:'flex', alignItems:'baseline', gap:8, marginBottom:2}}>
-            <span style={{fontSize:'var(--fs-card)', fontWeight:700}}>Trainees by fiscal year</span>
+        <section className="frame">
+          <div className="frame-head">
+            <span className="material-icons-round" aria-hidden="true">bar_chart</span>
+            Trainees by fiscal year
             {activity && (
-              <span style={{fontSize:'var(--fs-meta)', color:'var(--text3)', marginLeft:'auto'}}>
+              <span className="frame-head-action" style={{fontSize:12, color:'var(--text3)', fontWeight:400}}>
                 {activity.assignments} assignments added in 30 days
               </span>
             )}
           </div>
+          <div className="frame-body">
           {totals?.byFy?.length ? <FyChart rows={totals.byFy}/>
-            : totalsFailed ? (
+            : totals ? (
+              // Loaded, and there is simply nothing to chart yet — not a spinner forever.
+              <EmptyState icon="bar_chart" title="No trainees recorded yet"
+                body="Bars appear here per fiscal year once assignments with trainee numbers are added."/>
+            ) : totalsFailed ? (
               <div style={{fontSize:13, color:'var(--text3)', padding:'32px 0', textAlign:'center'}}>
                 Unable to load fiscal-year totals.
               </div>
-            ) : <Skeleton w="100%" h={168} r={12} style={{marginTop:20}}/>}
-        </div>
+            ) : <Skeleton w="100%" h={168} r={8} style={{marginTop:12}}/>}
+          </div>
+        </section>
       </div>
 
       {/* ── Alerts ── */}
-      <div ref={alertsRef} style={{background:'var(--canvas-card)', borderRadius:'var(--radius-card)', padding:'18px 16px'}}>
-        <div style={{display:'flex', alignItems:'center', gap:10, padding:'0 6px', marginBottom:8, flexWrap:'wrap'}}>
-          <span style={{fontSize:'var(--fs-card)', fontWeight:700}}>
-            {alertFilter ? 'Filtered items' : 'All items needing attention'}
-          </span>
-          <span style={{fontSize:'var(--fs-meta)', color:'var(--text3)'}}>{alerts.length}</span>
+      <section ref={alertsRef} className="frame">
+        <div className="frame-head">
+          <span className="material-icons-round" aria-hidden="true">list_alt</span>
+          {alertFilter ? 'Filtered items' : 'All items needing attention'}
+          <span style={{fontSize:12, color:'var(--text3)', fontWeight:400}}>{alerts.length}</span>
           {alertFilter && (
-            <Btn className="btn btn-ghost btn-sm" onClick={() => setAlertFilter(null)}>Clear filter</Btn>
+            <span className="frame-head-action">
+              <Btn className="btn btn-ghost btn-sm" onClick={() => setAlertFilter(null)}>Clear filter</Btn>
+            </span>
           )}
         </div>
+        <div className="frame-body" style={{padding:6}}>
         {alerts.length === 0 ? (
           <EmptyState icon="task_alt" title="Nothing outstanding"
             body={`Every institute has a current renewal, tax clearance and NSTB record for FY ${COMPLIANCE_FY}.`}/>
@@ -265,7 +282,8 @@ function Dashboard({ institutes, isEditor, onNavigate }) {
             )}
           </>
         )}
-      </div>
+        </div>
+      </section>
     </div>
   );
 }

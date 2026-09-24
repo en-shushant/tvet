@@ -399,12 +399,14 @@ function InstituteDetail({institute, clients, onUpdateClients, onBack, onUpdate,
             ['ST appeared', fmt(kpis.stAppeared),  'lilac'],
             ['Districts',   kpis.districts,        'pink'],
             ['Programs',    kpis.programs,         'cream'],
-          ].map(([label, value, tone]) => (
-            <div key={label} style={{background:`var(--pastel-${tone})`,
-              borderRadius:'var(--radius-card)', padding:'14px 16px'}}>
-              <div style={{fontSize:26, fontWeight:800, letterSpacing:'-0.02em',
-                color:'var(--on-pastel)', lineHeight:1.1}}>{value}</div>
-              <div style={{fontSize:'var(--fs-meta)', color:'var(--on-pastel-muted)', marginTop:4}}>{label}</div>
+          ].map(([label, value]) => (
+            // The same frame as the Dashboard's figures: label in the frame,
+            // number on the white panel.
+            <div key={label} className="frame">
+              <div className="frame-head" style={{fontWeight:400, color:'var(--text2)'}}>{label}</div>
+              <div className="frame-body" style={{padding:'10px 12px 12px'}}>
+                <div className="kpi-value">{value}</div>
+              </div>
             </div>
           ))}
         </div>

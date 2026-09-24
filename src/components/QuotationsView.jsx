@@ -741,7 +741,7 @@ export default function QuotationsView({ institutes, clients, isAdmin, isEditor,
     <div className="fade-in">
       <div className="page-header mb-6">
         <div>
-          <div className="page-header-title">Quotations</div>
+          <h1 className="page-title">Quotations</h1>
           <div className="page-header-sub">Manage shortlisting and contract awards</div>
         </div>
       </div>

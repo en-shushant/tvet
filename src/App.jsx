@@ -13,6 +13,8 @@ import { UserManagement } from './components/LoginPage.jsx';
 // covers all of them.
 const ShortlistDashboard = lazyChunk(() => import('./components/ShortlistDashboard.jsx'));
 const QuotationsView     = lazyChunk(() => import('./components/QuotationsView.jsx'));
+const TrainerPool        = lazyChunk(() => import('./components/TrainerPool.jsx'));
+const TendersView        = lazyChunk(() => import('./components/TendersView.jsx'));
 const InstituteList      = lazyChunk(() => import('./components/InstituteList.jsx'));
 const InstituteDetail    = lazyChunk(() => import('./components/InstituteDetail.jsx'));
 const InstituteForm      = lazyChunk(() => import('./components/InstituteForm.jsx'));
@@ -98,6 +100,14 @@ function App() {
   const isAdmin = session?.role === 'admin' || isSuperAdmin;
   const isEditor = session?.role === 'editor';
   const isShortlistOnly = session?.role === 'shortlist';
+  /**
+   * The human resource pool holds citizenship numbers, addresses and CVs, so it
+   * is opened per user rather than by role. A superadmin is admitted without a
+   * grant because they administer the grants. This only decides whether the nav
+   * item appears — the server re-reads the grant on every request, so a stale
+   * session cannot get at the data.
+   */
+  const canAccessHr = isSuperAdmin || !!session?.canAccessHr;
 
   const token = session?.token;
 
@@ -350,13 +360,31 @@ function App() {
     {id:'quality', icon:'rule', label:'Data Quality', group:'System', shortlistHidden: true},
     {id:'compliance', icon:'fact_check', label:'Project Compliance', group:'Operations', editorHidden: true, shortlistHidden: true},
     {id:'shortlisting', icon:'playlist_add_check', label:'Shortlisting', group:'Operations'},
-    {id:'quotations', icon:'gavel', label:'Quotations', group:'Operations'},
+    {id:'quotations', icon:'request_quote', label:'Quotations', group:'Operations'},
     {id:'master', icon:'category', label:'Master Data', group:'System', adminOnly: false, editorHidden: false, shortlistHidden: true},
+    {id:'tenders', icon:'gavel', label:'Tenders', group:'Operations', hrOnly: true},
+    {id:'hr', icon:'co_present', label:'Trainer Pool', group:'Operations', hrOnly: true},
     {id:'users', icon:'manage_accounts', label:'User Management', group:'System', adminOnly: true, shortlistHidden: true},
   ];
   const NAV_GROUPS = ['Main', 'Analytics', 'Operations', 'System'];
+  // Section labels in the reference's style: what the group is for.
+  const NAV_GROUP_LABELS = { Main: 'Main navigation', Analytics: 'Analytics & insights', Operations: 'Operations', System: 'System' };
+  // The breadcrumb's first step is shorter, as in the reference's "Overview / Dashboard".
+  const CRUMB_GROUP = { Main: 'Overview', Analytics: 'Analytics', Operations: 'Operations', System: 'System' };
+  const navActive = (id) => screen === id || (screen === 'detail' && id === 'institutes')
+    || (screen === 'comparison' && id === 'summary') || (screen === 'nstbAdd' && id === 'institutes');
+  const currentNav = navItems.find(i => navActive(i.id));
+  // Screens that do not print their own title get one from the shell, with
+  // the line of context the old top bar used to squeeze in beside it.
+  const SHELL_TITLED = {
+    summary: 'Select an institute and filters to generate a report.',
+    comparison: 'Compare institutes side by side.',
+    compliance: 'Match firms to a project\u2019s criteria.',
+    users: 'Who can sign in, what they can do, and which institutes they see.',
+  };
   const visibleNav = navItems.filter(item =>
-    (!item.adminOnly || isAdmin) && (!item.editorHidden || !isEditor) && (!item.shortlistHidden || !isShortlistOnly));
+    (!item.adminOnly || isAdmin) && (!item.editorHidden || !isEditor)
+    && (!item.shortlistHidden || !isShortlistOnly) && (!item.hrOnly || canAccessHr));
 
   const handleSelectInstitute = async (inst) => {
     // Show immediately if we already have full data (has experience array)
@@ -435,6 +463,10 @@ function App() {
     reports: 'Reports',
     master: 'Master data',
     users: 'User management',
+    compliance: 'Project compliance',
+    tenders: 'Tenders',
+    hr: 'Trainer pool',
+    styleguide: 'Style guide',
   };
 
   return (
@@ -444,74 +476,65 @@ function App() {
       {/* Sidebar */}
       {mobileSidebarOpen && <div className="mobile-backdrop" onClick={()=>setMobileSidebarOpen(false)}/>}
       <div className={`sidebar${sidebarCollapsed?' collapsed':''}${mobileSidebarOpen?' mobile-open':''}`}>
-        <button className="sidebar-toggle" onClick={()=>setSidebarCollapsed(c=>!c)}
-          aria-label={sidebarCollapsed?'Expand sidebar':'Collapse sidebar'}
-          title={sidebarCollapsed?'Expand sidebar':'Collapse sidebar'}>
-          <span className="material-icons-round" style={{fontSize:14}}>{sidebarCollapsed?'chevron_right':'chevron_left'}</span>
-        </button>
-        <div className="sidebar-logo">
-          {!sidebarCollapsed ? (
-            <>
-              <img src="/logo.png" alt="TVETtrack" style={{width:'100%',maxWidth:180,display:'block',margin:'0 auto',filter:'brightness(0) invert(1)'}}/>
-            </>
-          ) : (
-            <img src="/logo.png" alt="TVETtrack" style={{width:40,height:40,objectFit:'contain',display:'block',margin:'0 auto',filter:'brightness(0) invert(1)'}}/>
-          )}
+        <div className="sb-brand">
+          {sidebarCollapsed
+            ? <img src="/favicon.png" alt="TVETtrack" className="sb-brand-mark"/>
+            : <span className="sb-brand-word"><img src="/logo.png" alt="TVETtrack — TSPs Registry and Directory" className="sb-brand-logo"/></span>}
+          <button type="button" className="sb-collapse" onClick={()=>setSidebarCollapsed(c=>!c)}
+            aria-label={sidebarCollapsed?'Expand sidebar':'Collapse sidebar'}
+            title={sidebarCollapsed?'Expand sidebar':'Collapse sidebar'}>
+            <span className="material-icons-round" style={{fontSize:18}}>{sidebarCollapsed?'left_panel_open':'left_panel_close'}</span>
+          </button>
         </div>
-        <nav className="sidebar-nav">
+        <button type="button" className="sb-search" onClick={() => setPaletteOpen(true)}
+          aria-label="Search anything" title={sidebarCollapsed ? 'Search  (⌘K)' : undefined}>
+          <span className="material-icons-round">search</span>
+          <span className="sb-search-text">Search anything</span>
+          <kbd>{'⌘ K'}</kbd>
+        </button>
+        <nav className="sidebar-nav" aria-label="Main">
           {NAV_GROUPS.map(group => {
             const items = visibleNav.filter(i => i.group === group);
             if (!items.length) return null;
             return (
               <div key={group} className="nav-group">
-                <div className="nav-section-label">{group}</div>
-                {items.map(item => (
-                  <button
-                    key={item.id}
-                    className={`nav-item ${screen===item.id || (screen==='detail' && item.id==='institutes') || (screen==='comparison' && item.id==='summary')?'active':''}`}
-                    onClick={() => handleNavigate(item.id)}
-                    title={sidebarCollapsed ? item.label : ''}
-                  >
-                    <span className="nav-icon material-icons-round">{item.icon}</span>
-                    <span className="nav-label">{item.label}</span>
-                  </button>
-                ))}
+                <div className="nav-section-label">{NAV_GROUP_LABELS[group] || group}</div>
+                {items.map(item => {
+                  const active = navActive(item.id);
+                  return (
+                    <button
+                      key={item.id}
+                      className={`nav-item${active ? ' active' : ''}`}
+                      aria-current={active ? 'page' : undefined}
+                      onClick={() => handleNavigate(item.id)}
+                      title={sidebarCollapsed ? item.label : undefined}
+                    >
+                      <span className="nav-icon material-icons-round">{item.icon}</span>
+                      <span className="nav-label">{item.label}</span>
+                    </button>
+                  );
+                })}
               </div>
             );
           })}
-          <div className="search-section" style={{padding:'0 2px', marginTop:4}}>
-            <button className="nav-item" onClick={() => setPaletteOpen(true)}
-              title={sidebarCollapsed ? 'Search  (\u2318K)' : ''}>
-              <span className="nav-icon material-icons-round">search</span>
-              <span className="nav-label" style={{display:'flex', alignItems:'center', justifyContent:'space-between', width:'100%'}}>
-                Search
-                <kbd style={{fontSize:10, opacity:.55, border:'1px solid rgba(255,255,255,.22)',
-                  borderRadius:5, padding:'1px 5px'}}>{'\u2318K'}</kbd>
-              </span>
-            </button>
-          </div>
         </nav>
         <div className="sidebar-footer">
-          <div className="user-pill">
+          <div className="sb-user">
             {session.photo
-              ? <img src={session.photo} alt="" style={{width:34,height:34,borderRadius:'50%',objectFit:'cover',flexShrink:0}}/>
-              : <div className="user-avatar">{(session.fullName||session.email||'?').slice(0,2).toUpperCase()}</div>}
-            {!sidebarCollapsed && (
-              <div style={{flex:1, minWidth:0, overflow:'hidden'}}>
-                <div className="user-name" style={{overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{session.fullName||session.email}</div>
-                <div className="user-role">{session.role}</div>
-              </div>
-            )}
-            {!sidebarCollapsed && (
-              <div style={{display:'flex',gap:2}}>
-                <button className="logout-btn" title="Change password" onClick={()=>setShowChangePwd(true)}>
-                  <span className="material-icons-round" style={{fontSize:18}}>lock</span>
-                </button>
-                <button className="logout-btn" title="Sign out" onClick={handleLogout}>
-                  <span className="material-icons-round" style={{fontSize:18}}>logout</span>
-                </button>
-              </div>
-            )}
+              ? <img src={session.photo} alt="" className="sb-avatar"/>
+              : <div className="sb-avatar" aria-hidden="true">{(session.fullName||session.email||'?').slice(0,2).toUpperCase()}</div>}
+            <div className="sb-user-text">
+              <div className="sb-user-name">{session.fullName||session.email}</div>
+              <div className="sb-user-role">{session.role}</div>
+            </div>
+            <div className="sb-user-actions">
+              <button type="button" className="sb-icon-btn" title="Change password" aria-label="Change password" onClick={()=>setShowChangePwd(true)}>
+                <span className="material-icons-round">lock</span>
+              </button>
+              <button type="button" className="sb-icon-btn is-danger" title="Sign out" aria-label="Sign out" onClick={handleLogout}>
+                <span className="material-icons-round">logout</span>
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -524,38 +547,45 @@ function App() {
             aria-expanded={mobileSidebarOpen}>
             <span className="material-icons-round" style={{fontSize:22}}>menu</span>
           </button>
-          <div style={{flex:1}}>
-            <div className="topbar-title">{pageTitles[screen]}</div>
-            {screen === 'detail' && selectedInstitute && (
-              <div className="breadcrumb" style={{marginTop:2}}>
-                <span className="breadcrumb-sep">Institutes</span>
-                <span className="material-icons-round breadcrumb-sep" style={{fontSize:14}}>chevron_right</span>
-                <span className="breadcrumb-cur">{selectedInstitute.acronym || selectedInstitute.name}</span>
-              </div>
+          {/* A quiet breadcrumb, as in the reference: where you are, not a
+              second copy of the page's own title. */}
+          <nav className="crumbs" aria-label="Breadcrumb">
+            <span className="material-icons-round" aria-hidden="true">{currentNav?.icon || 'dashboard'}</span>
+            {screen === 'detail' && selectedInstitute ? (<>
+              <button type="button" className="crumb-group-btn"
+                onClick={()=>{ window.location.hash='institutes'; setScreen('institutes'); }}>Institutes</button>
+              <span className="crumb-sep">/</span>
+              <span className="crumb-page">{selectedInstitute.acronym || selectedInstitute.name}</span>
+            </>) : (<>
+              <span className="crumb-group">{CRUMB_GROUP[currentNav?.group] || currentNav?.group || 'TVETtrack'}</span>
+              <span className="crumb-sep">/</span>
+              <span className="crumb-page" aria-current="page">{pageTitles[screen] || currentNav?.label}</span>
+            </>)}
+          </nav>
+          <div className="topbar-actions">
+            {/* Only where the page has no Add of its own — Institutes carries
+                one in its header, so offering it here too showed it twice. */}
+            {((screen === 'dashboard' && (isAdmin || isShortlistOnly)) || (screen === 'shortlisting' && isShortlistOnly)) && (
+              <button className="btn btn-primary btn-sm" onClick={()=>setShowAddInstitute(true)}>
+                <span className="material-icons-round">add</span>
+                Add institute
+              </button>
             )}
-          </div>
-          {((screen === 'dashboard' || screen === 'institutes') && isAdmin || ((screen === 'shortlisting' || screen === 'dashboard' || screen === 'institutes') && isShortlistOnly)) && (
-            <button className="btn btn-primary btn-sm" onClick={()=>setShowAddInstitute(true)}>
-              <span className="material-icons-round" style={{fontSize:15}}>add</span>
-              Add Institute
+            <button type="button" className="tb-icon-btn" title="Search  (⌘K)" aria-label="Search" onClick={()=>setPaletteOpen(true)}>
+              <span className="material-icons-round">search</span>
             </button>
-          )}
-          {screen === 'summary' && <span className="text-sm text-muted">Select institute and filters to generate report</span>}
-          {screen === 'comparison' && <span className="text-sm text-muted">Select institutes to compare side by side</span>}
-          {screen === 'compliance' && <span className="text-sm text-muted">Match firms to project criteria</span>}
-          {/* User avatar chip in topbar */}
-          <div style={{display:'flex',alignItems:'center',gap:10,marginLeft:8,paddingLeft:16,borderLeft:'1px solid var(--border)'}}>
-            {session.photo
-              ? <img src={session.photo} alt="" style={{width:34,height:34,borderRadius:'50%',objectFit:'cover'}}/>
-              : <div style={{width:34,height:34,borderRadius:'50%',background:'var(--primary)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:13,fontWeight:700,color:'#fff',flexShrink:0}}>{(session.fullName||session.email||'?').slice(0,2).toUpperCase()}</div>}
-            <div className="topbar-user-name" style={{display:'flex',flexDirection:'column',lineHeight:1.3}}>
-              <span style={{fontSize:13,fontWeight:600,color:'var(--text)'}}>{session.fullName||session.email}</span>
-              <span style={{fontSize:11,color:'var(--text3)',textTransform:'capitalize'}}>{session.role}</span>
-            </div>
           </div>
         </div>
 
         <div className="page-content">
+          {SHELL_TITLED[screen] && (
+            <header className="shell-head">
+              <div style={{flex:1, minWidth:0}}>
+                <h1 className="page-title">{pageTitles[screen]}</h1>
+                <div className="shell-head-sub">{SHELL_TITLED[screen]}</div>
+              </div>
+            </header>
+          )}
           {/* One boundary for every lazily-loaded screen below, so navigating
               shows a single consistent placeholder instead of each screen
               inventing its own. */}
@@ -633,6 +663,23 @@ function App() {
             </div>
           )}
           {screen === 'styleguide' && <Suspense fallback={<div style={{padding:40}}/>}><StyleGuide/></Suspense>}
+          {screen === 'tenders' && canAccessHr && (
+            <TendersView institutes={institutes} clients={clients}
+              onGoToReports={() => handleNavigate('reports')}/>
+          )}
+          {screen === 'hr' && canAccessHr && <TrainerPool isAdmin={isAdmin}/>}
+          {screen === 'hr' && !canAccessHr && (
+            <div className="empty-state">
+              <div className="empty-state-icon">
+                <span className="material-icons-round" style={{fontSize:42, color:'var(--text3)', opacity:.4}}>lock</span>
+              </div>
+              <div className="empty-state-title">The trainer pool is not open to you</div>
+              <div className="empty-state-body">
+                It holds citizenship numbers, addresses and CVs, so access is granted per person.
+                Ask an administrator to enable it for your account.
+              </div>
+            </div>
+          )}
           {screen === 'users' && isAdmin && <UserManagement institutes={institutes} isSuperAdmin={isSuperAdmin}/>}
           {screen === 'users' && !isAdmin && (
             <div style={{display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',height:'60%',gap:12,color:'var(--text3)'}}>
@@ -645,9 +692,14 @@ function App() {
         </div>
       </div>
 
-      {/* Global modals */}
+      {/* Global modals. The form is a lazy chunk and sits outside the page's
+          <Suspense>, so opening it before its code had loaded — Add institute
+          on the Dashboard, first thing after signing in — suspended with no
+          boundary, and React unmounted the whole app to a blank page. */}
       {showAddInstitute && (
-        <InstituteForm onSave={handleAddInstitute} onClose={()=>setShowAddInstitute(false)} isSuperAdmin={isAdmin}/>
+        <Suspense fallback={null}>
+          <InstituteForm onSave={handleAddInstitute} onClose={()=>setShowAddInstitute(false)} isSuperAdmin={isAdmin}/>
+        </Suspense>
       )}
       {showChangePwd && <ChangePasswordModal onClose={()=>setShowChangePwd(false)}/>}
       {/* Bridged through window rather than props so the palette stays decoupled
@@ -676,7 +728,7 @@ function App() {
               run:()=>handleNavigate('clients') },
           ] : []),
           ...(!isEditor && !isShortlistOnly ? [
-            { id:'a-summary', label:'Analytics — Summary', icon:'bar_chart', group:'Go to',
+            { id:'a-summary', label:'Analytics — Summary', icon:'insights', group:'Go to',
               keywords:'statistics totals figures trainees', run:()=>handleNavigate('summary') },
             { id:'a-compare', label:'Analytics — Comparison', icon:'compare_arrows', group:'Go to',
               keywords:'compare side by side jv joint venture', run:()=>handleNavigate('comparison') },
@@ -699,10 +751,18 @@ function App() {
           ] : []),
           { id:'a-shortlist', label:'Shortlisting', icon:'playlist_add_check', group:'Go to',
             keywords:'standing list nea letters roster', run:()=>handleNavigate('shortlisting') },
-          { id:'a-quotes', label:'Quotations', icon:'gavel', group:'Go to',
+          { id:'a-quotes', label:'Quotations', icon:'request_quote', group:'Go to',
             keywords:'quote bid price contract', run:()=>handleNavigate('quotations') },
           ...(!isShortlistOnly ? [{ id:'a-quality', label:'Data Quality', icon:'rule', group:'Go to',
             keywords:'missing gaps incomplete blank problems', run:()=>handleNavigate('quality') }] : []),
+          ...(canAccessHr ? [
+            { id:'a-tenders', label:'Tenders', icon:'gavel', group:'Go to',
+              keywords:'bid eoi rfp notice bidder joint venture proposal', run:()=>handleNavigate('tenders') },
+            { id:'a-pool', label:'Trainer pool', icon:'co_present', group:'Go to',
+              keywords:'trainers staff people cv nstb tot hr human resources', run:()=>handleNavigate('hr') },
+          ] : []),
+          ...((isAdmin || isEditor) ? [{ id:'a-master', label:'Master data', icon:'category', group:'Go to',
+            keywords:'lists settings setup', run:()=>handleNavigate('master') }] : []),
           ...(isAdmin ? [{ id:'a-users', label:'User Management', icon:'manage_accounts', group:'Go to',
             keywords:'accounts roles permissions access', run:()=>handleNavigate('users') }] : []),
 
@@ -712,7 +772,7 @@ function App() {
               run:()=>handleNavigate('master/tools') },
             { id:'m-occ', label:'Occupations', icon:'work', group:'Master data',
               keywords:'trades courses skills sectors levels', run:()=>handleNavigate('master/occupations') },
-            { id:'m-cli', label:'Client records', icon:'apartment', group:'Master data',
+            { id:'m-cli', label:'Client records', icon:'contact_page', group:'Master data',
               keywords:'add edit client organisation', run:()=>handleNavigate('master/clients') },
             { id:'m-tt', label:'Training types', icon:'school', group:'Master data',
               keywords:'short term long term type', run:()=>handleNavigate('master/training_types') },

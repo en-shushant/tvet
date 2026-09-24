@@ -128,7 +128,30 @@ export function installFetchStub() {
     if (u.includes('/occupations/usage'))     return json(occupationUsage);
     if (u.includes('/occupations'))           return json(occupations);
     if (u.includes('/locations'))             return json([]);
+    if (u.includes('/hr/rules')) return json(hrRules);
+    if (u.includes('/hr/people')) return json(hrPeople);
     if (u.includes('/shortlists') || u.includes('/standing-lists') || u.includes('/quotations')) return json([]);
     return Promise.reject(new Error(`Unstubbed request: ${u}`));
   };
 }
+
+/** Two qualification rules, one of each interesting shape. */
+export const hrRules = [
+  { id: 1, name: 'Diploma in Civil Engineering', kind: 'Academic', grant_scope: 'sector',
+    sector: 'Civil/Construction', max_level: 'Level 1', is_active: true, occupations: [] },
+  { id: 2, name: 'NSTB Skill Certificate', kind: 'Skill Test',
+    grant_scope: 'certificate_occupation', is_active: true, occupations: [] },
+];
+
+/** A trainer whose diploma covers several trades, and one certified in a single trade. */
+export const hrPeople = [
+  { id: 1, person_type: 'Trainer', full_name: 'Ramesh Adhikari', designation: 'Senior Trainer',
+    father_name: 'Krishna Adhikari', citizenship_no: '27-01-72-00841', is_active: true,
+    qualification_count: 1, document_count: 2,
+    eligible_occupations: [
+      { id: 11, name: 'Plumber', sector: 'Civil/Construction', level: 'Level 1' },
+      { id: 12, name: 'Mason', sector: 'Civil/Construction', level: 'Level 1' },
+    ] },
+  { id: 2, person_type: 'Support Staff', full_name: 'Hari Bahadur', designation: 'Store Keeper',
+    is_active: true, qualification_count: 0, document_count: 0, eligible_occupations: [] },
+];

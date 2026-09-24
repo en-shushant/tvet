@@ -11,12 +11,29 @@ import { INSTITUTE_TYPES, OCCUPATIONS } from '../constants/data.js';
 import { confirmDialog } from './ui/Feedback.jsx';
 import { initialsFor, tintFor } from './ui/primitives.jsx';
 
+/**
+ * Turnstile site key.
+ *
+ * The production key is registered against tvet.envisionnp.cloud, so the widget
+ * simply never renders anywhere else — and with no widget there is no token,
+ * which the server rejects. That made the app impossible to sign into on a
+ * local build. Overridable per build so local testing can use Cloudflare's
+ * always-passing test key; the default is unchanged, so production needs no
+ * environment variable to keep working.
+ */
+const TURNSTILE_SITE_KEY =
+  import.meta.env?.VITE_TURNSTILE_SITE_KEY || '0x4AAAAAAD-IUm1QHVVxIjkr';
+
+
 function LoginPage({ onLogin }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [capToken, setCapToken] = useState('');
+  // Set when the widget never came up, or came up and failed. Either way there
+  // is no token to wait for.
+  const [capUnavailable, setCapUnavailable] = useState(false);
   const [widgetKey, setWidgetKey] = useState(0);
   const emailRef = useRef(null);
   const passwordRef = useRef(null);
@@ -35,12 +52,13 @@ function LoginPage({ onLogin }) {
     const render = () => {
       if (!window.turnstile || !turnstileRef.current) return;
       turnstileIdRef.current = window.turnstile.render(turnstileRef.current, {
-        sitekey: '0x4AAAAAAD-IUm1QHVVxIjkr',
+        sitekey: TURNSTILE_SITE_KEY,
         action: 'turnstile-spin-v2',
-        callback: (token) => setCapToken(token),
+        callback: (token) => { setCapToken(token); setCapUnavailable(false); },
         'expired-callback': () => setCapToken(''),
-        'error-callback': () => setCapToken(''),
+        'error-callback': () => { setCapToken(''); setCapUnavailable(true); },
       });
+      if (turnstileIdRef.current === undefined) setCapUnavailable(true);
     };
     if (window.__turnstileReady) {
       render();
@@ -60,7 +78,24 @@ function LoginPage({ onLogin }) {
     const emailVal = email.trim() || emailRef.current?.value?.trim() || '';
     const passwordVal = password || passwordRef.current?.value || '';
     if (!emailVal || !passwordVal) { setError('Email and password are required.'); return; }
-    if (!capToken) { setError('Please complete the CAPTCHA verification.'); return; }
+    /*
+     * Only wait for a token the widget can actually produce.
+     *
+     * Turnstile renders only on the domain its site key is registered against,
+     * so on a local build or a self-hosted copy it never appears — and this
+     * check then refused every login with a message about a CAPTCHA that was
+     * not on screen. There was no way past it.
+     *
+     * Where the widget does work this is unchanged. Where it does not, the
+     * request goes through with an empty token and the server decides: it
+     * refuses one wherever a Turnstile secret is configured, and accepts it on
+     * an instance that does no CAPTCHA at all. The check here was only ever a
+     * courtesy to save a round trip; the authority has always been the server.
+     */
+    if (!capToken && !capUnavailable) {
+      setError('Please complete the CAPTCHA verification.');
+      return;
+    }
     setError('');
     setLoading(true);
     try {
@@ -70,6 +105,8 @@ function LoginPage({ onLogin }) {
         fullName: data.user.name,
         email: data.user.email,
         role: data.user.role,
+        // Access to the human resource pool is a per-user grant, not a role.
+        canAccessHr: !!data.user.can_access_hr,
         photo: data.user.photo || null,
         token: data.token,
       };
@@ -255,6 +292,7 @@ function UserModal({ user, institutes, isSuperAdmin, onSave, onClose }) {
     password: '',
     role: user?.role || 'viewer',
     is_active: user?.is_active !== false,
+    can_access_hr: !!user?.can_access_hr,
     photo: user?.photo || null,
   });
   const [err, setErr] = useState('');
@@ -342,6 +380,24 @@ function UserModal({ user, institutes, isSuperAdmin, onSave, onClose }) {
               </div>
             </div>
           )}
+          {/* Separate from the role on purpose. The pool holds citizenship
+              numbers, addresses and CVs, so it is opened to named people rather
+              than to a tier — an editor can be given it without being made an
+              admin, and an admin can be left without it. */}
+          <div className="form-row">
+            <div className="form-group">
+              <label style={{ display: 'flex', alignItems: 'flex-start', gap: 8, cursor: 'pointer', fontSize: 13 }}>
+                <input type="checkbox" checked={form.can_access_hr} style={{ marginTop: 2 }}
+                  onChange={e => setForm(f=>({...f,can_access_hr:e.target.checked}))} />
+                <span>
+                  Trainer pool access
+                  <span style={{ display: 'block', fontSize: 11, color: 'var(--text3)' }}>
+                    Can see and edit trainers, support staff and their personal records
+                  </span>
+                </span>
+              </label>
+            </div>
+          </div>
           {err && <div style={{ color: 'var(--red)', fontSize: 12, margin: '8px 0' }}>{err}</div>}
           <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 16 }}>
             <Btn className="btn btn-secondary" onClick={onClose}>Cancel</Btn>
@@ -392,7 +448,10 @@ function UserManagement({institutes, isSuperAdmin}) {
   const toggleActive = async (u) => {
     setActionErr('');
     try {
-      await api('PUT', `/users/${u.id}`, { name: u.name, email: u.email, role: u.role, is_active: !u.is_active, photo: u.photo || null }, token);
+      await api('PUT', `/users/${u.id}`, { name: u.name, email: u.email, role: u.role, is_active: !u.is_active,
+        // Sent back unchanged: the update writes every column, so omitting
+        // this would revoke pool access as a side effect of deactivating.
+        can_access_hr: !!u.can_access_hr, photo: u.photo || null }, token);
       reload();
     } catch(e) { setActionErr(e.message); }
   };
@@ -466,7 +525,14 @@ function UserManagement({institutes, isSuperAdmin}) {
                       </div>
                     ) : <span style={{color:'var(--text3)',fontSize:12}}>—</span>}
                   </td>
-                  <td><span className={`badge ${u.is_active ? 'badge-active' : 'badge-gray'}`}>{u.is_active ? 'Active' : 'Inactive'}</span></td>
+                  <td>
+                    <span className={`badge ${u.is_active ? 'badge-active' : 'badge-gray'}`}>{u.is_active ? 'Active' : 'Inactive'}</span>
+                    {u.can_access_hr && (
+                      <span className="badge badge-info" style={{ fontSize: 10, marginLeft: 4 }} title="Can open the trainer pool">
+                        Pool
+                      </span>
+                    )}
+                  </td>
                   <td style={{ color: 'var(--text3)', fontSize: 12 }}>{u.created_at?.slice(0,10)}</td>
                   <td>
                     <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>

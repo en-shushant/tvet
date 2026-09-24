@@ -31,14 +31,14 @@ async function plugin(fastify, opts) {
 
   fastify.get('/', { preHandler: requireAdmin }, async (request, reply) => {
     const query = request.user.role === 'superadmin'
-      ? 'SELECT id, name, email, role, is_active, photo, created_at FROM users ORDER BY created_at DESC'
-      : "SELECT id, name, email, role, is_active, photo, created_at FROM users WHERE role != 'superadmin' ORDER BY created_at DESC";
+      ? 'SELECT id, name, email, role, is_active, can_access_hr, photo, created_at FROM users ORDER BY created_at DESC'
+      : "SELECT id, name, email, role, is_active, can_access_hr, photo, created_at FROM users WHERE role != 'superadmin' ORDER BY created_at DESC";
     const { rows } = await pool.query(query);
     return rows;
   });
 
   fastify.post('/', { preHandler: requireAdmin }, async (request, reply) => {
-    const { name, email, password, role = 'editor', photo } = request.body;
+    const { name, email, password, role = 'editor', photo, can_access_hr } = request.body;
     if (!name || !email || !password) return reply.code(400).send({ error: 'name, email and password required' });
     if ((role === 'admin' || role === 'superadmin') && request.user.role !== 'superadmin') {
       return reply.code(403).send({ error: 'Only superadmin can create admin users' });
@@ -46,8 +46,8 @@ async function plugin(fastify, opts) {
     const hash = await bcrypt.hash(password, 10);
     try {
       const { rows } = await pool.query(
-        'INSERT INTO users (name, email, password, role, is_active, photo) VALUES ($1,$2,$3,$4,TRUE,$5) RETURNING id, name, email, role, is_active, photo, created_at',
-        [name, email, hash, role, photo||null]
+        'INSERT INTO users (name, email, password, role, is_active, photo, can_access_hr) VALUES ($1,$2,$3,$4,TRUE,$5,$6) RETURNING id, name, email, role, is_active, can_access_hr, photo, created_at',
+        [name, email, hash, role, photo||null, !!can_access_hr]
       );
       return reply.code(201).send(rows[0]);
     } catch(e) {
@@ -57,18 +57,18 @@ async function plugin(fastify, opts) {
   });
 
   fastify.put('/:id', { preHandler: requireAdmin }, async (request, reply) => {
-    const { name, email, password, role, is_active, photo } = request.body;
+    const { name, email, password, role, is_active, photo, can_access_hr } = request.body;
     if ((role === 'admin' || role === 'superadmin') && request.user.role !== 'superadmin') {
       return reply.code(403).send({ error: 'Only superadmin can assign admin roles' });
     }
     let q, params;
     if (password) {
       const hash = await bcrypt.hash(password, 10);
-      q = 'UPDATE users SET name=$1, email=$2, role=$3, is_active=$4, password=$5, photo=$6 WHERE id=$7 RETURNING id, name, email, role, is_active, photo, created_at';
-      params = [name, email, role, is_active, hash, photo||null, request.params.id];
+      q = 'UPDATE users SET name=$1, email=$2, role=$3, is_active=$4, password=$5, photo=$6, can_access_hr=$7 WHERE id=$8 RETURNING id, name, email, role, is_active, can_access_hr, photo, created_at';
+      params = [name, email, role, is_active, hash, photo||null, !!can_access_hr, request.params.id];
     } else {
-      q = 'UPDATE users SET name=$1, email=$2, role=$3, is_active=$4, photo=$5 WHERE id=$6 RETURNING id, name, email, role, is_active, photo, created_at';
-      params = [name, email, role, is_active, photo||null, request.params.id];
+      q = 'UPDATE users SET name=$1, email=$2, role=$3, is_active=$4, photo=$5, can_access_hr=$6 WHERE id=$7 RETURNING id, name, email, role, is_active, can_access_hr, photo, created_at';
+      params = [name, email, role, is_active, photo||null, !!can_access_hr, request.params.id];
     }
     const { rows } = await pool.query(q, params);
     if (!rows.length) return reply.code(404).send({ error: 'Not found' });
