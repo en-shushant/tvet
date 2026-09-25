@@ -2865,3 +2865,31 @@ a:hover { color: var(--brand-strong); }
 @media (prefers-reduced-motion: reduce) {
   .nav-item, .btn, .frame, .card, .kp-tile, .tw-step, .tw-chip, .kpi-icon { transition: none !important; transform: none !important; }
 }
+
+/* ── Dashboard: attention + trainees chart ── */
+.dash-split {
+  display: grid; gap: 14px; margin-bottom: 14px;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.6fr);
+}
+.dash-split > * { min-width: 0; }
+@media (max-width: 1100px) { .dash-split { grid-template-columns: minmax(0, 1fr); } }
+.dash-split .frame-head { flex-wrap: wrap; row-gap: 2px; }
+.fy-chart-scroll { overflow-x: auto; overflow-y: hidden; scrollbar-width: thin; padding-bottom: 8px; }
+.fy-chart { display: flex; align-items: flex-end; gap: 10px; height: 200px; padding-top: 30px; }
+.fy-col { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: center; gap: 8px; height: 100%; cursor: default; }
+.fy-bar-wrap { flex: 1; width: 100%; display: flex; align-items: flex-end; position: relative; }
+.fy-bar {
+  width: 100%; border-radius: 8px 8px 4px 4px;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--brand) 22%, var(--surface)) 0%, color-mix(in srgb, var(--brand) 10%, var(--surface)) 100%);
+  transition: background .18s, box-shadow .18s, transform .18s var(--ease-out);
+  transform-origin: bottom;
+}
+.fy-bar.is-on { background: var(--brand-gradient); box-shadow: 0 4px 14px rgba(47, 95, 208, .25); }
+.fy-col:hover .fy-bar:not(.is-on) { background: color-mix(in srgb, var(--brand) 35%, var(--surface)); }
+.fy-tip {
+  position: absolute; z-index: 1; white-space: nowrap; pointer-events: none;
+  background: var(--panel-dark); color: #fff; border-radius: 6px;
+  padding: 3px 8px; font-size: 11px; font-weight: 500; font-variant-numeric: tabular-nums;
+}
+.fy-label { font-size: 11.5px; color: var(--text3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; font-variant-numeric: tabular-nums; }
+.fy-label.is-on { color: var(--text); font-weight: 500; }

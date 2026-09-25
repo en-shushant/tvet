@@ -30,38 +30,46 @@ import {
  */
 function FyChart({ rows }) {
   const [hover, setHover] = useState(null);
+  const scroller = useRef(null);
+  // Newest year in view: with many years the chart scrolls sideways, and the
+  // recent ones are what people look for.
+  useEffect(() => {
+    const el = scroller.current;
+    if (el) el.scrollLeft = el.scrollWidth;
+  }, [rows?.length]);
   if (!rows?.length) return null;
   const max = Math.max(...rows.map(r => r.trainees), 1);
   const focus = hover ?? rows.length - 1;
+  const last = rows.length - 1;
 
   return (
-    <div style={{display:'flex', alignItems:'flex-end', gap:10, height:200, paddingTop:30}}>
-      {rows.map((r, i) => {
-        const pct = Math.max((r.trainees / max) * 100, 2);
-        const on = focus === i;
-        return (
-          <div key={r.fy} style={{flex:1, minWidth:0, display:'flex', flexDirection:'column',
-            alignItems:'center', gap:8, height:'100%'}}
-            onMouseEnter={() => setHover(i)} onMouseLeave={() => setHover(null)}>
-            <div style={{flex:1, width:'100%', display:'flex', alignItems:'flex-end', position:'relative'}}>
-              {on && (
-                <div style={{position:'absolute', bottom:`calc(${pct}% + 8px)`, left:'50%', transform:'translateX(-50%)',
-                  background:'#1f2937', color:'#fff', borderRadius:6,
-                  padding:'2px 8px', fontSize:11, fontWeight:500, whiteSpace:'nowrap', zIndex:1}}>
-                  {r.fy} : {fmt(r.trainees)}
-                </div>
-              )}
-              <div title={`FY ${r.fy}: ${fmt(r.trainees)} trainees, ${r.assignments} assignments`}
-                style={{width:'100%', height:`${pct}%`, borderRadius:'8px 8px 4px 4px',
-                  background: on ? 'var(--ink-gradient)' : 'linear-gradient(180deg, #e6e6e6 0%, rgba(230,230,230,.6) 100%)',
-                  boxShadow: on ? '0 2px 10px rgba(31,41,55,.08)' : 'none',
-                  transition:'background .16s'}}/>
+    <div ref={scroller} className="fy-chart-scroll">
+      <div className="fy-chart" style={{minWidth: rows.length * 54}}>
+        {rows.map((r, i) => {
+          const pct = Math.max((r.trainees / max) * 100, 2);
+          const on = focus === i;
+          // Keep the label inside the card at either end.
+          const edge = i === 0 ? { left: 0 } : i === last ? { right: 0 }
+            : { left: '50%', transform: 'translateX(-50%)' };
+          return (
+            <div key={r.fy} className="fy-col"
+              onMouseEnter={() => setHover(i)} onMouseLeave={() => setHover(null)}>
+              <div className="fy-bar-wrap">
+                {on && (
+                  <div className="fy-tip" style={{bottom:`calc(${pct}% + 8px)`, ...edge}}>
+                    {r.fy} · {fmt(r.trainees)}
+                  </div>
+                )}
+                <div title={`FY ${r.fy}: ${fmt(r.trainees)} trainees, ${r.assignments} assignments`}
+                  className={`fy-bar${on ? ' is-on' : ''}`} style={{height:`${pct}%`}}/>
+              </div>
+              <div className={`fy-label${on ? ' is-on' : ''}`} title={r.fy}>
+                {String(r.fy).replace(/^20(\d\d)\//, '$1/')}
+              </div>
             </div>
-            <div style={{fontSize:12, color: on ? 'var(--text)' : 'var(--text3)', whiteSpace:'nowrap',
-              overflow:'hidden', textOverflow:'ellipsis', maxWidth:'100%'}}>{r.fy}</div>
-          </div>
-        );
-      })}
+          );
+        })}
+      </div>
     </div>
   );
 }
@@ -199,8 +207,7 @@ function Dashboard({ institutes, isEditor, onNavigate }) {
       </div>
 
       {/* ── Attention + trend ── */}
-      <div style={{display:'grid', gap:14, marginBottom:14,
-        gridTemplateColumns:'minmax(280px, 1fr) minmax(320px, 1.6fr)'}}>
+      <div className="dash-split">
 
         {attentionTotal > 0 ? (
           <section className="frame">
