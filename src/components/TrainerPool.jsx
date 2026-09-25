@@ -11,10 +11,11 @@ import PersonEditor from './pool/PersonEditor.jsx';
 import PersonProfile from './pool/PersonProfile.jsx';
 import { experienceYears } from '../utils/hrFit.js';
 import { BLANK_FILTERS, applyFilters, activeFilterCount, poolKpis, SORTS } from './pool/filters.js';
-import { GENERAL_LEVELS, VOCATIONAL_LEVELS } from '../constants/education.js';
+import { GENERAL_LEVELS, VOCATIONAL_LEVELS, teachableLevels, labelOfGeneral, labelOfVocational } from '../constants/education.js';
 import { useOccupations } from '../utils/useMasterData.js';
 import { api } from '../utils/api.js';
 import { getSession } from '../utils/auth.js';
+import Select from './ui/Select.jsx';
 
 /**
  * The human resource pool — trainers and support staff the organisation can
@@ -33,14 +34,25 @@ import { getSession } from '../utils/auth.js';
 // The kind a qualification rule is filed under. A rule is a label on a group of
 // certificates, so it keeps the old four names even though a person's record
 // now files NSTB certificates as vocational education.
-const QUAL_KINDS = ['Academic', 'Training', 'TOT', 'Skill Test'];
+// 'Skill Test' is the stored name for vocational (NSTB) certificates.
+const QUAL_KINDS = [
+  { value: 'Academic', label: 'Academic' },
+  { value: 'Skill Test', label: 'Vocational (NSTB)' },
+  { value: 'Training', label: 'Training' },
+  { value: 'TOT', label: 'TOT' },
+];
+const isVocationalKind = (k) => k === 'Skill Test';
+// The ladder a rule's own level is picked from; training and TOT have none.
+const levelOptions = (kind) => kind === 'Academic' ? GENERAL_LEVELS
+  : kind === 'Skill Test' ? VOCATIONAL_LEVELS : [];
+const describeLevels = (ls) => ls.map(l => l === 'Professional' ? 'Level 4' : l).join(', ') || 'no levels';
 const GRANT_SCOPES = [
   { id: 'sector', label: 'A whole sector',
     hint: 'A Diploma in Civil Engineering covers plumber, mason, shuttering carpenter and building painter alike.' },
   { id: 'occupations', label: 'These occupations',
     hint: 'Name the trades explicitly, for a qualification where a whole sector is too wide.' },
   { id: 'certificate_occupation', label: 'Whatever the certificate says',
-    hint: 'A Building Electrician Level 2 certificate qualifies for Building Electrician and nothing else. One rule covers every trade.' },
+    hint: 'A Plumber Level 2 certificate qualifies for Plumber Level 2 and Level 1; a Level 3 for Levels 1–3; a Level 1 only for Level 1. One rule covers every trade.' },
 ];
 
 /* ── Occupation multi-select ────────────────────────────────────────────── */
@@ -80,15 +92,23 @@ function OccupationPicker({ occupations, selected, onToggle, height = 240 }) {
 
 function RuleForm({ rule, occupations, onSave, onClose }) {
   const [form, setForm] = useState(() => ({
-    name: '', kind: 'Academic', grant_scope: 'occupations', sector: '', max_level: '', notes: '',
+    name: '', kind: 'Academic', grant_scope: 'occupations', sector: '', max_level: '', notes: '', qual_level: '',
     ...(rule || {}),
     // Flattened from the rule's joined occupation rows, which come back as
     // objects; the form and the API both want plain ids.
     occupation_ids: rule ? (rule.occupations || []).map(o => o.id) : [],
+    occupation_levels: Object.fromEntries((rule?.occupations || []).map(o => [o.id, o.levels || []])),
   }));
   const [err, setErr] = useState('');
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
   const scope = GRANT_SCOPES.find(s => s.id === form.grant_scope);
+  // Choosing the level fills every ticked trade's levels, and the sector cap.
+  const setQualLevel = (lv) => setForm(f => {
+    const auto = teachableLevels(f.kind, lv);
+    if (!auto.length) return { ...f, qual_level: lv };
+    return { ...f, qual_level: lv, max_level: auto[auto.length - 1],
+      occupation_levels: Object.fromEntries(f.occupation_ids.map(id => [id, auto])) };
+  });
 
   const save = async () => {
     if (!form.name.trim()) return setErr('Give the qualification a name.');
@@ -109,14 +129,32 @@ function RuleForm({ rule, occupations, onSave, onClose }) {
       <div className="form-row form-row-2">
         <div className="form-group">
           <MdTextField label="Qualification name *" value={form.name}
-            onChange={e => set('name', e.target.value)} placeholder="e.g. Diploma in Civil Engineering" />
+            onChange={e => set('name', e.target.value)} placeholder={isVocationalKind(form.kind) ? 'e.g. NSTB Skill Test' : 'e.g. Diploma in Civil Engineering'} />
         </div>
         <div className="form-group">
-          <MdSelect label="Kind" value={form.kind} onChange={e => set('kind', e.target.value)}>
-            {QUAL_KINDS.map(k => <MdOption key={k} value={k}>{k}</MdOption>)}
+          <MdSelect label="Kind" value={form.kind} onChange={e => { set('kind', e.target.value);
+            // Academic qualifications are named, not levelled.
+            if (!isVocationalKind(e.target.value)) set('max_level', '');
+            set('qual_level', ''); }}>
+            {QUAL_KINDS.map(k => <MdOption key={k.value} value={k.value}>{k.label}</MdOption>)}
           </MdSelect>
         </div>
       </div>
+
+      {levelOptions(form.kind).length > 0 && (
+        <div className="form-group">
+          <MdSelect label={isVocationalKind(form.kind) ? 'Skill test level' : 'Academic level'}
+            value={form.qual_level || ''} onChange={e => setQualLevel(e.target.value)}>
+            <MdOption value="">— Choose —</MdOption>
+            {levelOptions(form.kind).map(l => <MdOption key={l.value} value={l.value}>{l.label}</MdOption>)}
+          </MdSelect>
+          {form.qual_level && (
+            <div style={{ fontSize: 11.5, color: 'var(--text3)', marginTop: 6 }}>
+              Qualifies them to train {describeLevels(teachableLevels(form.kind, form.qual_level))} — filled in below, change any.
+            </div>
+          )}
+        </div>
+      )}
 
       <div className="form-group">
         <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text3)', marginBottom: 8 }}>
@@ -145,13 +183,15 @@ function RuleForm({ rule, occupations, onSave, onClose }) {
               {SECTORS.map(s => <MdOption key={s} value={s}>{s}</MdOption>)}
             </MdSelect>
           </div>
-          <div className="form-group">
-            <MdSelect label="Up to level (optional)" value={form.max_level}
-              onChange={e => set('max_level', e.target.value)}>
-              <MdOption value="">No cap — every level in the sector</MdOption>
-              {NSTB_LEVELS.map(l => <MdOption key={l} value={l}>{l} and below</MdOption>)}
-            </MdSelect>
-          </div>
+          {isVocationalKind(form.kind) && (
+            <div className="form-group">
+              <MdSelect label="Up to level" value={form.max_level}
+                onChange={e => set('max_level', e.target.value)}>
+                <MdOption value="">Every level in the sector</MdOption>
+                {NSTB_LEVELS.map(l => <MdOption key={l} value={l}>{l} and below</MdOption>)}
+              </MdSelect>
+            </div>
+          )}
         </div>
       )}
 
@@ -159,8 +199,43 @@ function RuleForm({ rule, occupations, onSave, onClose }) {
         <div className="form-group">
           <label>Occupations ({form.occupation_ids.length} selected)</label>
           <OccupationPicker occupations={occupations} selected={form.occupation_ids}
-            onToggle={id => set('occupation_ids', form.occupation_ids.includes(id)
-              ? form.occupation_ids.filter(x => x !== id) : [...form.occupation_ids, id])} />
+            onToggle={id => {
+              const on = form.occupation_ids.includes(id);
+              set('occupation_ids', on ? form.occupation_ids.filter(x => x !== id) : [...form.occupation_ids, id]);
+              // A ticked trade starts at its own level; the others are marked below.
+              if (!on) {
+                const own = occupations.find(o => o.id === id)?.level;
+                const auto = teachableLevels(form.kind, form.qual_level);
+                set('occupation_levels', { ...form.occupation_levels, [id]: auto.length ? auto : own ? [own] : [] });
+              }
+            }} />
+          {form.occupation_ids.length > 0 && (
+            <div className="rule-levels">
+              <div style={{ fontSize: 11.5, color: 'var(--text3)', margin: '10px 0 6px' }}>
+                Levels this qualifies them to train
+              </div>
+              {form.occupation_ids.map(id => {
+                const o = occupations.find(x => x.id === id);
+                if (!o) return null;
+                const held = form.occupation_levels[id] || [];
+                return (
+                  <div key={id} className="rule-level-row">
+                    <span className="rule-level-name">{o.name}</span>
+                    <div className="seg" role="group" aria-label={`${o.name} levels`}>
+                      {NSTB_LEVELS.map(l => (
+                        <button key={l} type="button" aria-pressed={held.includes(l)}
+                          className={held.includes(l) ? 'on' : ''}
+                          onClick={() => set('occupation_levels', { ...form.occupation_levels,
+                            [id]: held.includes(l) ? held.filter(x => x !== l) : [...held, l] })}>
+                          {l === 'Professional' ? 'Level 4' : l}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
       )}
 
@@ -173,13 +248,17 @@ function RuleForm({ rule, occupations, onSave, onClose }) {
 
 function RulesTab({ rules, occupations, isAdmin, onReload, token, setErr }) {
   const [modal, setModal] = useState(null);
+  const [kindF, setKindF] = useState('all');
+  const [levelF, setLevelF] = useState('');
 
   const save = async (form) => {
     const body = {
       name: form.name, kind: form.kind, grant_scope: form.grant_scope,
       sector: form.grant_scope === 'sector' ? form.sector : null,
       max_level: form.grant_scope === 'sector' ? form.max_level : null,
-      notes: form.notes, occupation_ids: form.grant_scope === 'occupations' ? form.occupation_ids : [],
+      notes: form.notes, qual_level: levelOptions(form.kind).length ? form.qual_level : null,
+      occupation_ids: form.grant_scope === 'occupations' ? form.occupation_ids : [],
+      occupation_levels: form.grant_scope === 'occupations' ? form.occupation_levels : {},
     };
     if (modal?.data?.id) await api('PUT', `/hr/rules/${modal.data.id}`, body, token);
     else await api('POST', '/hr/rules', body, token);
@@ -205,12 +284,35 @@ function RulesTab({ rules, occupations, isAdmin, onReload, token, setErr }) {
       return `Every occupation in ${r.sector}${r.max_level ? ` up to ${r.max_level}` : ''}`;
     }
     if (r.grant_scope === 'certificate_occupation') return 'The occupation named on the certificate';
-    const names = (r.occupations || []).map(o => o.name);
+    const names = (r.occupations || []).map(o => o.levels?.length
+      ? `${o.name} (${describeLevels(o.levels)})` : o.name);
     return names.length ? names.join(', ') : 'No occupations chosen yet';
   };
 
+  const shown = rules.filter(r => (kindF === 'all' || r.kind === kindF) && (!levelF || r.qual_level === levelF));
+  const levelsHere = levelOptions(kindF).filter(l => rules.some(r => r.qual_level === l.value && r.kind === kindF));
+
   return (
     <>
+      {rules.length > 0 && (
+        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center', marginBottom: 12 }}>
+          <div className="seg" role="group" aria-label="Kind">
+            {[{ value: 'all', label: 'All' }, ...QUAL_KINDS].map(k => (
+              <button key={k.value} type="button" aria-pressed={kindF === k.value}
+                onClick={() => { setKindF(k.value); setLevelF(''); }}>{k.label}</button>
+            ))}
+          </div>
+          {levelsHere.length > 0 && (
+            <div className="seg" role="group" aria-label="Level">
+              <button type="button" aria-pressed={!levelF} onClick={() => setLevelF('')}>Any level</button>
+              {levelsHere.map(l => (
+                <button key={l.value} type="button" aria-pressed={levelF === l.value}
+                  onClick={() => setLevelF(l.value)}>{l.label}</button>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 14 }}>
         <div style={{ flex: 1, fontSize: 12.5, color: 'var(--text3)' }}>
           What each qualification qualifies someone to train. Written once here, then applied to
@@ -225,12 +327,17 @@ function RulesTab({ rules, occupations, isAdmin, onReload, token, setErr }) {
       ) : (
         <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
           <table>
-            <thead><tr><th>Qualification</th><th>Kind</th><th>Qualifies to train</th><th></th></tr></thead>
+            <thead><tr><th>Qualification</th><th>Kind</th><th>Level</th><th>Qualifies to train</th><th></th></tr></thead>
             <tbody>
-              {rules.map(r => (
+              {shown.length === 0 && (
+                <tr><td colSpan={5} style={{ fontSize: 12.5, color: 'var(--text3)' }}>No rules match these filters.</td></tr>
+              )}
+              {shown.map(r => (
                 <tr key={r.id}>
                   <td style={{ fontWeight: 500, fontSize: 13 }}>{r.name}</td>
                   <td><span className="badge badge-gray" style={{ fontSize: 10 }}>{r.kind}</span></td>
+                  <td style={{ fontSize: 12 }}>{r.qual_level
+                    ? (isVocationalKind(r.kind) ? labelOfVocational(r.qual_level) : labelOfGeneral(r.qual_level)) : '—'}</td>
                   <td style={{ fontSize: 12, color: 'var(--text2)' }}>{describe(r)}</td>
                   <td style={{ display: 'flex', gap: 4, justifyContent: 'flex-end' }}>
                     {isAdmin && <>
@@ -458,37 +565,37 @@ function TrainerPool({ isAdmin }) {
         {showMore && (
           <div className="kp-more">
             <label className="pf-field"><span className="pf-label">Can train</span>
-              <select className="tw-in" value={wanted.length === 1 ? String(wanted[0]) : ''}
+              <Select className="tw-in" value={wanted.length === 1 ? String(wanted[0]) : ''}
                 onChange={e => setF({ trades: e.target.value ? [Number(e.target.value)] : [] })}>
                 <option value="">{wanted.length > 1 ? `${wanted.length} trades` : 'Any trade'}</option>
                 {coveredTrades.map(o => <option key={o.id} value={o.id}>{o.name}</option>)}
-              </select></label>
+              </Select></label>
             <label className="pf-field"><span className="pf-label">Education at least</span>
-              <select className="tw-in" value={filters.minEducation} onChange={e => setF({ minEducation: e.target.value })}>
+              <Select className="tw-in" value={filters.minEducation} onChange={e => setF({ minEducation: e.target.value })}>
                 <option value="">Any</option>
                 {GENERAL_LEVELS.map(l => <option key={l.value} value={l.value}>{l.label}</option>)}
-              </select></label>
+              </Select></label>
             <label className="pf-field"><span className="pf-label">NSTB at least</span>
-              <select className="tw-in" value={filters.minNstb} onChange={e => setF({ minNstb: e.target.value })}>
+              <Select className="tw-in" value={filters.minNstb} onChange={e => setF({ minNstb: e.target.value })}>
                 <option value="">Any</option>
                 {VOCATIONAL_LEVELS.map(l => <option key={l.value} value={l.value}>{l.label}</option>)}
-              </select></label>
+              </Select></label>
             <label className="pf-field"><span className="pf-label">Years since qualifying</span>
               <input className="tw-in num" type="number" min="0" placeholder="Any" value={filters.minYears}
                 onChange={e => setF({ minYears: e.target.value })} /></label>
             <label className="pf-field"><span className="pf-label">Missing</span>
-              <select className="tw-in" value={filters.missing} onChange={e => setF({ missing: e.target.value })}>
+              <Select className="tw-in" value={filters.missing} onChange={e => setF({ missing: e.target.value })}>
                 <option value="">Nothing in particular</option>
                 <option value="CV">No CV on file</option>
                 <option value="Citizenship">No citizenship on file</option>
                 <option value="Experience Letter">No experience letter</option>
-              </select></label>
+              </Select></label>
             <label className="pf-field"><span className="pf-label">Show</span>
-              <select className="tw-in" value={filters.availability} onChange={e => setF({ availability: e.target.value })}>
+              <Select className="tw-in" value={filters.availability} onChange={e => setF({ availability: e.target.value })}>
                 <option value="available">Available to propose</option>
                 <option value="unavailable">No longer available</option>
                 <option value="all">Everyone</option>
-              </select></label>
+              </Select></label>
             <label className="pf-check" style={{ alignSelf: 'end', marginBottom: 14 }}>
               <input type="checkbox" checked={filters.tot} onChange={e => setF({ tot: e.target.checked })} />
               TOT certified</label>
@@ -526,9 +633,9 @@ function TrainerPool({ isAdmin }) {
             {narrowed > 0 && <Btn className="btn btn-ghost btn-sm" onClick={() => setFilters(BLANK_FILTERS)}>Clear all</Btn>}
             <span style={{ flex: 1 }} />
             <label className="tw-hint" style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>Sort
-              <select className="tw-in" style={{ width: 'auto', height: 30 }} value={sort} onChange={e => setSort(e.target.value)}>
+              <Select className="tw-in" style={{ width: 'auto', height: 30 }} value={sort} onChange={e => setSort(e.target.value)}>
                 {Object.entries(SORTS).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
-              </select></label>
+              </Select></label>
           </div>
         )}
 
@@ -568,7 +675,7 @@ function TrainerPool({ isAdmin }) {
                             <span>
                               <span className="pp-person-name">{p.full_name}</span>
                               <span className="pp-person-sub">
-                                {[p.person_type, p.designation].filter(Boolean).join(' · ')}
+                                {p.person_type}
                                 {p.is_active === false && ' · no longer available'}
                               </span>
                             </span>

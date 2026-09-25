@@ -5,6 +5,7 @@ import { OccupationPicker } from '../TrainerPool.jsx';
 import { GENERAL_LEVELS, VOCATIONAL_LEVELS, labelOfGeneral, labelOfVocational } from '../../constants/education.js';
 import { acceptedOf, describeAccepted } from '../../utils/hrFit.js';
 import { COMMON_POSITIONS, emptyPosition, isTrainer, totalNeeded } from './common.js';
+import Select from '../ui/Select.jsx';
 
 /**
  * Step 2 — what the notice asks for.
@@ -272,7 +273,7 @@ function AcceptedEditor({ post, onChange }) {
   const toggleRelated = (ai, oi) => setAlt(ai, { any: alts[ai].any.map((o, n) => n === oi ? { ...o, related: !o.related } : o) });
 
   const picker = (ai) => (
-    <select className="tw-in rq-add" value="" aria-label="Add an accepted qualification"
+    <Select className="tw-in rq-add" value="" aria-label="Add an accepted qualification"
       onChange={e => addOption(ai, e.target.value)}>
       <option value="">{ai === alts.length ? (alts.length ? '+ OR another alternative…' : '+ Add a qualification…') : '+ or…'}</option>
       <optgroup label="General">
@@ -281,7 +282,7 @@ function AcceptedEditor({ post, onChange }) {
       <optgroup label="NSTB skill test">
         {VOCATIONAL_LEVELS.map(l => <option key={l.value} value={`vocational|${l.value}`}>NSTB {l.label}</option>)}
       </optgroup>
-    </select>
+    </Select>
   );
 
   return (

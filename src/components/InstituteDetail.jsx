@@ -26,6 +26,7 @@ import { usePagination } from '../utils/hooks.js';
 import { exportSummaryToMD, exportSummaryToPDF, exportSummaryToCSV } from '../utils/export.js';
 import { fmt, fyToAD, getClient, getOccupation, pct } from '../utils/format.js';
 import { toast } from './ui/Feedback.jsx';
+import Select from './ui/Select.jsx';
 
 
 
@@ -586,31 +587,31 @@ function InstituteDetail({institute, clients, onUpdateClients, onBack, onUpdate,
                   <div style={{width:1, height:22, background:'var(--border)'}}/>
 
                   {/* Client filter — works in both modes */}
-                  <select value={expClientFilter} onChange={e=>setExpClientFilter(e.target.value)}
+                  <Select value={expClientFilter} onChange={e=>setExpClientFilter(e.target.value)}
                     title="Filter by client" style={sel(!!expClientFilter)}>
                     <option value="">All clients</option>
                     {[...new Map(institute.experience.filter(e=>e.clientId).map(e=>[e.clientId, getClient(clients,e.clientId)])).values()].filter(c=>c.id).map(c=>(
                       <option key={c.id} value={c.id}>{c.shortName||c.fullName}</option>
                     ))}
-                  </select>
+                  </Select>
 
-                  <select value={expOccFilter} onChange={e=>setExpOccFilter(e.target.value)}
+                  <Select value={expOccFilter} onChange={e=>setExpOccFilter(e.target.value)}
                     title="Filter by occupation" style={sel(!!expOccFilter)}>
                     <option value="">All occupations</option>
                     <option value="__missing__">Missing occupation</option>
                     {[...new Set(institute.experience.flatMap(e=>(e.occupations||[]).map(o=>(getOccupation(o.ctevtOccupationId).name||o.nameInLetter))).filter(Boolean))].sort().map(name=>(
                       <option key={name} value={name}>{name}</option>
                     ))}
-                  </select>
+                  </Select>
 
-                  <select value={expMissingFilter} onChange={e=>setExpMissingFilter(e.target.value)}
+                  <Select value={expMissingFilter} onChange={e=>setExpMissingFilter(e.target.value)}
                     title="Show only assignments where an occupation is missing that field"
                     style={sel(!!expMissingFilter)}>
                     <option value="">Level/duration: all</option>
                     <option value="level">Missing level</option>
                     <option value="duration">Missing duration</option>
                     <option value="either">Missing level or duration</option>
-                  </select>
+                  </Select>
 
                   <button
                     onClick={()=>setExpBolpatraFilter(v=>!v)}
@@ -914,9 +915,9 @@ function InstituteDetail({institute, clients, onUpdateClients, onBack, onUpdate,
           </p>
           <div className="form-group">
             <label>Target fiscal year *</label>
-            <select id="dupFYSelect" defaultValue={FISCAL_YEARS[FISCAL_YEARS.indexOf(modal.data.fy)+1] || FISCAL_YEARS[FISCAL_YEARS.length-1]}>
+            <Select id="dupFYSelect" defaultValue={FISCAL_YEARS[FISCAL_YEARS.indexOf(modal.data.fy)+1] || FISCAL_YEARS[FISCAL_YEARS.length-1]}>
               {FISCAL_YEARS.slice().reverse().map(fy=><option key={fy} value={fy}>{fy}  ({fyToAD(fy)})</option>)}
-            </select>
+            </Select>
           </div>
         </Modal>
       )}

@@ -177,3 +177,90 @@ export function checkAgainstPosition(person, position, nowBS = currentBSYear()) 
 
   return { ok: reasons.length === 0, reasons, years, held };
 }
+
+/*
+ * Who may train which level, by role.
+ *
+ * A co-trainer (or instructor) teaches at their own level: Plumber Level 2
+ * co-trains Level 2. A main trainer is one level above the class: Plumber
+ * Level 2 is main trainer for Level 1. Where a trade stops at the class's
+ * level — Shoe Maker has only Level 1 — nobody can be above it, so main and
+ * co are both drawn from that level.
+ */
+const TRADE_RANK = { 'Level 1': 1, 'Level 2': 2, 'Level 3': 3, Professional: 4 };
+const tradeKey = (name) => String(name || '').trim().toLowerCase();
+export const isMainTrainerRole = (title) => /main\s*trainer/i.test(String(title || ''));
+
+/** The rank a main trainer (main=true) or co-trainer needs for a class, or null if unlevelled. */
+export function rankNeededFor(occupation, allOccupations = [], main = false) {
+  const lv = TRADE_RANK[occupation?.level];
+  if (!lv) return null;
+  if (!main) return lv;
+  const top = Math.max(lv, ...allOccupations
+    .filter(o => tradeKey(o.name) === tradeKey(occupation.name))
+    .map(o => TRADE_RANK[o.level] || 0));
+  return Math.min(lv + 1, top);
+}
+
+/** Whether a person can take a trainer post for this class. */
+export function fitsTrainerLevel(person, occupation, allOccupations = [], title = '') {
+  if (!occupation) return true;
+  const eligible = person?.eligible_occupations || [];
+  const needed = rankNeededFor(occupation, allOccupations, isMainTrainerRole(title));
+  if (needed == null) return eligible.some(o => o.id === occupation.id);
+  // The highest level of this trade they hold, read off what they are eligible for.
+  const held = Math.max(0, ...eligible
+    .filter(o => tradeKey(o.name) === tradeKey(occupation.name))
+    .map(o => TRADE_RANK[o.level] || 0));
+  return held >= needed;
+}
+
+/**
+ * A post's minimums, one line each, marked met or not for this person — what
+ * the team picker shows beside a name so the notice's bar is visible, not just
+ * applied.
+ */
+export function criteriaChecks(person, position, allOccupations = [], nowBS = currentBSYear()) {
+  if (!position) return [];
+  const out = [];
+  const alts = acceptedOf(position);
+  const fit = checkAgainstPosition(person, position, nowBS);
+  if (alts.length) {
+    const results = alts.map(a => checkAlternative(person, a, position, nowBS));
+    const pass = results.find(r => r.ok);
+    const held = results.some(r => r.holds);
+    out.push({ key: 'edu', label: describeAccepted(position).replace(/ \+ \d+ yrs/g, ''),
+      ok: held, detail: highestEducation(person) || topVocationalOf(person) || 'none on record' });
+    const want = pass?.want ?? results.find(r => r.holds)?.want
+      ?? (parseInt(position.min_experience_years, 10) || null);
+    if (want) {
+      const since = pass?.since ?? results.filter(r => r.holds).map(r => r.since).find(s => s != null) ?? null;
+      out.push({ key: 'yrs', label: `${want} yrs`, ok: since != null && since >= want,
+        detail: since == null ? 'no passed year' : `${since} yrs` });
+    }
+  } else if (parseInt(position.min_experience_years, 10) > 0) {
+    const want = parseInt(position.min_experience_years, 10);
+    const y = experienceYears(person, '', nowBS);
+    out.push({ key: 'yrs', label: `${want} yrs`, ok: y != null && y >= want, detail: y == null ? 'no passed year' : `${y} yrs` });
+  }
+  const wantTraining = String(position.required_training || '').trim();
+  if (wantTraining) {
+    out.push({ key: 'trn', label: wantTraining,
+      ok: !fit.reasons.includes(`no ${wantTraining} on record`), detail: '' });
+  }
+  if (position.occupation_id) {
+    const occ = allOccupations.find(o => o.id === position.occupation_id) || { id: position.occupation_id };
+    const main = isMainTrainerRole(position.title);
+    const need = rankNeededFor(occ, allOccupations, main);
+    out.push({ key: 'occ',
+      label: `${occ.name || position.occupation_name || 'Trade'}${need ? ` Level ${need === 4 ? '4' : need}+` : ''}`,
+      ok: fitsTrainerLevel(person, occ, allOccupations, position.title), detail: '' });
+  }
+  return out;
+}
+
+function topVocationalOf(person) {
+  const v = (person?.qualifications || []).filter(q => streamOf(q) === 'Vocational' && q.level)
+    .map(q => labelOfVocational(q.level));
+  return v.length ? `NSTB ${v[v.length - 1]}` : '';
+}

@@ -24,17 +24,17 @@ export function DropdownPanel({ anchor, search, setSearch, filtered, value, onCh
       if (el) el.scrollIntoView({ block: 'nearest' });
     }
   }, [hlIdx]);
-  const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
-  const bg = isDark ? '#1e1e2e' : '#ffffff';
-  const border = isDark ? '#3a3a4e' : '#d1d5db';
-  const text1 = isDark ? '#e2e8f0' : '#1e293b';
-  const text3 = isDark ? '#64748b' : '#94a3b8';
-  const bg2 = isDark ? '#2a2a3e' : '#f1f5f9';
-  const hlBg = isDark ? '#333355' : '#e0e7ff';
+  // Theme tokens, so it follows light and dark with the rest of the app.
+  const bg = 'var(--surface)';
+  const border = 'var(--border)';
+  const text1 = 'var(--text)';
+  const text3 = 'var(--text3)';
+  const bg2 = 'var(--muted)';
+  const hlBg = 'var(--muted)';
   return (
     <div onMouseDown={e => e.stopPropagation()} style={{position:'fixed', zIndex:99999, top:pos.top, left:pos.left, width:pos.width,
-      background:bg, border:`1px solid ${border}`, borderRadius:6,
-      boxShadow:'0 8px 32px rgba(0,0,0,0.32)', overflow:'hidden'}}>
+      background:bg, border:`1px solid ${border}`, borderRadius:10,
+      boxShadow:'var(--shadow-lg)', overflow:'hidden'}}>
       <div style={{padding:'6px 8px', borderBottom:`1px solid ${border}`}}>
         <input autoFocus value={search} onChange={e => setSearch(e.target.value)}
           onKeyDown={handleKey}
@@ -47,11 +47,11 @@ export function DropdownPanel({ anchor, search, setSearch, filtered, value, onCh
           : filtered.map((o, idx) => (
               <div key={o.value} onClick={() => { onChange(o.value); setOpen(false); }}
                 style={{padding:'7px 12px', cursor:'pointer', fontSize:13,
-                  color: o.value == value ? '#6366f1' : text1,
-                  background: idx === hlIdx ? hlBg : o.value == value ? 'rgba(99,102,241,0.1)' : 'transparent',
+                  color: text1, fontWeight: o.value == value ? 600 : undefined,
+                  background: idx === hlIdx ? hlBg : o.value == value ? bg2 : 'transparent',
                   fontWeight: o.value == value ? 600 : 400}}
                 onMouseEnter={e => { setHlIdx(idx); e.currentTarget.style.background=bg2; }}
-                onMouseLeave={e => e.currentTarget.style.background = idx === hlIdx ? hlBg : o.value == value ? 'rgba(99,102,241,0.1)' : 'transparent'}>
+                onMouseLeave={e => e.currentTarget.style.background = idx === hlIdx ? hlBg : o.value == value ? bg2 : 'transparent'}>
                 {o.label}
               </div>
             ))
@@ -60,9 +60,9 @@ export function DropdownPanel({ anchor, search, setSearch, filtered, value, onCh
       {onAddNew && search.trim() && filtered.length === 0 && (
         <div style={{padding:'6px 8px', borderTop:`1px solid ${border}`}}>
           <div onClick={() => { onAddNew(search.trim()); setOpen(false); }}
-            style={{padding:'6px 10px', cursor:'pointer', fontSize:12, color:'#6366f1', fontWeight:500,
-              borderRadius:4, border:'1px dashed #6366f1', textAlign:'center'}}
-            onMouseEnter={e=>e.currentTarget.style.background='rgba(99,102,241,0.08)'}
+            style={{padding:'6px 10px', cursor:'pointer', fontSize:12, color:'var(--text)', fontWeight:500,
+              borderRadius:4, border:'1px dashed var(--border2)', textAlign:'center'}}
+            onMouseEnter={e=>e.currentTarget.style.background='var(--muted)'}
             onMouseLeave={e=>e.currentTarget.style.background='transparent'}>
             ＋ Add "{search.trim()}" as new occupation
           </div>

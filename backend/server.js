@@ -551,6 +551,14 @@ async function runMigrations() {
      * stream under another name, and folds into it.
      */
     `ALTER TABLE hr_qualifications ADD COLUMN IF NOT EXISTS stream TEXT`,
+    // A TOT is recorded by when it ran, as its certificate states it (BS).
+    `ALTER TABLE hr_qualifications ADD COLUMN IF NOT EXISTS start_date TEXT`,
+    `ALTER TABLE hr_qualifications ADD COLUMN IF NOT EXISTS end_date TEXT`,
+    `ALTER TABLE hr_qualifications ADD COLUMN IF NOT EXISTS duration_days INTEGER`,
+    // Which NSTB levels of a named trade a rule grants (empty = just that occupation).
+    `ALTER TABLE hr_rule_occupations ADD COLUMN IF NOT EXISTS levels TEXT[]`,
+    // The qualification's own level (a general level for academic, NSTB for vocational).
+    `ALTER TABLE hr_qualification_rules ADD COLUMN IF NOT EXISTS qual_level TEXT`,
     `UPDATE hr_qualifications SET kind = 'Academic', stream = 'Vocational' WHERE kind = 'Skill Test'`,
     // Rows entered before the toggle: an NSTB level and no degree level was a
     // vocational certificate; anything else academic was general education.

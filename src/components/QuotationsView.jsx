@@ -11,6 +11,7 @@ import { FISCAL_YEARS, getCurrentFY } from '../constants/data.js';
 import { adToBS, bsToAD, BS_MONTHS, BS_DATA, toNpNum, BS_YEARS } from '../constants/nepali.js';
 import { fmtDate } from '../utils/format.js';
 import { toast } from './ui/Feedback.jsx';
+import Select from './ui/Select.jsx';
 
 const FYS = [...FISCAL_YEARS].reverse();
 const QUOTE_STATUS = ['Quoted', 'Awarded', 'Rejected'];
@@ -49,18 +50,18 @@ function NepaliDatePicker({ label, value, onChange, required }) {
     <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
       {label && <label style={{ fontSize:12.5, fontWeight:600, color:'var(--text2)' }}>{label}{required && ' *'}</label>}
       <div style={{ display:'flex', gap:6 }}>
-        <select value={sel.y||''} onChange={e=>setY(e.target.value)} style={{...ss, flex:2}}>
+        <Select value={sel.y||''} onChange={e=>setY(e.target.value)} style={{...ss, flex:2}}>
           <option value=''>वर्ष</option>
           {BS_YEARS.map(y=><option key={y} value={y}>{npNum(y)}</option>)}
-        </select>
-        <select value={sel.m||''} onChange={e=>setM(e.target.value)} style={{...ss, flex:2}} disabled={!sel.y}>
+        </Select>
+        <Select value={sel.m||''} onChange={e=>setM(e.target.value)} style={{...ss, flex:2}} disabled={!sel.y}>
           <option value=''>महिना</option>
           {BS_MONTHS.map((mn,i)=><option key={i+1} value={i+1}>{mn}</option>)}
-        </select>
-        <select value={sel.d||''} onChange={e=>setD(e.target.value)} style={{...ss, flex:1}} disabled={!sel.y||!sel.m}>
+        </Select>
+        <Select value={sel.d||''} onChange={e=>setD(e.target.value)} style={{...ss, flex:1}} disabled={!sel.y||!sel.m}>
           <option value=''>गते</option>
           {days.map(d=><option key={d} value={d}>{npNum(d)}</option>)}
-        </select>
+        </Select>
       </div>
       {preview && <div style={{ fontSize:12, color:'var(--text3)' }}>{preview}</div>}
     </div>
@@ -156,16 +157,16 @@ function ShortlistTab({ institutes, clients, isAdmin, canEdit, token }) {
           <span className="material-icons-round search-icon" style={{fontSize:16}}>search</span>
           <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search firm or org…"/>
         </div>
-        <select value={filterFY} onChange={e=>setFilterFY(e.target.value)}
+        <Select value={filterFY} onChange={e=>setFilterFY(e.target.value)}
           style={{ height:38, borderRadius:8, border:'1px solid var(--border)', background:'var(--surface)', color:'var(--text)', padding:'0 10px', fontSize:13, cursor:'pointer' }}>
           <option value="">All FYs</option>
           {FYS.map(fy => <option key={fy} value={fy}>{fy}</option>)}
-        </select>
-        <select value={filterOrg} onChange={e=>setFilterOrg(e.target.value)}
+        </Select>
+        <Select value={filterOrg} onChange={e=>setFilterOrg(e.target.value)}
           style={{ height:38, borderRadius:8, border:'1px solid var(--border)', background:'var(--surface)', color:'var(--text)', padding:'0 10px', fontSize:13, cursor:'pointer', maxWidth:220 }}>
           <option value="">All Orgs</option>
           {orgs.map(([k,lbl]) => <option key={k} value={k}>{lbl}</option>)}
-        </select>
+        </Select>
         <span style={{ fontSize:12, color:'var(--text3)', whiteSpace:'nowrap' }}>{filtered.length} entries</span>
         {canEdit && (
           <button onClick={() => setModal({type:'add'})}
@@ -371,11 +372,11 @@ function ContractsTab({ isAdmin, canEdit, token }) {
           <span className="material-icons-round search-icon" style={{fontSize:16}}>search</span>
           <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search contract title or org…"/>
         </div>
-        <select value={filterFY} onChange={e=>setFilterFY(e.target.value)}
+        <Select value={filterFY} onChange={e=>setFilterFY(e.target.value)}
           style={{ height:38, borderRadius:8, border:'1px solid var(--border)', background:'var(--surface)', color:'var(--text)', padding:'0 10px', fontSize:13 }}>
           <option value="">All FYs</option>
           {FYS.map(fy => <option key={fy} value={fy}>{fy}</option>)}
-        </select>
+        </Select>
         <span style={{ fontSize:12, color:'var(--text3)' }}>{filtered.length} contracts</span>
         {canEdit && (
           <button onClick={() => setCModal({type:'add'})}

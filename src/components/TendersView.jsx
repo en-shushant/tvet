@@ -12,6 +12,7 @@ import { putTenderContext } from '../utils/tenderContext.js';
 import { STATUSES, STAGES, STATUS_TONE } from './tenders/common.js';
 import TenderWorkspace from './tenders/TenderWorkspace.jsx';
 import CopyTender from './tenders/CopyTender.jsx';
+import Select from './ui/Select.jsx';
 
 /**
  * Tenders — bids being put together.
@@ -155,21 +156,21 @@ function TendersView({ institutes = [], clients = [], onGoToReports }) {
           <input value={search} onChange={e => setSearch(e.target.value)}
             placeholder="Search by title or reference number…" />
         </div>
-        <select className="form-input" style={{ width: 'auto', minWidth: 170 }}
+        <Select className="form-input" style={{ width: 'auto', minWidth: 170 }}
           value={firmFilter} onChange={e => setFirmFilter(e.target.value)}>
           <option value="">Every firm</option>
           {institutes.map(i => <option key={i.id} value={i.id}>{i.acronym || i.name}</option>)}
-        </select>
-        <select className="form-input" style={{ width: 'auto', minWidth: 130 }}
+        </Select>
+        <Select className="form-input" style={{ width: 'auto', minWidth: 130 }}
           value={fyFilter} onChange={e => setFyFilter(e.target.value)}>
           <option value="">Every FY</option>
           {FISCAL_YEARS.map(f => <option key={f} value={f}>{f}</option>)}
-        </select>
-        <select className="form-input" style={{ width: 'auto', minWidth: 150 }}
+        </Select>
+        <Select className="form-input" style={{ width: 'auto', minWidth: 150 }}
           value={statusFilter} onChange={e => setStatusFilter(e.target.value)}>
           <option value="">Every status</option>
           {STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
-        </select>
+        </Select>
         {(firmFilter || fyFilter || statusFilter) && (
           <Btn className="btn btn-ghost btn-sm"
             onClick={() => { setFirmFilter(''); setFyFilter(''); setStatusFilter(''); }}>Clear</Btn>

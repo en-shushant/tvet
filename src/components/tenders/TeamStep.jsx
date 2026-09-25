@@ -1,8 +1,10 @@
 import { useState, useEffect, useMemo } from 'react';
 import { Btn } from '../../md.jsx';
 import { api } from '../../utils/api.js';
-import { checkAgainstPosition, experienceYears, highestEducation } from '../../utils/hrFit.js';
+import { checkAgainstPosition, experienceYears, highestEducation, fitsTrainerLevel, criteriaChecks } from '../../utils/hrFit.js';
+import { useOccupations } from '../../utils/useMasterData.js';
 import { groupPositions, positionBar, need, teamProgress } from './common.js';
+import Select from '../ui/Select.jsx';
 
 /**
  * Step 4 — each bidder's team, filled post by post.
@@ -74,6 +76,7 @@ export default function TeamStep({ tender, pool, variants, token, busy,
   }, [tender.id, token]);
 
   const targetPosition = positions.find(p => p.id === openSlot) || null;
+  const allOccupations = useOccupations();
   const available = useMemo(() =>
     pool.filter(p => !takenOnThisTender.has(p.id)), [pool, takenOnThisTender]);
   /**
@@ -85,13 +88,14 @@ export default function TeamStep({ tender, pool, variants, token, busy,
    */
   const matching = useMemo(() => {
     if (targetPosition) {
+      const occ = allOccupations.find(o => o.id === targetPosition.occupation_id)
+        || (targetPosition.occupation_id ? { id: targetPosition.occupation_id } : null);
       return available.filter(p => checkAgainstPosition(p, targetPosition).ok
-        && (!targetPosition.occupation_id
-            || (p.eligible_occupations || []).some(o => o.id === targetPosition.occupation_id)));
+        && fitsTrainerLevel(p, occ, allOccupations, targetPosition.title));
     }
     if (!wanted.length) return available;
     return available.filter(p => (p.eligible_occupations || []).some(o => wanted.includes(o.id)));
-  }, [available, tender, targetPosition]);
+  }, [available, tender, targetPosition, allOccupations]);
   const q = query.trim().toLowerCase();
   const candidates = (showAll ? pool : matching)
     .filter(p => !q || String(p.full_name || '').toLowerCase().includes(q));
@@ -104,7 +108,7 @@ export default function TeamStep({ tender, pool, variants, token, busy,
       bidder_id: activeBidder, position_id: pos?.id || null,
       occupation_id: pos?.occupation_id
         || (p.eligible_occupations || []).find(o => wanted.includes(o.id))?.id || null,
-      proposed_position: pos?.title || p.designation || '' }];
+      proposed_position: pos?.title || '' }];
     // Stay open while the post still has room.
     const filledNow = next.filter(r => r.position_id === pos?.id).length;
     if (!pos || filledNow >= need(pos)) setOpenSlot(null);
@@ -166,12 +170,12 @@ export default function TeamStep({ tender, pool, variants, token, busy,
           {[['tasks_variant_id', 'detailed_tasks', 'Tasks assigned'],
             ['quals_variant_id', 'key_qualifications', 'Key qualifications']].map(([key, field, label]) => (
             <label key={key} className="tw-hint">{label}
-              <select className="tw-in" value={r[key] || ''} onChange={e => setField(key, e.target.value)}>
+              <Select className="tw-in" value={r[key] || ''} onChange={e => setField(key, e.target.value)}>
                 <option value="">The person&apos;s own text</option>
                 {variantsFor(field, r.person_type).map(v => (
                   <option key={v.id} value={v.id}>{v.institute_id ? v.label : `${v.label} (shared)`}</option>
                 ))}
-              </select>
+              </Select>
             </label>
           ))}
         </div>
@@ -197,8 +201,10 @@ export default function TeamStep({ tender, pool, variants, token, busy,
       </div>
       <div className="tw-hint" style={{ marginTop: 6 }}>
         {targetPosition
-          ? `Who meets what the notice asks of ${targetPosition.title}`
-            + `${targetPosition.occupation_name ? ` for ${targetPosition.occupation_name}` : ''}.`
+          ? `Showing who meets every minimum the notice sets for ${targetPosition.title}`
+            + `${targetPosition.occupation_name ? ` (${targetPosition.occupation_name})` : ''}`
+            + `${criteriaChecks({}, targetPosition, allOccupations).length
+              ? `: ${criteriaChecks({}, targetPosition, allOccupations).map(c => c.label).join(' · ')}.` : '.'}`
           : 'Anyone in the pool who can cover a trade this notice asks for.'}
         {takenOnThisTender.size > 0 && !showAll
           && ` ${takenOnThisTender.size} already promised on this notice ${takenOnThisTender.size === 1 ? 'is' : 'are'} hidden.`}
@@ -243,7 +249,18 @@ export default function TeamStep({ tender, pool, variants, token, busy,
                     <span className="tw-tag amber" title={alsoOn.map(a => `${a.title} — ${a.bidder_name}`).join('\n')}>
                       on {alsoOn.length} other live bid{alsoOn.length > 1 ? 's' : ''}</span>
                   )}
-                  {targetPosition && !fit.ok && <span className="tw-tag gray">{fit.reasons.join('; ')}</span>}
+                  {targetPosition && (
+                    <div className="tw-crit">
+                      {criteriaChecks(p, targetPosition, allOccupations).map(c => (
+                        <span key={c.key} className={`tw-crit-item ${c.ok ? 'ok' : 'miss'}`}
+                          title={c.detail ? `${c.label} — has ${c.detail}` : c.label}>
+                          <span className="material-icons-round" aria-hidden="true">{c.ok ? 'check' : 'close'}</span>
+                          {c.label}{c.detail && c.key !== 'edu' ? ` (${c.detail})` : ''}
+                          <span className="sr-only">{c.ok ? ' met' : ' not met'}</span>
+                        </span>
+                      ))}
+                    </div>
+                  )}
                 </div>
                 <Btn className="btn btn-secondary btn-sm" disabled={!!taken || busy} onClick={() => assign(p)}>
                   Assign</Btn>
@@ -301,7 +318,9 @@ export default function TeamStep({ tender, pool, variants, token, busy,
               <div key={pos.id} className="tw-slot">
                 <div className="tw-slot-row">
                   <span className="tw-slot-name">{pos.title}</span>
-                  <span className="tw-slot-bar">{positionBar(pos, { omitOccupation: g.key !== 'experts' }) || 'no stated minimum'}</span>
+                  <span className="tw-slot-bar">{[positionBar(pos, { omitOccupation: g.key !== 'experts' }),
+                    criteriaChecks({}, pos, allOccupations).find(c => c.key === 'occ' && /Level/.test(c.label))?.label]
+                    .filter(Boolean).join(' · ') || 'no stated minimum'}</span>
                   <span style={{ flex: 1 }} />
                   <span className={`tw-fill${full ? ' is-full' : ''}`}>{inPost.length} of {need(pos)}</span>
                   <Btn className={`btn btn-sm ${full ? 'btn-ghost' : 'btn-secondary'}`} disabled={busy || !activeBidder}

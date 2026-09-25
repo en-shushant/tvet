@@ -12,6 +12,7 @@ import { Btn } from '../../md.jsx';
 import { adToBS, bsToAD, BS_MONTHS, BS_DATA, toNpNum, BS_YEARS } from '../../constants/nepali.js';
 import { FISCAL_YEARS } from '../../constants/data.js';
 import { getSession } from '../../utils/auth.js';
+import Select from '../ui/Select.jsx';
 
 export function statusColor(s) {
   if (s === 'Active')  return { bg: 'var(--success-light)', color: '#0b9b85' };
@@ -57,13 +58,13 @@ export function NepaliDatePicker({ label, value, onChange, required }) {
   };
 
   const sel = (val, opts, placeholder) => (
-    <select value={val || ''} onChange={e => handleChange(opts === 'year' ? 'y' : opts === 'month' ? 'm' : 'd', e.target.value)}
+    <Select value={val || ''} onChange={e => handleChange(opts === 'year' ? 'y' : opts === 'month' ? 'm' : 'd', e.target.value)}
       style={{ flex: 1, padding: '14px 8px 14px 12px', border: '1px solid var(--md-sys-color-outline,#79747e)', borderRadius: 4, background: 'var(--surface)', color: val ? 'var(--text)' : 'var(--text3)', fontSize: 15, fontFamily: 'inherit', appearance: 'none', cursor: 'pointer' }}>
       <option value="">{placeholder}</option>
       {opts === 'year'  && BS_YEARS.map(y => <option key={y} value={y}>{toNpNum(y)}</option>)}
       {opts === 'month' && BS_MONTHS.map((mn, i) => <option key={i+1} value={i+1}>{mn}</option>)}
       {opts === 'day'   && Array.from({length: maxDays}, (_,i) => i+1).map(d => <option key={d} value={d}>{toNpNum(d)}</option>)}
-    </select>
+    </Select>
   );
 
   return (

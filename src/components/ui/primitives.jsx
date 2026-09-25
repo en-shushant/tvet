@@ -43,18 +43,22 @@ export function PageHeader({ title, emphasis, sub, breadcrumb, actions }) {
  * screens that still pass one, but every tile now shares the neutral frame —
  * one card language across the app rather than a colour per tile.
  */
+// The older pastel names map onto a small set of tints for the icon chip.
+const KPI_TONES = { blue: 'blue', periwinkle: 'indigo', info: 'sky', mint: 'teal', lilac: 'violet',
+  cream: 'amber', warning: 'amber', error: 'rose', success: 'teal', pink: 'rose' };
+
 export function KpiCard({ label, value, unit, icon, tone, footer, onClick }) {
   const interactive = typeof onClick === 'function';
   return (
     <div
-      className={`frame${interactive ? ' is-link' : ''}`}
+      className={`frame kpi-card tone-${KPI_TONES[tone] || 'blue'}${interactive ? ' is-link' : ''}`}
       onClick={onClick}
       role={interactive ? 'button' : undefined}
       tabIndex={interactive ? 0 : undefined}
       onKeyDown={interactive ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onClick(); } } : undefined}>
       <div className="frame-head">
         <span style={{overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap'}}>{label}</span>
-        {icon && <span className="frame-head-action"><span className="material-icons-round" aria-hidden="true">{icon}</span></span>}
+        {icon && <span className="frame-head-action"><span className="kpi-icon material-icons-round" aria-hidden="true">{icon}</span></span>}
       </div>
       <div className="frame-body">
         <div style={{display:'flex', alignItems:'baseline', flexWrap:'wrap'}}>

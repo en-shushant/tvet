@@ -3,6 +3,7 @@ import { PROVINCES, getAllDistricts } from '../constants/data.js';
 import SearchableSelect from './ui/SearchableSelect.jsx';
 
 import { Btn } from '../md.jsx';
+import Select from './ui/Select.jsx';
 
 function DistrictMultiPicker({onAdd, buttonLabel='+ Add districts'}) {
   const [open, setOpen] = useState(false);
@@ -39,10 +40,10 @@ function DistrictMultiPicker({onAdd, buttonLabel='+ Add districts'}) {
       <div style={{display:'flex', gap:6, alignItems:'center', marginBottom:8}}>
         <input value={search} onChange={e=>{setSearch(e.target.value);setBrowseProvince('');}}
           placeholder="Search districts across all provinces…" style={{flex:1, fontSize:12}}/>
-        <select value={browseProvince} onChange={e=>{setBrowseProvince(e.target.value);setSearch('');}} style={{fontSize:12, padding:'4px 6px'}}>
+        <Select value={browseProvince} onChange={e=>{setBrowseProvince(e.target.value);setSearch('');}} style={{fontSize:12, padding:'4px 6px'}}>
           <option value="">All provinces</option>
           {PROVINCES.map(p=><option key={p.id} value={p.name}>{p.name}</option>)}
-        </select>
+        </Select>
         {selected.length > 0 && <Btn className="btn btn-primary btn-sm" onClick={handleAdd}>Add {selected.length}</Btn>}
         <button onClick={()=>{setOpen(false);setSelected([]);setSearch('');}} style={{background:'none',border:'none',cursor:'pointer',color:'var(--text3)',fontSize:14,flexShrink:0}}><span className="material-icons-round" style={{fontSize:14}}>close</span></button>
       </div>

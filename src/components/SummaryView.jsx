@@ -6,6 +6,7 @@ import { exportSummaryToMD, exportSummaryToPDF, exportSummaryToCSV } from '../ut
 import { getSession } from '../utils/auth.js';
 import { api, normInst } from '../utils/api.js';
 import { fmt, getClient, getOccupation, pct } from '../utils/format.js';
+import Select from './ui/Select.jsx';
 
 
 
@@ -148,10 +149,10 @@ function SummaryView({institutes, clients}) {
 
           <div className="filter-section">
             <div className="filter-label">Institute</div>
-            <select value={selectedInst} onChange={e=>setSelectedInst(e.target.value)} style={{width:'100%'}}>
+            <Select value={selectedInst} onChange={e=>setSelectedInst(e.target.value)} style={{width:'100%'}}>
               <option value="">— Select —</option>
               {institutes.map(i=><option key={i.id} value={i.id}>{i.acronym || i.name}</option>)}
-            </select>
+            </Select>
           </div>
 
           <div className="filter-section">

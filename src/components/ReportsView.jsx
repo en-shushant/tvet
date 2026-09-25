@@ -10,6 +10,7 @@ import REPORT_FAMILIES from '../reports/index.js';
 import { TOOL_COLUMN_OPTIONS, TOOL_TYPE_OPTIONS, DEFAULT_TOOL_COLS } from '../reports/bolpatra.jsx';
 import { PillTabs } from './ui/primitives.jsx';
 import { fetchToolsFor, countToolsFor } from '../utils/occupationTools.js';
+import Select from './ui/Select.jsx';
 
 const FILTER_KEY = 'tvettrack_reports_filters_v1';
 function loadFilters() {
@@ -892,15 +893,15 @@ function ReportsView({ institutes, clients }) {
         <div style={{display:'flex', gap:16, flexWrap:'wrap'}}>
           <div>
             <div style={{fontSize:11, fontWeight:600, color:'var(--text3)', marginBottom:5}}>REPORT FAMILY</div>
-            <select className="form-input" style={{width:'auto', minWidth:200}} value={familyId} onChange={e => setFamilyId(e.target.value)}>
+            <Select className="form-input" style={{width:'auto', minWidth:200}} value={familyId} onChange={e => setFamilyId(e.target.value)}>
               {REPORT_FAMILIES.map(fam => <option key={fam.id} value={fam.id}>{fam.label}</option>)}
-            </select>
+            </Select>
           </div>
           <div>
             <div style={{fontSize:11, fontWeight:600, color:'var(--text3)', marginBottom:5}}>REPORT TYPE</div>
-            <select className="form-input" style={{width:'auto', minWidth:260}} value={reportId} onChange={e => setReportId(e.target.value)}>
+            <Select className="form-input" style={{width:'auto', minWidth:260}} value={reportId} onChange={e => setReportId(e.target.value)}>
               {family.reports.map(r => <option key={r.id} value={r.id}>{r.label}</option>)}
-            </select>
+            </Select>
           </div>
         </div>
         {report.description && (
@@ -1157,19 +1158,19 @@ function ReportsView({ institutes, clients }) {
                   <div style={{fontWeight:600, fontSize:13.5, marginBottom:8}}>D2/D3 — Tools Occupation</div>
                   <input className="form-input" value={enssureToolsOccSearch} onChange={e => setEnssureToolsOccSearch(e.target.value)}
                     placeholder="Search occupation…" style={{marginBottom:8}}/>
-                  <select className="form-input" style={{width:'100%', marginBottom:10}}
+                  <Select className="form-input" style={{width:'100%', marginBottom:10}}
                     value={enssureToolsOccId} onChange={e => setEnssureToolsOccId(e.target.value)}>
                     <option value="">— Select occupation —</option>
                     {occupations
                       .filter(o => !enssureToolsOccSearch || o.name.toLowerCase().includes(enssureToolsOccSearch.toLowerCase()))
                       .map(o => <option key={o.id} value={o.id}>{o.name}{o.level ? ` (${o.level})` : ''}</option>)}
-                  </select>
+                  </Select>
                   <div style={{display:'flex', gap:16, flexWrap:'wrap'}}>
                     <div>
                       <div style={{fontSize:11, fontWeight:600, color:'var(--text3)', marginBottom:5}}>LEVEL</div>
-                      <select className="form-input" style={{width:'auto', minWidth:140}} value={enssureToolsLevel} onChange={e => setEnssureToolsLevel(e.target.value)}>
+                      <Select className="form-input" style={{width:'auto', minWidth:140}} value={enssureToolsLevel} onChange={e => setEnssureToolsLevel(e.target.value)}>
                         <option>N/A</option><option>Level 1</option><option>Level 2</option><option>Level 3</option><option>Professional</option><option>Technician</option>
-                      </select>
+                      </Select>
                     </div>
                     <div>
                       <div style={{fontSize:11, fontWeight:600, color:'var(--text3)', marginBottom:5}}>EVENTS (MULTIPLIER)</div>
@@ -1185,11 +1186,11 @@ function ReportsView({ institutes, clients }) {
                 <div>
                   <div style={{display:'flex', alignItems:'center', gap:10, marginBottom:14}}>
                     <span style={{fontWeight:600, fontSize:13.5}}>Default level</span>
-                    <select className="form-input" style={{width:'auto', minWidth:160}} value={eoiToolsLevel}
+                    <Select className="form-input" style={{width:'auto', minWidth:160}} value={eoiToolsLevel}
                       onChange={e => { setEoiToolsLevel(e.target.value); setEoiLevelByOcc({}); }}>
                       <option>N/A</option><option>Level 1</option><option>Level 2</option>
                       <option>Level 3</option><option>Professional</option><option>Technician</option>
-                    </select>
+                    </Select>
                     <span className="material-icons-round" style={{fontSize:14, color:'var(--text3)', cursor:'help'}}
                       title="Applies to every occupation below. Changing it resets any per-occupation levels you have set.">info</span>
                   </div>
@@ -1232,12 +1233,12 @@ function ReportsView({ institutes, clients }) {
                             <div style={{display:'flex', alignItems:'center', gap:8}}>
                               <span style={{flex:1, minWidth:0, fontSize:12.5, overflow:'hidden',
                                 textOverflow:'ellipsis', whiteSpace:'nowrap'}} title={o?.name}>{o?.name || id}</span>
-                              <select className="form-input" style={{width:132, flexShrink:0}}
+                              <Select className="form-input" style={{width:132, flexShrink:0}}
                                 value={levelForOcc(id)}
                                 onChange={e => setEoiLevelByOcc(prev => ({ ...prev, [id]: e.target.value }))}>
                                 <option>N/A</option><option>Level 1</option><option>Level 2</option>
                                 <option>Level 3</option><option>Professional</option><option>Technician</option>
-                              </select>
+                              </Select>
                               <input type="number" min="1" className="form-input" value={n}
                                 style={{width:76, flexShrink:0}}
                                 onChange={e => setEoiEventsByOcc(prev => ({
@@ -1270,18 +1271,18 @@ function ReportsView({ institutes, clients }) {
                   <div style={{display:'flex', gap:16, flexWrap:'wrap'}}>
                     <div>
                       <div style={{fontSize:11, fontWeight:600, color:'var(--text3)', marginBottom:5}}>LEVEL</div>
-                      <select className="form-input" style={{width:'auto', minWidth:160}} value={toolsLevel} onChange={e => setToolsLevel(e.target.value)}>
+                      <Select className="form-input" style={{width:'auto', minWidth:160}} value={toolsLevel} onChange={e => setToolsLevel(e.target.value)}>
                         <option value="">— Select level —</option>
                         <option>N/A</option><option>Level 1</option><option>Level 2</option><option>Level 3</option><option>Professional</option>
-                      </select>
+                      </Select>
                     </div>
                     <div>
                       <div style={{fontSize:11, fontWeight:600, color:'var(--text3)', marginBottom:5}}>LAYOUT</div>
-                      <select className="form-input" style={{width:'auto', minWidth:180}} value={toolsLayout} onChange={e => setToolsLayout(e.target.value)}>
+                      <Select className="form-input" style={{width:'auto', minWidth:180}} value={toolsLayout} onChange={e => setToolsLayout(e.target.value)}>
                         <option value="combined">Combined table</option>
                         <option value="separate_sections">Separate sections</option>
                         <option value="separate_tables">Separate tables</option>
-                      </select>
+                      </Select>
                     </div>
                     <div>
                       <div style={{fontSize:11, fontWeight:600, color:'var(--text3)', marginBottom:5}}>NUMBER OF GROUPS</div>
@@ -1337,13 +1338,13 @@ function ReportsView({ institutes, clients }) {
                 </div>
               )}
               {noInstitute && (
-                <select className="form-input" style={{width:'auto', minWidth:200}} value={toolsTypeFilter} onChange={e => setToolsTypeFilter(e.target.value)}>
+                <Select className="form-input" style={{width:'auto', minWidth:200}} value={toolsTypeFilter} onChange={e => setToolsTypeFilter(e.target.value)}>
                   <option value="all">All types</option>
                   <option value="tools">Tools only</option>
                   <option value="consumables">Consumables only</option>
                   <option value="safety">Safety Tools only</option>
                   <option value="stationery">Stationery only</option>
-                </select>
+                </Select>
               )}
               </div>
 
@@ -1391,15 +1392,15 @@ function ReportsView({ institutes, clients }) {
                     {report.hasTurnoverFY ? 'EXPERIENCE FY' : 'FY RANGE'}
                   </div>
                   <div style={{display:'flex', alignItems:'center', gap:8}}>
-                    <select className="form-input" style={{width:'auto', minWidth:100}} value={fromFY} onChange={e => { setFromFY(e.target.value); setSelectedIds(null); }}>
+                    <Select className="form-input" style={{width:'auto', minWidth:100}} value={fromFY} onChange={e => { setFromFY(e.target.value); setSelectedIds(null); }}>
                       <option value="">From</option>
                       {allFYs.map(fy => <option key={fy} value={fy}>{fy}</option>)}
-                    </select>
+                    </Select>
                     <span style={{color:'var(--text3)'}}>→</span>
-                    <select className="form-input" style={{width:'auto', minWidth:100}} value={toFY} onChange={e => { setToFY(e.target.value); setSelectedIds(null); }}>
+                    <Select className="form-input" style={{width:'auto', minWidth:100}} value={toFY} onChange={e => { setToFY(e.target.value); setSelectedIds(null); }}>
                       <option value="">To</option>
                       {allFYs.map(fy => <option key={fy} value={fy}>{fy}</option>)}
-                    </select>
+                    </Select>
                     {(fromFY || toFY) && (
                       <Btn className="btn btn-ghost btn-sm" onClick={() => { setFromFY(''); setToFY(''); setSelectedIds(null); }}><span className="material-icons-round" style={{fontSize:16}}>close</span></Btn>
                     )}
@@ -1412,15 +1413,15 @@ function ReportsView({ institutes, clients }) {
                   <div style={{fontSize:11, fontWeight:600, color:'var(--text3)', marginBottom:8}}
                     title="Fiscal years of the turnover rows in 4(A) Financial Capacity">TURNOVER FY</div>
                   <div style={{display:'flex', alignItems:'center', gap:8}}>
-                    <select className="form-input" style={{width:'auto', minWidth:100}} value={turnFromFY} onChange={e => setTurnFromFY(e.target.value)}>
+                    <Select className="form-input" style={{width:'auto', minWidth:100}} value={turnFromFY} onChange={e => setTurnFromFY(e.target.value)}>
                       <option value="">From</option>
                       {allFYs.map(fy => <option key={fy} value={fy}>{fy}</option>)}
-                    </select>
+                    </Select>
                     <span style={{color:'var(--text3)'}}>→</span>
-                    <select className="form-input" style={{width:'auto', minWidth:100}} value={turnToFY} onChange={e => setTurnToFY(e.target.value)}>
+                    <Select className="form-input" style={{width:'auto', minWidth:100}} value={turnToFY} onChange={e => setTurnToFY(e.target.value)}>
                       <option value="">To</option>
                       {allFYs.map(fy => <option key={fy} value={fy}>{fy}</option>)}
-                    </select>
+                    </Select>
                     {(turnFromFY || turnToFY) && (
                       <Btn className="btn btn-ghost btn-sm" onClick={() => { setTurnFromFY(''); setTurnToFY(''); }}><span className="material-icons-round" style={{fontSize:16}}>close</span></Btn>
                     )}
@@ -1433,15 +1434,15 @@ function ReportsView({ institutes, clients }) {
                   <div style={{fontSize:11, fontWeight:600, color:'var(--text3)', marginBottom:8}}
                     title="Fiscal years of the assignments shown in B.1 Current Portfolio">PORTFOLIO FY</div>
                   <div style={{display:'flex', alignItems:'center', gap:8}}>
-                    <select className="form-input" style={{width:'auto', minWidth:100}} value={portfolioFromFY} onChange={e => setPortfolioFromFY(e.target.value)}>
+                    <Select className="form-input" style={{width:'auto', minWidth:100}} value={portfolioFromFY} onChange={e => setPortfolioFromFY(e.target.value)}>
                       <option value="">From</option>
                       {allFYs.map(fy => <option key={fy} value={fy}>{fy}</option>)}
-                    </select>
+                    </Select>
                     <span style={{color:'var(--text3)'}}>→</span>
-                    <select className="form-input" style={{width:'auto', minWidth:100}} value={portfolioToFY} onChange={e => setPortfolioToFY(e.target.value)}>
+                    <Select className="form-input" style={{width:'auto', minWidth:100}} value={portfolioToFY} onChange={e => setPortfolioToFY(e.target.value)}>
                       <option value="">To</option>
                       {allFYs.map(fy => <option key={fy} value={fy}>{fy}</option>)}
-                    </select>
+                    </Select>
                     {(portfolioFromFY || portfolioToFY) && (
                       <Btn className="btn btn-ghost btn-sm" onClick={() => { setPortfolioFromFY(''); setPortfolioToFY(''); }}><span className="material-icons-round" style={{fontSize:16}}>close</span></Btn>
                     )}
@@ -1476,12 +1477,12 @@ function ReportsView({ institutes, clients }) {
               <div>
                 <div style={{fontSize:11, fontWeight:600, color:'var(--text3)', marginBottom:8}}
                   title={family.selfFilters ? 'Narrows 3(B) Specific Experience only' : undefined}>TRAINING DURATION</div>
-                <select className="form-input" style={{width:'auto', minWidth:200}} value={filterDuration} onChange={e => setFilterDuration(e.target.value)}>
+                <Select className="form-input" style={{width:'auto', minWidth:200}} value={filterDuration} onChange={e => setFilterDuration(e.target.value)}>
                   <option value="">All trainings</option>
                   <option value="160plus">160 hours or more</option>
                   <option value="390plus">390 hours or more</option>
                   <option value="390more">More than 390 hours</option>
-                </select>
+                </Select>
               </div>
 
               {!isMultiInst && fullInst && allTrainingTypes.length > 0 && (
@@ -1515,11 +1516,11 @@ function ReportsView({ institutes, clients }) {
               {!isMultiInst && fullInst && report.id === 'h2' && (
                 <div>
                   <div style={{fontSize:11, fontWeight:600, color:'var(--text3)', marginBottom:8}}>SORT BY</div>
-                  <select className="form-input" style={{width:'auto', minWidth:180}} value={sortBy} onChange={e => setSortBy(e.target.value)}>
+                  <Select className="form-input" style={{width:'auto', minWidth:180}} value={sortBy} onChange={e => setSortBy(e.target.value)}>
                     <option value="default">Data order</option>
                     <option value="alpha">Alphabetical</option>
                     <option value="fy">Fiscal year</option>
-                  </select>
+                  </Select>
                 </div>
               )}
             </div>

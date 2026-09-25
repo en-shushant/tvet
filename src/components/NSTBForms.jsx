@@ -6,6 +6,7 @@ import SearchableSelect from './ui/SearchableSelect.jsx';
 import { FISCAL_YEARS, NSTB_LEVELS, OCCUPATIONS } from '../constants/data.js';
 import { Btn, MdTextField, MdSelect, MdOption } from '../md.jsx';
 import { fyToAD } from '../utils/format.js';
+import Select from './ui/Select.jsx';
 
 
 // ─── NSTB FORM ───────────────────────────────────────────────────────────────
@@ -174,9 +175,9 @@ function NSTBBulkPage({instituteName, onSave, onBack}) {
                       options={OCCUPATIONS.map(o=>({value:o.name, label:o.name}))}/>
                   </td>
                   <td style={tdS}>
-                    <select value={row.level} onChange={e=>setOcc(row._id,'level',e.target.value)} style={{fontSize:11, width:'100%'}}>
+                    <Select value={row.level} onChange={e=>setOcc(row._id,'level',e.target.value)} style={{fontSize:11, width:'100%'}}>
                       {NSTB_LEVELS.map(l=><option key={l}>{l}</option>)}
-                    </select>
+                    </Select>
                   </td>
                   <td style={tdS}><input type="number" value={row.applied} onChange={e=>setOcc(row._id,'applied',e.target.value===''?'':parseInt(e.target.value))} style={{fontSize:11, width:'100%'}}/></td>
                   <td style={tdS}><input type="number" value={row.appeared} onChange={e=>setOcc(row._id,'appeared',e.target.value===''?'':parseInt(e.target.value))} style={{fontSize:11, width:'100%'}}/></td>

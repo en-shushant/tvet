@@ -3,6 +3,7 @@ import Modal, { ErrorBanner } from '../ui/Modal.jsx';
 import { Btn, MdTextField, MdSelect, MdOption } from '../../md.jsx';
 import REPORT_CATALOG from '../../reports/catalog.js';
 import { BIDDER_STATUSES, leadOf } from './common.js';
+import Select from '../ui/Select.jsx';
 
 /**
  * Step 5 — each bidder's documents, and how it fared.
@@ -48,10 +49,10 @@ export default function SubmitStep({ tender, busy, variants, docFamily, setDocFa
           Format the client asks for</label>
         {/* The client dictates the format, so it is chosen rather than fixed by
             the stage — the same choice the Reports menu offers. */}
-        <select id="tender-doc-format" className="tw-in" style={{ width: 'auto', minWidth: 240 }}
+        <Select id="tender-doc-format" className="tw-in" style={{ width: 'auto', minWidth: 240 }}
           value={docFamily} onChange={e => setDocFamily(e.target.value)}>
           {REPORT_CATALOG.map(fam => <option key={fam.id} value={fam.id}>{fam.label}</option>)}
-        </select>
+        </Select>
       </div>
 
       {bidders.map(b => {
@@ -67,11 +68,11 @@ export default function SubmitStep({ tender, busy, variants, docFamily, setDocFa
                 )}
               </div>
               <span className="tw-hint">Result</span>
-              <select className="tw-in" style={{ width: 'auto', minWidth: 150 }} aria-label={`Result for ${b.display_name}`}
+              <Select className="tw-in" style={{ width: 'auto', minWidth: 150 }} aria-label={`Result for ${b.display_name}`}
                 value={b.status || 'Preparing'} disabled={busy}
                 onChange={e => onSetBidderStatus(b, e.target.value)}>
                 {BIDDER_STATUSES.map(st => <option key={st} value={st}>{st}</option>)}
-              </select>
+              </Select>
             </div>
 
             {isEOI && (

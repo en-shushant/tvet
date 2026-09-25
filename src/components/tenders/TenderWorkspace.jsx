@@ -12,6 +12,7 @@ import BiddersStep from './BiddersStep.jsx';
 import TeamStep from './TeamStep.jsx';
 import SubmitStep from './SubmitStep.jsx';
 import CopyTender from './CopyTender.jsx';
+import Select from '../ui/Select.jsx';
 
 /**
  * One tender, worked through in the order the work happens.
@@ -261,11 +262,11 @@ export default function TenderWorkspace({ tenderId, startAt, clients, institutes
         </div>
         {saved && (
           <div className="tw-head-actions">
-            <select className="tw-in" style={{ width: 'auto' }} aria-label="Status of this tender"
+            <Select className="tw-in" style={{ width: 'auto' }} aria-label="Status of this tender"
               value={tender.status || 'Preparing'} disabled={busy}
               onChange={e => patch({ status: e.target.value }, `Marked ${e.target.value}.`)}>
               {STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
-            </select>
+            </Select>
             <Btn className="btn btn-secondary btn-sm" onClick={() => setCopying(true)}>
               <span className="material-icons-round" style={{ fontSize: 15, verticalAlign: 'middle', marginRight: 4 }}>
                 content_copy</span>Copy</Btn>

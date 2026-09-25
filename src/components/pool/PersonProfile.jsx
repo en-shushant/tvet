@@ -6,6 +6,7 @@ import { api } from '../../utils/api.js';
 import { labelOfGeneral, labelOfVocational, levelOfQualification } from '../../constants/education.js';
 import { experienceYears } from '../../utils/hrFit.js';
 import { DOC_TYPES, initials, sectionOf, topGeneral, topVocational } from './common.js';
+import Select from '../ui/Select.jsx';
 
 /**
  * A person in the pool, read the way a CV is read.
@@ -107,7 +108,6 @@ export default function PersonProfile({ person, token, canDelete, onBack, onEdit
           </h1>
           <div className="pp-tags">
             <span className="tw-tag gray">{person.person_type}</span>
-            {person.designation && <span className="pp-designation">{person.designation}</span>}
             {person.is_active === false && <span className="tw-tag amber">No longer available</span>}
           </div>
           {contact.length > 0 && (
@@ -293,9 +293,9 @@ export default function PersonProfile({ person, token, canDelete, onBack, onEdit
               </div>
             )) : <p className="tw-empty">Nothing attached yet.</p>}
             <div className="pp-attach">
-              <select className="tw-in" aria-label="Kind of document" value={docType} onChange={e => setDocType(e.target.value)}>
+              <Select className="tw-in" aria-label="Kind of document" value={docType} onChange={e => setDocType(e.target.value)}>
                 {DOC_TYPES.map(t => <option key={t}>{t}</option>)}
-              </select>
+              </Select>
               <label className="btn btn-secondary btn-sm" style={{ cursor: 'pointer', margin: 0, whiteSpace: 'nowrap' }}>
                 {uploading ? 'Uploading…' : 'Attach file'}
                 <input type="file" style={{ display: 'none' }} disabled={uploading}

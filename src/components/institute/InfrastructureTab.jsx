@@ -9,6 +9,7 @@ import { useState, useEffect } from 'react';
 import Modal from '../ui/Modal.jsx';
 import { Btn } from '../../md.jsx';
 import { api } from '../../utils/api.js';
+import Select from '../ui/Select.jsx';
 
 const INFRA_COLS = ['S.N.', 'Particular', 'Description', 'Unit (Number)', 'Size', 'Ownership', 'Remark'];
 const INFRA_BLANK = { particular:'', description:'', unit:'', size:'', ownership:'Own', remark:'' };
@@ -107,9 +108,9 @@ export function InfrastructureTab({ instituteId, token, canEdit }) {
                   <td key={f} style={tdS}><input style={inp} value={editForm[f]} onChange={e=>setEditForm(p=>({...p,[f]:e.target.value}))} /></td>
                 ))}
                 <td style={tdS}>
-                  <select style={inp} value={editForm.ownership} onChange={e=>setEditForm(p=>({...p,ownership:e.target.value}))}>
+                  <Select style={inp} value={editForm.ownership} onChange={e=>setEditForm(p=>({...p,ownership:e.target.value}))}>
                     {OWNERSHIP_OPTS.map(o=><option key={o}>{o}</option>)}
-                  </select>
+                  </Select>
                 </td>
                 <td style={tdS}><input style={inp} value={editForm.remark} onChange={e=>setEditForm(p=>({...p,remark:e.target.value}))} /></td>
                 <td style={tdS}>
@@ -168,9 +169,9 @@ export function InfrastructureTab({ instituteId, token, canEdit }) {
                     <td style={tdS}><input style={inp} value={r.unit} onChange={e=>updateBulk(i,'unit',e.target.value)} /></td>
                     <td style={tdS}><input style={inp} value={r.size} onChange={e=>updateBulk(i,'size',e.target.value)} /></td>
                     <td style={tdS}>
-                      <select style={inp} value={r.ownership} onChange={e=>updateBulk(i,'ownership',e.target.value)}>
+                      <Select style={inp} value={r.ownership} onChange={e=>updateBulk(i,'ownership',e.target.value)}>
                         {OWNERSHIP_OPTS.map(o=><option key={o}>{o}</option>)}
-                      </select>
+                      </Select>
                     </td>
                     <td style={tdS}><input style={inp} value={r.remark} onChange={e=>updateBulk(i,'remark',e.target.value)} /></td>
                     <td style={{...tdS, textAlign:'center'}}>

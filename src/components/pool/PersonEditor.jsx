@@ -4,7 +4,9 @@ import { Btn } from '../../md.jsx';
 import { GENERAL_LEVELS, VOCATIONAL_LEVELS, levelOfQualification,
          labelOfGeneral } from '../../constants/education.js';
 import { PERSON_TYPES, TRAINING_KINDS, FLUENCY, BLANK_PERSON, emptyGeneral, emptyVocational,
-         emptyTraining, emptyExp, emptyLang, sectionOf } from './common.js';
+         emptyTraining, emptyExp, emptyLang, sectionOf, DEFAULT_LANGUAGES, TOT_TITLE,
+         maskBsDate, isBsDate, bsDaysBetween } from './common.js';
+import Select from '../ui/Select.jsx';
 
 /**
  * Adding or editing someone in the pool, as one page.
@@ -22,7 +24,8 @@ export default function PersonEditor({ person, rules, occupations, onSave, onCan
     ...BLANK_PERSON, ...(person || {}),
     // A person loaded from the server may predate these, and every section maps
     // over them unconditionally.
-    languages: person?.languages || [],
+    // Nepali and English are on every CV here; anything else is added.
+    languages: person?.languages?.length ? person.languages : DEFAULT_LANGUAGES(),
     qualifications: person?.qualifications || [],
     experience: person?.experience || [],
     occupation_overrides: person?.occupation_overrides || [],
@@ -37,6 +40,9 @@ export default function PersonEditor({ person, rules, occupations, onSave, onCan
     return v > g ? 'vocational' : 'general';
   });
   const [occQuery, setOccQuery] = useState('');
+  // Usually the same as permanent; ticked only when it is not.
+  const [tempDifferent, setTempDifferent] = useState(() => !!person?.temporary_address
+    && String(person.temporary_address).trim() !== String(person.permanent_address || '').trim());
   const refs = { personal: useRef(null), education: useRef(null), training: useRef(null),
                  experience: useRef(null), cv: useRef(null), trades: useRef(null) };
 
@@ -74,6 +80,13 @@ export default function PersonEditor({ person, rules, occupations, onSave, onCan
     const badYear = form.qualifications.find(q => q.passed_year && !/^\d{4}$/.test(String(q.passed_year).trim()));
     if (badYear) out.push({ at: sectionOf(badYear) === 'training' ? 'training' : 'education',
       msg: `“${badYear.passed_year}” is not a year — write it as four digits, e.g. 2072.` });
+    if (form.date_of_birth && !isBsDate(form.date_of_birth)) {
+      out.push({ at: 'personal', msg: `Date of birth “${form.date_of_birth}” is not complete — write it as 2058/09/11.` });
+    }
+    const badTot = form.qualifications.find(q => q.kind === 'TOT'
+      && ((q.start_date && !isBsDate(q.start_date)) || (q.end_date && !isBsDate(q.end_date))
+        || (isBsDate(q.start_date) && isBsDate(q.end_date) && q.end_date < q.start_date)));
+    if (badTot) out.push({ at: 'training', msg: 'A TOT’s dates need to be complete (2076/04/01), and it cannot end before it starts.' });
     const noLevel = form.qualifications.find(q => sectionOf(q) === 'vocational' && !q.level);
     if (noLevel) out.push({ at: 'education', msg: 'A vocational certificate needs its level.' });
     return out;
@@ -88,10 +101,12 @@ export default function PersonEditor({ person, rules, occupations, onSave, onCan
     }
     setErr(''); setSaving(true);
     try {
-      await onSave(form, { andAnother });
+      await onSave({ ...form,
+        temporary_address: tempDifferent ? form.temporary_address : form.permanent_address }, { andAnother });
       if (andAnother) {
         // Keep the role, since a batch is usually one kind of person.
-        setForm({ ...BLANK_PERSON, person_type: form.person_type });
+        setForm({ ...BLANK_PERSON, person_type: form.person_type, languages: DEFAULT_LANGUAGES() });
+        setTempDifferent(false);
         refs.personal.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
       }
     } catch (e) { setErr(e.message || 'Could not save.'); }
@@ -160,10 +175,6 @@ export default function PersonEditor({ person, rules, occupations, onSave, onCan
               <Field label="Name in Nepali">
                 <input className="tw-in" value={form.full_name_np || ''} onChange={e => set('full_name_np', e.target.value)} />
               </Field>
-              <Field label="Designation">
-                <input className="tw-in" value={form.designation || ''} placeholder="e.g. Senior Trainer"
-                  onChange={e => set('designation', e.target.value)} />
-              </Field>
               <Field label="Phone">
                 <input className="tw-in" type="tel" value={form.phone || ''} onChange={e => set('phone', e.target.value)} />
               </Field>
@@ -177,10 +188,10 @@ export default function PersonEditor({ person, rules, occupations, onSave, onCan
                 <input className="tw-in" value={form.grandfather_name || ''} onChange={e => set('grandfather_name', e.target.value)} />
               </Field>
               <Field label="Gender">
-                <select className="tw-in" value={form.gender || ''} onChange={e => set('gender', e.target.value)}>
+                <Select className="tw-in" value={form.gender || ''} onChange={e => set('gender', e.target.value)}>
                   <option value="">Not recorded</option>
                   <option>Female</option><option>Male</option><option>Other</option>
-                </select>
+                </Select>
               </Field>
               <Field label="Citizenship number">
                 <input className="tw-in" value={form.citizenship_no || ''} onChange={e => set('citizenship_no', e.target.value)} />
@@ -189,18 +200,34 @@ export default function PersonEditor({ person, rules, occupations, onSave, onCan
                 <input className="tw-in" value={form.citizenship_district || ''} onChange={e => set('citizenship_district', e.target.value)} />
               </Field>
               <Field label="Date of birth (BS)">
-                <input className="tw-in" value={form.date_of_birth || ''} placeholder="2050/01/15"
-                  onChange={e => set('date_of_birth', e.target.value)} />
+                <input className="tw-in" value={form.date_of_birth || ''} placeholder="2058/09/11" inputMode="numeric"
+                  maxLength={10} onChange={e => set('date_of_birth', maskBsDate(e.target.value))} />
               </Field>
             </div>
             <div className="pf-grid pf-grid-2">
               <Field label="Permanent address">
                 <input className="tw-in" value={form.permanent_address || ''} onChange={e => set('permanent_address', e.target.value)} />
               </Field>
-              <Field label="Temporary address">
-                <input className="tw-in" value={form.temporary_address || ''} onChange={e => set('temporary_address', e.target.value)} />
-              </Field>
+              {tempDifferent ? (
+                <Field label="Temporary address">
+                  <input className="tw-in" value={form.temporary_address || ''} autoFocus
+                    onChange={e => set('temporary_address', e.target.value)} />
+                </Field>
+              ) : (
+                <Field label="Temporary address" group>
+                  <div className="tw-in pf-mirror" aria-live="polite">
+                    {form.permanent_address?.trim() || <span className="pf-hint">Same as permanent</span>}
+                  </div>
+                </Field>
+              )}
             </div>
+            <label className="pf-check" style={{ marginBottom: 8 }}>
+              <input type="checkbox" checked={tempDifferent}
+                onChange={e => { setTempDifferent(e.target.checked);
+                  // Start from the permanent address, since a temporary one is often a variation of it.
+                  if (e.target.checked && !form.temporary_address) set('temporary_address', form.permanent_address || ''); }} />
+              Temporary address is different from permanent
+            </label>
             <Field label="Remarks">
               <input className="tw-in" value={form.remarks || ''} onChange={e => set('remarks', e.target.value)} />
             </Field>
@@ -236,11 +263,11 @@ export default function PersonEditor({ person, rules, occupations, onSave, onCan
                   <div key={i} className="pf-row">
                     <div className="pf-line pf-line-gen1">
                       <Field label="Level">
-                        <select className="tw-in" value={q.education_level || ''}
+                        <Select className="tw-in" value={q.education_level || ''}
                           onChange={e => setRow('qualifications', i, 'education_level', e.target.value)}>
                           <option value="">{guessed ? `${labelOfGeneral(guessed)} (from title)` : 'Choose…'}</option>
                           {GENERAL_LEVELS.map(l => <option key={l.value} value={l.value}>{l.label}</option>)}
-                        </select>
+                        </Select>
                       </Field>
                       <Field label="Course / faculty">
                         <input className="tw-in" value={q.title || ''} placeholder="e.g. Diploma in Civil Engineering"
@@ -266,11 +293,11 @@ export default function PersonEditor({ person, rules, occupations, onSave, onCan
                           onChange={e => setRow('qualifications', i, 'board', e.target.value)} />
                       </Field>
                       <Field label="Qualifies them to train" hint="Pick the rule that turns this degree into trades.">
-                        <select className="tw-in" value={q.rule_id || ''}
+                        <Select className="tw-in" value={q.rule_id || ''}
                           onChange={e => setRow('qualifications', i, 'rule_id', e.target.value)}>
                           <option value="">Nothing on its own</option>
                           {rules.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
-                        </select>
+                        </Select>
                       </Field>
                     </div>
                   </div>
@@ -289,18 +316,18 @@ export default function PersonEditor({ person, rules, occupations, onSave, onCan
                 <div key={i} className="pf-row">
                   <div className="pf-line pf-line-voc">
                     <Field label="Level">
-                      <select className="tw-in" value={q.level || ''}
+                      <Select className="tw-in" value={q.level || ''}
                         onChange={e => setRow('qualifications', i, 'level', e.target.value)}>
                         <option value="">Choose…</option>
                         {VOCATIONAL_LEVELS.map(l => <option key={l.value} value={l.value}>{l.label}</option>)}
-                      </select>
+                      </Select>
                     </Field>
                     <Field label="Trade on the certificate">
-                      <select className="tw-in" value={q.occupation_id || ''}
+                      <Select className="tw-in" value={q.occupation_id || ''}
                         onChange={e => setRow('qualifications', i, 'occupation_id', e.target.value)}>
                         <option value="">Choose the occupation…</option>
                         {occupations.map(o => <option key={o.id} value={o.id}>{o.name}</option>)}
-                      </select>
+                      </Select>
                     </Field>
                     <Field label="Passed (BS)">
                       <input className="tw-in num" value={q.passed_year || ''} placeholder="2074" inputMode="numeric"
@@ -343,17 +370,37 @@ export default function PersonEditor({ person, rules, occupations, onSave, onCan
             {trainings.length === 0 && <div className="tw-empty">None yet.</div>}
             {trainings.map(({ q, i }) => (
               <div key={i} className="pf-row">
-                <div className="pf-line pf-line-trn">
+                <div className={`pf-line pf-line-trn${q.kind === 'TOT' ? ' is-tot' : ''}`}>
                   <Field label="Kind">
-                    <select className="tw-in" value={q.kind}
-                      onChange={e => setRow('qualifications', i, 'kind', e.target.value)}>
+                    <Select className="tw-in" value={q.kind}
+                      onChange={e => { const k = e.target.value;
+                        setRow('qualifications', i, 'kind', k);
+                        if (k === 'TOT' && !String(q.title || '').trim()) setRow('qualifications', i, 'title', TOT_TITLE); }}>
                       {TRAINING_KINDS.map(k => <option key={k}>{k}</option>)}
-                    </select>
+                    </Select>
                   </Field>
                   <Field label="Title">
-                    <input className="tw-in" value={q.title || ''} placeholder="e.g. Basic Computer Application"
+                    <input className="tw-in" value={q.title || ''} placeholder={q.kind === 'TOT' ? TOT_TITLE : 'e.g. Basic Computer Application'}
                       onChange={e => setRow('qualifications', i, 'title', e.target.value)} />
                   </Field>
+                  {q.kind === 'TOT' ? (() => {
+                    const auto = bsDaysBetween(q.start_date, q.end_date);
+                    return (<>
+                      <Field label="Start (BS)">
+                        <input className="tw-in" value={q.start_date || ''} placeholder="2076/04/01" inputMode="numeric" maxLength={10}
+                          onChange={e => setRow('qualifications', i, 'start_date', maskBsDate(e.target.value))} />
+                      </Field>
+                      <Field label="End (BS)">
+                        <input className="tw-in" value={q.end_date || ''} placeholder="2076/04/21" inputMode="numeric" maxLength={10}
+                          onChange={e => setRow('qualifications', i, 'end_date', maskBsDate(e.target.value))} />
+                      </Field>
+                      <Field label="Days" hint={auto ? 'Counted from the dates' : undefined}>
+                        <input className="tw-in num" value={auto ?? (q.duration_days || '')} readOnly={auto != null}
+                          inputMode="numeric" placeholder="21"
+                          onChange={e => setRow('qualifications', i, 'duration_days', e.target.value.replace(/\D/g, ''))} />
+                      </Field>
+                    </>);
+                  })() : (<>
                   <Field label="Duration">
                     <input className="tw-in" value={q.duration_text || ''} placeholder="e.g. 10 days"
                       onChange={e => setRow('qualifications', i, 'duration_text', e.target.value)} />
@@ -362,6 +409,7 @@ export default function PersonEditor({ person, rules, occupations, onSave, onCan
                     <input className="tw-in num" value={q.passed_year || ''} placeholder="2076" inputMode="numeric"
                       onChange={e => setRow('qualifications', i, 'passed_year', e.target.value)} />
                   </Field>
+                  </>)}
                   <RemoveBtn label="this training" onClick={() => delRow('qualifications', i)} />
                 </div>
                 <div className="pf-line pf-line-gen2">
@@ -374,11 +422,11 @@ export default function PersonEditor({ person, rules, occupations, onSave, onCan
                       onChange={e => setRow('qualifications', i, 'certificate_no', e.target.value)} />
                   </Field>
                   <Field label="Qualifies them to train">
-                    <select className="tw-in" value={q.rule_id || ''}
+                    <Select className="tw-in" value={q.rule_id || ''}
                       onChange={e => setRow('qualifications', i, 'rule_id', e.target.value)}>
                       <option value="">Nothing on its own</option>
                       {rules.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
-                    </select>
+                    </Select>
                   </Field>
                 </div>
               </div>
@@ -409,12 +457,12 @@ export default function PersonEditor({ person, rules, occupations, onSave, onCan
                   </Field>
                   <Field label="From (BS)">
                     <input className="tw-in" value={e.from_date || ''} placeholder="2073/01/01"
-                      onChange={ev => setRow('experience', i, 'from_date', ev.target.value)} />
+                      onChange={ev => setRow('experience', i, 'from_date', maskBsDate(ev.target.value))} />
                   </Field>
                   <Field label="To (BS)">
                     <input className="tw-in" value={e.is_current ? '' : (e.to_date || '')} disabled={!!e.is_current}
                       placeholder={e.is_current ? 'Present' : '2078/12/30'}
-                      onChange={ev => setRow('experience', i, 'to_date', ev.target.value)} />
+                      onChange={ev => setRow('experience', i, 'to_date', maskBsDate(ev.target.value))} />
                   </Field>
                   <RemoveBtn label="this position" onClick={() => delRow('experience', i)} />
                 </div>
@@ -451,28 +499,13 @@ export default function PersonEditor({ person, rules, occupations, onSave, onCan
           {/* ── For the CV ── */}
           <section ref={refs.cv} className="pf-section">
             <details className="tw-more" style={{ borderTop: 'none', paddingTop: 0 }}>
-              <summary>For the CV — profession, languages, key qualifications</summary>
+              <summary>For the CV — profession and languages</summary>
               <div className="pf-grid pf-grid-2">
                 <Field label="Profession">
                   <input className="tw-in" value={form.profession || ''} placeholder="e.g. Beautician"
                     onChange={e => set('profession', e.target.value)} />
                 </Field>
-                <Field label="Nationality">
-                  <input className="tw-in" value={form.nationality || ''} onChange={e => set('nationality', e.target.value)} />
-                </Field>
-                <Field label="Years with the firm">
-                  <input className="tw-in" value={form.years_with_entity || ''} placeholder="e.g. 8 years"
-                    onChange={e => set('years_with_entity', e.target.value)} />
-                </Field>
-                <Field label="Professional memberships">
-                  <input className="tw-in" value={form.professional_memberships || ''} placeholder="N/A"
-                    onChange={e => set('professional_memberships', e.target.value)} />
-                </Field>
               </div>
-              <Field label="Key qualifications — their own default" hint="Used when a bid does not supply its own wording. One point per line.">
-                <textarea className="tw-in pf-area" rows={4} value={form.key_qualifications || ''}
-                  onChange={e => set('key_qualifications', e.target.value)} />
-              </Field>
               <div className="tw-section-head" style={{ marginTop: 10 }}>
                 <h3 className="tw-section-title">Languages</h3>
               </div>
@@ -483,21 +516,21 @@ export default function PersonEditor({ person, rules, occupations, onSave, onCan
                   </Field>
                   {['speaking', 'reading', 'writing'].map(k => (
                     <Field key={k} label={k[0].toUpperCase() + k.slice(1)}>
-                      <select className="tw-in" value={l[k] || ''} onChange={e => setRow('languages', i, k, e.target.value)}>
+                      <Select className="tw-in" value={l[k] || ''} onChange={e => setRow('languages', i, k, e.target.value)}>
                         <option value="">—</option>
                         {FLUENCY.map(f => <option key={f}>{f}</option>)}
-                      </select>
+                      </Select>
                     </Field>
                   ))}
                   <RemoveBtn label="this language" onClick={() => delRow('languages', i)} />
                 </div>
               ))}
               <div className="tw-chips" style={{ marginTop: 6 }}>
-                {['Nepali', 'English'].filter(n => !form.languages.some(l => l.language === n)).map(n => (
-                  <button key={n} type="button" className="tw-chip"
-                    onClick={() => addRow('languages', { ...emptyLang(), language: n })}>+ {n}</button>
+                {DEFAULT_LANGUAGES().filter(d => !form.languages.some(l => l.language === d.language)).map(d => (
+                  <button key={d.language} type="button" className="tw-chip"
+                    onClick={() => addRow('languages', d)}>+ {d.language}</button>
                 ))}
-                <button type="button" className="tw-chip" onClick={() => addRow('languages', emptyLang())}>+ Other</button>
+                <button type="button" className="tw-chip" onClick={() => addRow('languages', emptyLang())}>+ Add language</button>
               </div>
             </details>
           </section>

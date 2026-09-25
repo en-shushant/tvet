@@ -92,6 +92,18 @@ function App() {
   const [searchFocused, setSearchFocused] = useState(false);
   const [jumpToTab, setJumpToTab] = useState(null);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  // Collapsed sidebar: an instant label beside the hovered/focused icon. Drawn
+  // outside the sidebar (fixed) so its overflow cannot clip it; the native
+  // title tooltip waits about a second, which is too slow for scanning icons.
+  const [navTip, setNavTip] = useState(null);
+  const showTip = (e) => {
+    const el = e.target.closest?.('[data-tip]');
+    if (!el) { setNavTip(null); return; }
+    const r = el.getBoundingClientRect();
+    setNavTip({ text: el.dataset.tip, kbd: el.dataset.tipKbd, y: r.top + r.height / 2 });
+  };
+  const hideTip = () => setNavTip(null);
+  useEffect(() => { setNavTip(null); }, [sidebarCollapsed, screen]);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [showChangePwd, setShowChangePwd] = useState(false);
   const [paletteOpen, setPaletteOpen] = useState(false);
@@ -475,19 +487,22 @@ function App() {
     <div className="app-shell">
       {/* Sidebar */}
       {mobileSidebarOpen && <div className="mobile-backdrop" onClick={()=>setMobileSidebarOpen(false)}/>}
-      <div className={`sidebar${sidebarCollapsed?' collapsed':''}${mobileSidebarOpen?' mobile-open':''}`}>
+      <div className={`sidebar${sidebarCollapsed?' collapsed':''}${mobileSidebarOpen?' mobile-open':''}`}
+        onMouseOver={sidebarCollapsed ? showTip : undefined} onFocus={sidebarCollapsed ? showTip : undefined}
+        onMouseLeave={hideTip} onBlur={hideTip}>
         <div className="sb-brand">
           {sidebarCollapsed
             ? <img src="/favicon.png" alt="TVETtrack" className="sb-brand-mark"/>
             : <span className="sb-brand-word"><img src="/logo.png" alt="TVETtrack — TSPs Registry and Directory" className="sb-brand-logo"/></span>}
           <button type="button" className="sb-collapse" onClick={()=>setSidebarCollapsed(c=>!c)}
             aria-label={sidebarCollapsed?'Expand sidebar':'Collapse sidebar'}
-            title={sidebarCollapsed?'Expand sidebar':'Collapse sidebar'}>
+            data-tip={sidebarCollapsed?'Expand sidebar':undefined}
+            title={sidebarCollapsed?undefined:'Collapse sidebar'}>
             <span className="material-icons-round" style={{fontSize:18}}>{sidebarCollapsed?'left_panel_open':'left_panel_close'}</span>
           </button>
         </div>
         <button type="button" className="sb-search" onClick={() => setPaletteOpen(true)}
-          aria-label="Search anything" title={sidebarCollapsed ? 'Search  (⌘K)' : undefined}>
+          aria-label="Search anything" data-tip="Search" data-tip-kbd="⌘K">
           <span className="material-icons-round">search</span>
           <span className="sb-search-text">Search anything</span>
           <kbd>{'⌘ K'}</kbd>
@@ -507,7 +522,7 @@ function App() {
                       className={`nav-item${active ? ' active' : ''}`}
                       aria-current={active ? 'page' : undefined}
                       onClick={() => handleNavigate(item.id)}
-                      title={sidebarCollapsed ? item.label : undefined}
+                      data-tip={item.label}
                     >
                       <span className="nav-icon material-icons-round">{item.icon}</span>
                       <span className="nav-label">{item.label}</span>
@@ -519,7 +534,7 @@ function App() {
           })}
         </nav>
         <div className="sidebar-footer">
-          <div className="sb-user">
+          <div className="sb-user" data-tip={`${session.fullName||session.email} · ${session.role}`}>
             {session.photo
               ? <img src={session.photo} alt="" className="sb-avatar"/>
               : <div className="sb-avatar" aria-hidden="true">{(session.fullName||session.email||'?').slice(0,2).toUpperCase()}</div>}
@@ -538,6 +553,12 @@ function App() {
           </div>
         </div>
       </div>
+
+      {navTip && sidebarCollapsed && (
+        <div className="nav-tip" role="tooltip" style={{ top: navTip.y }}>
+          {navTip.text}{navTip.kbd && <kbd>{navTip.kbd}</kbd>}
+        </div>
+      )}
 
       {/* Main */}
       <div className="main" id="main" role="main">

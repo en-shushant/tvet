@@ -15,6 +15,7 @@ import { fillNarrativeTemplate, fillServicesTemplate, fillSeniorStaffText } from
 import { fyToAD, uid } from '../utils/format.js';
 import { toast } from './ui/Feedback.jsx';
 import { useOccupations } from '../utils/useMasterData.js';
+import Select from './ui/Select.jsx';
 
 
 
@@ -874,14 +875,14 @@ function ExperienceForm({exp, clients, institute, onSave, onClose, onDuplicate, 
               <td><input className="occ-in" value={occ.nameInLetter} placeholder="As written by client"
                 onChange={e=>setOcc(i,'nameInLetter',e.target.value)}/></td>
               <td>
-                <select className="occ-in" value={occ.level||''} onChange={e=>setOcc(i,'level',e.target.value)}>
+                <Select className="occ-in" value={occ.level||''} onChange={e=>setOcc(i,'level',e.target.value)}>
                   <option value="">—</option>
                   <option value="N/A">N/A</option>
                   <option value="Level 1">Level 1</option>
                   <option value="Level 2">Level 2</option>
                   <option value="Level 3">Level 3</option>
                   <option value="Professional">Professional</option>
-                </select>
+                </Select>
               </td>
               <td><input className="occ-in occ-num" type="number" value={occ.duration} onChange={e=>setOcc(i,'duration',e.target.value)}/></td>
               <td><input className="occ-in occ-num" type="number" value={occ.trainees} onChange={e=>setOcc(i,'trainees',e.target.value)}/></td>

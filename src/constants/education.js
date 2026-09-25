@@ -121,3 +121,19 @@ export function levelOfQualification(q) {
   for (const [level, re] of TITLE_HINTS) if (re.test(title)) return level;
   return '';
 }
+
+/**
+ * Which NSTB levels a qualification lets someone train, as a starting point a
+ * rule can then adjust. A skill certificate teaches its own level and below
+ * (Level 2 → 1 and 2). For general education the usual CTEVT trainer norms:
+ * SLC/SEE → Level 1; TSLC, JTA, +2 → up to 2; Diploma → up to 3;
+ * Bachelor and above → up to 4.
+ */
+const TEACH_UP_TO_GENERAL = { 'SLC/SEE': 1, TSLC: 2, JTA: 2, '+2/HSEB': 2, Diploma: 3,
+  Bachelor: 4, Master: 4, MPhil: 4, PhD: 4 };
+const TEACH_UP_TO_VOCATIONAL = { 'Level 1': 1, 'Level 2': 2, 'Level 3': 3, Professional: 4, Technician: 2 };
+const LADDER = ['Level 1', 'Level 2', 'Level 3', 'Professional'];
+export function teachableLevels(kind, level) {
+  const n = (kind === 'Skill Test' ? TEACH_UP_TO_VOCATIONAL : kind === 'Academic' ? TEACH_UP_TO_GENERAL : {})[level] || 0;
+  return LADDER.slice(0, n);
+}

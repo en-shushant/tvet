@@ -55,6 +55,16 @@ const ELIGIBILITY_CTE = `
       FROM hr_qualifications q
       JOIN hr_qualification_rules r ON r.id = q.rule_id AND r.is_active
       JOIN hr_rule_occupations ro ON ro.rule_id = r.id
+     WHERE r.grant_scope = 'occupations' AND coalesce(cardinality(ro.levels), 0) = 0
+    UNION
+    -- Levels marked on a rule's trade: every occupation of that name at those levels.
+    SELECT q.person_id, o2.id
+      FROM hr_qualifications q
+      JOIN hr_qualification_rules r ON r.id = q.rule_id AND r.is_active
+      JOIN hr_rule_occupations ro ON ro.rule_id = r.id AND cardinality(ro.levels) > 0
+      JOIN occupations o1 ON o1.id = ro.occupation_id
+      JOIN occupations o2 ON o2.is_active AND lower(trim(o2.name)) = lower(trim(o1.name))
+                         AND o2.level = ANY(ro.levels)
      WHERE r.grant_scope = 'occupations'
     UNION
     SELECT q.person_id, q.occupation_id
@@ -65,6 +75,21 @@ const ELIGIBILITY_CTE = `
     SELECT q.person_id, q.occupation_id
       FROM hr_qualifications q
      WHERE q.rule_id IS NULL AND q.occupation_id IS NOT NULL
+    UNION
+    -- The NSTB ladder: a Plumber Level 2 certificate also teaches Plumber
+    -- Level 1, a Level 3 teaches 1 to 3. Same trade name, any level at or below
+    -- the certificate's. Only for certificates that name their own trade
+    -- (no rule, or "whatever the certificate says"); a Technician
+    -- certificate is not a rung and grants only its own occupation, above.
+    SELECT q.person_id, o2.id
+      FROM hr_qualifications q
+      LEFT JOIN hr_qualification_rules r ON r.id = q.rule_id
+      JOIN occupations o1 ON o1.id = q.occupation_id
+      JOIN occupations o2 ON o2.is_active AND lower(trim(o2.name)) = lower(trim(o1.name))
+     WHERE q.occupation_id IS NOT NULL
+       AND (q.rule_id IS NULL OR (r.is_active AND r.grant_scope = 'certificate_occupation'))
+       AND ${LEVEL_RANK('q.level')} > 0
+       AND ${LEVEL_RANK('o2.level')} BETWEEN 1 AND ${LEVEL_RANK('q.level')}
   ),
   with_adds AS (
     SELECT person_id, occupation_id FROM granted
@@ -102,7 +127,8 @@ async function plugin(fastify, opts) {
   fastify.get('/rules', async () => {
     const { rows } = await pool.query(`
       SELECT r.*,
-             COALESCE(json_agg(json_build_object('id', o.id, 'name', o.name, 'sector', o.sector, 'level', o.level)
+             COALESCE(json_agg(json_build_object('id', o.id, 'name', o.name, 'sector', o.sector, 'level', o.level,
+                                        'levels', coalesce(ro.levels, '{}'))
                       ORDER BY o.name) FILTER (WHERE o.id IS NOT NULL), '[]') AS occupations
         FROM hr_qualification_rules r
         LEFT JOIN hr_rule_occupations ro ON ro.rule_id = r.id
@@ -113,18 +139,20 @@ async function plugin(fastify, opts) {
     return rows;
   });
 
-  const saveRuleOccupations = async (client, ruleId, ids) => {
+  const RULE_LEVELS = ['Level 1', 'Level 2', 'Level 3', 'Professional'];
+  const saveRuleOccupations = async (client, ruleId, ids, levelsById = {}) => {
     await client.query('DELETE FROM hr_rule_occupations WHERE rule_id = $1', [ruleId]);
     const clean = [...new Set((ids || []).map(n => parseInt(n, 10)).filter(Number.isInteger))];
-    if (clean.length) {
+    for (const id of clean) {
+      const lv = [...new Set((levelsById?.[id] || []).filter(l => RULE_LEVELS.includes(l)))];
       await client.query(
-        `INSERT INTO hr_rule_occupations (rule_id, occupation_id)
-         SELECT $1, unnest($2::int[]) ON CONFLICT DO NOTHING`, [ruleId, clean]);
+        `INSERT INTO hr_rule_occupations (rule_id, occupation_id, levels)
+         VALUES ($1, $2, $3) ON CONFLICT DO NOTHING`, [ruleId, id, lv.length ? lv : null]);
     }
   };
 
   fastify.post('/rules', { preHandler: requireAdmin }, async (request, reply) => {
-    const { name, kind, grant_scope, sector, max_level, notes, occupation_ids } = request.body || {};
+    const { name, kind, grant_scope, sector, max_level, notes, occupation_ids, occupation_levels, qual_level } = request.body || {};
     if (!name?.trim()) return reply.code(400).send({ error: 'A name is required' });
     if (grant_scope === 'sector' && !sector) {
       return reply.code(400).send({ error: 'A sector-wide rule needs a sector' });
@@ -133,11 +161,11 @@ async function plugin(fastify, opts) {
     try {
       await client.query('BEGIN');
       const { rows: [rule] } = await client.query(
-        `INSERT INTO hr_qualification_rules (name, kind, grant_scope, sector, max_level, notes)
-         VALUES ($1,$2,$3,$4,$5,$6) RETURNING *`,
+        `INSERT INTO hr_qualification_rules (name, kind, grant_scope, sector, max_level, notes, qual_level)
+         VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING *`,
         [name.trim(), kind || 'Academic', grant_scope || 'occupations',
-         sector || null, max_level || null, notes || null]);
-      await saveRuleOccupations(client, rule.id, occupation_ids);
+         sector || null, (kind === 'Skill Test' || qual_level) ? (max_level || null) : null, notes || null, qual_level || null]);
+      await saveRuleOccupations(client, rule.id, occupation_ids, occupation_levels);
       await client.query('COMMIT');
       return reply.code(201).send(rule);
     } catch (e) { await client.query('ROLLBACK'); throw e; }
@@ -145,18 +173,18 @@ async function plugin(fastify, opts) {
   });
 
   fastify.put('/rules/:id', { preHandler: requireAdmin }, async (request, reply) => {
-    const { name, kind, grant_scope, sector, max_level, notes, occupation_ids } = request.body || {};
+    const { name, kind, grant_scope, sector, max_level, notes, occupation_ids, occupation_levels, qual_level } = request.body || {};
     const client = await pool.connect();
     try {
       await client.query('BEGIN');
       const { rows } = await client.query(
         `UPDATE hr_qualification_rules
-            SET name=$1, kind=$2, grant_scope=$3, sector=$4, max_level=$5, notes=$6
+            SET name=$1, kind=$2, grant_scope=$3, sector=$4, max_level=$5, notes=$6, qual_level=$8
           WHERE id=$7 RETURNING *`,
         [name, kind || 'Academic', grant_scope || 'occupations',
-         sector || null, max_level || null, notes || null, request.params.id]);
+         sector || null, (kind === 'Skill Test' || qual_level) ? (max_level || null) : null, notes || null, request.params.id, qual_level || null]);
       if (!rows.length) { await client.query('ROLLBACK'); return reply.code(404).send({ error: 'Not found' }); }
-      await saveRuleOccupations(client, request.params.id, occupation_ids);
+      await saveRuleOccupations(client, request.params.id, occupation_ids, occupation_levels);
       await client.query('COMMIT');
       return rows[0];
     } catch (e) { await client.query('ROLLBACK'); throw e; }
@@ -282,14 +310,16 @@ async function plugin(fastify, opts) {
       await client.query(
         `INSERT INTO hr_qualifications (person_id, kind, rule_id, title, institution, board,
            occupation_id, level, passed_year, duration_hours, division, certificate_no, remarks, sort_order,
-           specialisation, duration_text, education_level, stream)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18)`,
+           specialisation, duration_text, education_level, stream, start_date, end_date, duration_days)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21)`,
         [personId, q.kind || 'Academic', q.rule_id || null, q.title || null, q.institution || null,
          q.board || null, q.occupation_id || null, q.level || null, q.passed_year || null,
          q.duration_hours || null, q.division || null, q.certificate_no || null, q.remarks || null, i,
          q.specialisation || null, q.duration_text || null, q.education_level || null,
          // Only academic rows are on a ladder; a training or TOT has no stream.
-         (q.kind || 'Academic') === 'Academic' ? (q.stream === 'Vocational' ? 'Vocational' : 'General') : null]);
+         (q.kind || 'Academic') === 'Academic' ? (q.stream === 'Vocational' ? 'Vocational' : 'General') : null,
+         q.start_date || null, q.end_date || null,
+         Number.isInteger(parseInt(q.duration_days, 10)) ? parseInt(q.duration_days, 10) : null]);
     }
     await client.query('DELETE FROM hr_experience WHERE person_id = $1', [personId]);
     const exps = body.experience || [];

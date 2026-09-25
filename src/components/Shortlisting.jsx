@@ -11,6 +11,7 @@ import { StandingListModal, AssignFirmsModal, LetterOptsModal, BillModal, LETTER
 import { ShortlistRow, GroupHeader, TableHead, printShortlistReport } from './shortlisting/table.jsx';
 import { ContractsPanel } from './shortlisting/ContractsPanel.jsx';
 import { bsDateLabel } from '../utils/neaLetter.js';
+import Select from './ui/Select.jsx';
 
 function ShortlistDocUpload({ value, onChange, token }) {
   const [uploading, setUploading] = useState(false);
@@ -904,30 +905,30 @@ export default function Shortlisting({ institutes, clients, isAdmin, isEditor, i
         </div>
 
         {/* Filter: Org */}
-        <select value={filterOrg} onChange={e => setFilterOrg(e.target.value)} style={fSel(!!filterOrg, 170)}>
+        <Select value={filterOrg} onChange={e => setFilterOrg(e.target.value)} style={fSel(!!filterOrg, 170)}>
           <option value="">All organizations</option>
           {clients.map(c => <option key={c.id} value={c.id}>{c.shortName || c.short_name || c.fullName || c.full_name}</option>)}
-        </select>
+        </Select>
 
         {/* Filter: Firm */}
-        <select value={filterFirm} onChange={e => setFilterFirm(e.target.value)} style={fSel(!!filterFirm, 170)}>
+        <Select value={filterFirm} onChange={e => setFilterFirm(e.target.value)} style={fSel(!!filterFirm, 170)}>
           <option value="">All firms</option>
           {sortedInstitutes.map(i => <option key={i.id} value={i.id}>{i.acronym ? `[${i.acronym}] ` : ''}{i.name}</option>)}
-        </select>
+        </Select>
 
         {/* Filter: FY */}
-        <select value={filterFY} onChange={e => setFilterFY(e.target.value)} style={fSel(!!filterFY, 120)}>
+        <Select value={filterFY} onChange={e => setFilterFY(e.target.value)} style={fSel(!!filterFY, 120)}>
           <option value="">All FYs</option>
           {FYS.map(fy => <option key={fy} value={fy}>{fy}</option>)}
-        </select>
+        </Select>
 
         {/* Filter: Status */}
-        <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)} style={fSel(!!filterStatus, 130)}>
+        <Select value={filterStatus} onChange={e => setFilterStatus(e.target.value)} style={fSel(!!filterStatus, 130)}>
           <option value="">All statuses</option>
           <option value="Active">Active</option>
           <option value="Expired">Expired</option>
           <option value="Pending">Pending</option>
-        </select>
+        </Select>
 
         {/* The FY filter applies itself on load, so there has to be an obvious
             way out of it — otherwise a year with no data looks like a bug. */}

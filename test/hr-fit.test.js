@@ -294,7 +294,8 @@ describe('a notice covering more than one trade', () => {
   it('narrows the pool to that trade when the slot is filled', () => {
     const block = view.slice(view.indexOf('if (targetPosition) {'), view.indexOf('if (!wanted.length) return available;'));
     expect(block).toMatch(/targetPosition\.occupation_id/);
-    expect(block).toMatch(/p\.eligible_occupations \|\| \[\]\)\.some\(o => o\.id === targetPosition\.occupation_id\)/);
+    // By trade and level for the role (main trainer one level up); see trainer-level.test.js.
+    expect(block).toMatch(/fitsTrainerLevel\(p, occ, allOccupations, targetPosition\.title\)/);
   });
 
   it('groups the team step by trade', async () => {
@@ -410,7 +411,7 @@ describe('saving a qualification from the toggle', () => {
     const server = read('backend/server.js');
     expect(server).toMatch(/ADD COLUMN IF NOT EXISTS stream TEXT/);
     expect(server).toMatch(/SET kind = 'Academic', stream = 'Vocational' WHERE kind = 'Skill Test'/);
-    expect(read('backend/routes/hr.js')).toMatch(/education_level, stream\)/);
+    expect(read('backend/routes/hr.js')).toMatch(/education_level, stream, start_date, end_date, duration_days\)/);
   });
 
   it('keeps a button group out of a label', () => {

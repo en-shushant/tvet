@@ -3,6 +3,7 @@ import { Btn } from '../md.jsx';
 import { toNpNum, BS_DATA } from '../constants/nepali.js';
 import { api } from '../utils/api.js';
 import { loadKalimatiCss } from '../utils/kalimatiFont.js';
+import Select from './ui/Select.jsx';
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
 function todayBS() {
@@ -617,7 +618,7 @@ export default function LetterBuilder({ row: initialRow, token, onClose, allRows
 
         {/* Firm picker */}
         {allRows && allRows.length > 0 && (
-          <select value={selectedRowId ?? ''} onChange={e => setSelectedRowId(Number(e.target.value))}
+          <Select value={selectedRowId ?? ''} onChange={e => setSelectedRowId(Number(e.target.value))}
             style={{ padding:'6px 10px', borderRadius:8, border:'1px solid var(--border)', background:'var(--surface)',
               color:'var(--text)', fontSize:13, fontFamily:'inherit', flex:1, maxWidth:280, cursor:'pointer' }}>
             <option value="">— Select firm —</option>
@@ -626,7 +627,7 @@ export default function LetterBuilder({ row: initialRow, token, onClose, allRows
                 {r.institute_name}{r.client_short ? ` → ${r.client_short}` : ''}
               </option>
             ))}
-          </select>
+          </Select>
         )}
 
         <div style={{ display:'flex', gap:8, marginLeft:'auto' }}>

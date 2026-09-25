@@ -12,6 +12,7 @@ import { uid } from '../utils/format.js';
 import { confirmDialog, toast } from './ui/Feedback.jsx';
 import { PageHeader, PillTabs } from './ui/primitives.jsx';
 import { useOccupations } from '../utils/useMasterData.js';
+import Select from './ui/Select.jsx';
 
 
 /**
@@ -825,10 +826,10 @@ function MasterData({clients, onUpdateClients, token, isAdmin, isEditor, isSuper
               <span className="search-icon material-icons-round" style={{fontSize:16}}>search</span>
               <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search occupations..."/>
             </div>
-            <select value={sectorFilter} onChange={e=>setSectorFilter(e.target.value)} style={{width:220}}>
+            <Select value={sectorFilter} onChange={e=>setSectorFilter(e.target.value)} style={{width:220}}>
               <option value="">All sectors ({SECTORS.length})</option>
               {SECTORS.map(s=><option key={s}>{s}</option>)}
-            </select>
+            </Select>
             {canManageOccs && <Btn className="btn btn-primary btn-sm" onClick={()=>setOccModal({type:'add'})}>+ Add occupation</Btn>}
           </div>
           <div style={{fontSize:12, color:'var(--text3)', marginBottom:8}}>
@@ -1002,13 +1003,13 @@ function MasterData({clients, onUpdateClients, token, isAdmin, isEditor, isSuper
                     {OCCUPATIONS.find(o=>String(o.id)===String(toolsOccId))?.name || ''}
                   </span>
                   <span style={{margin:'0 8px', color:'var(--text3)'}}>—</span>
-                  <select value={toolsLevel} onChange={e=>{ setToolsLevel(e.target.value); loadTools(toolsOccId, e.target.value); setToolsSelected([]); }} style={{fontSize:13, padding:'3px 8px', borderRadius:4, border:'1px solid var(--border)'}}>
+                  <Select value={toolsLevel} onChange={e=>{ setToolsLevel(e.target.value); loadTools(toolsOccId, e.target.value); setToolsSelected([]); }} style={{fontSize:13, padding:'3px 8px', borderRadius:4, border:'1px solid var(--border)'}}>
                     <option>N/A</option>
                     <option>Level 1</option>
                     <option>Level 2</option>
                     <option>Level 3</option>
                     <option>Professional</option>
-                  </select>
+                  </Select>
                 </div>
                 <div style={{display:'flex', gap:8, alignItems:'center'}}>
                   {canManageOccs && toolsSelected.length > 0 && (
@@ -1064,9 +1065,9 @@ function MasterData({clients, onUpdateClients, token, isAdmin, isEditor, isSuper
                             <td style={{padding:'3px 4px'}}><input tabIndex={1} type="number" value={row.quantity} onChange={e=>setBulkRows(prev=>{const n=[...prev];n[i]={...n[i],quantity:e.target.value};return n;})} style={{fontSize:12, padding:'4px 6px'}}/></td>
                             <td style={{padding:'3px 4px'}}><input tabIndex={1} value={row.unit} onChange={e=>setBulkRows(prev=>{const n=[...prev];n[i]={...n[i],unit:e.target.value};return n;})} placeholder="Unit" style={{fontSize:12, padding:'4px 6px'}}/></td>
                             <td style={{padding:'3px 4px'}}>
-                              <select tabIndex={-1} value={row.ownership} onChange={e=>setBulkRows(prev=>{const n=[...prev];n[i]={...n[i],ownership:e.target.value};return n;})} style={{fontSize:12, padding:'4px 6px'}}>
+                              <Select tabIndex={-1} value={row.ownership} onChange={e=>setBulkRows(prev=>{const n=[...prev];n[i]={...n[i],ownership:e.target.value};return n;})} style={{fontSize:12, padding:'4px 6px'}}>
                                 <option>Own</option><option>Rented</option><option>Borrowed</option><option>Government</option>
-                              </select>
+                              </Select>
                             </td>
                             <td style={{padding:'3px 4px'}}><input tabIndex={-1} value={row.remarks} onChange={e=>setBulkRows(prev=>{const n=[...prev];n[i]={...n[i],remarks:e.target.value};return n;})} placeholder="Remarks" style={{fontSize:12, padding:'4px 6px'}}/></td>
                           </tr>
