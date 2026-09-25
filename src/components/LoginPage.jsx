@@ -107,6 +107,7 @@ function LoginPage({ onLogin }) {
         role: data.user.role,
         // Access to the human resource pool is a per-user grant, not a role.
         canAccessHr: !!data.user.can_access_hr,
+        canAccessTenders: !!data.user.can_access_tenders,
         photo: data.user.photo || null,
         token: data.token,
       };
@@ -293,6 +294,7 @@ function UserModal({ user, institutes, isSuperAdmin, onSave, onClose }) {
     role: user?.role || 'viewer',
     is_active: user?.is_active !== false,
     can_access_hr: !!user?.can_access_hr,
+    can_access_tenders: !!user?.can_access_tenders,
     photo: user?.photo || null,
   });
   const [err, setErr] = useState('');
@@ -397,6 +399,18 @@ function UserModal({ user, institutes, isSuperAdmin, onSave, onClose }) {
                 </span>
               </label>
             </div>
+            <div className="form-group">
+              <label style={{ display: 'flex', alignItems: 'flex-start', gap: 8, cursor: 'pointer', fontSize: 13 }}>
+                <input type="checkbox" checked={form.can_access_tenders} style={{ marginTop: 2 }}
+                  onChange={e => setForm(f=>({...f,can_access_tenders:e.target.checked}))} />
+                <span>
+                  Tenders access
+                  <span style={{ display: 'block', fontSize: 11, color: 'var(--text3)' }}>
+                    Can see and prepare bids, bidders and teams. Filling a team also needs trainer pool access
+                  </span>
+                </span>
+              </label>
+            </div>
           </div>
           {err && <div style={{ color: 'var(--red)', fontSize: 12, margin: '8px 0' }}>{err}</div>}
           <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 16 }}>
@@ -451,7 +465,7 @@ function UserManagement({institutes, isSuperAdmin}) {
       await api('PUT', `/users/${u.id}`, { name: u.name, email: u.email, role: u.role, is_active: !u.is_active,
         // Sent back unchanged: the update writes every column, so omitting
         // this would revoke pool access as a side effect of deactivating.
-        can_access_hr: !!u.can_access_hr, photo: u.photo || null }, token);
+        can_access_hr: !!u.can_access_hr, can_access_tenders: !!u.can_access_tenders, photo: u.photo || null }, token);
       reload();
     } catch(e) { setActionErr(e.message); }
   };
@@ -530,6 +544,11 @@ function UserManagement({institutes, isSuperAdmin}) {
                     {u.can_access_hr && (
                       <span className="badge badge-info" style={{ fontSize: 10, marginLeft: 4 }} title="Can open the trainer pool">
                         Pool
+                      </span>
+                    )}
+                    {u.can_access_tenders && (
+                      <span className="badge badge-purple" style={{ fontSize: 10, marginLeft: 4 }} title="Can open tenders">
+                        Tenders
                       </span>
                     )}
                   </td>

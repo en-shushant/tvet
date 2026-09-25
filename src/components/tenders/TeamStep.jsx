@@ -14,7 +14,7 @@ import Select from '../ui/Select.jsx';
  * narrowed to who meets them, and nothing about the post is typed twice.
  * Anyone not filling a stated post goes under "Other staff".
  */
-export default function TeamStep({ tender, pool, variants, token, busy,
+export default function TeamStep({ tender, pool, canAccessPool = true, variants, token, busy,
                                    activeBidder, setActiveBidder, onSaveTeam, footer }) {
   const bidders = tender.bidders || [];
   const active = bidders.find(b => b.id === activeBidder);
@@ -283,6 +283,13 @@ export default function TeamStep({ tender, pool, variants, token, busy,
         Fill each post the notice lists. Assign shows only the people who meet that post&apos;s bar and
         are not already promised to another bidder on this notice.
       </p>
+      {!canAccessPool && (
+        <div className="tw-hint" role="note" style={{ margin: '0 0 12px', padding: '8px 12px',
+          border: '1px solid var(--border)', borderRadius: 8, background: 'var(--t-amber-soft)' }}>
+          You can see who is on each bid, but choosing people needs trainer pool access too.
+          Ask an administrator to enable it for your account.
+        </div>
+      )}
 
       {bidders.length > 1 && (
         <div className="tw-seg" role="group" aria-label="Whose team" style={{ marginBottom: 16 }}>

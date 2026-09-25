@@ -55,9 +55,24 @@ async function requireHRAccess(request, reply) {
   }
 }
 
+/**
+ * Tenders: bids, firms, pricing and who is proposed where. Its own per-user
+ * grant, re-read from the database like the pool's so revoking it is instant.
+ */
+async function requireTenderAccess(request, reply) {
+  if (!request.user) return reply.code(401).send({ error: 'No token provided' });
+  if (request.user.role === 'superadmin') return;
+  const { pool } = require('../db/pool');
+  const { rows } = await pool.query(
+    'SELECT can_access_tenders FROM users WHERE id = $1 AND is_active IS NOT FALSE', [request.user.id]);
+  if (!rows.length || !rows[0].can_access_tenders) {
+    return reply.code(403).send({ error: 'You do not have access to tenders.' });
+  }
+}
+
 function signToken(payload) {
   const { iat, exp, ...clean } = payload; // strip old timestamps so jwt re-issues clean
   return jwt.sign(clean, JWT_SECRET, { expiresIn: '30d' });
 }
 
-module.exports = { authenticate, requireAdmin, requireSuperAdmin, requireWriter, requireHRAccess, signToken };
+module.exports = { authenticate, requireAdmin, requireSuperAdmin, requireWriter, requireHRAccess, requireTenderAccess, signToken };

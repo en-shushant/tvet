@@ -25,7 +25,7 @@ import Select from './ui/Select.jsx';
  * The CV pack is the one document a tender produces itself, because it is the
  * only one written about people rather than about the firm.
  */
-function TendersView({ institutes = [], clients = [], onGoToReports }) {
+function TendersView({ institutes = [], clients = [], onGoToReports, canAccessPool = true }) {
   const token = getSession()?.token;
   const occupations = useOccupations();
   // Local copy so a client added mid-tender is selectable at once, without
@@ -60,12 +60,14 @@ function TendersView({ institutes = [], clients = [], onGoToReports }) {
       if (search.trim()) p.set('q', search.trim());
       const [ts, ps] = await Promise.all([
         api('GET', `/tenders?${p}`, null, token),
-        api('GET', '/hr/people', null, token),
+        // The pool is a separate grant; without it the team step says so
+        // rather than the whole screen failing.
+        canAccessPool ? api('GET', '/hr/people', null, token).catch(() => []) : Promise.resolve([]),
       ]);
       setTenders(ts || []); setPool(ps || []); setErr('');
     } catch (e) { setErr(e.message || 'Could not load tenders'); }
     finally { setLoading(false); }
-  }, [token, statusFilter, firmFilter, fyFilter, search]);
+  }, [token, statusFilter, firmFilter, fyFilter, search, canAccessPool]);
 
   useEffect(() => { const t = setTimeout(load, search ? 250 : 0); return () => clearTimeout(t); }, [load]);
 
@@ -136,7 +138,7 @@ function TendersView({ institutes = [], clients = [], onGoToReports }) {
   if (open) {
     return (
       <TenderWorkspace key={open} tenderId={open === 'new' ? null : open} startAt={startAt}
-        clients={clientList} institutes={institutes} occupations={occupations} pool={pool} token={token}
+        clients={clientList} institutes={institutes} occupations={occupations} pool={pool} canAccessPool={canAccessPool} token={token}
         onBack={() => { setOpen(null); load(); }} onOpen={openAt} onListChanged={load}
         onAddClient={addClient} onPrepareReport={prepareReport} />
     );

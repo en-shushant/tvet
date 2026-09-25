@@ -187,15 +187,30 @@ describe('per-firm wording', () => {
 });
 
 describe('access', () => {
-  it('is the same grant as the pool, since a tender names the people on it', () => {
+  it('has its own grant, checked against the database on every request', () => {
     const route = read('backend/routes/tenders.js');
-    expect(route).toMatch(/fastify\.addHook\('preHandler', requireHRAccess\)/);
+    expect(route).toMatch(/fastify\.addHook\('preHandler', requireTenderAccess\)/);
+    const auth = read('backend/middleware/auth.js');
+    expect(auth).toMatch(/SELECT can_access_tenders FROM users WHERE id = \$1/);
+  });
+
+  it('carries over to people who had it through the pool, once', () => {
+    const server = read('backend/server.js');
+    expect(server).toMatch(/IF NOT EXISTS[\s\S]*column_name = 'can_access_tenders'[\s\S]*UPDATE users SET can_access_tenders = COALESCE\(can_access_hr, FALSE\)/);
   });
 
   it('hides the screen from anyone without the grant', () => {
     const app = read('src/App.jsx');
-    expect(app).toMatch(/\{id:'tenders'[^}]*hrOnly: true\}/);
-    expect(app).toMatch(/screen === 'tenders' && canAccessHr/);
+    expect(app).toMatch(/\{id:'tenders'[^}]*tendersOnly: true\}/);
+    expect(app).toMatch(/screen === 'tenders' && canAccessTenders/);
+    expect(app).toMatch(/screen === 'tenders' && !canAccessTenders/);
+  });
+
+  it('can be granted per user', () => {
+    const users = read('backend/routes/users.js');
+    expect(users).toMatch(/can_access_tenders=\$9 WHERE id=\$8/);
+    expect(users).toMatch(/can_access_tenders=\$8 WHERE id=\$7/);
+    expect(read('src/components/LoginPage.jsx')).toMatch(/Tenders access/);
   });
 });
 

@@ -1,6 +1,6 @@
 // routes/tenders.js — bids, the people proposed on them, and the CV pack
 const { pool } = require('../db/pool');
-const { authenticate, requireHRAccess, requireWriter } = require('../middleware/auth');
+const { authenticate, requireTenderAccess, requireWriter } = require('../middleware/auth');
 
 /**
  * A tender is a bid being put together: which firm is bidding, what the notice
@@ -97,7 +97,7 @@ const shapeBidder = (row) => ({
 
 async function plugin(fastify, opts) {
   fastify.addHook('preHandler', authenticate);
-  fastify.addHook('preHandler', requireHRAccess);
+  fastify.addHook('preHandler', requireTenderAccess);
 
   // ─── Per-firm CV wording ───────────────────────────────────────────────────
 

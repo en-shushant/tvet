@@ -144,6 +144,16 @@ async function runMigrations() {
     // Personal data — citizenship numbers, CVs, addresses — so access is a
     // permission granted per user rather than a role tier.
     `ALTER TABLE users ADD COLUMN IF NOT EXISTS can_access_hr BOOLEAN DEFAULT FALSE`,
+    /* Tenders get their own grant. Until now they rode on the pool grant, so
+       whoever has the pool keeps tenders — copied once, when the column is
+       created, so a later revocation is not undone on the next restart. */
+    `DO $$ BEGIN
+       IF NOT EXISTS (SELECT 1 FROM information_schema.columns
+                       WHERE table_name = 'users' AND column_name = 'can_access_tenders') THEN
+         ALTER TABLE users ADD COLUMN can_access_tenders BOOLEAN DEFAULT FALSE;
+         UPDATE users SET can_access_tenders = COALESCE(can_access_hr, FALSE);
+       END IF;
+     END $$`,
     `CREATE TABLE IF NOT EXISTS hr_people (
       id                 SERIAL PRIMARY KEY,
       person_type        TEXT NOT NULL DEFAULT 'Trainer',

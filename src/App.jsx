@@ -120,6 +120,11 @@ function App() {
    * session cannot get at the data.
    */
   const canAccessHr = isSuperAdmin || !!session?.canAccessHr;
+  // Tenders have their own grant. A session from before it existed carries
+  // no flag; it falls back to the pool grant, which is what used to open
+  // tenders — the server re-checks the real grant on every request anyway.
+  const canAccessTenders = isSuperAdmin
+    || (session?.canAccessTenders !== undefined ? !!session.canAccessTenders : !!session?.canAccessHr);
 
   const token = session?.token;
 
@@ -374,7 +379,7 @@ function App() {
     {id:'shortlisting', icon:'playlist_add_check', label:'Shortlisting', group:'Operations'},
     {id:'quotations', icon:'request_quote', label:'Quotations', group:'Operations'},
     {id:'master', icon:'category', label:'Master Data', group:'System', adminOnly: false, editorHidden: false, shortlistHidden: true},
-    {id:'tenders', icon:'gavel', label:'Tenders', group:'Operations', hrOnly: true},
+    {id:'tenders', icon:'gavel', label:'Tenders', group:'Operations', tendersOnly: true},
     {id:'hr', icon:'co_present', label:'Trainer Pool', group:'Operations', hrOnly: true},
     {id:'users', icon:'manage_accounts', label:'User Management', group:'System', adminOnly: true, shortlistHidden: true},
   ];
@@ -396,7 +401,7 @@ function App() {
   };
   const visibleNav = navItems.filter(item =>
     (!item.adminOnly || isAdmin) && (!item.editorHidden || !isEditor)
-    && (!item.shortlistHidden || !isShortlistOnly) && (!item.hrOnly || canAccessHr));
+    && (!item.shortlistHidden || !isShortlistOnly) && (!item.hrOnly || canAccessHr) && (!item.tendersOnly || canAccessTenders));
 
   const handleSelectInstitute = async (inst) => {
     // Show immediately if we already have full data (has experience array)
@@ -684,9 +689,21 @@ function App() {
             </div>
           )}
           {screen === 'styleguide' && <Suspense fallback={<div style={{padding:40}}/>}><StyleGuide/></Suspense>}
-          {screen === 'tenders' && canAccessHr && (
-            <TendersView institutes={institutes} clients={clients}
+          {screen === 'tenders' && canAccessTenders && (
+            <TendersView institutes={institutes} clients={clients} canAccessPool={canAccessHr}
               onGoToReports={() => handleNavigate('reports')}/>
+          )}
+          {screen === 'tenders' && !canAccessTenders && (
+            <div className="empty-state">
+              <div className="empty-state-icon">
+                <span className="material-icons-round" style={{fontSize:42, color:'var(--text3)', opacity:.4}}>lock</span>
+              </div>
+              <div className="empty-state-title">Tenders are not open to you</div>
+              <div className="empty-state-body">
+                Bids, pricing and proposed teams are shown only to people given access.
+                Ask an administrator to enable it for your account.
+              </div>
+            </div>
           )}
           {screen === 'hr' && canAccessHr && <TrainerPool isAdmin={isAdmin}/>}
           {screen === 'hr' && !canAccessHr && (
@@ -776,9 +793,11 @@ function App() {
             keywords:'quote bid price contract', run:()=>handleNavigate('quotations') },
           ...(!isShortlistOnly ? [{ id:'a-quality', label:'Data Quality', icon:'rule', group:'Go to',
             keywords:'missing gaps incomplete blank problems', run:()=>handleNavigate('quality') }] : []),
-          ...(canAccessHr ? [
+          ...(canAccessTenders ? [
             { id:'a-tenders', label:'Tenders', icon:'gavel', group:'Go to',
               keywords:'bid eoi rfp notice bidder joint venture proposal', run:()=>handleNavigate('tenders') },
+          ] : []),
+          ...(canAccessHr ? [
             { id:'a-pool', label:'Trainer pool', icon:'co_present', group:'Go to',
               keywords:'trainers staff people cv nstb tot hr human resources', run:()=>handleNavigate('hr') },
           ] : []),

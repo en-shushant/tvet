@@ -75,13 +75,13 @@ async function plugin(fastify, opts) {
     // It never authorises anything: requireHRAccess re-reads the database, so
     // revoking access takes effect at once rather than when this token expires.
     const tokenPayload = { id: user.id, name: user.name, email: user.email, role: user.role,
-                           hr: !!user.can_access_hr };
+                           hr: !!user.can_access_hr, tenders: !!user.can_access_tenders };
     return { user: userOut, token: signToken(tokenPayload) };
   });
 
   fastify.post('/refresh', { preHandler: authenticate }, async (request, reply) => {
     const { rows } = await pool.query(
-      'SELECT id, name, email, role, can_access_hr AS hr FROM users WHERE id = $1', [request.user.id]
+      'SELECT id, name, email, role, can_access_hr AS hr, can_access_tenders AS tenders FROM users WHERE id = $1', [request.user.id]
     );
     if (!rows.length) return reply.code(401).send({ error: 'User not found' });
     return { token: signToken(rows[0]) };

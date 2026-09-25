@@ -22,7 +22,7 @@ import Select from '../ui/Select.jsx';
  * a detour. The rail says which step is in hand and what each still needs; the
  * panel shows only that step.
  */
-export default function TenderWorkspace({ tenderId, startAt, clients, institutes, occupations, pool, token,
+export default function TenderWorkspace({ tenderId, startAt, clients, institutes, occupations, pool, canAccessPool = true, token,
                                           onBack, onOpen, onListChanged, onAddClient, onPrepareReport }) {
   const [tender, setTender] = useState(tenderId ? null : { ...BLANK_TENDER });
   const [variants, setVariants] = useState([]);
@@ -319,7 +319,7 @@ export default function TenderWorkspace({ tenderId, startAt, clients, institutes
               onAddBidder={addBidder} onRemoveBidder={removeBidder} footer={footer} />
           )}
           {step === 4 && saved && (
-            <TeamStep tender={tender} pool={pool} variants={variants} token={token} busy={busy}
+            <TeamStep tender={tender} pool={pool} canAccessPool={canAccessPool} variants={variants} token={token} busy={busy}
               activeBidder={activeBidder} setActiveBidder={setActiveBidder}
               onSaveTeam={saveTeam} footer={footer} />
           )}
