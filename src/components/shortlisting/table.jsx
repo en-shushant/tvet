@@ -31,11 +31,11 @@ export function ShortlistRow({ row, idx, canEdit, isAdmin, isSuperAdmin, onEdit,
     >
       {/* Firm name */}
       <div style={{flex:2, minWidth:0}}>
-        <div style={{fontWeight:600, fontSize:13.5, color:'var(--text)'}}>
+        <div style={{fontWeight:600, fontSize:14, color:'var(--text)'}}>
           {row.institute_acronym ? <span style={{color:'var(--text3)', fontWeight:500}}>[{row.institute_acronym}] </span> : null}
           {row.institute_name}
         </div>
-        {row.standing_list_name && <div style={{fontSize:11.5, color:'var(--text3)', marginTop:2}}>{row.standing_list_name}</div>}
+        {row.standing_list_name && <div style={{fontSize:12, color:'var(--text3)', marginTop:2}}>{row.standing_list_name}</div>}
       </div>
 
       {/* Organization */}
@@ -47,7 +47,7 @@ export function ShortlistRow({ row, idx, canEdit, isAdmin, isSuperAdmin, onEdit,
               {row.client_name || row.client_name_manual}
             </span>
             {row.client_name_manual && !row.client_name && (
-              <span style={{fontSize:10, marginLeft:5, color:'var(--text3)', fontStyle:'italic'}}>manual</span>
+              <span style={{fontSize:11, marginLeft:5, color:'var(--text3)', fontStyle:'italic'}}>manual</span>
             )}
           </>
           : <span style={{color:'var(--text3)', fontStyle:'italic'}}>No organization</span>
@@ -138,13 +138,13 @@ export function GroupHeader({ label, sub, count, expanded, onToggle, isCurrent }
         {expanded ? 'expand_more' : 'chevron_right'}
       </span>
       <div style={{flex:1, display:'flex', alignItems:'center', gap:8}}>
-        <div style={{fontWeight:600, fontSize:13.5, color:'var(--text)'}}>{label}</div>
+        <div style={{fontWeight:600, fontSize:14, color:'var(--text)'}}>{label}</div>
         {isCurrent && (
-          <span style={{fontSize:10, fontWeight:700, padding:'2px 9px', borderRadius:100, background:'var(--success)', color:'#fff', flexShrink:0}}>
+          <span style={{fontSize:11, fontWeight:700, padding:'2px 9px', borderRadius:100, background:'var(--success)', color:'#fff', flexShrink:0}}>
             Current
           </span>
         )}
-        {sub && <div style={{fontSize:11.5, color:'var(--text3)'}}>{sub}</div>}
+        {sub && <div style={{fontSize:12, color:'var(--text3)'}}>{sub}</div>}
       </div>
       <span style={{fontSize:11, fontWeight:600, padding:'3px 10px', borderRadius:100, background:'var(--primary-light)', color:'var(--primary-dark)', flexShrink:0}}>
         {count} {count === 1 ? 'entry' : 'entries'}

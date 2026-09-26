@@ -18,12 +18,9 @@ const TendersView        = lazyChunk(() => import('./components/TendersView.jsx'
 const InstituteList      = lazyChunk(() => import('./components/InstituteList.jsx'));
 const InstituteDetail    = lazyChunk(() => import('./components/InstituteDetail.jsx'));
 const InstituteForm      = lazyChunk(() => import('./components/InstituteForm.jsx'));
-const AnalyticsView      = lazyChunk(() => import('./components/AnalyticsView.jsx'));
-const ComplianceCentre   = lazyChunk(() => import('./components/ComplianceCentre.jsx'));
+const InsightsHub        = lazyChunk(() => import('./components/InsightsHub.jsx'));
 const DocumentsCentre    = lazyChunk(() => import('./components/DocumentsCentre.jsx'));
-const DataQuality        = lazyChunk(() => import('./components/DataQuality.jsx'));
 const ClientsView        = lazyChunk(() => import('./components/ClientsView.jsx'));
-const ProjectCompliance  = lazyChunk(() => import('./components/ProjectCompliance.jsx'));
 const MasterData         = lazyChunk(() => import('./components/MasterData.jsx'));
 const NSTBBulkPage       = lazyChunk(() => import('./components/NSTBForms.jsx').then(m => ({ default: m.NSTBBulkPage })));
 // Design-system reference, reachable at #styleguide. Not in navigation.
@@ -313,7 +310,7 @@ function App() {
         <div style={{width:56,height:56,borderRadius:14,background:'var(--primary)',display:'flex',alignItems:'center',justifyContent:'center',boxShadow:'0 8px 24px rgba(93,135,255,0.35)'}}>
           <span className="material-icons-round spin" style={{fontSize:28,color:'#fff'}}>sync</span>
         </div>
-        <div style={{fontSize:15,fontWeight:600,color:'var(--text2)'}}>Loading registry…</div>
+        <div style={{fontSize:14,fontWeight:600,color:'var(--text2)'}}>Loading registry…</div>
         <div style={{fontSize:13,color:'var(--text3)'}}>Fetching institute data</div>
       </div>
     );
@@ -335,7 +332,7 @@ function App() {
             <span className="material-icons-round" style={{fontSize:16}}>logout</span> Sign out
           </button>
         </div>
-        <div style={{fontSize:11.5,color:'var(--text3)',maxWidth:360,textAlign:'center'}}>
+        <div style={{fontSize:12,color:'var(--text3)',maxWidth:360,textAlign:'center'}}>
           Open DevTools (F12) → Console for details, or try disabling browser extensions.
         </div>
       </div>
@@ -367,15 +364,13 @@ function App() {
   const navItems = [
     {id:'dashboard', icon:'dashboard', label:'Dashboard', group:'Main'},
     {id:'institutes', icon:'account_balance', label:'Institutes', group:'Main'},
-    // Summary and Comparison share this entry; the screen id stays whichever
-    // tab is open, so their hashes and role gating are untouched.
-    {id:'summary', icon:'insights', label:'Analytics', group:'Analytics', editorHidden: true, shortlistHidden: true},
+    // One entry for Renewals, Data quality, Summary, Comparison and Project
+    // match. The screen id stays whichever tab is open, so each keeps its hash
+    // and role rules; see InsightsHub.
+    {id:'renewals', icon:'insights', label:'Compliance & Analytics', group:'Analytics', shortlistHidden: true},
     {id:'reports', icon:'description', label:'Reports', group:'Analytics', shortlistHidden: true},
-    {id:'renewals', icon:'event_repeat', label:'Renewals & Compliance', group:'Operations', shortlistHidden: true},
     {id:'documents', icon:'folder_shared', label:'Documents', group:'Operations'},
     {id:'clients', icon:'apartment', label:'Clients', group:'Main', shortlistHidden: true},
-    {id:'quality', icon:'rule', label:'Data Quality', group:'System', shortlistHidden: true},
-    {id:'compliance', icon:'fact_check', label:'Project Compliance', group:'Operations', editorHidden: true, shortlistHidden: true},
     {id:'shortlisting', icon:'playlist_add_check', label:'Shortlisting', group:'Operations'},
     {id:'quotations', icon:'request_quote', label:'Quotations', group:'Operations'},
     {id:'master', icon:'category', label:'Master Data', group:'System', adminOnly: false, editorHidden: false, shortlistHidden: true},
@@ -388,15 +383,13 @@ function App() {
   const NAV_GROUP_LABELS = { Main: 'Main navigation', Analytics: 'Analytics & insights', Operations: 'Operations', System: 'System' };
   // The breadcrumb's first step is shorter, as in the reference's "Overview / Dashboard".
   const CRUMB_GROUP = { Main: 'Overview', Analytics: 'Analytics', Operations: 'Operations', System: 'System' };
+  const HUB_SCREENS = ['renewals', 'quality', 'summary', 'comparison', 'compliance'];
   const navActive = (id) => screen === id || (screen === 'detail' && id === 'institutes')
-    || (screen === 'comparison' && id === 'summary') || (screen === 'nstbAdd' && id === 'institutes');
+    || (id === 'renewals' && HUB_SCREENS.includes(screen)) || (screen === 'nstbAdd' && id === 'institutes');
   const currentNav = navItems.find(i => navActive(i.id));
   // Screens that do not print their own title get one from the shell, with
   // the line of context the old top bar used to squeeze in beside it.
   const SHELL_TITLED = {
-    summary: 'Select an institute and filters to generate a report.',
-    comparison: 'Compare institutes side by side.',
-    compliance: 'Match firms to a project\u2019s criteria.',
     users: 'Who can sign in, what they can do, and which institutes they see.',
   };
   const visibleNav = navItems.filter(item =>
@@ -469,18 +462,18 @@ function App() {
     institutes: 'Institutes',
     detail: selectedInstitute?.name,
     nstbAdd: 'Add NSTB Records',
-    summary: 'Analytics',
-    comparison: 'Analytics',
+    summary: 'Compliance & Analytics',
+    comparison: 'Compliance & Analytics',
     shortlisting: 'Shortlisting',
     quotations: 'Quotations',
-    renewals: 'Renewals & Compliance',
+    renewals: 'Compliance & Analytics',
     documents: 'Documents',
     clients: 'Clients',
-    quality: 'Data Quality',
+    quality: 'Compliance & Analytics',
     reports: 'Reports',
     master: 'Master data',
     users: 'User management',
-    compliance: 'Project compliance',
+    compliance: 'Compliance & Analytics',
     tenders: 'Tenders',
     hr: 'Trainer pool',
     styleguide: 'Style guide',
@@ -618,7 +611,7 @@ function App() {
           <Suspense fallback={
             <div style={{display:'flex',alignItems:'center',justifyContent:'center',gap:10,padding:'56px 24px',color:'var(--text3)'}}>
               <span className="material-icons-round spin" style={{fontSize:20}}>sync</span>
-              <span style={{fontSize:13.5}}>Loading…</span>
+              <span style={{fontSize:14}}>Loading…</span>
             </div>
           }>
           {screen === 'dashboard' && !isShortlistOnly && <Dashboard institutes={institutes} isEditor={isEditor} onNavigate={(s, inst, tab)=>{ if(inst) handleSelectInstitute(inst).then(()=>{ if(tab) setJumpToTab(tab); }); else setScreen(s); }}/>}
@@ -653,13 +646,13 @@ function App() {
               onBack={()=>{ window.location.hash=`detail/${nstbAddInstitute.id}`; setScreen('detail'); }}
             />
           )}
-          {(screen === 'summary' || screen === 'comparison') && (
-            <AnalyticsView tab={screen} onTab={handleNavigate} institutes={institutes} clients={clients}/>
-          )}
-          {screen === 'renewals' && (
-            <ComplianceCentre
-              institutes={isAdmin ? institutes : institutes.filter(i => !i.isShortlistingOnly)}
-              onOpenInstitute={handleSelectInstitute}/>
+          {HUB_SCREENS.includes(screen) && !isShortlistOnly && (
+            <InsightsHub tab={screen} onTab={handleNavigate} clients={clients}
+              institutes={institutes}
+              checkInstitutes={isAdmin ? institutes : institutes.filter(i => !i.isShortlistingOnly)}
+              showAnalytics={!isEditor}
+              onOpenInstitute={handleSelectInstitute}
+              onOpenInstituteAt={(inst, t) => handleSelectInstitute(inst).then(() => { if (t) setJumpToTab(t); })}/>
           )}
           {screen === 'documents' && (
             <DocumentsCentre
@@ -671,12 +664,6 @@ function App() {
             <ClientsView clients={clients} token={token}
               onGoToMasterData={() => handleNavigate('master')}/>
           )}
-          {screen === 'quality' && (
-            <DataQuality
-              institutes={isAdmin ? institutes : institutes.filter(i => !i.isShortlistingOnly)}
-              onOpenInstitute={(inst, t) => handleSelectInstitute(inst).then(() => { if (t) setJumpToTab(t); })}/>
-          )}
-          {screen === 'compliance' && <ProjectCompliance institutes={institutes} clients={clients}/>}
           {screen === 'shortlisting' && <Suspense fallback={<div style={{padding:40,textAlign:'center',color:'var(--text3)'}}>Loading…</div>}><Shortlisting institutes={institutes} clients={clients} isAdmin={isAdmin} isEditor={isEditor} isShortlistOnly={isShortlistOnly} isSuperAdmin={isSuperAdmin} token={token}/></Suspense>}
           {screen === 'quotations' && <QuotationsView institutes={institutes} clients={clients} isAdmin={isAdmin} isEditor={isEditor} isShortlistOnly={isShortlistOnly}/>}
           {screen === 'reports' && <Suspense fallback={<div style={{padding:40,textAlign:'center',color:'var(--text3)'}}>Loading reports…</div>}><ReportsView institutes={institutes} clients={clients}/></Suspense>}
@@ -766,16 +753,16 @@ function App() {
               run:()=>handleNavigate('clients') },
           ] : []),
           ...(!isEditor && !isShortlistOnly ? [
-            { id:'a-summary', label:'Analytics — Summary', icon:'insights', group:'Go to',
+            { id:'a-summary', label:'Compliance & Analytics — Summary', icon:'insights', group:'Go to',
               keywords:'statistics totals figures trainees', run:()=>handleNavigate('summary') },
-            { id:'a-compare', label:'Analytics — Comparison', icon:'compare_arrows', group:'Go to',
+            { id:'a-compare', label:'Compliance & Analytics — Comparison', icon:'compare_arrows', group:'Go to',
               keywords:'compare side by side jv joint venture', run:()=>handleNavigate('comparison') },
           ] : []),
           ...(!isShortlistOnly ? [
             { id:'a-reports', label:'Reports', icon:'description', group:'Go to',
               keywords:'eoi bolpatra docx export generate helvetas enssure tools consumables',
               run:()=>handleNavigate('reports') },
-            { id:'a-renewals', label:'Renewals & Compliance', icon:'event_repeat', group:'Go to',
+            { id:'a-renewals', label:'Compliance & Analytics — Renewals', icon:'insights', group:'Go to',
               keywords:'renewal expiry overdue tax clearance nstb affiliation lapsed',
               run:()=>handleNavigate('renewals') },
           ] : []),
@@ -783,15 +770,15 @@ function App() {
             keywords:'ocr vat ctevt registration paperwork files uploads',
             run:()=>handleNavigate('documents') },
           ...(!isEditor && !isShortlistOnly ? [
-            { id:'a-projcomp', label:'Project Compliance', icon:'fact_check', group:'Go to',
-              keywords:'match firms criteria eligibility bid shortlist jv',
+            { id:'a-projcomp', label:'Compliance & Analytics — Project match', icon:'fact_check', group:'Go to',
+              keywords:'project compliance match firms criteria eligibility bid shortlist jv',
               run:()=>handleNavigate('compliance') },
           ] : []),
           { id:'a-shortlist', label:'Shortlisting', icon:'playlist_add_check', group:'Go to',
             keywords:'standing list nea letters roster', run:()=>handleNavigate('shortlisting') },
           { id:'a-quotes', label:'Quotations', icon:'request_quote', group:'Go to',
             keywords:'quote bid price contract', run:()=>handleNavigate('quotations') },
-          ...(!isShortlistOnly ? [{ id:'a-quality', label:'Data Quality', icon:'rule', group:'Go to',
+          ...(!isShortlistOnly ? [{ id:'a-quality', label:'Compliance & Analytics — Data quality', icon:'rule', group:'Go to',
             keywords:'missing gaps incomplete blank problems', run:()=>handleNavigate('quality') }] : []),
           ...(canAccessTenders ? [
             { id:'a-tenders', label:'Tenders', icon:'gavel', group:'Go to',

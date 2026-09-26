@@ -30,7 +30,9 @@ describe('the shell', () => {
     // Everything else prints its own; the shell doing it too showed it twice.
     const shell = app.slice(app.indexOf('const SHELL_TITLED = {'), app.indexOf('};', app.indexOf('const SHELL_TITLED = {')));
     expect(Object.keys(Object.fromEntries([...shell.matchAll(/^\s+(\w+):/gm)].map(m => [m[1], 1]))))
-      .toEqual(['summary', 'comparison', 'compliance', 'users']);
+      .toEqual(['users']);
+    // Compliance & Analytics prints its own header above its tabs.
+    expect(read('src/components/InsightsHub.jsx')).toMatch(/<PageHeader title="Compliance & Analytics"/);
   });
 
   it('offers Add institute in the top bar only where the page has none', () => {

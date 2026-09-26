@@ -51,7 +51,7 @@ function affiliationState(inst) {
 
 const TONE_COLOR = { bad: 'var(--red)', warn: 'var(--warning)', ok: 'var(--text2)', muted: 'var(--text3)' };
 
-export default function ComplianceCentre({ institutes = [], onOpenInstitute }) {
+export default function ComplianceCentre({ institutes = [], onOpenInstitute, embedded = false }) {
   const [tab, setTab] = useState('all');
   const [q, setQ] = useState('');
 
@@ -99,8 +99,10 @@ export default function ComplianceCentre({ institutes = [], onOpenInstitute }) {
 
   return (
     <>
-      <PageHeader title="Renewals & Compliance"
-        sub={`${counts.attention} of ${counts.all} institutes need attention`}/>
+      {embedded
+        ? <div className="hub-summary">{counts.attention} of {counts.all} institutes need attention</div>
+        : <PageHeader title="Renewals & Compliance"
+            sub={`${counts.attention} of ${counts.all} institutes need attention`}/>}
 
       <div style={{display:'flex', gap:12, alignItems:'center', flexWrap:'wrap', marginBottom:4}}>
         <PillTabs

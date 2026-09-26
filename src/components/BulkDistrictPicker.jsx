@@ -63,7 +63,7 @@ function DistrictMultiPicker({onAdd, buttonLabel='+ Add districts'}) {
             style={{fontSize:11, padding:'3px 8px', borderRadius:10, border:'1px solid var(--border)',
               background: isSelected(d.province,d.district) ? 'var(--accent)' : 'var(--bg2)',
               color: isSelected(d.province,d.district) ? '#fff' : 'var(--text1)', cursor:'pointer'}}>
-            {d.district}{!browseProvince && !search && <span style={{fontSize:9, opacity:0.6, marginLeft:3}}>{d.province.split(' ')[0]}</span>}
+            {d.district}{!browseProvince && !search && <span style={{fontSize:11, opacity:0.6, marginLeft:3}}>{d.province.split(' ')[0]}</span>}
           </button>
         ))}
       </div>

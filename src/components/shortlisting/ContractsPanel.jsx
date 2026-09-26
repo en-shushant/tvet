@@ -16,6 +16,7 @@ import { fmtDate } from '../../utils/format.js';
 import { toast } from '../ui/Feedback.jsx';
 import { NepaliDatePicker, ConfirmModal, FYS, uploadToR2 } from './common.jsx';
 import { QUOTE_STATUS, statusColor2 } from './modals.jsx';
+import { safeHref } from '../../utils/safeWindow.js';
 
 function AgreementUpload({ value, onChange, token }) {
   const [uploading, setUploading] = useState(false);
@@ -30,7 +31,7 @@ function AgreementUpload({ value, onChange, token }) {
   return (
     <div style={{display:'flex', alignItems:'center', gap:8, flexWrap:'wrap'}}>
       {value && (
-        <a href={value} target="_blank" rel="noreferrer"
+        <a href={safeHref(value)} target="_blank" rel="noreferrer"
           style={{fontSize:12, color:'var(--primary)', display:'flex', alignItems:'center', gap:4}}>
           <span className="material-icons-round" style={{fontSize:14}}>description</span>Agreement
         </a>
@@ -250,7 +251,7 @@ export function ContractsPanel({ clientId, clientNameManual, groupRows, canEdit,
                   </span>
                   <div style={{flex:1, minWidth:0}}>
                     <div style={{fontWeight:600, fontSize:13, color:'var(--text)'}}>{c.title}</div>
-                    {c.description && <div style={{fontSize:11.5, color:'var(--text3)', marginTop:1}}>{c.description}</div>}
+                    {c.description && <div style={{fontSize:12, color:'var(--text3)', marginTop:1}}>{c.description}</div>}
                   </div>
                   <span style={{fontSize:11, fontWeight:600, padding:'2px 9px', borderRadius:100, background:'var(--primary-light)', color:'var(--primary-dark)', flexShrink:0}}>
                     FY {c.fy}
@@ -286,16 +287,16 @@ export function ContractsPanel({ clientId, clientNameManual, groupRows, canEdit,
                   <div style={{background:'var(--surface)', borderTop:'1px solid var(--border)'}}>
                     {/* Quotation header */}
                     <div style={{display:'flex', alignItems:'center', gap:8, padding:'7px 32px', background:'var(--bg)', borderBottom:'1px solid var(--border)'}}>
-                      <div style={{flex:2, fontSize:10.5, fontWeight:700, color:'var(--text3)', textTransform:'uppercase', letterSpacing:'.5px'}}>Firm</div>
-                      <div style={{width:110, fontSize:10.5, fontWeight:700, color:'var(--text3)', textTransform:'uppercase', letterSpacing:'.5px', flexShrink:0}}>Quote Date</div>
-                      <div style={{width:130, fontSize:10.5, fontWeight:700, color:'var(--text3)', textTransform:'uppercase', letterSpacing:'.5px', flexShrink:0}}>Quoted (NPR)</div>
-                      <div style={{width:80, fontSize:10.5, fontWeight:700, color:'var(--text3)', textTransform:'uppercase', letterSpacing:'.5px', flexShrink:0}}>Status</div>
-                      <div style={{flex:1, fontSize:10.5, fontWeight:700, color:'var(--text3)', textTransform:'uppercase', letterSpacing:'.5px'}}>Contract Amt (ex-VAT)</div>
+                      <div style={{flex:2, fontSize:11, fontWeight:700, color:'var(--text3)', textTransform:'uppercase', letterSpacing:'.5px'}}>Firm</div>
+                      <div style={{width:110, fontSize:11, fontWeight:700, color:'var(--text3)', textTransform:'uppercase', letterSpacing:'.5px', flexShrink:0}}>Quote Date</div>
+                      <div style={{width:130, fontSize:11, fontWeight:700, color:'var(--text3)', textTransform:'uppercase', letterSpacing:'.5px', flexShrink:0}}>Quoted (NPR)</div>
+                      <div style={{width:80, fontSize:11, fontWeight:700, color:'var(--text3)', textTransform:'uppercase', letterSpacing:'.5px', flexShrink:0}}>Status</div>
+                      <div style={{flex:1, fontSize:11, fontWeight:700, color:'var(--text3)', textTransform:'uppercase', letterSpacing:'.5px'}}>Contract Amt (ex-VAT)</div>
                       <div style={{width:90, flexShrink:0}}></div>
                     </div>
 
                     {quotes.length === 0 ? (
-                      <div style={{padding:'14px 32px', fontSize:12.5, color:'var(--text3)', fontStyle:'italic'}}>
+                      <div style={{padding:'14px 32px', fontSize:13, color:'var(--text3)', fontStyle:'italic'}}>
                         No quotations yet.
                       </div>
                     ) : quotes.map((q, qi) => {
@@ -310,7 +311,7 @@ export function ContractsPanel({ clientId, clientNameManual, groupRows, canEdit,
                             </span>
                             <span style={{fontSize:11, color:'var(--text3)', marginLeft:6}}>FY {q.shortlist_fy}</span>
                           </div>
-                          <div style={{width:110, fontSize:12.5, color:'var(--text2)', flexShrink:0}}>
+                          <div style={{width:110, fontSize:13, color:'var(--text2)', flexShrink:0}}>
                             {fmtDate(q.quotation_date)}
                           </div>
                           <div style={{width:130, fontSize:13, fontWeight:600, color:'var(--text)', flexShrink:0}}>
@@ -328,7 +329,7 @@ export function ContractsPanel({ clientId, clientNameManual, groupRows, canEdit,
                                   {q.contract_amount != null ? `NPR ${Number(q.contract_amount).toLocaleString()}` : '—'}
                                 </span>
                                 {q.agreement_doc && (
-                                  <a href={q.agreement_doc} target="_blank" rel="noreferrer"
+                                  <a href={safeHref(q.agreement_doc)} target="_blank" rel="noreferrer"
                                     style={{display:'block', fontSize:11, color:'var(--primary)', marginTop:2}}>
                                     <span className="material-icons-round" style={{fontSize:12, verticalAlign:'middle'}}>description</span> Agreement
                                   </a>

@@ -7,6 +7,7 @@ import { getSession } from '../utils/auth.js';
 import { api, normInst } from '../utils/api.js';
 import { fmt, getClient, getOccupation, pct } from '../utils/format.js';
 import Select from './ui/Select.jsx';
+import { safeWebHref } from '../utils/safeWindow.js';
 
 
 
@@ -140,7 +141,7 @@ function SummaryView({institutes, clients}) {
           <span className="material-icons-round" style={{fontSize:16, color:'var(--text3)'}}>tune</span>
           <span className="filter-panel-header-title">Filters</span>
           {(selectedFYs.length > 0 || selectedOccs.length > 0 || selectedClientTypes.length > 0 || minDuration) && (
-            <span style={{marginLeft:'auto', background:'var(--accent)', color:'#fff', borderRadius:10, fontSize:10, fontWeight:700, padding:'1px 7px'}}>
+            <span style={{marginLeft:'auto', background:'var(--accent)', color:'#fff', borderRadius:10, fontSize:11, fontWeight:700, padding:'1px 7px'}}>
               {selectedFYs.length + selectedOccs.length + selectedClientTypes.length + (minDuration?1:0)}
             </span>
           )}
@@ -229,18 +230,18 @@ function SummaryView({institutes, clients}) {
                   <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:6}}>
                     <SummLogo url={institute.logo} />
                     <div>
-                      <div style={{fontWeight:700,fontSize:15,color:'var(--text)'}}>{institute.name}</div>
+                      <div style={{fontWeight:700,fontSize:14,color:'var(--text)'}}>{institute.name}</div>
                       <div style={{fontSize:11,color:'var(--text3)'}}>{institute.address}{institute.district?` · ${institute.district}`:''}{institute.province?`, ${institute.province}`:''}</div>
                     </div>
-                    {institute.acronym && <span className="badge badge-purple" style={{fontFamily:'var(--font-mono)',fontSize:10,flexShrink:0}}>{institute.acronym}</span>}
-                    <span className={`badge ${institute.status==='Active'?'badge-active':institute.status==='Expired'?'badge-expired':'badge-pending'}`} style={{fontSize:10,flexShrink:0}}>{institute.status}</span>
+                    {institute.acronym && <span className="badge badge-purple" style={{fontFamily:'var(--font-mono)',fontSize:11,flexShrink:0}}>{institute.acronym}</span>}
+                    <span className={`badge ${institute.status==='Active'?'badge-active':institute.status==='Expired'?'badge-expired':'badge-pending'}`} style={{fontSize:11,flexShrink:0}}>{institute.status}</span>
                   </div>
                   <div style={{display:'flex',flexWrap:'wrap',gap:'4px 20px',fontSize:11,color:'var(--text2)'}}>
                     {institute.phone && <span><span className="material-icons-round" style={{fontSize:13, verticalAlign:'middle', marginRight:4}}>call</span>{institute.phone}</span>}
                     {institute.email && <span><span className="material-icons-round" style={{fontSize:13, verticalAlign:'middle', marginRight:4}}>mail</span>{institute.email}</span>}
                     {institute.registrationNo && <span><span className="material-icons-round" style={{fontSize:13,verticalAlign:'middle',marginRight:3}}>badge</span>Reg: {institute.registrationNo}</span>}
                     {institute.renewalDue && <span><span className="material-icons-round" style={{fontSize:13, verticalAlign:'middle', marginRight:4}}>event</span>Renewal: {institute.renewalDue}</span>}
-                    {institute.website && <a href={institute.website} target="_blank" rel="noreferrer" style={{color:'var(--primary)'}}><span className="material-icons-round" style={{fontSize:13, verticalAlign:'middle', marginRight:4}}>language</span>Website</a>}
+                    {institute.website && <a href={safeWebHref(institute.website)} target="_blank" rel="noreferrer" style={{color:'var(--primary)'}}><span className="material-icons-round" style={{fontSize:13, verticalAlign:'middle', marginRight:4}}>language</span>Website</a>}
                   </div>
                 </div>
                 <div style={{display:'flex',gap:8,flexShrink:0,alignItems:'center'}}>
@@ -348,9 +349,9 @@ function SummaryView({institutes, clients}) {
                     </div>
                     {clientTypeBreakdown.length > 0 && (
                       <div style={{marginTop:6,display:'flex',flexWrap:'wrap',gap:'3px 6px',alignItems:'center'}}>
-                        <span style={{fontSize:10,color:'var(--text3)',marginRight:2}}>Clients by type:</span>
+                        <span style={{fontSize:11,color:'var(--text3)',marginRight:2}}>Clients by type:</span>
                         {clientTypeBreakdown.map(([type, count]) => (
-                          <span key={type} style={{fontSize:10,background:'color-mix(in srgb,var(--blue,#3b82f6) 12%,transparent)',color:'var(--blue,#3b82f6)',borderRadius:4,padding:'1px 7px',fontWeight:500}}>
+                          <span key={type} style={{fontSize:11,background:'color-mix(in srgb,var(--blue,#3b82f6) 12%,transparent)',color:'var(--blue,#3b82f6)',borderRadius:4,padding:'1px 7px',fontWeight:500}}>
                             <strong>{count}</strong> {type}
                           </span>
                         ))}
@@ -358,9 +359,9 @@ function SummaryView({institutes, clients}) {
                     )}
                     {provinceList.length > 0 && (
                       <div style={{marginTop:6,display:'flex',flexWrap:'wrap',gap:'3px 6px',alignItems:'center'}}>
-                        <span style={{fontSize:10,color:'var(--text3)',marginRight:2}}>Provinces:</span>
+                        <span style={{fontSize:11,color:'var(--text3)',marginRight:2}}>Provinces:</span>
                         {provinceList.map(p => (
-                          <span key={p} style={{fontSize:10,background:'color-mix(in srgb,var(--success,#16a34a) 12%,transparent)',color:'var(--success,#16a34a)',borderRadius:4,padding:'1px 7px',fontWeight:500}}>{p}</span>
+                          <span key={p} style={{fontSize:11,background:'color-mix(in srgb,var(--success,#16a34a) 12%,transparent)',color:'var(--success,#16a34a)',borderRadius:4,padding:'1px 7px',fontWeight:500}}>{p}</span>
                         ))}
                       </div>
                     )}
@@ -381,20 +382,20 @@ function SummaryView({institutes, clients}) {
                       <tr style={{background:'var(--bg2)'}}>
                         <th rowSpan="2" style={{padding:'6px 10px',textAlign:'left',borderBottom:'2px solid var(--border)',fontSize:11,fontWeight:700,color:'var(--text2)',whiteSpace:'nowrap'}}>Occupation</th>
                         <th rowSpan="2" style={{padding:'6px 8px',textAlign:'center',borderBottom:'2px solid var(--border)',fontSize:11,fontWeight:700,color:'var(--text2)'}}>Lvl</th>
-                        <th colSpan="4" style={{padding:'4px 8px',textAlign:'center',borderBottom:'1px solid var(--border)',fontSize:10,fontWeight:700,color:'var(--accent)',background:'rgba(45,90,61,0.07)'}}>EXPERIENCE</th>
-                        <th colSpan="4" style={{padding:'4px 8px',textAlign:'center',borderBottom:'1px solid var(--border)',fontSize:10,fontWeight:700,color:'var(--blue)',background:'rgba(26,74,122,0.07)'}}>NSTB</th>
-                        <th colSpan="2" style={{padding:'4px 8px',textAlign:'center',borderBottom:'1px solid var(--border)',fontSize:10,fontWeight:700,color:'var(--purple)',background:'rgba(91,45,142,0.07)'}}>AFFILIATION</th>
+                        <th colSpan="4" style={{padding:'4px 8px',textAlign:'center',borderBottom:'1px solid var(--border)',fontSize:11,fontWeight:700,color:'var(--accent)',background:'rgba(45,90,61,0.07)'}}>EXPERIENCE</th>
+                        <th colSpan="4" style={{padding:'4px 8px',textAlign:'center',borderBottom:'1px solid var(--border)',fontSize:11,fontWeight:700,color:'var(--blue)',background:'rgba(26,74,122,0.07)'}}>NSTB</th>
+                        <th colSpan="2" style={{padding:'4px 8px',textAlign:'center',borderBottom:'1px solid var(--border)',fontSize:11,fontWeight:700,color:'var(--purple)',background:'rgba(91,45,142,0.07)'}}>AFFILIATION</th>
                       </tr>
                       <tr style={{background:'var(--bg2)'}}>
-                        <th style={{padding:'4px 8px',textAlign:'center',borderBottom:'2px solid var(--border)',fontSize:10,color:'var(--text3)',fontWeight:600,background:'rgba(45,90,61,0.07)'}}>Firms</th>
-                        <th style={{padding:'4px 8px',textAlign:'center',borderBottom:'2px solid var(--border)',fontSize:10,color:'var(--text3)',fontWeight:600,background:'rgba(45,90,61,0.07)'}}>Trainees</th>
-                        <th style={{padding:'4px 8px',textAlign:'center',borderBottom:'2px solid var(--border)',fontSize:10,color:'var(--text3)',fontWeight:600,background:'rgba(45,90,61,0.07)'}}>Districts</th>
-                        <th style={{padding:'4px 8px',textAlign:'center',borderBottom:'2px solid var(--border)',fontSize:10,color:'var(--text3)',fontWeight:600,background:'rgba(45,90,61,0.07)'}}>ST App/Pass</th>
-                        <th style={{padding:'4px 8px',textAlign:'center',borderBottom:'2px solid var(--border)',fontSize:10,color:'var(--text3)',fontWeight:600,background:'rgba(26,74,122,0.07)'}}>App/Apd/Pass</th>
-                        <th style={{padding:'4px 8px',textAlign:'center',borderBottom:'2px solid var(--border)',fontSize:10,color:'var(--text3)',fontWeight:600,background:'rgba(26,74,122,0.07)'}}>Pass%</th>
-                        <th style={{padding:'4px 8px',textAlign:'center',borderBottom:'2px solid var(--border)',fontSize:10,color:'var(--text3)',fontWeight:600,background:'rgba(26,74,122,0.07)'}}>Apd%</th>
-                        <th style={{padding:'4px 8px',textAlign:'center',borderBottom:'2px solid var(--border)',fontSize:10,color:'var(--text3)',fontWeight:600,background:'rgba(91,45,142,0.07)'}}>Status</th>
-                        <th style={{padding:'4px 8px',textAlign:'center',borderBottom:'2px solid var(--border)',fontSize:10,color:'var(--text3)',fontWeight:600,background:'rgba(91,45,142,0.07)'}}>Valid</th>
+                        <th style={{padding:'4px 8px',textAlign:'center',borderBottom:'2px solid var(--border)',fontSize:11,color:'var(--text3)',fontWeight:600,background:'rgba(45,90,61,0.07)'}}>Firms</th>
+                        <th style={{padding:'4px 8px',textAlign:'center',borderBottom:'2px solid var(--border)',fontSize:11,color:'var(--text3)',fontWeight:600,background:'rgba(45,90,61,0.07)'}}>Trainees</th>
+                        <th style={{padding:'4px 8px',textAlign:'center',borderBottom:'2px solid var(--border)',fontSize:11,color:'var(--text3)',fontWeight:600,background:'rgba(45,90,61,0.07)'}}>Districts</th>
+                        <th style={{padding:'4px 8px',textAlign:'center',borderBottom:'2px solid var(--border)',fontSize:11,color:'var(--text3)',fontWeight:600,background:'rgba(45,90,61,0.07)'}}>ST App/Pass</th>
+                        <th style={{padding:'4px 8px',textAlign:'center',borderBottom:'2px solid var(--border)',fontSize:11,color:'var(--text3)',fontWeight:600,background:'rgba(26,74,122,0.07)'}}>App/Apd/Pass</th>
+                        <th style={{padding:'4px 8px',textAlign:'center',borderBottom:'2px solid var(--border)',fontSize:11,color:'var(--text3)',fontWeight:600,background:'rgba(26,74,122,0.07)'}}>Pass%</th>
+                        <th style={{padding:'4px 8px',textAlign:'center',borderBottom:'2px solid var(--border)',fontSize:11,color:'var(--text3)',fontWeight:600,background:'rgba(26,74,122,0.07)'}}>Apd%</th>
+                        <th style={{padding:'4px 8px',textAlign:'center',borderBottom:'2px solid var(--border)',fontSize:11,color:'var(--text3)',fontWeight:600,background:'rgba(91,45,142,0.07)'}}>Status</th>
+                        <th style={{padding:'4px 8px',textAlign:'center',borderBottom:'2px solid var(--border)',fontSize:11,color:'var(--text3)',fontWeight:600,background:'rgba(91,45,142,0.07)'}}>Valid</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -402,11 +403,11 @@ function SummaryView({institutes, clients}) {
                         <tr key={i} style={{borderBottom:'1px solid var(--border)',background:i%2===0?'transparent':'var(--bg)'}}>
                           <td style={{padding:'6px 10px',maxWidth:220}}>
                             <div style={{fontWeight:600,fontSize:12,color:'var(--text)',lineHeight:1.3}}>{row.occupation}</div>
-                            {row.sector !== '—' && <div style={{fontSize:10,color:'var(--text3)'}}>{row.sector}</div>}
-                            {[...row.clientNames].length > 0 && <div style={{fontSize:10,marginTop:2,display:'flex',flexWrap:'wrap',gap:'2px 4px'}}>{[...row.clientNames].map((n,i)=><span key={i} style={{background:'color-mix(in srgb,var(--accent,#6366f1) 12%,transparent)',color:'var(--accent,#6366f1)',borderRadius:3,padding:'0 5px',fontWeight:500,fontSize:10}}>{n}</span>)}</div>}
+                            {row.sector !== '—' && <div style={{fontSize:11,color:'var(--text3)'}}>{row.sector}</div>}
+                            {[...row.clientNames].length > 0 && <div style={{fontSize:11,marginTop:2,display:'flex',flexWrap:'wrap',gap:'2px 4px'}}>{[...row.clientNames].map((n,i)=><span key={i} style={{background:'color-mix(in srgb,var(--accent,#6366f1) 12%,transparent)',color:'var(--accent,#6366f1)',borderRadius:3,padding:'0 5px',fontWeight:500,fontSize:11}}>{n}</span>)}</div>}
                           </td>
                           <td style={{padding:'6px 8px',textAlign:'center'}}>
-                            {row.level && row.level !== '—' ? <span className="badge badge-purple" style={{fontSize:10,padding:'1px 5px'}}>{row.level}</span> : <span style={{color:'var(--text3)'}}>—</span>}
+                            {row.level && row.level !== '—' ? <span className="badge badge-purple" style={{fontSize:11,padding:'1px 5px'}}>{row.level}</span> : <span style={{color:'var(--text3)'}}>—</span>}
                           </td>
                           <td style={{padding:'6px 8px',textAlign:'center',fontWeight:600}}>{row.clientIds.size || '—'}</td>
                           <td style={{padding:'6px 8px',textAlign:'center',fontFamily:'var(--font-mono)',fontWeight:700,color:'var(--primary)'}}>{row.trainees || '—'}</td>
@@ -420,15 +421,15 @@ function SummaryView({institutes, clients}) {
                             {row.nstbApplied||row.nstbAppeared||row.nstbPass ? `${row.nstbApplied||0}/${row.nstbAppeared||0}/${row.nstbPass||0}` : '—'}
                           </td>
                           <td style={{padding:'6px 8px',textAlign:'center'}}>
-                            {row.nstbPass && row.nstbAppeared ? <span className={`badge ${parseFloat(pct(row.nstbPass,row.nstbAppeared))>=70?'badge-active':'badge-pending'}`} style={{fontSize:10}}>{pct(row.nstbPass,row.nstbAppeared)}</span> : '—'}
+                            {row.nstbPass && row.nstbAppeared ? <span className={`badge ${parseFloat(pct(row.nstbPass,row.nstbAppeared))>=70?'badge-active':'badge-pending'}`} style={{fontSize:11}}>{pct(row.nstbPass,row.nstbAppeared)}</span> : '—'}
                           </td>
                           <td style={{padding:'6px 8px',textAlign:'center'}}>
-                            {row.nstbApplied && row.nstbAppeared ? <span className="badge badge-info" style={{fontSize:10}}>{pct(row.nstbAppeared,row.nstbApplied)}</span> : '—'}
+                            {row.nstbApplied && row.nstbAppeared ? <span className="badge badge-info" style={{fontSize:11}}>{pct(row.nstbAppeared,row.nstbApplied)}</span> : '—'}
                           </td>
                           <td style={{padding:'6px 8px',textAlign:'center'}}>
-                            {row.affiliationStatus !== '—' ? <span className={`badge ${row.affiliationStatus==='Active'?'badge-active':row.affiliationStatus==='Expired'?'badge-expired':'badge-pending'}`} style={{fontSize:10}}>{row.affiliationStatus}</span> : '—'}
+                            {row.affiliationStatus !== '—' ? <span className={`badge ${row.affiliationStatus==='Active'?'badge-active':row.affiliationStatus==='Expired'?'badge-expired':'badge-pending'}`} style={{fontSize:11}}>{row.affiliationStatus}</span> : '—'}
                           </td>
-                          <td style={{padding:'6px 8px',textAlign:'center',fontSize:10,color:'var(--text3)',whiteSpace:'nowrap'}}>
+                          <td style={{padding:'6px 8px',textAlign:'center',fontSize:11,color:'var(--text3)',whiteSpace:'nowrap'}}>
                             {row.affiliationFrom !== '—' ? `${row.affiliationFrom}${row.affiliationTo !== '—' ? ` – ${row.affiliationTo}` : ''}` : '—'}
                           </td>
                         </tr>
@@ -447,8 +448,8 @@ function SummaryView({institutes, clients}) {
                             <td style={{textAlign:'center'}}>{tot.allDistricts.size||'—'}</td>
                             <td style={{textAlign:'center',fontFamily:'var(--font-mono)',fontSize:11}}>{tot.stAppeared||tot.stPass?`${tot.stAppeared}/${tot.stPass}`:'—'}</td>
                             <td style={{textAlign:'center',fontFamily:'var(--font-mono)',fontSize:11}}>{tot.nstbApplied||tot.nstbAppeared||tot.nstbPass?`${tot.nstbApplied}/${tot.nstbAppeared}/${tot.nstbPass}`:'—'}</td>
-                            <td style={{textAlign:'center'}}>{tot.nstbPass&&tot.nstbAppeared?<span className={`badge ${parseFloat(pct(tot.nstbPass,tot.nstbAppeared))>=70?'badge-active':'badge-pending'}`} style={{fontSize:10}}>{pct(tot.nstbPass,tot.nstbAppeared)}</span>:'—'}</td>
-                            <td style={{textAlign:'center'}}>{tot.nstbApplied&&tot.nstbAppeared?<span className="badge badge-info" style={{fontSize:10}}>{pct(tot.nstbAppeared,tot.nstbApplied)}</span>:'—'}</td>
+                            <td style={{textAlign:'center'}}>{tot.nstbPass&&tot.nstbAppeared?<span className={`badge ${parseFloat(pct(tot.nstbPass,tot.nstbAppeared))>=70?'badge-active':'badge-pending'}`} style={{fontSize:11}}>{pct(tot.nstbPass,tot.nstbAppeared)}</span>:'—'}</td>
+                            <td style={{textAlign:'center'}}>{tot.nstbApplied&&tot.nstbAppeared?<span className="badge badge-info" style={{fontSize:11}}>{pct(tot.nstbAppeared,tot.nstbApplied)}</span>:'—'}</td>
                             <td/><td/>
                           </tr>
                         );

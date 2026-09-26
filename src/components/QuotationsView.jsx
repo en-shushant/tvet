@@ -12,6 +12,7 @@ import { adToBS, bsToAD, BS_MONTHS, BS_DATA, toNpNum, BS_YEARS } from '../consta
 import { fmtDate } from '../utils/format.js';
 import { toast } from './ui/Feedback.jsx';
 import Select from './ui/Select.jsx';
+import { safeHref } from '../utils/safeWindow.js';
 
 const FYS = [...FISCAL_YEARS].reverse();
 const QUOTE_STATUS = ['Quoted', 'Awarded', 'Rejected'];
@@ -48,7 +49,7 @@ function NepaliDatePicker({ label, value, onChange, required }) {
 
   return (
     <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
-      {label && <label style={{ fontSize:12.5, fontWeight:600, color:'var(--text2)' }}>{label}{required && ' *'}</label>}
+      {label && <label style={{ fontSize:13, fontWeight:600, color:'var(--text2)' }}>{label}{required && ' *'}</label>}
       <div style={{ display:'flex', gap:6 }}>
         <Select value={sel.y||''} onChange={e=>setY(e.target.value)} style={{...ss, flex:2}}>
           <option value=''>वर्ष</option>
@@ -85,7 +86,7 @@ function AgreementUpload({ value, onChange, token }) {
   };
   return (
     <div style={{ display:'flex', alignItems:'center', gap:8 }}>
-      {value && <a href={value} target="_blank" rel="noreferrer" style={{ fontSize:12, color:'var(--primary)', display:'flex', alignItems:'center', gap:3 }}><span className="material-icons-round" style={{fontSize:13}}>description</span>Agreement</a>}
+      {value && <a href={safeHref(value)} target="_blank" rel="noreferrer" style={{ fontSize:12, color:'var(--primary)', display:'flex', alignItems:'center', gap:3 }}><span className="material-icons-round" style={{fontSize:13}}>description</span>Agreement</a>}
       <label style={{ cursor: uploading ? 'wait' : 'pointer' }}>
         <input type="file" accept="image/*,application/pdf" style={{ display:'none' }} onChange={handle} disabled={uploading}/>
         <span className="btn btn-ghost btn-sm" style={{ fontSize:11 }}>{uploading ? 'Uploading…' : value ? 'Replace' : '+ Agreement'}</span>
@@ -158,21 +159,20 @@ function ShortlistTab({ institutes, clients, isAdmin, canEdit, token }) {
           <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search firm or org…"/>
         </div>
         <Select value={filterFY} onChange={e=>setFilterFY(e.target.value)}
-          style={{ height:38, borderRadius:8, border:'1px solid var(--border)', background:'var(--surface)', color:'var(--text)', padding:'0 10px', fontSize:13, cursor:'pointer' }}>
+          style={{ width:'auto', minWidth:150, height:38 }}>
           <option value="">All FYs</option>
           {FYS.map(fy => <option key={fy} value={fy}>{fy}</option>)}
         </Select>
         <Select value={filterOrg} onChange={e=>setFilterOrg(e.target.value)}
-          style={{ height:38, borderRadius:8, border:'1px solid var(--border)', background:'var(--surface)', color:'var(--text)', padding:'0 10px', fontSize:13, cursor:'pointer', maxWidth:220 }}>
+          style={{ width:'auto', minWidth:150, maxWidth:240, height:38 }}>
           <option value="">All Orgs</option>
           {orgs.map(([k,lbl]) => <option key={k} value={k}>{lbl}</option>)}
         </Select>
         <span style={{ fontSize:12, color:'var(--text3)', whiteSpace:'nowrap' }}>{filtered.length} entries</span>
         {canEdit && (
-          <button onClick={() => setModal({type:'add'})}
-            style={{ display:'flex', alignItems:'center', gap:5, padding:'7px 14px', borderRadius:8, border:'none', background:'var(--primary)', color:'#fff', cursor:'pointer', fontSize:13, fontWeight:600 }}>
-            <span className="material-icons-round" style={{fontSize:15}}>add</span> Add Entry
-          </button>
+          <Btn className="btn btn-primary btn-sm" onClick={() => setModal({type:'add'})}>
+            <span className="material-icons-round" style={{fontSize:16}}>add</span>Add Entry
+          </Btn>
         )}
       </div>
 
@@ -181,8 +181,9 @@ function ShortlistTab({ institutes, clients, isAdmin, canEdit, token }) {
         {/* Header */}
         <div style={{ display:'flex', gap:10, padding:'9px 16px', background:'var(--bg)', borderBottom:'1px solid var(--border)' }}>
           {['FIRM','ORGANIZATION','FY','DATE','STATUS','CONTRACT'].map((h,i) => (
-            <div key={h} style={{ fontSize:10.5, fontWeight:700, color:'var(--text3)', textTransform:'uppercase', letterSpacing:'.5px',
-              flex: i===0||i===1 ? 2 : i===5 ? 1.5 : 0, width: i===2?70:i===3?100:i===4?80:undefined, flexShrink:0 }}>
+            <div key={h} style={{ fontSize:11, fontWeight:700, color:'var(--text3)', textTransform:'uppercase', letterSpacing:'.5px',
+              // Fixed columns take a flex-basis, matching the rows' widths; `flex: 0` zeroed them.
+              flex: i===0||i===1 ? 2 : i===5 ? 1.5 : `0 0 ${i===2?70:i===3?100:80}px`, minWidth:0 }}>
               {h}
             </div>
           ))}
@@ -207,7 +208,7 @@ function ShortlistTab({ institutes, clients, isAdmin, canEdit, token }) {
                 </div>
               </div>
               {/* Org */}
-              <div style={{ flex:2, fontSize:12.5, color:'var(--text2)', minWidth:0, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
+              <div style={{ flex:2, fontSize:13, color:'var(--text2)', minWidth:0, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
                 {r.client_short && <span style={{ fontWeight:600 }}>{r.client_short} · </span>}
                 {r.client_name || r.client_name_manual || <span style={{ fontStyle:'italic', color:'var(--text3)' }}>—</span>}
               </div>
@@ -228,7 +229,7 @@ function ShortlistTab({ institutes, clients, isAdmin, canEdit, token }) {
                   : r.contract_amount != null
                     ? <span style={{ fontWeight:600 }}>{fmtNPR(r.contract_amount)}</span>
                     : <span style={{ color:'var(--text3)' }}>—</span>}
-                {r.shortlist_doc && <a href={r.shortlist_doc} target="_blank" rel="noreferrer" style={{ display:'block', fontSize:11, color:'var(--primary)', marginTop:2 }}>
+                {r.shortlist_doc && <a href={safeHref(r.shortlist_doc)} target="_blank" rel="noreferrer" style={{ display:'block', fontSize:11, color:'var(--primary)', marginTop:2 }}>
                   <span className="material-icons-round" style={{fontSize:12,verticalAlign:'middle'}}>receipt</span> Receipt
                 </a>}
               </div>
@@ -373,16 +374,15 @@ function ContractsTab({ isAdmin, canEdit, token }) {
           <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search contract title or org…"/>
         </div>
         <Select value={filterFY} onChange={e=>setFilterFY(e.target.value)}
-          style={{ height:38, borderRadius:8, border:'1px solid var(--border)', background:'var(--surface)', color:'var(--text)', padding:'0 10px', fontSize:13 }}>
+          style={{ width:'auto', minWidth:150, height:38 }}>
           <option value="">All FYs</option>
           {FYS.map(fy => <option key={fy} value={fy}>{fy}</option>)}
         </Select>
         <span style={{ fontSize:12, color:'var(--text3)' }}>{filtered.length} contracts</span>
         {canEdit && (
-          <button onClick={() => setCModal({type:'add'})}
-            style={{ display:'flex', alignItems:'center', gap:5, padding:'7px 14px', borderRadius:8, border:'none', background:'var(--primary)', color:'#fff', cursor:'pointer', fontSize:13, fontWeight:600 }}>
-            <span className="material-icons-round" style={{fontSize:15}}>add</span> New Contract
-          </button>
+          <Btn className="btn btn-primary btn-sm" onClick={() => setCModal({type:'add'})}>
+            <span className="material-icons-round" style={{fontSize:16}}>add</span>New Contract
+          </Btn>
         )}
       </div>
 
@@ -442,7 +442,7 @@ function ContractsTab({ isAdmin, canEdit, token }) {
                     {/* Sub-header */}
                     <div style={{ display:'flex', gap:8, padding:'7px 20px', background:'var(--bg)', borderBottom:'1px solid var(--border)' }}>
                       {['FIRM','QUOTE DATE','QUOTED (NPR)','STATUS','CONTRACT AMT (EX-VAT)','AGREEMENT',''].map((h,i) => (
-                        <div key={i} style={{ fontSize:10, fontWeight:700, color:'var(--text3)', textTransform:'uppercase', letterSpacing:'.5px',
+                        <div key={i} style={{ fontSize:11, fontWeight:700, color:'var(--text3)', textTransform:'uppercase', letterSpacing:'.5px',
                           flex: i===0?2:i===4||i===5?1.5:0,
                           width: i===1?110:i===2?120:i===3?84:i===6?60:undefined, flexShrink:0 }}>
                           {h}
@@ -451,7 +451,7 @@ function ContractsTab({ isAdmin, canEdit, token }) {
                     </div>
 
                     {quotes.length === 0 ? (
-                      <div style={{ padding:'12px 20px', fontSize:12.5, color:'var(--text3)', fontStyle:'italic' }}>No quotations yet.</div>
+                      <div style={{ padding:'12px 20px', fontSize:13, color:'var(--text3)', fontStyle:'italic' }}>No quotations yet.</div>
                     ) : quotes.map((q,qi) => {
                       const c2 = sc(q.status);
                       return (
@@ -459,9 +459,9 @@ function ContractsTab({ isAdmin, canEdit, token }) {
                           <div style={{ flex:2, fontWeight:600, fontSize:13 }}>
                             {q.institute_acronym && <span style={{color:'var(--text3)',fontWeight:500}}>[{q.institute_acronym}] </span>}
                             {q.institute_name}
-                            <span style={{ fontSize:10.5, color:'var(--text3)', marginLeft:6 }}>FY {q.shortlist_fy}</span>
+                            <span style={{ fontSize:11, color:'var(--text3)', marginLeft:6 }}>FY {q.shortlist_fy}</span>
                           </div>
-                          <div style={{ width:110, fontSize:12.5, color:'var(--text2)', flexShrink:0 }}>{fmtDate(q.quotation_date)}</div>
+                          <div style={{ width:110, fontSize:13, color:'var(--text2)', flexShrink:0 }}>{fmtDate(q.quotation_date)}</div>
                           <div style={{ width:120, fontSize:13, fontWeight:600, flexShrink:0 }}>{q.quoted_amount!=null?Number(q.quoted_amount).toLocaleString():'—'}</div>
                           <div style={{ width:84, flexShrink:0 }}>
                             <span style={{ fontSize:11, fontWeight:600, padding:'2px 8px', borderRadius:100, background:c2.bg, color:c2.cl }}>{q.status}</span>
@@ -473,7 +473,7 @@ function ContractsTab({ isAdmin, canEdit, token }) {
                           </div>
                           <div style={{ flex:1.5 }}>
                             {q.agreement_doc
-                              ? <a href={q.agreement_doc} target="_blank" rel="noreferrer" style={{ fontSize:12, color:'var(--primary)', display:'flex', alignItems:'center', gap:3 }}>
+                              ? <a href={safeHref(q.agreement_doc)} target="_blank" rel="noreferrer" style={{ fontSize:12, color:'var(--primary)', display:'flex', alignItems:'center', gap:3 }}>
                                   <span className="material-icons-round" style={{fontSize:13}}>description</span>View
                                 </a>
                               : <span style={{ color:'var(--text3)', fontSize:12 }}>—</span>}
@@ -495,7 +495,7 @@ function ContractsTab({ isAdmin, canEdit, token }) {
                       </div>
                     )}
                     {canEdit && availableOptions.length === 0 && slOptions.length === 0 && (
-                      <div style={{ padding:'8px 20px', fontSize:11.5, color:'var(--text3)', fontStyle:'italic' }}>
+                      <div style={{ padding:'8px 20px', fontSize:12, color:'var(--text3)', fontStyle:'italic' }}>
                         No firms shortlisted for this org/FY. Shortlist firms first.
                       </div>
                     )}
@@ -701,7 +701,7 @@ function QuotationFormModal({ initial, slOptions, onSave, onClose, saving, token
         {isAwarded && <>
           <MdTextField type="number" label="Contract Amount ex-VAT (NPR) *" value={form.contract_amount} onChange={e=>set('contract_amount',e.target.value)} placeholder="e.g. 498328"/>
           <div>
-            <div style={{fontSize:12.5,fontWeight:600,color:'var(--text2)',marginBottom:6}}>Agreement Document</div>
+            <div style={{fontSize:13,fontWeight:600,color:'var(--text2)',marginBottom:6}}>Agreement Document</div>
             <AgreementUpload value={form.agreement_doc} onChange={v=>set('agreement_doc',v)} token={token}/>
           </div>
         </>}
@@ -730,13 +730,6 @@ export default function QuotationsView({ institutes, clients, isAdmin, isEditor,
   const canEdit = !!(isAdmin || isEditor || isShortlistOnly);
   const [tab, setTab] = useState('shortlisting');
 
-  const tabStyle = (id) => ({
-    padding:'10px 20px', border:'none', background:'transparent', cursor:'pointer',
-    fontSize:13.5, fontWeight:600, fontFamily:'inherit',
-    color: tab===id ? 'var(--primary)' : 'var(--text3)',
-    borderBottom: tab===id ? '2px solid var(--primary)' : '2px solid transparent',
-    transition:'color .15s, border-color .15s',
-  });
 
   return (
     <div className="fade-in">
@@ -747,16 +740,14 @@ export default function QuotationsView({ institutes, clients, isAdmin, isEditor,
         </div>
       </div>
 
-      {/* Tab bar */}
-      <div style={{ display:'flex', gap:0, borderBottom:'1px solid var(--border)', marginBottom:20, background:'var(--surface)', borderRadius:'12px 12px 0 0', padding:'0 8px', boxShadow:'var(--shadow)' }}>
-        <button style={tabStyle('shortlisting')} onClick={()=>setTab('shortlisting')}>
-          <span className="material-icons-round" style={{fontSize:15, verticalAlign:'middle', marginRight:6}}>playlist_add_check</span>
-          Shortlisting
-        </button>
-        <button style={tabStyle('contracts')} onClick={()=>setTab('contracts')}>
-          <span className="material-icons-round" style={{fontSize:15, verticalAlign:'middle', marginRight:6}}>gavel</span>
-          Contracts & Quotations
-        </button>
+      {/* Tab bar — the app's standard underlined section tabs. */}
+      <div role="tablist" aria-label="Quotations views" className="hub-tabs">
+        {[['shortlisting', 'playlist_add_check', 'Shortlisting'], ['contracts', 'gavel', 'Contracts & Quotations']].map(([id, icon, label]) => (
+          <button key={id} type="button" role="tab" aria-selected={tab === id}
+            className={`hub-tab${tab === id ? ' is-active' : ''}`} onClick={() => setTab(id)}>
+            <span className="material-icons-round" aria-hidden="true">{icon}</span>{label}
+          </button>
+        ))}
       </div>
 
       {tab === 'shortlisting' && (

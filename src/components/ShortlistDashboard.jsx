@@ -247,7 +247,7 @@ export default function ShortlistDashboard({ institutes, onNavigate }) {
                     ? <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--teal)' }}>{fmtNPR(costByFirm[inst.id])}</span>
                     : <span style={{ fontSize: 11, color: 'var(--text3)' }}>—</span>
                   }
-                  {currentFY && <div style={{ fontSize: 10, color: 'var(--text3)', marginTop: 1 }}>FY {currentFY}</div>}
+                  {currentFY && <div style={{ fontSize:11, color: 'var(--text3)', marginTop: 1 }}>FY {currentFY}</div>}
                 </div>
                 <DocBar uploaded={uploaded} total={total} />
               </div>
@@ -263,7 +263,7 @@ export default function ShortlistDashboard({ institutes, onNavigate }) {
           textAlign: 'center', color: 'var(--text3)',
         }}>
           <span className="material-icons-round" style={{ fontSize: 48, marginBottom: 12, display: 'block' }}>domain_add</span>
-          <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--text2)', marginBottom: 6 }}>No firms yet</div>
+          <div style={{ fontSize:14, fontWeight: 600, color: 'var(--text2)', marginBottom: 6 }}>No firms yet</div>
           <div style={{ fontSize: 13 }}>Add your first firm using the "Add Institute" button above.</div>
         </div>
       )}

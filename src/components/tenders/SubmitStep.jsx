@@ -167,7 +167,7 @@ export default function SubmitStep({ tender, busy, variants, docFamily, setDocFa
             </div>
           )}
         <Btn className="btn btn-secondary btn-sm" style={{ marginTop: 8 }}
-          onClick={() => setVariantModal({ data: null })}>+ Add wording</Btn>
+          onClick={() => setVariantModal({ data: null })}><span className="material-icons-round">add</span>Add wording</Btn>
       </details>
 
       {footer({})}
@@ -233,7 +233,7 @@ function VariantForm({ variant, firms, onSave, onClose }) {
       <div className="form-group">
         <label>Text</label>
         <textarea rows={9} value={form.body || ''} onChange={e => set('body', e.target.value)}
-          style={{ fontFamily: 'var(--font)', fontSize: 12.5, lineHeight: 1.5 }} />
+          style={{ fontFamily: 'var(--font)', fontSize:13, lineHeight: 1.5 }} />
       </div>
     </Modal>
   );

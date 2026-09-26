@@ -151,7 +151,7 @@ function ComparisonView({institutes, clients}) {
             ...(avgTurnover>0 ? [[isJV?'Combined turnover':'Avg turnover/yr', `NPR ${fmt(avgTurnover)}`, 'var(--amber)']] : []),
           ].map(([lbl,val,color],i) => (
             <div key={i} style={{flex:1, padding:'12px 14px', borderRight:'1px solid var(--border)', textAlign:'center'}}>
-              <div style={{fontSize:10, color:'var(--text3)', textTransform:'uppercase', letterSpacing:'0.5px', marginBottom:4}}>{lbl}</div>
+              <div style={{fontSize:11, color:'var(--text3)', textTransform:'uppercase', letterSpacing:'0.5px', marginBottom:4}}>{lbl}</div>
               <div style={{fontSize:18, fontWeight:700, fontFamily:'var(--font-serif)', color}}>{val||'—'}</div>
             </div>
           ))}
@@ -204,7 +204,7 @@ function ComparisonView({institutes, clients}) {
           <span className="material-icons-round" style={{fontSize:16, color:'var(--text3)'}}>balance</span>
           <span className="filter-panel-header-title">Compare</span>
           {activeFilterCount > 0 && (
-            <span style={{marginLeft:'auto', background:'var(--accent)', color:'#fff', borderRadius:10, fontSize:10, fontWeight:700, padding:'1px 7px'}}>
+            <span style={{marginLeft:'auto', background:'var(--accent)', color:'#fff', borderRadius:10, fontSize:11, fontWeight:700, padding:'1px 7px'}}>
               {activeFilterCount}
             </span>
           )}

@@ -150,7 +150,7 @@ function TendersView({ institutes = [], clients = [], onGoToReports, canAccessPo
     <div className="fade-in">
       {err && <ErrorBanner msg={err} onDismiss={() => setErr('')} />}
       <PageHeader title="Tenders" sub="Bids you are putting together — notice, team and documents, step by step"
-        actions={<Btn className="btn btn-primary btn-sm" onClick={() => openAt('new')}>+ New tender</Btn>} />
+        actions={<Btn className="btn btn-primary btn-sm" onClick={() => openAt('new')}><span className="material-icons-round">add</span>New tender</Btn>} />
 
       <div style={{ display: 'flex', gap: 10, marginBottom: 14, flexWrap: 'wrap' }}>
         <div className="search-wrap" style={{ flex: 1, minWidth: 220 }}>
@@ -180,7 +180,7 @@ function TendersView({ institutes = [], clients = [], onGoToReports, canAccessPo
       </div>
 
       {!loading && rows.length > 0 && (firmFilter || fyFilter) && (
-        <div style={{ fontSize: 12.5, color: 'var(--text2)', marginBottom: 10 }}>
+        <div style={{ fontSize:13, color: 'var(--text2)', marginBottom: 10 }}>
           {rows.length} bid{rows.length === 1 ? '' : 's'}
           {firmFilter ? ` by ${institutes.find(i => String(i.id) === String(firmFilter))?.acronym
             || institutes.find(i => String(i.id) === String(firmFilter))?.name}` : ''}
@@ -194,7 +194,7 @@ function TendersView({ institutes = [], clients = [], onGoToReports, canAccessPo
         <EmptyState icon="gavel" title={filtered ? 'No bids match' : 'No tenders yet'}
           body="Start from the notice: record who is asking and by when, what team they want, which of your firms are bidding — then fill each bidder's team and build its documents."
           action={!filtered && (
-            <Btn className="btn btn-primary btn-sm" onClick={() => openAt('new')}>+ Create the first tender</Btn>
+            <Btn className="btn btn-primary btn-sm" onClick={() => openAt('new')}><span className="material-icons-round">add</span>Create the first tender</Btn>
           )} />
       ) : (
         <div className="card tw-table-card">
@@ -220,7 +220,7 @@ function TendersView({ institutes = [], clients = [], onGoToReports, canAccessPo
                     {latest.bidders?.length
                       ? latest.bidders.map(b => b.display_name || b.label).join(' · ')
                       : <span style={{ color: 'var(--text3)' }}>None yet</span>}
-                    <div style={{ fontSize: 10.5, color: 'var(--text3)' }}>
+                    <div style={{ fontSize:11, color: 'var(--text3)' }}>
                       {latest.proposed_count || 0} proposed
                     </div>
                   </td>
@@ -235,10 +235,10 @@ function TendersView({ institutes = [], clients = [], onGoToReports, canAccessPo
                       ))}
                     </div>
                   </td>
-                  <td className="mono" style={{ fontSize: 11.5 }}>
+                  <td className="mono" style={{ fontSize:12 }}>
                     {latest.submission_date || '—'}
                     {latest.submission_time && (
-                      <div style={{ fontSize: 10.5, color: 'var(--text3)' }}>{latest.submission_time}</div>
+                      <div style={{ fontSize:11, color: 'var(--text3)' }}>{latest.submission_time}</div>
                     )}
                   </td>
                   <td><StatusBadge tone={STATUS_TONE[latest.status] || 'neutral'}>{latest.status}</StatusBadge></td>

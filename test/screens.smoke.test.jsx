@@ -31,7 +31,7 @@ import InstituteDetail from '../src/components/InstituteDetail.jsx';
 import ExperienceForm from '../src/components/ExperienceForm.jsx';
 import SummaryView from '../src/components/SummaryView.jsx';
 import ComparisonView from '../src/components/ComparisonView.jsx';
-import AnalyticsView from '../src/components/AnalyticsView.jsx';
+import InsightsHub from '../src/components/InsightsHub.jsx';
 import ComplianceCentre from '../src/components/ComplianceCentre.jsx';
 import DocumentsCentre from '../src/components/DocumentsCentre.jsx';
 import DataQuality from '../src/components/DataQuality.jsx';
@@ -99,7 +99,8 @@ const SCREENS = {
                           onSaveClient={noop} />,
   'Summary':            <SummaryView institutes={institutes} clients={clients} />,
   'Comparison':         <ComparisonView institutes={institutes} clients={clients} />,
-  'Analytics':          <AnalyticsView tab="summary" onTab={noop} institutes={institutes} clients={clients} />,
+  'Analytics':          <InsightsHub tab="summary" onTab={noop} institutes={institutes} clients={clients} />,
+  'Compliance hub':     <InsightsHub tab="renewals" onTab={noop} institutes={institutes} clients={clients} onOpenInstitute={noop} />,
   'Renewals & Compliance': <ComplianceCentre institutes={institutes} onOpenInstitute={noop} />,
   'Documents':          <DocumentsCentre institutes={institutes} token={token} onOpenInstitute={noop} />,
   'Data Quality':       <DataQuality institutes={institutes} onOpenInstitute={noop} />,

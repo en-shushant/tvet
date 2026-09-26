@@ -39,7 +39,7 @@ function SelectedTop({ items, onRemove, onClear, label = 'Selected' }) {
     <div style={{marginBottom:10, border:'1px solid var(--border)', borderRadius:10,
       background:'var(--bg,#f8fafc)', padding:'8px 10px'}}>
       <div style={{display:'flex', alignItems:'center', justifyContent:'space-between', gap:8, marginBottom:6}}>
-        <span style={{fontSize:10.5, fontWeight:700, color:'var(--text3)', letterSpacing:'.4px', textTransform:'uppercase'}}>
+        <span style={{fontSize:11, fontWeight:700, color:'var(--text3)', letterSpacing:'.4px', textTransform:'uppercase'}}>
           {label} · {items.length}
         </span>
         {onClear && (
@@ -51,7 +51,7 @@ function SelectedTop({ items, onRemove, onClear, label = 'Selected' }) {
       <div style={{display:'flex', flexWrap:'wrap', gap:6}}>
         {items.map(it => (
           <span key={it.key} style={{display:'inline-flex', alignItems:'center', gap:4,
-            fontSize:11.5, background:'var(--primary-light,#eff6ff)', color:'var(--primary)',
+            fontSize:12, background:'var(--primary-light,#eff6ff)', color:'var(--primary)',
             borderRadius:100, padding:'3px 5px 3px 10px', maxWidth:'100%'}}>
             <span style={{overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap'}} title={it.title || it.label}>
               {it.label}
@@ -84,7 +84,7 @@ const COLUMN_SAMPLE = {
 function ColumnLayoutPicker({ options, selected, onToggle, locked = ['sn', 'name'] }) {
   const th = (on, isLocked) => ({
     padding: '7px 10px', textAlign: 'left', whiteSpace: 'nowrap',
-    fontSize: 11.5, fontWeight: on ? 700 : 500,
+    fontSize:12, fontWeight: on ? 700 : 500,
     borderBottom: '1px solid var(--border)',
     borderRight: '1px solid var(--border)',
     background: on ? 'var(--primary-light,#eff6ff)' : 'var(--bg2)',
@@ -93,7 +93,7 @@ function ColumnLayoutPicker({ options, selected, onToggle, locked = ['sn', 'name
     userSelect: 'none',
   });
   const td = (on) => ({
-    padding: '7px 10px', fontSize: 11.5, whiteSpace: 'nowrap',
+    padding: '7px 10px', fontSize:12, whiteSpace: 'nowrap',
     borderRight: '1px solid var(--border)',
     color: on ? 'var(--text2)' : 'var(--text3)',
     background: on ? 'var(--surface)' : 'var(--bg2)',
@@ -873,7 +873,7 @@ function ReportsView({ institutes, clients }) {
           <div style={{display:'flex', alignItems:'center', gap:10, marginBottom:14, padding:'9px 13px',
             background:'var(--primary-light,#eff6ff)', borderRadius:'var(--radius-md,12px)'}}>
             <span className="material-icons-round" style={{fontSize:17, color:'var(--primary)'}}>gavel</span>
-            <span style={{flex:1, fontSize:12.5, color:'var(--text2)'}}>
+            <span style={{flex:1, fontSize:13, color:'var(--text2)'}}>
               Set up for the <strong>{fromTender.kind}</strong> on{' '}
               <strong>{fromTender.title}</strong>
               {fromTender.bidderName ? <> for <strong>{fromTender.bidderName}</strong></> : null}
@@ -931,7 +931,7 @@ function ReportsView({ institutes, clients }) {
                     <div style={{marginBottom:10, border:'1px solid var(--border)', borderRadius:10,
                       background:'var(--bg,#f8fafc)', padding:'8px 10px'}}>
                       <div style={{display:'flex', alignItems:'center', justifyContent:'space-between', gap:8, marginBottom:6}}>
-                        <span style={{fontSize:10.5, fontWeight:700, color:'var(--text3)', letterSpacing:'.4px', textTransform:'uppercase'}}>
+                        <span style={{fontSize:11, fontWeight:700, color:'var(--text3)', letterSpacing:'.4px', textTransform:'uppercase'}}>
                           Selected · {fwInstIds.length}{fwInstIds.length > 1 ? ' — mark the lead firm' : ''}
                         </span>
                         <button onClick={() => { setFwInstIds([]); setFwLeadId(null); }}
@@ -943,13 +943,13 @@ function ReportsView({ institutes, clients }) {
                         if (!inst) return null;
                         const isLead = fwLeadId === id;
                         return (
-                          <div key={id} style={{display:'flex', alignItems:'center', gap:8, padding:'3px 0', fontSize:12.5}}>
+                          <div key={id} style={{display:'flex', alignItems:'center', gap:8, padding:'3px 0', fontSize:13}}>
                             {fwInstIds.length > 1 && (
                               <label style={{display:'flex', alignItems:'center', gap:5, margin:0,
                                 flexShrink:0, cursor:'pointer', whiteSpace:'nowrap'}}
                                 title={isLead ? 'Lead firm' : 'Mark as lead firm'}>
                                 <input type="radio" name="fw-lead" checked={isLead} onChange={() => setFwLeadId(id)} style={{margin:0}}/>
-                                <span style={{fontSize:9.5, fontWeight:700, width:30, display:'inline-block',
+                                <span style={{fontSize:11, fontWeight:700, width:30, display:'inline-block',
                                   color: isLead ? 'var(--primary)' : 'var(--text3)'}}>
                                   {isLead ? 'LEAD' : 'JV'}
                                 </span>
@@ -981,7 +981,7 @@ function ReportsView({ institutes, clients }) {
                   </div>
                 </>
               ) : noInstitute ? (
-                <div style={{fontSize:12.5, color:'var(--text3)'}}>This report doesn't require a firm — configure the occupations and tools below instead.</div>
+                <div style={{fontSize:13, color:'var(--text3)'}}>This report doesn't require a firm — configure the occupations and tools below instead.</div>
               ) : (
                 <>
                   <SelectedTop
@@ -1017,7 +1017,7 @@ function ReportsView({ institutes, clients }) {
 
               {familyId === 'enssure' && fullInst && (
                 <div>
-                  <div style={{fontWeight:600, fontSize:13.5, marginBottom:8}}>Proposed Occupations (C2)</div>
+                  <div style={{fontWeight:600, fontSize:14, marginBottom:8}}>Proposed Occupations (C2)</div>
                   <SelectedTop
                     items={enssureOccIds.map((id, i) => ({ key: id, label: enssureOccs[i] || String(id) }))}
                     onRemove={(id) => toggleEnssureOcc(id)}
@@ -1038,7 +1038,7 @@ function ReportsView({ institutes, clients }) {
 
               {report.hasSpecificOccFilter && allMasterOccNames.length > 0 && (
                 <div>
-                  <div style={{fontWeight:600, fontSize:13.5, marginBottom:8}}>Occupation — 3(B) Specific Experience</div>
+                  <div style={{fontWeight:600, fontSize:14, marginBottom:8}}>Occupation — 3(B) Specific Experience</div>
                   <SelectedTop
                     items={eoiSpecificOccs.map(n => ({ key: n, label: n }))}
                     onRemove={toggleSpecificOcc}
@@ -1059,7 +1059,7 @@ function ReportsView({ institutes, clients }) {
 
               {report.hasOccupationFilter && !report.hasSpecificOccFilter && (report.hasToolsPicker ? allMasterOccNames : allOccNames).length > 0 && (
                 <div>
-                  <div style={{fontWeight:600, fontSize:13.5, marginBottom:8}}>{report.hasToolsPicker ? 'Occupation — 4(B) Tools' : 'Occupations'}</div>
+                  <div style={{fontWeight:600, fontSize:14, marginBottom:8}}>{report.hasToolsPicker ? 'Occupation — 4(B) Tools' : 'Occupations'}</div>
                   <SelectedTop
                     items={selectedOccs.map(n => ({ key: n, label: n }))}
                     onRemove={toggleOcc}
@@ -1080,7 +1080,7 @@ function ReportsView({ institutes, clients }) {
 
               {report.hasOccupationFilter && report.hasSpecificOccFilter && report.hasToolsPicker && allMasterOccNames.length > 0 && (
                 <div>
-                  <div style={{fontWeight:600, fontSize:13.5, marginBottom:8}}>Occupation — 4(B) Tools</div>
+                  <div style={{fontWeight:600, fontSize:14, marginBottom:8}}>Occupation — 4(B) Tools</div>
                   <SelectedTop
                     items={selectedOccs.map(n => ({ key: n, label: n }))}
                     onRemove={toggleOcc}
@@ -1101,7 +1101,7 @@ function ReportsView({ institutes, clients }) {
 
               {noInstitute && (
                 <div>
-                  <div style={{fontWeight:600, fontSize:13.5, marginBottom:8}}>Occupations</div>
+                  <div style={{fontWeight:600, fontSize:14, marginBottom:8}}>Occupations</div>
                   <SelectedTop
                     items={toolsOccIds.map(id => {
                       const o = occupations.find(x => x.id === id);
@@ -1124,7 +1124,7 @@ function ReportsView({ institutes, clients }) {
                       which is what the schedule is actually built from. */}
                   {toolsLevel && toolsOccIds.some(id => toolsCountFor(id, toolsLevel) === 0) && (
                     <div style={{display:'flex', alignItems:'flex-start', gap:6, marginTop:8,
-                      fontSize:11.5, color:'var(--warning,#f59e0b)'}}>
+                      fontSize:12, color:'var(--warning,#f59e0b)'}}>
                       <span className="material-icons-round" style={{fontSize:13, marginTop:1}}>info</span>
                       <span>
                         Tools list is not present at {toolsLevel} for:{' '}
@@ -1144,7 +1144,7 @@ function ReportsView({ institutes, clients }) {
               <div style={{fontWeight:600, fontSize:14}}>Training Tools</div>
 
               {familyId === 'enssure' && fullInst && enssureMissingCount > 0 && (
-                <div style={{background:'#fff3cd', border:'1px solid #ffc107', borderRadius:10, padding:'10px 14px', fontSize:12.5, color:'#856404'}}>
+                <div style={{background:'#fff3cd', border:'1px solid #ffc107', borderRadius:10, padding:'10px 14px', fontSize:13, color:'#856404'}}>
                   <span className="material-icons-round" style={{fontSize:15, verticalAlign:'middle', marginRight:5}}>warning</span>
                   <strong>{enssureMissingCount} occupation row{enssureMissingCount !== 1 ? 's' : ''}</strong> missing skill test pass or employment data — C1 will show "—" for those fields.
                 </div>
@@ -1152,7 +1152,7 @@ function ReportsView({ institutes, clients }) {
 
               {familyId === 'enssure' && fullInst && (
                 <div>
-                  <div style={{fontWeight:600, fontSize:13.5, marginBottom:8}}>D2/D3 — Tools Occupation</div>
+                  <div style={{fontWeight:600, fontSize:14, marginBottom:8}}>D2/D3 — Tools Occupation</div>
                   <input className="form-input" value={enssureToolsOccSearch} onChange={e => setEnssureToolsOccSearch(e.target.value)}
                     placeholder="Search occupation…" style={{marginBottom:8}}/>
                   <Select className="form-input" style={{width:'100%', marginBottom:10}}
@@ -1175,14 +1175,14 @@ function ReportsView({ institutes, clients }) {
                         onChange={e => setEnssureEvents(Math.max(1, parseInt(e.target.value) || 1))}/>
                     </div>
                   </div>
-                  {enssureToolsOccId && <div style={{fontSize:11.5, color:'var(--text3)', marginTop:8}}>Quantities × {enssureEvents} shown in D2/D3.</div>}
+                  {enssureToolsOccId && <div style={{fontSize:12, color:'var(--text3)', marginTop:8}}>Quantities × {enssureEvents} shown in D2/D3.</div>}
                 </div>
               )}
 
               {report.hasToolsPicker && (
                 <div>
                   <div style={{display:'flex', alignItems:'center', gap:10, marginBottom:14}}>
-                    <span style={{fontWeight:600, fontSize:13.5}}>Default level</span>
+                    <span style={{fontWeight:600, fontSize:14}}>Default level</span>
                     <Select className="form-input" style={{width:'auto', minWidth:160}} value={eoiToolsLevel}
                       onChange={e => { setEoiToolsLevel(e.target.value); setEoiLevelByOcc({}); }}>
                       <option>N/A</option><option>Level 1</option><option>Level 2</option>
@@ -1215,8 +1215,8 @@ function ReportsView({ institutes, clients }) {
                     <>
                       <div style={{display:'flex', alignItems:'center', gap:8, marginBottom:6}}>
                         <span style={{flex:1}}/>
-                        <span style={{width:132, flexShrink:0, fontSize:10.5, fontWeight:700, color:'var(--text3)', letterSpacing:'.4px'}}>LEVEL</span>
-                        <span style={{width:76, flexShrink:0, fontSize:10.5, fontWeight:700, color:'var(--text3)', letterSpacing:'.4px'}}>EVENTS</span>
+                        <span style={{width:132, flexShrink:0, fontSize:11, fontWeight:700, color:'var(--text3)', letterSpacing:'.4px'}}>LEVEL</span>
+                        <span style={{width:76, flexShrink:0, fontSize:11, fontWeight:700, color:'var(--text3)', letterSpacing:'.4px'}}>EVENTS</span>
                       </div>
                       {eoiOccIds.map(id => {
                         const o = occupations.find(x => x.id === id);
@@ -1228,7 +1228,7 @@ function ReportsView({ institutes, clients }) {
                         return (
                           <div key={id} style={{marginBottom:8}}>
                             <div style={{display:'flex', alignItems:'center', gap:8}}>
-                              <span style={{flex:1, minWidth:0, fontSize:12.5, overflow:'hidden',
+                              <span style={{flex:1, minWidth:0, fontSize:13, overflow:'hidden',
                                 textOverflow:'ellipsis', whiteSpace:'nowrap'}} title={o?.name}>{o?.name || id}</span>
                               <Select className="form-input" style={{width:132, flexShrink:0}}
                                 value={levelForOcc(id)}
@@ -1247,7 +1247,7 @@ function ReportsView({ institutes, clients }) {
                                 out there is nothing at it is useful. */}
                             {noTools && (
                               <div style={{display:'flex', alignItems:'center', gap:5, marginTop:3,
-                                fontSize:11.5, color:'var(--warning,#f59e0b)'}}>
+                                fontSize:12, color:'var(--warning,#f59e0b)'}}>
                                 <span className="material-icons-round" style={{fontSize:13}}>info</span>
                                 Tools list is not present for {o?.name || 'this occupation'} at {levelForOcc(id)}.
                               </div>
@@ -1287,7 +1287,7 @@ function ReportsView({ institutes, clients }) {
                         value={numGroups} onChange={e => setNumGroups(Math.max(1, parseInt(e.target.value) || 1))}/>
                     </div>
                   </div>
-                  <div style={{fontSize:11.5, color:'var(--text3)'}}>
+                  <div style={{fontSize:12, color:'var(--text3)'}}>
                     Quantities entered are for 1 group (20 trainees). Total = qty × groups.
                   </div>
                   {toolsLevel && toolsOccIds.length > 0 && (() => {
@@ -1295,7 +1295,7 @@ function ReportsView({ institutes, clients }) {
                     if (!missing.length) return null;
                     return (
                       <div style={{display:'flex', alignItems:'flex-start', gap:6,
-                        fontSize:11.5, color:'var(--warning,#f59e0b)'}}>
+                        fontSize:12, color:'var(--warning,#f59e0b)'}}>
                         <span className="material-icons-round" style={{fontSize:13, marginTop:1}}>info</span>
                         <span>
                           Tools list is not present at {toolsLevel} for{' '}
@@ -1315,7 +1315,7 @@ function ReportsView({ institutes, clients }) {
           {activeSection === 'toolTable' && (
             <div style={{display:'flex', flexDirection:'column', gap:22}}>
               <div>
-              <div style={{fontWeight:600, fontSize:13.5, marginBottom:4}}>Include types</div>
+              <div style={{fontWeight:600, fontSize:14, marginBottom:4}}>Include types</div>
               <div className="input-hint" style={{marginBottom:8}}>Which kinds of item appear in the table.</div>
               {report.hasToolsPicker && (
                 <div className="multi-select-list">
@@ -1347,7 +1347,7 @@ function ReportsView({ institutes, clients }) {
 
               <div>
               <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:12}}>
-                <div style={{fontWeight:600, fontSize:13.5}}>Columns</div>
+                <div style={{fontWeight:600, fontSize:14}}>Columns</div>
                 {report.hasToolsPicker && eoiToolCols.length > 2 && (
                   <Btn className="btn btn-ghost btn-sm" onClick={() => setEoiToolCols(['sn', 'name'])}>Clear</Btn>
                 )}
@@ -1537,7 +1537,7 @@ function ReportsView({ institutes, clients }) {
                 Fine-tune which individual assignments (within the FY range and other filters above) are included.
               </div>
               {rangeFiltered.length === 0 ? (
-                <div style={{fontSize:12.5, color:'var(--text3)', padding:'6px 0'}}>No assignments in range.</div>
+                <div style={{fontSize:13, color:'var(--text3)', padding:'6px 0'}}>No assignments in range.</div>
               ) : (
                 <div className="multi-select-list" style={{maxHeight:320, overflowY:'auto'}}>
                   {rangeFiltered.map(exp => (
@@ -1545,7 +1545,7 @@ function ReportsView({ institutes, clients }) {
                       <input type="checkbox"
                         checked={selectedIds === null || selectedIds.includes(exp.id)}
                         onChange={() => toggleSelected(exp.id)}/>
-                      <span>{exp.assignmentName || '(unnamed)'} <span style={{color:'var(--text3)', fontSize:10.5}}>· {exp.fy}</span>
+                      <span>{exp.assignmentName || '(unnamed)'} <span style={{color:'var(--text3)', fontSize:11}}>· {exp.fy}</span>
                         {/* Which of the listed assignments are the restricted
                             ones, so the export is a considered choice rather
                             than whatever happened to be ticked. */}
@@ -1597,7 +1597,7 @@ function ReportsView({ institutes, clients }) {
                 background:'color-mix(in srgb, var(--warning,#f59e0b) 12%, var(--surface))',
                 border:'1px solid color-mix(in srgb, var(--warning,#f59e0b) 35%, transparent)'}}>
                 <span className="material-icons-round" style={{fontSize:17, color:'var(--warning,#f59e0b)'}}>update</span>
-                <span style={{fontSize:12.5}}>Settings changed — this preview was built with the previous configuration.</span>
+                <span style={{fontSize:13}}>Settings changed — this preview was built with the previous configuration.</span>
                 <Btn className="btn btn-primary btn-sm" style={{marginLeft:'auto'}} onClick={showReport}>Rebuild</Btn>
               </div>
             )}
@@ -1611,7 +1611,7 @@ function ReportsView({ institutes, clients }) {
               ) : (
                 <>
                   <div style={{display:'flex', alignItems:'center', gap:10, flexWrap:'wrap'}}>
-                    <span style={{fontWeight:600, fontSize:13.5}}>{report.label}</span>
+                    <span style={{fontWeight:600, fontSize:14}}>{report.label}</span>
                     <span style={{fontSize:12, color:'var(--text3)'}}>{fwInstIds.length} firm{fwInstIds.length !== 1 ? 's' : ''}</span>
                     {fyRangeLabel && <span style={{fontSize:11, color:'var(--primary)', background:'var(--primary-light,#eff6ff)', borderRadius:4, padding:'1px 7px'}}>{fyRangeLabel}</span>}
                     {report.id === 'fw2' && (
@@ -1671,7 +1671,7 @@ function ReportsView({ institutes, clients }) {
                               {firmData.map(f => (
                                 <th key={f.id} style={TH2}>
                                   <div>{f.name}</div>
-                                  <div style={{fontWeight:400, fontSize:10, color:'#555'}}>Appeared</div>
+                                  <div style={{fontWeight:400, fontSize:11, color:'#555'}}>Appeared</div>
                                 </th>
                               ))}
                             </tr>
@@ -1733,7 +1733,7 @@ function ReportsView({ institutes, clients }) {
             ) : (
               <>
                 <div style={{display:'flex', alignItems:'center', gap:10, flexWrap:'wrap'}}>
-                  <span style={{fontWeight:600, fontSize:13.5}}>{report.label}</span>
+                  <span style={{fontWeight:600, fontSize:14}}>{report.label}</span>
                   {fyRangeLabel && <span style={{fontSize:11, color:'var(--primary)', background:'var(--primary-light,#eff6ff)', borderRadius:4, padding:'1px 7px'}}>{fyRangeLabel}</span>}
                   {!isAggregate && <span style={{fontSize:12, color:'var(--text3)'}}>{activeExps.length} assignment{activeExps.length !== 1 ? 's' : ''}</span>}
                 </div>

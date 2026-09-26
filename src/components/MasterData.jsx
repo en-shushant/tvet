@@ -65,10 +65,10 @@ const ClientForm = ({client, onSave, onClose}) => {
 
       {/* Letter generation fields */}
       <div style={{margin:'16px 0 10px', borderTop:'1px solid var(--border)', paddingTop:14}}>
-        <div style={{fontSize:12.5, fontWeight:600, color:'var(--text2)', marginBottom:10, letterSpacing:'0.2px'}}>
+        <div style={{fontSize:13, fontWeight:600, color:'var(--text2)', marginBottom:10, letterSpacing:'0.2px'}}>
           Letter Generation
         </div>
-        <div style={{fontSize:11.5, color:'var(--text3)', marginBottom:12}}>
+        <div style={{fontSize:12, color:'var(--text3)', marginBottom:12}}>
           Used in the recipient and signature blocks when generating shortlisting letters for this organization.
         </div>
         <div className="form-row form-row-2">
@@ -79,7 +79,7 @@ const ClientForm = ({client, onSave, onClose}) => {
             <MdTextField label="Address in Nepali (ठेगाना)" value={form.addressNp||''} onChange={e=>set('addressNp',e.target.value)} placeholder="e.g. काठमाडौँ"/>
           </div>
         </div>
-        <div style={{fontSize:11.5, color:'var(--text3)', marginTop:-4, marginBottom:12}}>
+        <div style={{fontSize:12, color:'var(--text3)', marginTop:-4, marginBottom:12}}>
           Shown in the letter's श्री … block. Falls back to the English name and address when blank.
         </div>
         <div className="form-row form-row-2">
@@ -677,7 +677,7 @@ function MasterData({clients, onUpdateClients, token, isAdmin, isEditor, isSuper
               // screen. Linking beats rebuilding it in a second place.
               <Btn className="btn btn-secondary btn-sm" onClick={onGoToClients}>View engagement</Btn>
             )}
-            <Btn className="btn btn-primary btn-sm" onClick={()=>setClientModal({type:'add'})}>+ Add client</Btn>
+            <Btn className="btn btn-primary btn-sm" onClick={()=>setClientModal({type:'add'})}><span className="material-icons-round">add</span>Add client</Btn>
           </div>
 
           {/* Names typed into records instead of picked from this list. Shown
@@ -697,7 +697,7 @@ function MasterData({clients, onUpdateClients, token, isAdmin, isEditor, isSuper
                   · typed into records instead of picked
                 </span>
                 {unlinked.some(u => u.match_id) && (
-                  <span className="badge badge-info" style={{marginLeft:'auto', fontSize:10}}>
+                  <span className="badge badge-info" style={{marginLeft:'auto', fontSize:11}}>
                     {unlinked.filter(u => u.match_id).length} already exist
                   </span>
                 )}
@@ -708,15 +708,15 @@ function MasterData({clients, onUpdateClients, token, isAdmin, isEditor, isSuper
                   <tbody>
                     {unlinked.map(u => (
                       <tr key={u.key}>
-                        <td style={{fontSize:12.5, fontWeight:500}}>{u.name}</td>
-                        <td className="mono" style={{fontSize:11.5, color:'var(--text3)'}}>
+                        <td style={{fontSize:13, fontWeight:500}}>{u.name}</td>
+                        <td className="mono" style={{fontSize:12, color:'var(--text3)'}}>
                           {u.uses} record{u.uses===1?'':'s'}
                           {u.assignments > 0 && u.assignments !== u.uses && ` · ${u.assignments} assignment${u.assignments===1?'':'s'}`}
                         </td>
                         <td>
                           {u.match_id
-                            ? <span className="badge badge-info" style={{fontSize:10}}>Already in list as {u.match_short_name}</span>
-                            : <span className="badge badge-gray" style={{fontSize:10}}>Missing</span>}
+                            ? <span className="badge badge-info" style={{fontSize:11}}>Already in list as {u.match_short_name}</span>
+                            : <span className="badge badge-gray" style={{fontSize:11}}>Missing</span>}
                         </td>
                         <td style={{textAlign:'right'}}>
                           <Btn className="btn btn-secondary btn-sm" disabled={adopting}
@@ -770,7 +770,7 @@ function MasterData({clients, onUpdateClients, token, isAdmin, isEditor, isSuper
                     <td style={{fontSize:12}}>{c.fullName}</td>
                     <td><span className="badge badge-info">{c.type}</span></td>
                     <td style={{fontSize:12, color:'var(--text3)'}}>{c.address}</td>
-                    <td className="mono" style={{textAlign:'right', fontSize:11.5, color:'var(--text3)'}}>
+                    <td className="mono" style={{textAlign:'right', fontSize:12, color:'var(--text3)'}}>
                       {clientUsage[c.id]
                         ? `${clientUsage[c.id].records} record${clientUsage[c.id].records === 1 ? '' : 's'}`
                         : '—'}
@@ -830,7 +830,7 @@ function MasterData({clients, onUpdateClients, token, isAdmin, isEditor, isSuper
               <option value="">All sectors ({SECTORS.length})</option>
               {SECTORS.map(s=><option key={s}>{s}</option>)}
             </Select>
-            {canManageOccs && <Btn className="btn btn-primary btn-sm" onClick={()=>setOccModal({type:'add'})}>+ Add occupation</Btn>}
+            {canManageOccs && <Btn className="btn btn-primary btn-sm" onClick={()=>setOccModal({type:'add'})}><span className="material-icons-round">add</span>Add occupation</Btn>}
           </div>
           <div style={{fontSize:12, color:'var(--text3)', marginBottom:8}}>
             {filteredOccs.length} occupation{filteredOccs.length!==1?'s':''} {sectorFilter ? `in ${sectorFilter}` : 'across all sectors'}
@@ -869,10 +869,10 @@ function MasterData({clients, onUpdateClients, token, isAdmin, isEditor, isSuper
                     )}
                     <td className="mono text-muted" style={{fontSize:11}}>{occPagination.start + idx + 1}</td>
                     <td style={{fontWeight:500, fontSize:13}}>{o.name}</td>
-                    <td><span className="badge badge-gray" style={{fontSize:10}}>{o.sector}</span></td>
-                    <td>{o.level ? <span className="badge badge-info" style={{fontSize:10}}>{o.level}</span> : <span className="text-muted">—</span>}</td>
+                    <td><span className="badge badge-gray" style={{fontSize:11}}>{o.sector}</span></td>
+                    <td>{o.level ? <span className="badge badge-info" style={{fontSize:11}}>{o.level}</span> : <span className="text-muted">—</span>}</td>
                     <td className="mono">{o.duration ? o.duration+' hrs' : '—'}</td>
-                    <td className="mono" style={{textAlign:'right', fontSize:11.5, color:'var(--text3)'}}>
+                    <td className="mono" style={{textAlign:'right', fontSize:12, color:'var(--text3)'}}>
                       {occUsage[o.id]
                         ? `${occUsage[o.id].assignments} assignment${occUsage[o.id].assignments === 1 ? '' : 's'}`
                         : '—'}
@@ -969,7 +969,7 @@ function MasterData({clients, onUpdateClients, token, isAdmin, isEditor, isSuper
                           {o.name}
                         </span>
                       </td>
-                      <td><span className="badge badge-gray" style={{fontSize:10}}>{o.sector}</span></td>
+                      <td><span className="badge badge-gray" style={{fontSize:11}}>{o.sector}</span></td>
                       {['Level 1','Level 2','Level 3','Professional','N/A'].map(lv => {
                         const cnt = getToolCount(o.id, lv);
                         return (
@@ -1120,7 +1120,7 @@ function MasterData({clients, onUpdateClients, token, isAdmin, isEditor, isSuper
                           <td>{t.unit || '—'}</td>
                           <td className="mono" style={{textAlign:'right'}}>{t.quantity ?? '—'}</td>
                           <td>{t.ownership || '—'}</td>
-                          <td><span className="badge" style={{fontSize:10,
+                          <td><span className="badge" style={{fontSize:11,
                             background:{Tool:'#d1ecf1',Consumable:'#fef3cd','Safety Tool':'#d4edda',Stationery:'#e2d9f3'}[t.type]||'#eee',
                             color:{Tool:'#0c5460',Consumable:'#856404','Safety Tool':'#155724',Stationery:'#4a1d96'}[t.type]||'#333',
                           }}>{t.type}</span></td>
@@ -1155,7 +1155,7 @@ function MasterData({clients, onUpdateClients, token, isAdmin, isEditor, isSuper
             <input value={ttInput} onChange={e=>setTtInput(e.target.value)}
               onKeyDown={e=>e.key==='Enter'&&addTT()}
               placeholder="New training type name…" style={{flex:1}}/>
-            <Btn className="btn btn-primary btn-sm" onClick={addTT}>+ Add</Btn>
+            <Btn className="btn btn-primary btn-sm" onClick={addTT}><span className="material-icons-round">add</span>Add</Btn>
           </div>
           <div className="card" style={{padding:0, overflow:'hidden'}}>
             <table>
@@ -1206,7 +1206,7 @@ function MasterData({clients, onUpdateClients, token, isAdmin, isEditor, isSuper
             <input value={fyInput} onChange={e=>setFyInput(e.target.value)}
               onKeyDown={e=>e.key==='Enter'&&addFY()}
               placeholder="e.g. 2084/85" style={{flex:1}} maxLength={7}/>
-            <Btn className="btn btn-primary btn-sm" onClick={addFY}>+ Add</Btn>
+            <Btn className="btn btn-primary btn-sm" onClick={addFY}><span className="material-icons-round">add</span>Add</Btn>
           </div>
           <div className="card" style={{padding:0, overflow:'hidden'}}>
             <table>
@@ -1228,7 +1228,7 @@ function MasterData({clients, onUpdateClients, token, isAdmin, isEditor, isSuper
                             : <span className="mono">{fy}</span>
                           }
                           {isCurrent && (
-                            <span style={{fontSize:10, fontWeight:700, padding:'2px 8px', borderRadius:100, background:'var(--success)', color:'#fff'}}>
+                            <span style={{fontSize:11, fontWeight:700, padding:'2px 8px', borderRadius:100, background:'var(--success)', color:'#fff'}}>
                               Current
                             </span>
                           )}

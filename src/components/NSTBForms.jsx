@@ -116,7 +116,7 @@ function NSTBBulkPage({instituteName, onSave, onBack}) {
           <div style={{fontSize:12, color:'var(--text3)', marginTop:4}}>One occupation per row — all rows share the same letter details.</div>
         </div>
         <div style={{display:'flex', gap:8}}>
-          <Btn className="btn btn-ghost" onClick={addRow}>+ Add row</Btn>
+          <Btn className="btn btn-ghost" onClick={addRow}><span className="material-icons-round">add</span>Add row</Btn>
           <Btn className="btn btn-secondary" onClick={onBack}>Cancel</Btn>
           <Btn className="btn btn-primary" onClick={handleSave} disabled={saving}>{saving ? 'Saving…' : `Save ${rows.length} record${rows.length>1?'s':''}`}</Btn>
         </div>
@@ -197,7 +197,7 @@ function NSTBBulkPage({instituteName, onSave, onBack}) {
 
       {err && <ErrorBanner msg={err} onDismiss={()=>setErr('')}/>}
       <div style={{position:'sticky', bottom:0, background:'var(--surface)', borderTop:'1px solid var(--border)', padding:'12px 0', marginTop:20, display:'flex', justifyContent:'flex-end', gap:8}}>
-        <Btn className="btn btn-ghost" onClick={addRow}>+ Add row</Btn>
+        <Btn className="btn btn-ghost" onClick={addRow}><span className="material-icons-round">add</span>Add row</Btn>
         <Btn className="btn btn-secondary" onClick={onBack}>Cancel</Btn>
         <Btn className="btn btn-primary" onClick={handleSave}>Save {rows.length} record{rows.length>1?'s':''}</Btn>
       </div>

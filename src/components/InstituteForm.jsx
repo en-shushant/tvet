@@ -327,7 +327,7 @@ function InstituteForm({institute, onSave, onClose, isSuperAdmin}) {
             style={{flexShrink:0, marginTop:2}}
           />
           <div>
-            <div style={{fontWeight:600, fontSize:13.5, color:'var(--text)'}}>Shortlisting Only</div>
+            <div style={{fontWeight:600, fontSize:14, color:'var(--text)'}}>Shortlisting Only</div>
             <div style={{fontSize:12, color:'var(--text3)', marginTop:2}}>
               This firm will only be visible in the Shortlisting section — hidden from the main Institutes list for all non-superadmin users.
             </div>

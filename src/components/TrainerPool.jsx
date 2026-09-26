@@ -73,13 +73,13 @@ function OccupationPicker({ occupations, selected, onToggle, height = 240 }) {
       </div>
       <div className="multi-select-list" style={{ maxHeight: height, overflowY: 'auto' }}>
         {shown.length === 0 && (
-          <div style={{ fontSize: 12.5, color: 'var(--text3)', padding: '8px 2px' }}>No occupations match.</div>
+          <div style={{ fontSize:13, color: 'var(--text3)', padding: '8px 2px' }}>No occupations match.</div>
         )}
         {shown.map(o => (
           <label key={o.id} className="multi-select-item">
             <input type="checkbox" checked={selected.includes(o.id)} onChange={() => onToggle(o.id)} />
             <span>{o.name}
-              <span style={{ color: 'var(--text3)', fontSize: 10.5 }}> · {o.sector}{o.level ? ` · ${o.level}` : ''}</span>
+              <span style={{ color: 'var(--text3)', fontSize:11 }}> · {o.sector}{o.level ? ` · ${o.level}` : ''}</span>
             </span>
           </label>
         ))}
@@ -149,7 +149,7 @@ function RuleForm({ rule, occupations, onSave, onClose }) {
             {levelOptions(form.kind).map(l => <MdOption key={l.value} value={l.value}>{l.label}</MdOption>)}
           </MdSelect>
           {form.qual_level && (
-            <div style={{ fontSize: 11.5, color: 'var(--text3)', marginTop: 6 }}>
+            <div style={{ fontSize:12, color: 'var(--text3)', marginTop: 6 }}>
               Qualifies them to train {describeLevels(teachableLevels(form.kind, form.qual_level))} — filled in below, change any.
             </div>
           )}
@@ -167,12 +167,12 @@ function RuleForm({ rule, occupations, onSave, onClose }) {
                 background: form.grant_scope === s.id ? 'var(--ink)' : 'transparent',
                 color: form.grant_scope === s.id ? 'var(--on-ink)' : 'var(--text2)',
                 border: form.grant_scope === s.id ? 'none' : '1px solid var(--border)',
-                borderRadius: 'var(--radius-pill, 999px)', padding: '6px 14px', fontSize: 12.5,
+                borderRadius: 'var(--radius-pill, 999px)', padding: '6px 14px', fontSize:13,
                 fontWeight: form.grant_scope === s.id ? 700 : 500, cursor: 'pointer', fontFamily: 'var(--font)',
               }}>{s.label}</button>
           ))}
         </div>
-        <div style={{ fontSize: 11.5, color: 'var(--text3)', marginTop: 8 }}>{scope?.hint}</div>
+        <div style={{ fontSize:12, color: 'var(--text3)', marginTop: 8 }}>{scope?.hint}</div>
       </div>
 
       {form.grant_scope === 'sector' && (
@@ -211,7 +211,7 @@ function RuleForm({ rule, occupations, onSave, onClose }) {
             }} />
           {form.occupation_ids.length > 0 && (
             <div className="rule-levels">
-              <div style={{ fontSize: 11.5, color: 'var(--text3)', margin: '10px 0 6px' }}>
+              <div style={{ fontSize:12, color: 'var(--text3)', margin: '10px 0 6px' }}>
                 Levels this qualifies them to train
               </div>
               {form.occupation_ids.map(id => {
@@ -314,11 +314,11 @@ function RulesTab({ rules, occupations, isAdmin, onReload, token, setErr }) {
         </div>
       )}
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 14 }}>
-        <div style={{ flex: 1, fontSize: 12.5, color: 'var(--text3)' }}>
+        <div style={{ flex: 1, fontSize:13, color: 'var(--text3)' }}>
           What each qualification qualifies someone to train. Written once here, then applied to
           everyone who holds it — correcting a rule corrects every person at once.
         </div>
-        {isAdmin && <Btn className="btn btn-primary btn-sm" onClick={() => setModal({ type: 'add' })}>+ Add rule</Btn>}
+        {isAdmin && <Btn className="btn btn-primary btn-sm" onClick={() => setModal({ type: 'add' })}><span className="material-icons-round">add</span>Add rule</Btn>}
       </div>
 
       {rules.length === 0 ? (
@@ -330,12 +330,12 @@ function RulesTab({ rules, occupations, isAdmin, onReload, token, setErr }) {
             <thead><tr><th>Qualification</th><th>Kind</th><th>Level</th><th>Qualifies to train</th><th></th></tr></thead>
             <tbody>
               {shown.length === 0 && (
-                <tr><td colSpan={5} style={{ fontSize: 12.5, color: 'var(--text3)' }}>No rules match these filters.</td></tr>
+                <tr><td colSpan={5} style={{ fontSize:13, color: 'var(--text3)' }}>No rules match these filters.</td></tr>
               )}
               {shown.map(r => (
                 <tr key={r.id}>
                   <td style={{ fontWeight: 500, fontSize: 13 }}>{r.name}</td>
-                  <td><span className="badge badge-gray" style={{ fontSize: 10 }}>{r.kind}</span></td>
+                  <td><span className="badge badge-gray" style={{ fontSize:11 }}>{r.kind}</span></td>
                   <td style={{ fontSize: 12 }}>{r.qual_level
                     ? (isVocationalKind(r.kind) ? labelOfVocational(r.qual_level) : labelOfGeneral(r.qual_level)) : '—'}</td>
                   <td style={{ fontSize: 12, color: 'var(--text2)' }}>{describe(r)}</td>
@@ -499,7 +499,7 @@ function TrainerPool({ isAdmin }) {
         sub="Trainers and support staff you can put forward against a tender"
         actions={tab === 'people'
           ? <Btn className="btn btn-primary btn-sm" onClick={() => setEditing({ ...BLANK_PERSON })}>
-              + Add person</Btn>
+              <span className="material-icons-round">add</span>Add person</Btn>
           : null} />
 
       <PillTabs
@@ -604,13 +604,13 @@ function TrainerPool({ isAdmin }) {
 
         {showMatch && (
           <div className="card" style={{ padding: 14, marginBottom: 14 }}>
-            <div style={{ fontSize: 12.5, color: 'var(--text3)', marginBottom: 10 }}>
+            <div style={{ fontSize:13, color: 'var(--text3)', marginBottom: 10 }}>
               Pick the occupations a tender asks for. The list below narrows to people who can cover them.
             </div>
             <OccupationPicker occupations={occupations} selected={wanted} height={200}
               onToggle={id => setF({ trades: wanted.includes(id) ? wanted.filter(x => x !== id) : [...wanted, id] })} />
             <div style={{ display: 'flex', gap: 14, alignItems: 'center', marginTop: 10, flexWrap: 'wrap' }}>
-              <label style={{ display: 'flex', alignItems: 'center', gap: 7, cursor: 'pointer', fontSize: 12.5 }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 7, cursor: 'pointer', fontSize:13 }}>
                 <input type="checkbox" checked={filters.requireAll} style={{ width: 15, height: 15, cursor: 'pointer' }}
                   onChange={e => setF({ requireAll: e.target.checked })} />
                 One person must cover every occupation
@@ -653,7 +653,7 @@ function TrainerPool({ isAdmin }) {
               ? (narrowed > 0 && <Btn className="btn btn-secondary btn-sm" onClick={() => setFilters(BLANK_FILTERS)}>Clear all filters</Btn>)
               : (
               <Btn className="btn btn-primary btn-sm" onClick={() => setEditing({ ...BLANK_PERSON })}>
-                + Add the first person</Btn>
+                <span className="material-icons-round">add</span>Add the first person</Btn>
             )} />
         ) : (
           <>
@@ -681,19 +681,19 @@ function TrainerPool({ isAdmin }) {
                             </span>
                           </button>
                         </td>
-                        <td style={{ fontSize: 12.5 }}>
+                        <td style={{ fontSize:13 }}>
                           {gen || voc ? (<>
                             {gen && <div>{gen}</div>}
                             {voc && <div className="pp-person-sub">{voc}</div>}
                           </>) : <span className="tw-hint">—</span>}
                         </td>
-                        <td style={{ fontSize: 12.5, color: 'var(--text2)' }}>
+                        <td style={{ fontSize:13, color: 'var(--text2)' }}>
                           {p.eligible_occupations?.length
                             ? p.eligible_occupations.slice(0, 3).map(o => o.name).join(', ')
                               + (p.eligible_occupations.length > 3 ? ` +${p.eligible_occupations.length - 3}` : '')
                             : <span style={{ color: 'var(--text3)' }}>—</span>}
                         </td>
-                        <td className="num" style={{ fontSize: 12.5 }}>
+                        <td className="num" style={{ fontSize:13 }}>
                           {Number.isInteger(yrs) ? `${yrs} yrs` : <span className="tw-hint">—</span>}
                         </td>
                         <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>

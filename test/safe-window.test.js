@@ -75,3 +75,29 @@ describe('stored uploads are served safely', () => {
     expect(headers['Content-Disposition']).toMatch(/^inline;/);
   });
 });
+
+import { safeHref, safeWebHref } from '../src/utils/safeWindow.js';
+describe('links built from stored values', () => {
+  it('keeps real documents and drops scripts', () => {
+    expect(safeHref('data:application/pdf;base64,AA')).toBe('data:application/pdf;base64,AA');
+    expect(safeHref('https://r2.example/a.pdf')).toBe('https://r2.example/a.pdf');
+    expect(safeHref('javascript:alert(1)')).toBeUndefined();
+    expect(safeHref('')).toBeUndefined();
+  });
+  it('treats websites as web addresses only', () => {
+    expect(safeWebHref('example.com.np')).toBe('https://example.com.np');
+    expect(safeWebHref('http://x.org')).toBe('http://x.org');
+    expect(safeWebHref('javascript:alert(1)')).toBeUndefined();
+    expect(safeWebHref('JAVASCRIPT:alert(1)')).toBeUndefined();
+    expect(safeWebHref('data:text/html,<script>')).toBeUndefined();
+  });
+  it('is used for every stored link', () => {
+    for (const f of ['src/components/QuotationsView.jsx', 'src/components/Shortlisting.jsx', 'src/components/ClientDocuments.jsx',
+      'src/components/shortlisting/modals.jsx', 'src/components/shortlisting/ContractsPanel.jsx',
+      'src/components/institute/DocumentsTab.jsx', 'src/components/InstituteDetail.jsx', 'src/components/SummaryView.jsx']) {
+      const raw = [...read(f).matchAll(/href=\{([^}`']+)\}/g)].map(m => m[1])
+        .filter(e => !/^safe(Web)?Href\(/.test(e) && e !== 'url' && e !== 'pdfUrl');
+      expect(raw, f).toEqual([]);
+    }
+  });
+});

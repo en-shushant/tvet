@@ -12,6 +12,7 @@ import { ShortlistRow, GroupHeader, TableHead, printShortlistReport } from './sh
 import { ContractsPanel } from './shortlisting/ContractsPanel.jsx';
 import { bsDateLabel } from '../utils/neaLetter.js';
 import Select from './ui/Select.jsx';
+import { safeHref } from '../utils/safeWindow.js';
 
 function ShortlistDocUpload({ value, onChange, token }) {
   const [uploading, setUploading] = useState(false);
@@ -33,12 +34,12 @@ function ShortlistDocUpload({ value, onChange, token }) {
         {value ? (
           <div style={{ position: 'relative', display: 'inline-flex', flexDirection: 'column', alignItems: 'center' }}>
             {isPdf ? (
-              <a href={value} target="_blank" rel="noreferrer" style={{ height: 56, width: 56, border: '1px solid var(--border)', borderRadius: 6, background: '#fff8f0', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 2, textDecoration: 'none' }}>
+              <a href={safeHref(value)} target="_blank" rel="noreferrer" style={{ height: 56, width: 56, border: '1px solid var(--border)', borderRadius: 6, background: '#fff8f0', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 2, textDecoration: 'none' }}>
                 <span className="material-icons-round" style={{fontSize:20, color:'var(--text3)'}}>description</span>
-                <span style={{ fontSize: 9, color: 'var(--text3)', fontWeight: 600 }}>PDF</span>
+                <span style={{ fontSize:11, color: 'var(--text3)', fontWeight: 600 }}>PDF</span>
               </a>
             ) : (
-              <a href={value} target="_blank" rel="noreferrer">
+              <a href={safeHref(value)} target="_blank" rel="noreferrer">
                 <img src={value} alt="" style={{ height: 56, maxWidth: 80, objectFit: 'contain', border: '1px solid var(--border)', borderRadius: 6, background: '#fff', padding: 2 }}/>
               </a>
             )}
@@ -255,7 +256,7 @@ function ShortlistForm({ initial, institutes, clients, onSave, onClose, saving, 
             <span style={{fontSize:13, fontWeight:500}}>Organization (Client)</span>
             <button type="button"
               onClick={() => { setManualOrg(v => !v); set('client_id', ''); set('client_name_manual', ''); }}
-              style={{fontSize:11.5, color:'var(--primary)', background:'none', border:'none', cursor:'pointer', padding:0, fontFamily:'inherit', fontWeight:500}}>
+              style={{fontSize:12, color:'var(--primary)', background:'none', border:'none', cursor:'pointer', padding:0, fontFamily:'inherit', fontWeight:500}}>
               {manualOrg ? '← Select from list' : 'Enter manually →'}
             </button>
           </div>
@@ -318,7 +319,7 @@ function ShortlistForm({ initial, institutes, clients, onSave, onClose, saving, 
             <button key={v} type="button" onClick={() => { setMulti(v==='multi'); setSelectedFirms([]); set('institute_id',''); }}
               style={{
                 padding:'6px 16px', borderRadius:100, border:'none', cursor:'pointer',
-                fontFamily:'inherit', fontSize:12.5, fontWeight:500, transition:'all .15s',
+                fontFamily:'inherit', fontSize:13, fontWeight:500, transition:'all .15s',
                 background: (multi ? v==='multi' : v==='single') ? 'var(--primary)' : 'var(--bg)',
                 color:      (multi ? v==='multi' : v==='single') ? '#fff'            : 'var(--text3)',
               }}>{lbl}</button>
@@ -680,7 +681,7 @@ export default function Shortlisting({ institutes, clients, isAdmin, isEditor, i
 
   /** Filter select: sized to content, tinted while it is actually narrowing. */
   const fSel = (active, min) => ({
-    width:'auto', minWidth:min, maxWidth:210, flexShrink:0, fontSize:12.5,
+    width:'auto', minWidth:min, maxWidth:210, flexShrink:0, fontSize:13,
     padding:'6px 30px 6px 11px', borderRadius:8, cursor:'pointer', lineHeight:1.4,
     border:`1px solid ${active ? 'var(--primary)' : 'var(--border)'}`,
     background: active ? 'var(--primary-light,#eff6ff)' : 'var(--surface)',
@@ -760,13 +761,13 @@ export default function Shortlisting({ institutes, clients, isAdmin, isEditor, i
         <div style={{display:'flex', gap:8, alignItems:'center'}}>
           {isSuperAdmin && (
             <Btn className="btn btn-secondary" onClick={() => setShowPageBuilder(true)}>
-              <span className="material-icons-round" style={{fontSize:16}}>edit_note</span>
+              <span className="material-icons-round">design_services</span>
               Letter Builder
             </Btn>
           )}
           {canEdit && (
             <Btn className="btn btn-primary" onClick={() => setListModal({ type:'new' })}>
-              <span className="material-icons-round" style={{fontSize:16}}>playlist_add</span>
+              <span className="material-icons-round">add</span>
               New Shortlist
             </Btn>
           )}
@@ -787,7 +788,7 @@ export default function Shortlisting({ institutes, clients, isAdmin, isEditor, i
                     <span className="material-icons-round">{open ? 'expand_more' : 'chevron_right'}</span>
                   </button>
                   <div style={{flex:1, minWidth:0, cursor:'pointer'}} onClick={() => toggle(`sl:${list.id}`)}>
-                    <div style={{fontSize:14.5, fontWeight:600, color:'var(--text)'}}>
+                    <div style={{fontSize:14, fontWeight:600, color:'var(--text)'}}>
                       {list.client_name_manual || 'Untitled organization'}
                     </div>
                     <div style={{fontSize:12, color:'var(--text3)', marginTop:2}}>
@@ -961,7 +962,7 @@ export default function Shortlisting({ institutes, clients, isAdmin, isEditor, i
               style={{
                 display:'flex', alignItems:'center', gap:4,
                 padding:'5px 12px', borderRadius:100, border:'none', cursor:'pointer',
-                fontFamily:'inherit', fontSize:12.5, fontWeight:500,
+                fontFamily:'inherit', fontSize:13, fontWeight:500,
                 background:'transparent', color:'var(--text3)', transition:'all .15s',
               }}
               onMouseEnter={e=>{ e.currentTarget.style.background='var(--surface)'; e.currentTarget.style.color='var(--primary)'; }}
@@ -991,7 +992,7 @@ export default function Shortlisting({ institutes, clients, isAdmin, isEditor, i
               display:'flex', alignItems:'center', gap:5,
               padding:'6px 14px', borderRadius:100, border:'1px solid var(--border)',
               background:'var(--surface)', color:'var(--text2)', cursor:'pointer',
-              fontFamily:'inherit', fontSize:12.5, fontWeight:500, flexShrink:0,
+              fontFamily:'inherit', fontSize:13, fontWeight:500, flexShrink:0,
               transition:'all .15s',
             }}
             onMouseEnter={e=>{ e.currentTarget.style.borderColor='var(--primary)'; e.currentTarget.style.color='var(--primary)'; }}

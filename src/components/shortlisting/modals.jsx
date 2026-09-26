@@ -13,6 +13,7 @@ import { api } from '../../utils/api.js';
 import { getCurrentFY } from '../../constants/data.js';
 import { openShortlistLetter } from '../../utils/neaLetter.js';
 import { parseDocUrls, FYS, ACCEPT, uploadToR2 } from './common.jsx';
+import { safeHref } from '../../utils/safeWindow.js';
 
 function LetterPreviewModal({ url, filename, onClose }) {
   const frameRef = useRef(null);
@@ -42,7 +43,7 @@ function LetterPreviewModal({ url, filename, onClose }) {
             style={{textDecoration:'none', display:'inline-flex', alignItems:'center', gap:6}}>
             <span className="material-icons-round" style={{fontSize:16}}>download</span> Download
           </a>
-          <button onClick={onClose} style={{background:'none', border:'none', cursor:'pointer', fontSize:22, lineHeight:1, color:'var(--text3)', padding:'0 4px'}}>×</button>
+          <button onClick={onClose} style={{background:'none', border:'none', cursor:'pointer', fontSize:20, lineHeight:1, color:'var(--text3)', padding:'0 4px'}}>×</button>
         </div>
       </div>
       <iframe ref={frameRef} src={url} title="Letter preview"
@@ -263,7 +264,7 @@ export function ViewDocumentsModal({ instituteId, token, onClose }) {
   const Thumb = ({ src }) => {
     const isPdf = src && (src.toLowerCase().includes('.pdf') || src.toLowerCase().includes('application/pdf'));
     return (
-      <a href={src} target="_blank" rel="noreferrer" style={{
+      <a href={safeHref(src)} target="_blank" rel="noreferrer" style={{
         display:'flex', alignItems:'center', justifyContent:'center',
         width:64, height:64, borderRadius:8, overflow:'hidden',
         border:'1.5px solid var(--border)', background:'#fff', flexShrink:0,
@@ -272,7 +273,7 @@ export function ViewDocumentsModal({ instituteId, token, onClose }) {
         {isPdf
           ? <>
               <span className="material-icons-round" style={{fontSize:28, color:'var(--error)'}}>picture_as_pdf</span>
-              <span style={{fontSize:9, color:'var(--text2)', fontWeight:600}}>PDF</span>
+              <span style={{fontSize:11, color:'var(--text2)', fontWeight:600}}>PDF</span>
             </>
           : <img src={src} alt="" style={{width:'100%', height:'100%', objectFit:'contain', display:'block'}}/>
         }
@@ -437,7 +438,7 @@ export function LetterOptsModal({ row, token, onClose, onOpenBuilder }) {
         {skipWarning.length > 0 && (
           <div style={{position:'fixed', inset:0, zIndex:1400, display:'flex', alignItems:'center', justifyContent:'center', background:'rgba(0,0,0,.4)'}}>
             <div style={{background:'var(--surface)', borderRadius:12, padding:'24px 28px', maxWidth:420, width:'90%', boxShadow:'0 8px 32px rgba(0,0,0,.25)'}}>
-              <div style={{fontWeight:700, fontSize:15, color:'var(--error)', marginBottom:10}}>Some documents could not be attached</div>
+              <div style={{fontWeight:700, fontSize:14, color:'var(--error)', marginBottom:10}}>Some documents could not be attached</div>
               <div style={{fontSize:13, color:'var(--text2)', marginBottom:12, lineHeight:1.6}}>
                 The following selected documents were skipped because the file could not be fetched, is password-protected, or is in an unsupported format:
               </div>
@@ -509,7 +510,7 @@ export function LetterOptsModal({ row, token, onClose, onOpenBuilder }) {
         {anyDocs ? (
           <div style={{borderRadius:10, border:'1px solid var(--border)', overflow:'hidden'}}>
             <div style={{padding:'10px 14px', borderBottom:'1px solid var(--border)', background:'var(--bg)'}}>
-              <span style={{fontWeight:600, fontSize:12.5, color:'var(--text2)'}}>Attach supporting documents</span>
+              <span style={{fontWeight:600, fontSize:13, color:'var(--text2)'}}>Attach supporting documents</span>
             </div>
             <div style={{display:'flex', flexDirection:'column'}}>
               {Object.entries(hasDocs).filter(([,v])=>v).map(([k], i, arr) => (
@@ -601,12 +602,12 @@ export function BillModal({ row, token, onSave, onClose, saving }) {
             {doc ? (
               <div style={{position:'relative', display:'inline-flex', flexDirection:'column', alignItems:'center'}}>
                 {isPdf ? (
-                  <a href={doc} target="_blank" rel="noreferrer" style={{height:64, width:64, border:'1px solid var(--border)', borderRadius:8, background:'#fff8f0', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:2, textDecoration:'none'}}>
+                  <a href={safeHref(doc)} target="_blank" rel="noreferrer" style={{height:64, width:64, border:'1px solid var(--border)', borderRadius:8, background:'#fff8f0', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:2, textDecoration:'none'}}>
                     <span className="material-icons-round" style={{fontSize:24, color:'var(--text3)'}}>description</span>
-                    <span style={{fontSize:9, color:'var(--text3)', fontWeight:600}}>PDF</span>
+                    <span style={{fontSize:11, color:'var(--text3)', fontWeight:600}}>PDF</span>
                   </a>
                 ) : (
-                  <a href={doc} target="_blank" rel="noreferrer">
+                  <a href={safeHref(doc)} target="_blank" rel="noreferrer">
                     <img src={doc} alt="" style={{height:64, maxWidth:90, objectFit:'contain', border:'1px solid var(--border)', borderRadius:8, background:'#fff', padding:3}}/>
                   </a>
                 )}
@@ -634,7 +635,7 @@ export function BillModal({ row, token, onSave, onClose, saving }) {
           <label style={{display:'flex', alignItems:'center', gap:10, cursor:'pointer', marginBottom:12}}>
             <input type="checkbox" checked={isFree} onChange={e => { setIsFree(e.target.checked); if (e.target.checked) setAmount(''); }}
               style={{accentColor:'var(--primary)', width:16, height:16}}/>
-            <span style={{fontSize:13.5, color:'var(--text)'}}>Free / No charge</span>
+            <span style={{fontSize:14, color:'var(--text)'}}>Free / No charge</span>
           </label>
 
           {!isFree && (

@@ -92,7 +92,7 @@ export function InfrastructureTab({ instituteId, token, canEdit }) {
     <div>
       <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:12}}>
         <div style={{fontSize:13, color:'var(--text2)'}}>D1 — Office Space and Training Facilities (for ENSSURE report)</div>
-        {canEdit && !adding && <Btn className="btn btn-primary btn-sm" onClick={()=>setAdding(true)}>+ Add rows</Btn>}
+        {canEdit && !adding && <Btn className="btn btn-primary btn-sm" onClick={()=>setAdding(true)}><span className="material-icons-round">add</span>Add rows</Btn>}
       </div>
       {err && <div style={{color:'#c00', marginBottom:8, fontSize:13}}>{err}</div>}
       <div className="table-wrap">
@@ -183,7 +183,7 @@ export function InfrastructureTab({ instituteId, token, canEdit }) {
             </table>
           </div>
           <div style={{display:'flex', gap:8, marginTop:10, alignItems:'center'}}>
-            <Btn className="btn btn-ghost btn-sm" onClick={addBulkRow}>+ Add another row</Btn>
+            <Btn className="btn btn-ghost btn-sm" onClick={addBulkRow}><span className="material-icons-round">add</span>Add another row</Btn>
             <div style={{flex:1}}/>
             <Btn className="btn btn-ghost btn-sm" onClick={cancelAdd}>Cancel</Btn>
             <Btn className="btn btn-primary btn-sm" onClick={saveBulk} disabled={saving}>{saving ? 'Saving…' : `Save ${bulkRows.filter(r=>r.particular.trim()).length || ''} row(s)`}</Btn>

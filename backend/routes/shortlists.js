@@ -1,7 +1,7 @@
 // routes/shortlists.js
 const { pool } = require('../db/pool');
 const { authenticate, requireWriter, requireAdmin } = require('../middleware/auth');
-const { visibleInstitutesClause, canWriteInstitutes } = require('../lib/instituteAccess');
+const { visibleInstitutesClause, canWriteInstitutes, isDocUrl } = require('../lib/instituteAccess');
 
 const NOT_YOURS = { error: 'You are not assigned to this firm.' };
 
@@ -71,6 +71,7 @@ async function plugin(fastify, opts) {
     if (!institute_id || !shortlist_date)
       return reply.code(400).send({ error: 'institute_id and shortlist_date are required' });
     if (!(await canWriteInstitutes(request.user, [institute_id]))) return reply.code(403).send(NOT_YOURS);
+    if (!isDocUrl(shortlist_doc)) return reply.code(400).send({ error: 'The document must be an uploaded file or a web address.' });
     const { rows: [row] } = await pool.query(
       `INSERT INTO shortlists
         (client_id, client_name_manual, institute_id, standing_list_name, fy, shortlist_date, valid_until, status, remarks, contract_amount, shortlist_doc, letter_type)
@@ -90,6 +91,7 @@ async function plugin(fastify, opts) {
     const { rows: [cur] } = await pool.query('SELECT institute_id FROM shortlists WHERE id=$1', [request.params.id]);
     if (!cur) return reply.code(404).send({ error: 'Not found' });
     if (!(await canWriteInstitutes(request.user, [cur.institute_id, institute_id]))) return reply.code(403).send(NOT_YOURS);
+    if (!isDocUrl(shortlist_doc)) return reply.code(400).send({ error: 'The document must be an uploaded file or a web address.' });
     const { rows } = await pool.query(
       `UPDATE shortlists SET client_id=$1, client_name_manual=$2, institute_id=$3, standing_list_name=$4,
         fy=$5, shortlist_date=$6, valid_until=$7, status=$8, remarks=$9,

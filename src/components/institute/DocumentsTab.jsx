@@ -8,6 +8,7 @@
 import { useState, useEffect } from 'react';
 import { Btn, MdTextField } from '../../md.jsx';
 import { api, instToAPI } from '../../utils/api.js';
+import { safeHref } from '../../utils/safeWindow.js';
 
 const ACCEPT = 'image/*';
 
@@ -102,11 +103,11 @@ function FileThumb({ src, onRemove }) {
       }}
     >
       {/\.pdf($|\?)/i.test(src)
-        ? <a href={src} target="_blank" rel="noreferrer" style={{display:'flex', width:'100%', height:'100%', alignItems:'center', justifyContent:'center', flexDirection:'column', gap:2, textDecoration:'none'}}>
+        ? <a href={safeHref(src)} target="_blank" rel="noreferrer" style={{display:'flex', width:'100%', height:'100%', alignItems:'center', justifyContent:'center', flexDirection:'column', gap:2, textDecoration:'none'}}>
             <span className="material-icons-round" style={{fontSize:32, color:'var(--error)'}}>picture_as_pdf</span>
-            <span style={{fontSize:9, fontWeight:700, color:'var(--text2)'}}>PDF</span>
+            <span style={{fontSize:11, fontWeight:700, color:'var(--text2)'}}>PDF</span>
           </a>
-        : <a href={src} target="_blank" rel="noreferrer" style={{display:'block', width:'100%', height:'100%'}}>
+        : <a href={safeHref(src)} target="_blank" rel="noreferrer" style={{display:'block', width:'100%', height:'100%'}}>
             <img src={src} alt="" style={{width:'100%', height:'100%', objectFit:'contain', display:'block'}}/>
           </a>
       }
@@ -114,7 +115,7 @@ function FileThumb({ src, onRemove }) {
         confirming ? (
           <div style={{position:'absolute', inset:0, background:'rgba(229,57,53,.88)', display:'flex',
             flexDirection:'column', alignItems:'center', justifyContent:'center', gap:4, backdropFilter:'blur(2px)'}}>
-            <span style={{color:'#fff', fontSize:10.5, fontWeight:600, textAlign:'center', padding:'0 4px'}}>Remove?</span>
+            <span style={{color:'#fff', fontSize:11, fontWeight:600, textAlign:'center', padding:'0 4px'}}>Remove?</span>
             <div style={{display:'flex', gap:6}}>
               <button onClick={e=>{e.preventDefault(); e.stopPropagation(); onRemove(); setConfirming(false);}}
                 style={{background:'#fff', color:'#c0392b', border:'none', borderRadius:6, padding:'2px 8px', fontSize:11, fontWeight:700, cursor:'pointer'}}>
@@ -179,7 +180,7 @@ function DocMultiUpload({ label, hint, value, onChange, disabled, token, process
                 ? <span style={{fontSize:11, fontWeight:600}}>Uploading…</span>
                 : <>
                     <span className="material-icons-round" style={{fontSize:22}}>add_photo_alternate</span>
-                    <span style={{fontSize:10, fontWeight:600, lineHeight:1}}>Add</span>
+                    <span style={{fontSize:11, fontWeight:600, lineHeight:1}}>Add</span>
                   </>
               }
             </div>
@@ -189,7 +190,7 @@ function DocMultiUpload({ label, hint, value, onChange, disabled, token, process
           <div style={{width:THUMB_SIZE, height:THUMB_SIZE, border:'1px dashed var(--border)', borderRadius:10,
             background:'var(--bg)', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:3}}>
             <span className="material-icons-round" style={{fontSize:20, color:'var(--text3)', opacity:.4}}>image_not_supported</span>
-            <span style={{fontSize:10, color:'var(--text3)'}}>None</span>
+            <span style={{fontSize:11, color:'var(--text3)'}}>None</span>
           </div>
         )}
       </div>
@@ -347,7 +348,7 @@ export function DocumentsTab({ institute, token, canEdit, onUpdate, isShortlistO
         {/* Header */}
         <div style={{padding:'18px 24px', borderBottom:'1px solid var(--border)', display:'flex', alignItems:'center', justifyContent:'space-between', flexWrap:'wrap', gap:12}}>
           <div>
-            <div style={{fontWeight:700, fontSize:15, color:'var(--text)'}}>Supporting Documents</div>
+            <div style={{fontWeight:700, fontSize:14, color:'var(--text)'}}>Supporting Documents</div>
             <div style={{fontSize:12, color:'var(--text3)', marginTop:2}}>
               Upload scanned images of certificates{!isShortlistOnly && ' — attach to generated letters'}.
             </div>
@@ -387,8 +388,8 @@ export function DocumentsTab({ institute, token, canEdit, onUpdate, isShortlistO
               }}/>
               {/* Label */}
               <div style={{flex:'0 0 260px', minWidth:0}}>
-                <div style={{fontWeight:600, fontSize:13.5, color:'var(--text)'}}>{doc.label}</div>
-                <div style={{fontSize:11.5, color:'var(--text3)', marginTop:1}}>{doc.sub}</div>
+                <div style={{fontWeight:600, fontSize:14, color:'var(--text)'}}>{doc.label}</div>
+                <div style={{fontSize:12, color:'var(--text3)', marginTop:1}}>{doc.sub}</div>
               </div>
               {/* Upload widget */}
               <div style={{flex:1, minWidth:0}}>

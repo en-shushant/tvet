@@ -76,7 +76,7 @@ function InstituteCard({ inst, onSelect, showStats }) {
             ['Programs', inst.totalAffPrograms || 0],
           ].map(([label, value]) => (
             <div key={label} style={{minWidth:0}}>
-              <div style={{fontSize:17, fontWeight:800, color:'var(--text)', letterSpacing:'-0.02em'}}>{value}</div>
+              <div style={{fontSize:16, fontWeight:700, color:'var(--text)', letterSpacing:'-0.02em'}}>{value}</div>
               <div style={{fontSize:11, color:'var(--text3)', marginTop:1}}>{label}</div>
             </div>
           ))}

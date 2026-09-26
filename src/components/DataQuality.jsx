@@ -16,7 +16,7 @@
  * checks state plainly how many they cover rather than implying registry-wide
  * coverage they do not have.
  */
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import { PageHeader, PillTabs, EmptyState } from './ui/primitives.jsx';
 import { getOccupation } from '../utils/format.js';
 
@@ -69,8 +69,12 @@ const SEVERITY = {
   low:  { label: 'Worth filling',   color: 'var(--text3)',   rank: 2 },
 };
 
-export default function DataQuality({ institutes = [], onOpenInstitute }) {
-  const [tab, setTab] = useState('high');
+export default function DataQuality({ institutes = [], onOpenInstitute, embedded = false }) {
+  const [tab, setTabState] = useState('high');
+  // Until someone picks a group, open on the most serious one that has
+  // anything in it — "Blocks a report 0" beside "Leaves a gap 4" looked empty.
+  const chosen = useRef(false);
+  const setTab = (t) => { chosen.current = true; setTabState(t); };
   const [q, setQ] = useState('');
 
   const issues = useMemo(() => findIssues(institutes), [institutes]);
@@ -82,6 +86,12 @@ export default function DataQuality({ institutes = [], onOpenInstitute }) {
     med:  issues.filter(i => i.severity === 'med').length,
     low:  issues.filter(i => i.severity === 'low').length,
   }), [issues]);
+
+  useEffect(() => {
+    if (chosen.current) return;
+    const first = ['high', 'med', 'low'].find(k => counts[k] > 0) || 'high';
+    if (first !== tab) setTabState(first);
+  }, [counts]);
 
   const visible = useMemo(() => {
     const term = q.trim().toLowerCase();
@@ -102,10 +112,12 @@ export default function DataQuality({ institutes = [], onOpenInstitute }) {
 
   return (
     <>
-      <PageHeader title="Data Quality"
-        sub={counts.high > 0
+      {(() => {
+        const line = counts.high > 0
           ? `${counts.high} ${counts.high === 1 ? 'problem' : 'problems'} would leave a hole in a generated report`
-          : 'Nothing outstanding blocks a report'}/>
+          : 'Nothing outstanding blocks a report';
+        return embedded ? <div className="hub-summary">{line}</div> : <PageHeader title="Data Quality" sub={line}/>;
+      })()}
 
       <div style={{display:'flex', gap:12, alignItems:'center', flexWrap:'wrap'}}>
         <PillTabs

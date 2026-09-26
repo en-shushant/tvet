@@ -27,7 +27,7 @@ import { exportSummaryToMD, exportSummaryToPDF, exportSummaryToCSV } from '../ut
 import { fmt, fyToAD, getClient, getOccupation, pct } from '../utils/format.js';
 import { toast } from './ui/Feedback.jsx';
 import Select from './ui/Select.jsx';
-import { openFileViewer, openFileUrl } from '../utils/safeWindow.js';
+import { openFileUrl, openFileViewer, safeWebHref } from '../utils/safeWindow.js';
 
 
 
@@ -339,7 +339,7 @@ function InstituteDetail({institute, clients, onUpdateClients, onBack, onUpdate,
         <InstituteAvatar src={logoSrc} fallbackSrc={institute.logo}
           name={institute.name} acronym={institute.acronym} size={52} radius={14}/>
         <div style={{flex:1, minWidth:240}}>
-          <h1 style={{fontSize:'var(--fs-title)', fontWeight:800, lineHeight:1.25,
+          <h1 style={{fontSize:'var(--fs-title)', fontWeight:700, lineHeight:1.25,
             letterSpacing:'-0.01em', color:'var(--text)', margin:0}}>{institute.name}</h1>
           <div style={{display:'flex', alignItems:'center', gap:8, marginTop:8, flexWrap:'wrap'}}>
             {institute.acronym && (
@@ -487,16 +487,16 @@ function InstituteDetail({institute, clients, onUpdateClients, onBack, onUpdate,
               ['Phone', institute.phone],
               ['Mobile', institute.mobile],
               ['Email', institute.email],
-              ['Website', institute.website ? <a href={institute.website} target="_blank" rel="noreferrer" style={{color:'var(--accent)'}}>{institute.website}</a> : null],
+              ['Website', institute.website ? <a href={safeWebHref(institute.website)} target="_blank" rel="noreferrer" style={{color:'var(--accent)'}}>{institute.website}</a> : null],
               ['Location', (institute.latitude && institute.longitude)
                 ? <span style={{display:'flex', alignItems:'center', gap:8, flexWrap:'wrap'}}>
                     <span style={{fontFamily:'var(--font-mono)', fontSize:12}}>{parseFloat(institute.latitude).toFixed(6)}, {parseFloat(institute.longitude).toFixed(6)}</span>
                     {institute.googleMapLink
-                      ? <a href={institute.googleMapLink} target="_blank" rel="noreferrer" style={{color:'var(--accent)'}}><span className="material-icons-round" style={{fontSize:13, verticalAlign:'middle', marginRight:4}}>place</span>Google Maps</a>
+                      ? <a href={safeWebHref(institute.googleMapLink)} target="_blank" rel="noreferrer" style={{color:'var(--accent)'}}><span className="material-icons-round" style={{fontSize:13, verticalAlign:'middle', marginRight:4}}>place</span>Google Maps</a>
                       : <a href={`https://www.google.com/maps?q=${institute.latitude},${institute.longitude}`} target="_blank" rel="noreferrer" style={{color:'var(--accent)'}}><span className="material-icons-round" style={{fontSize:13, verticalAlign:'middle', marginRight:4}}>place</span>Google Maps</a>}
                   </span>
                 : institute.googleMapLink
-                  ? <a href={institute.googleMapLink} target="_blank" rel="noreferrer" style={{color:'var(--accent)'}}><span className="material-icons-round" style={{fontSize:13, verticalAlign:'middle', marginRight:4}}>place</span>View on Google Maps</a>
+                  ? <a href={safeWebHref(institute.googleMapLink)} target="_blank" rel="noreferrer" style={{color:'var(--accent)'}}><span className="material-icons-round" style={{fontSize:13, verticalAlign:'middle', marginRight:4}}>place</span>View on Google Maps</a>
                   : null],
               ['Address', institute.address],
               ['Status', <StatusBadge status={institute.status}/>],
@@ -561,7 +561,7 @@ function InstituteDetail({institute, clients, onUpdateClients, onBack, onUpdate,
           {(() => {
             const anyFilter = !!(expClientFilter || expOccFilter || expMissingFilter || expBolpatraFilter);
             const sel = (active) => ({
-              width:'auto', minWidth:0, fontSize:12.5, padding:'6px 30px 6px 11px',
+              width:'auto', minWidth:0, fontSize:13, padding:'6px 30px 6px 11px',
               borderRadius:8, cursor:'pointer', lineHeight:1.4,
               border:`1px solid ${active ? 'var(--primary)' : 'var(--border)'}`,
               background: active ? 'var(--primary-light,#eff6ff)' : 'var(--surface)',
@@ -578,7 +578,7 @@ function InstituteDetail({institute, clients, onUpdateClients, onBack, onUpdate,
                   <div style={{display:'flex', borderRadius:8, border:'1px solid var(--border)', overflow:'hidden', background:'var(--surface)'}}>
                     {[['fy','By FY'], ['client','By Client']].map(([mode,label]) => (
                       <button key={mode} onClick={()=>setExpViewMode(mode)}
-                        style={{fontSize:12.5, padding:'6px 14px', whiteSpace:'nowrap', border:'none', cursor:'pointer',
+                        style={{fontSize:13, padding:'6px 14px', whiteSpace:'nowrap', border:'none', cursor:'pointer',
                           background: expViewMode===mode ? 'var(--primary)' : 'transparent',
                           color: expViewMode===mode ? '#fff' : 'var(--text2)',
                           fontWeight: expViewMode===mode ? 600 : 500}}>{label}</button>
@@ -643,7 +643,7 @@ function InstituteDetail({institute, clients, onUpdateClients, onBack, onUpdate,
 
                 <div style={{display:'flex', gap:6}}>
                   {canEdit && (
-                    <Btn className="btn btn-primary btn-sm" onClick={()=>setModal({type:'addExp'})}>+ Add assignment</Btn>
+                    <Btn className="btn btn-primary btn-sm" onClick={()=>setModal({type:'addExp'})}><span className="material-icons-round">add</span>Add assignment</Btn>
                   )}
                 </div>
               </div>
@@ -686,9 +686,9 @@ function InstituteDetail({institute, clients, onUpdateClients, onBack, onUpdate,
                           <span><span className="material-icons-round" style={{fontSize:16, verticalAlign:'middle'}}>{expandedFY['client-'+key] ? 'expand_more' : 'chevron_right'}</span></span>
                           <span style={{fontWeight:600}}>{clientLabel}</span>
                           <div style={{display:'flex', gap:6, marginLeft:'auto', alignItems:'center'}}>
-                            <span className="badge badge-gray" style={{fontSize:10}}>{fys[0]}{fys.length>1?` – ${fys[fys.length-1]}`:''}</span>
+                            <span className="badge badge-gray" style={{fontSize:11}}>{fys[0]}{fys.length>1?` – ${fys[fys.length-1]}`:''}</span>
                             <span className="badge badge-info">{exps.length} assignment{exps.length>1?'s':''}</span>
-                            <span className="badge badge-active" style={{fontSize:10}}>{totalT.toLocaleString()} trainees</span>
+                            <span className="badge badge-active" style={{fontSize:11}}>{totalT.toLocaleString()} trainees</span>
                           </div>
                         </button>
                         {expandedFY['client-'+key] && (
@@ -708,7 +708,7 @@ function InstituteDetail({institute, clients, onUpdateClients, onBack, onUpdate,
       {tab==='nstb' && (
         <>
           {canEdit && <div style={{display:'flex', justifyContent:'flex-end', marginBottom:12}}>
-            <Btn className="btn btn-primary btn-sm" onClick={onAddNSTB}>+ Add NSTB records</Btn>
+            <Btn className="btn btn-primary btn-sm" onClick={onAddNSTB}><span className="material-icons-round">add</span>Add NSTB records</Btn>
           </div>}
           {institute.nstb.length > 0 && (() => {
             const totA = institute.nstb.reduce((s,r)=>s+(parseInt(r.applied)||0),0);
@@ -716,7 +716,7 @@ function InstituteDetail({institute, clients, onUpdateClients, onBack, onUpdate,
             const totP = institute.nstb.reduce((s,r)=>s+(parseInt(r.pass)||0),0);
             const passRate = totAp > 0 ? ((totP/totAp)*100).toFixed(1)+'%' : '—';
             const numStyle = {fontWeight:700, fontSize:20, fontFamily:'var(--font-mono)', color:'var(--accent)'};
-            const lblStyle = {fontSize:10, color:'var(--text3)', textTransform:'uppercase', letterSpacing:'0.5px', marginTop:2};
+            const lblStyle = {fontSize:11, color:'var(--text3)', textTransform:'uppercase', letterSpacing:'0.5px', marginTop:2};
             return (
               <div style={{display:'flex', gap:0, background:'var(--bg2)', borderRadius:8, border:'1px solid var(--border)', marginBottom:12, padding:'10px 0'}}>
                 {[['Applied', totA,'var(--accent)'],['Appeared', totAp,'var(--blue)'],['Pass', totP,'var(--green)'],['Pass rate', passRate,'var(--purple)']].map(([lbl,val,col],i,arr)=>(
@@ -781,7 +781,7 @@ function InstituteDetail({institute, clients, onUpdateClients, onBack, onUpdate,
       {tab==='tax' && (
         <>
           <div style={{display:'flex', justifyContent:'flex-end', marginBottom:12}}>
-            {canEdit && <Btn className="btn btn-primary btn-sm" onClick={()=>setModal({type:'addTax'})}>+ Add tax clearance</Btn>}
+            {canEdit && <Btn className="btn btn-primary btn-sm" onClick={()=>setModal({type:'addTax'})}><span className="material-icons-round">add</span>Add tax clearance</Btn>}
           </div>
           {institute.taxClearance.length === 0
             ? <div className="empty-state"><div className="empty-state-icon"><span className="material-icons-round" style={{fontSize:42, color:'var(--text3)', opacity:.4}}>receipt_long</span></div><div className="empty-state-title">No tax clearance records</div></div>
@@ -819,7 +819,7 @@ function InstituteDetail({institute, clients, onUpdateClients, onBack, onUpdate,
       {tab==='affiliation' && (
         <>
           <div style={{display:'flex', justifyContent:'flex-end', marginBottom:12}}>
-            {canEdit && <Btn className="btn btn-primary btn-sm" onClick={()=>setModal({type:'addAffiliation'})}>+ Add affiliation</Btn>}
+            {canEdit && <Btn className="btn btn-primary btn-sm" onClick={()=>setModal({type:'addAffiliation'})}><span className="material-icons-round">add</span>Add affiliation</Btn>}
           </div>
           {institute.affiliation.length === 0
             ? <div className="empty-state"><div className="empty-state-icon"><span className="material-icons-round" style={{fontSize:42, color:'var(--text3)', opacity:.4}}>workspace_premium</span></div><div className="empty-state-title">No CTEVT affiliations</div></div>
@@ -946,7 +946,7 @@ function InstituteDetail({institute, clients, onUpdateClients, onBack, onUpdate,
                       </span>
                     )}
                   </div>
-                  <div style={{fontSize:20, fontWeight:800, color:'#fff', lineHeight:1.3}}>{exp.assignmentName}</div>
+                  <div style={{fontSize:20, fontWeight:700, color:'#fff', lineHeight:1.3}}>{exp.assignmentName}</div>
                   <div style={{fontSize:13, color:'rgba(255,255,255,0.65)', marginTop:5}}>
                     {client.fullName || exp.clientName || 'Unknown client'}
                     {client.shortName ? <span style={{opacity:0.7}}> ({client.shortName})</span> : ''}
@@ -968,7 +968,7 @@ function InstituteDetail({institute, clients, onUpdateClients, onBack, onUpdate,
 
                 {/* Occupations */}
                 <div style={{marginBottom:20}}>
-                  <div style={{fontSize:11.5, fontWeight:800, color:'var(--text)', textTransform:'uppercase', letterSpacing:'0.8px', marginBottom:12}}>
+                  <div style={{fontSize:12, fontWeight:700, color:'var(--text)', textTransform:'uppercase', letterSpacing:'0.8px', marginBottom:12}}>
                     Occupations &amp; Trainees
                   </div>
                   <div style={{display:'flex', flexDirection:'column', gap:8}}>
@@ -983,33 +983,33 @@ function InstituteDetail({institute, clients, onUpdateClients, onBack, onUpdate,
                             <span className="material-icons-round" style={{fontSize:18, color:'var(--primary)'}}>school</span>
                           </div>
                           <div style={{flex:1, minWidth:0}}>
-                            <div style={{fontWeight:700, fontSize:13.5, color:'var(--text)'}}>{occName}</div>
+                            <div style={{fontWeight:700, fontSize:14, color:'var(--text)'}}>{occName}</div>
                             <div style={{display:'flex', gap:4, marginTop:2, flexWrap:'wrap'}}>
-                              {occ.level && <span style={{fontSize:10, fontWeight:700, padding:'1px 6px', borderRadius:8, background:'var(--purple-light)', color:'var(--purple)', display:'inline-block'}}>{occ.level}</span>}
-                              {occ.skillTestProvisioned && <span style={{fontSize:10, fontWeight:700, padding:'1px 6px', borderRadius:8, background:'color-mix(in srgb, var(--blue,#3b82f6) 15%, transparent)', color:'var(--blue,#3b82f6)', display:'inline-block'}}>Skill Test</span>}
-                              {occ.employmentProvisioned && <span style={{fontSize:10, fontWeight:700, padding:'1px 6px', borderRadius:8, background:'color-mix(in srgb, var(--green) 15%, transparent)', color:'var(--green)', display:'inline-block'}}>Employment</span>}
+                              {occ.level && <span style={{fontSize:11, fontWeight:700, padding:'1px 6px', borderRadius:8, background:'var(--purple-light)', color:'var(--purple)', display:'inline-block'}}>{occ.level}</span>}
+                              {occ.skillTestProvisioned && <span style={{fontSize:11, fontWeight:700, padding:'1px 6px', borderRadius:8, background:'color-mix(in srgb, var(--blue,#3b82f6) 15%, transparent)', color:'var(--blue,#3b82f6)', display:'inline-block'}}>Skill Test</span>}
+                              {occ.employmentProvisioned && <span style={{fontSize:11, fontWeight:700, padding:'1px 6px', borderRadius:8, background:'color-mix(in srgb, var(--green) 15%, transparent)', color:'var(--green)', display:'inline-block'}}>Employment</span>}
                             </div>
                           </div>
                           <div style={{display:'flex', gap:16, flexShrink:0, flexWrap:'wrap', justifyContent:'flex-end'}}>
                             <div style={{textAlign:'center'}}>
-                              <div style={{fontWeight:800, fontSize:18, color:'var(--primary)'}}>{parseInt(occ.trainees)||0}</div>
-                              <div style={{fontSize:10, color:'var(--text3)', fontWeight:600, textTransform:'uppercase', letterSpacing:'0.4px'}}>Trainees</div>
+                              <div style={{fontWeight:700, fontSize:18, color:'var(--primary)'}}>{parseInt(occ.trainees)||0}</div>
+                              <div style={{fontSize:11, color:'var(--text3)', fontWeight:600, textTransform:'uppercase', letterSpacing:'0.4px'}}>Trainees</div>
                             </div>
                             {occ.duration && <div style={{textAlign:'center'}}>
-                              <div style={{fontWeight:700, fontSize:15, color:'var(--text2)'}}>{occ.duration}h</div>
-                              <div style={{fontSize:10, color:'var(--text3)', fontWeight:600, textTransform:'uppercase', letterSpacing:'0.4px'}}>Duration</div>
+                              <div style={{fontWeight:700, fontSize:14, color:'var(--text2)'}}>{occ.duration}h</div>
+                              <div style={{fontSize:11, color:'var(--text3)', fontWeight:600, textTransform:'uppercase', letterSpacing:'0.4px'}}>Duration</div>
                             </div>}
                             {occ.skillTestProvisioned && <div style={{textAlign:'center'}}>
-                              <div style={{fontWeight:700, fontSize:15, color:'var(--blue,#3b82f6)'}}>{sta}/{stp}</div>
-                              <div style={{fontSize:10, color:'var(--text3)', fontWeight:600, textTransform:'uppercase', letterSpacing:'0.4px'}}>ST App/Pass</div>
+                              <div style={{fontWeight:700, fontSize:14, color:'var(--blue,#3b82f6)'}}>{sta}/{stp}</div>
+                              <div style={{fontSize:11, color:'var(--text3)', fontWeight:600, textTransform:'uppercase', letterSpacing:'0.4px'}}>ST App/Pass</div>
                             </div>}
                             {sta > 0 && <div style={{textAlign:'center'}}>
-                              <div style={{fontWeight:700, fontSize:15, color:pr>=70?'var(--success)':'var(--warning)'}}>{pr}%</div>
-                              <div style={{fontSize:10, color:'var(--text3)', fontWeight:600, textTransform:'uppercase', letterSpacing:'0.4px'}}>Pass rate</div>
+                              <div style={{fontWeight:700, fontSize:14, color:pr>=70?'var(--success)':'var(--warning)'}}>{pr}%</div>
+                              <div style={{fontSize:11, color:'var(--text3)', fontWeight:600, textTransform:'uppercase', letterSpacing:'0.4px'}}>Pass rate</div>
                             </div>}
                             {occ.employmentProvisioned && <div style={{textAlign:'center'}}>
-                              <div style={{fontWeight:700, fontSize:15, color:'var(--green)'}}>{parseFloat(occ.employmentActual)||0}%</div>
-                              <div style={{fontSize:10, color:'var(--text3)', fontWeight:600, textTransform:'uppercase', letterSpacing:'0.4px'}}>Employed</div>
+                              <div style={{fontWeight:700, fontSize:14, color:'var(--green)'}}>{parseFloat(occ.employmentActual)||0}%</div>
+                              <div style={{fontSize:11, color:'var(--text3)', fontWeight:600, textTransform:'uppercase', letterSpacing:'0.4px'}}>Employed</div>
                             </div>}
                           </div>
                         </div>
@@ -1021,10 +1021,10 @@ function InstituteDetail({institute, clients, onUpdateClients, onBack, onUpdate,
                 {/* Locations */}
                 {districts.length > 0 && (
                   <div style={{marginBottom:20}}>
-                    <div style={{fontSize:11.5, fontWeight:800, color:'var(--text)', textTransform:'uppercase', letterSpacing:'0.8px', marginBottom:10}}>Districts</div>
+                    <div style={{fontSize:12, fontWeight:700, color:'var(--text)', textTransform:'uppercase', letterSpacing:'0.8px', marginBottom:10}}>Districts</div>
                     <div style={{display:'flex', flexWrap:'wrap', gap:6}}>
                       {districts.map(d=>(
-                        <span key={d} style={{display:'inline-flex', alignItems:'center', gap:4, fontSize:12.5, fontWeight:600, padding:'4px 10px', borderRadius:20, background:'var(--success-light)', color:'#0a7a68', border:'1px solid rgba(19,222,185,0.2)'}}>
+                        <span key={d} style={{display:'inline-flex', alignItems:'center', gap:4, fontSize:13, fontWeight:600, padding:'4px 10px', borderRadius:20, background:'var(--success-light)', color:'#0a7a68', border:'1px solid rgba(19,222,185,0.2)'}}>
                           <span className="material-icons-round" style={{fontSize:13}}>location_on</span>{d}
                         </span>
                       ))}
@@ -1043,7 +1043,7 @@ function InstituteDetail({institute, clients, onUpdateClients, onBack, onUpdate,
                       <div style={{width:64, height:64, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', borderRadius:6, border:'1px solid var(--border)', background:'var(--bg2)', cursor:'pointer', flexShrink:0}}
                         onClick={()=>{openFileViewer(exp.referenceFile);}}>
                         <span className="material-icons-round" style={{fontSize:28, color:'var(--error)'}}>picture_as_pdf</span>
-                        <span style={{fontSize:9, color:'var(--text3)'}}>PDF</span>
+                        <span style={{fontSize:11, color:'var(--text3)'}}>PDF</span>
                       </div>
                     )}
                     <span style={{fontSize:13, fontWeight:600, color:'var(--primary-dark)', cursor:'pointer', textDecoration:'underline'}}

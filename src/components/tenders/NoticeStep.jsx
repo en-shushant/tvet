@@ -83,7 +83,7 @@ export default function NoticeStep({ tender, clients, onSave, onAddClient, foote
           <div className="tw-hint" style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 6, flexWrap: 'wrap' }}>
             <span>New office? Typing it is fine — or add it so the next bid can pick it.</span>
             <Btn className="btn btn-secondary btn-sm" disabled={!form.client_name_manual?.trim()}
-              onClick={() => setNewClient(form.client_name_manual.trim())}>+ Add to client list</Btn>
+              onClick={() => setNewClient(form.client_name_manual.trim())}><span className="material-icons-round">add</span>Add to client list</Btn>
           </div>
         </div>
       )}
@@ -170,7 +170,7 @@ export default function NoticeStep({ tender, clients, onSave, onAddClient, foote
               <input type="checkbox" checked={form.association_allowed !== false}
                 style={{ width: 16, height: 16 }}
                 onChange={e => set('association_allowed', e.target.checked)} />
-              <span style={{ fontSize: 12.5 }}>Consultants may associate (joint ventures allowed)</span>
+              <span style={{ fontSize:13 }}>Consultants may associate (joint ventures allowed)</span>
             </label>
           </div>
         </div>

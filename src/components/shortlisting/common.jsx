@@ -59,7 +59,7 @@ export function NepaliDatePicker({ label, value, onChange, required }) {
 
   const sel = (val, opts, placeholder) => (
     <Select value={val || ''} onChange={e => handleChange(opts === 'year' ? 'y' : opts === 'month' ? 'm' : 'd', e.target.value)}
-      style={{ flex: 1, padding: '14px 8px 14px 12px', border: '1px solid var(--md-sys-color-outline,#79747e)', borderRadius: 4, background: 'var(--surface)', color: val ? 'var(--text)' : 'var(--text3)', fontSize: 15, fontFamily: 'inherit', appearance: 'none', cursor: 'pointer' }}>
+      style={{ flex: 1, padding: '14px 8px 14px 12px', border: '1px solid var(--md-sys-color-outline,#79747e)', borderRadius: 4, background: 'var(--surface)', color: val ? 'var(--text)' : 'var(--text3)', fontSize:14, fontFamily: 'inherit', appearance: 'none', cursor: 'pointer' }}>
       <option value="">{placeholder}</option>
       {opts === 'year'  && BS_YEARS.map(y => <option key={y} value={y}>{toNpNum(y)}</option>)}
       {opts === 'month' && BS_MONTHS.map((mn, i) => <option key={i+1} value={i+1}>{mn}</option>)}
@@ -78,7 +78,7 @@ export function NepaliDatePicker({ label, value, onChange, required }) {
         {sel(bs.d, 'day',   'गते')}
       </div>
       {bs.y && bs.m && bs.d && (
-        <div style={{ fontSize: 11.5, color: 'var(--text3)', marginTop: 4 }}>
+        <div style={{ fontSize:12, color: 'var(--text3)', marginTop: 4 }}>
           {toNpNum(bs.d)} {BS_MONTHS[bs.m - 1]} {toNpNum(bs.y)}
         </div>
       )}

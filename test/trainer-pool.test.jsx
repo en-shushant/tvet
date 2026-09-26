@@ -150,7 +150,7 @@ describe('qualification rules', () => {
     await mount({ isAdmin: false });
     await click(tab('Qualification rules'));
     const add = [...container.querySelectorAll('button, [data-md]')]
-      .find(b => b.textContent.trim().startsWith('+ Add rule'));
+      .find(b => /^(\+ |add)?Add rule/.test(b.textContent.trim()));
     expect(add).toBeUndefined();
   });
 });
@@ -251,8 +251,11 @@ describe('the eligibility rule in SQL', () => {
 });
 
 describe('entering someone', () => {
+  // A button's label without its icon's ligature text ("add", "edit"…).
+  const labelOf = (b) => [...b.childNodes].filter(n => !(n.classList && n.classList.contains('material-icons-round')))
+    .map(n => n.textContent).join('').trim();
   const findBtn = (text) => [...container.querySelectorAll('button, [data-md]')]
-    .find(b => b.textContent.trim().startsWith(text));
+    .find(b => labelOf(b).startsWith(text) || labelOf(b).startsWith(text.replace(/^\+ /, '')));
 
   it('opens as a page, not a dialog over the roster', async () => {
     await mount();
@@ -308,8 +311,11 @@ describe('entering someone', () => {
 });
 
 describe('the pool at a glance and its filters', () => {
+  // A button's label without its icon's ligature text ("add", "edit"…).
+  const labelOf = (b) => [...b.childNodes].filter(n => !(n.classList && n.classList.contains('material-icons-round')))
+    .map(n => n.textContent).join('').trim();
   const findBtn = (text) => [...container.querySelectorAll('button, [data-md]')]
-    .find(b => b.textContent.trim().startsWith(text));
+    .find(b => labelOf(b).startsWith(text) || labelOf(b).startsWith(text.replace(/^\+ /, '')));
   const search = () => container.querySelector('input[aria-label="Search the pool"]');
   const type = async (el, v) => {
     await act(async () => {

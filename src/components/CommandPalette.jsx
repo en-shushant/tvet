@@ -204,7 +204,7 @@ export default function CommandPalette({ open, onClose, institutes = [], clients
             placeholder="Search institutes, clients, occupations, or jump to a screen…"
             aria-label="Search TVETtrack"
             style={{flex:1, border:'none', outline:'none', background:'transparent',
-              fontSize:15, fontFamily:'var(--font)', color:'var(--text)'}}/>
+              fontSize:14, fontFamily:'var(--font)', color:'var(--text)'}}/>
           <kbd style={{fontSize:11, color:'var(--text3)', border:'1px solid var(--border)',
             borderRadius:6, padding:'2px 6px'}}>esc</kbd>
         </div>
@@ -216,7 +216,7 @@ export default function CommandPalette({ open, onClose, institutes = [], clients
             </div>
           ) : groups.map(g => (
             <div key={g.key}>
-              <div style={{fontSize:10, fontWeight:700, letterSpacing:'.6px', textTransform:'uppercase',
+              <div style={{fontSize:11, fontWeight:700, letterSpacing:'.6px', textTransform:'uppercase',
                 color:'var(--text3)', padding:'8px 18px 4px'}}>{g.label}</div>
               {g.items.map(item => {
                 idx += 1;
@@ -230,12 +230,12 @@ export default function CommandPalette({ open, onClose, institutes = [], clients
                       padding:'9px 18px', border:'none', cursor:'pointer', fontFamily:'var(--font)',
                       background: isActive ? 'var(--bg2)' : 'transparent'}}>
                     <span className="material-icons-round" aria-hidden="true"
-                      style={{fontSize:17, color:'var(--text3)', flexShrink:0}}>{item.icon || 'chevron_right'}</span>
+                      style={{fontSize:16, color:'var(--text3)', flexShrink:0}}>{item.icon || 'chevron_right'}</span>
                     <span style={{flex:1, minWidth:0}}>
-                      <span style={{display:'block', fontSize:13.5, color:'var(--text)',
+                      <span style={{display:'block', fontSize:14, color:'var(--text)',
                         overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap'}}>{item.label}</span>
                       {item.meta && (
-                        <span style={{display:'block', fontSize:11.5, color:'var(--text3)',
+                        <span style={{display:'block', fontSize:12, color:'var(--text3)',
                           overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap'}}>{item.meta}</span>
                       )}
                     </span>

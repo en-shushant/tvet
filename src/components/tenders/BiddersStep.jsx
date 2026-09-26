@@ -54,7 +54,7 @@ export default function BiddersStep({ tender, institutes, busy, onAddBidder, onR
             onCancel={bidders.length ? () => setAdding(false) : null}
             onAdd={async (ids) => { await onAddBidder(ids); setAdding(false); }} />
         : <Btn className="btn btn-secondary btn-sm" disabled={busy} onClick={() => setAdding(true)}>
-            + Add another bidder</Btn>}
+            <span className="material-icons-round">add</span>Add another bidder</Btn>}
 
       {footer({
         primaryDisabled: !bidders.length,

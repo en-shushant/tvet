@@ -187,7 +187,7 @@ function VisibilityPicker({ value, onChange }) {
               color: o.v === value ? 'var(--on-ink)' : 'var(--text2)',
               border: o.v === value ? 'none' : '1px solid var(--border)',
               borderRadius:'var(--radius-pill, 999px)', padding:'6px 14px',
-              fontSize:12.5, fontWeight: o.v === value ? 700 : 500,
+              fontSize:13, fontWeight: o.v === value ? 700 : 500,
               fontFamily:'var(--font)', cursor:'pointer',
             }}>
             <span className="material-icons-round" style={{fontSize:15, lineHeight:1}}>{o.icon}</span>
@@ -709,7 +709,7 @@ function ExperienceForm({exp, clients, institute, onSave, onClose, onDuplicate, 
               onClick={()=>openFileUrl(form.referenceFile)}/>
           )}
           {form.referenceFile && form.referenceFileName?.match(/\.pdf$/i) && (
-            <div style={{width:64, height:64, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', borderRadius:'var(--radius)', border:'1px solid var(--border)', background:'var(--bg2)', fontSize:10, color:'var(--text3)', flexShrink:0, cursor:'pointer'}}
+            <div style={{width:64, height:64, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', borderRadius:'var(--radius)', border:'1px solid var(--border)', background:'var(--bg2)', fontSize:11, color:'var(--text3)', flexShrink:0, cursor:'pointer'}}
               onClick={()=>{openFileViewer(form.referenceFile);}}>
               <span className="material-icons-round" style={{fontSize:24, color:'var(--error)'}}>picture_as_pdf</span>PDF
             </div>
@@ -797,11 +797,11 @@ function ExperienceForm({exp, clients, institute, onSave, onClose, onDuplicate, 
                       border:'1px solid var(--border)', padding:'9px 12px',
                       borderRadius: showOverrides ? 'var(--radius) var(--radius) 0 0' : 'var(--radius)',
                       display:'flex', alignItems:'center', justifyContent:'space-between', gap:8}}>
-                    <span style={{fontSize:12.5, fontWeight:600, display:'flex', alignItems:'center', gap:6}}>
+                    <span style={{fontSize:13, fontWeight:600, display:'flex', alignItems:'center', gap:6}}>
                       <span className="material-icons-round" style={{fontSize:15}}>edit_note</span>
                       Narrative text
                       {setCount > 0 && (
-                        <span style={{fontSize:10, fontWeight:700, background:'var(--accent)', color:'#fff',
+                        <span style={{fontSize:11, fontWeight:700, background:'var(--accent)', color:'#fff',
                           borderRadius:10, padding:'1px 7px'}}>{setCount} overridden</span>
                       )}
                     </span>
@@ -812,7 +812,7 @@ function ExperienceForm({exp, clients, institute, onSave, onClose, onDuplicate, 
                   {showOverrides && (
                     <div style={{padding:14, border:'1px solid var(--border)', borderTop:'none',
                       borderRadius:'0 0 var(--radius) var(--radius)'}}>
-                      <div style={{fontSize:11.5, color:'var(--text3)', marginBottom:12, lineHeight:1.5}}>
+                      <div style={{fontSize:12, color:'var(--text3)', marginBottom:12, lineHeight:1.5}}>
                         The report generates all three from this firm’s template and the details entered above,
                         and keeps them current as those details change. Fill a box only to override it for this
                         assignment; Auto-fill drops in the generated text so you can edit from it.

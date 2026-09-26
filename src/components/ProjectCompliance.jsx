@@ -81,7 +81,7 @@ function ProjectCompliance({institutes, clients}) {
           <React.Fragment key={o.name}>
             <td className="mono" style={{textAlign:'center', borderLeft:'1px solid var(--border)'}}>
               {o.trainees>0 ? <span style={{fontWeight:600}}>{o.trainees.toLocaleString()}</span> : <span style={{color:'var(--text3)'}}>—</span>}
-              {o.assignments>0 && <div style={{fontSize:10, color:'var(--text3)'}}>{o.assignments} asgn</div>}
+              {o.assignments>0 && <div style={{fontSize:11, color:'var(--text3)'}}>{o.assignments} asgn</div>}
             </td>
             <td style={{textAlign:'center', fontSize:11}}>
               {o.affStatus ? <span style={{color:affColor, fontWeight:600}}>{o.affStatus}</span> : <span style={{color:'var(--text3)'}}>—</span>}
@@ -104,7 +104,7 @@ function ProjectCompliance({institutes, clients}) {
           <span className="material-icons-round" style={{fontSize:16, color:'var(--text3)'}}>checklist</span>
           <span className="filter-panel-header-title">Project criteria</span>
           {activeFilterCount > 0 && (
-            <span style={{marginLeft:'auto', background:'var(--accent)', color:'#fff', borderRadius:10, fontSize:10, fontWeight:700, padding:'1px 7px'}}>{activeFilterCount}</span>
+            <span style={{marginLeft:'auto', background:'var(--accent)', color:'#fff', borderRadius:10, fontSize:11, fontWeight:700, padding:'1px 7px'}}>{activeFilterCount}</span>
           )}
         </div>
         <div className="filter-panel-body">
@@ -133,7 +133,7 @@ function ProjectCompliance({institutes, clients}) {
             {selectedOccs.length > 0 && (
               <div style={{marginBottom:6, display:'flex', flexWrap:'wrap', gap:4}}>
                 {selectedOccs.map(o => (
-                  <span key={o} style={{fontSize:10, background:'color-mix(in srgb, var(--accent) 15%, transparent)', color:'var(--accent)', borderRadius:4, padding:'2px 6px', cursor:'pointer'}} onClick={()=>toggleOcc(o)}>
+                  <span key={o} style={{fontSize:11, background:'color-mix(in srgb, var(--accent) 15%, transparent)', color:'var(--accent)', borderRadius:4, padding:'2px 6px', cursor:'pointer'}} onClick={()=>toggleOcc(o)}>
                     {o.split(',')[0]} <span className="material-icons-round" style={{fontSize:13,verticalAlign:'middle'}}>close</span>
                   </span>
                 ))}
@@ -207,7 +207,7 @@ function ProjectCompliance({institutes, clients}) {
                       ? selectedOccs.map(o => (
                           <th key={o} colSpan={2} style={{textAlign:'center', borderLeft:'1px solid var(--border)'}}>
                             <div style={{fontSize:11, fontWeight:600}}>{o.split(',')[0]}</div>
-                            <div style={{fontSize:10, color:'var(--text3)', fontWeight:400, display:'flex', gap:12, justifyContent:'center', marginTop:2}}>
+                            <div style={{fontSize:11, color:'var(--text3)', fontWeight:400, display:'flex', gap:12, justifyContent:'center', marginTop:2}}>
                               <span>Trainees</span><span>Affil.</span>
                             </div>
                           </th>
@@ -227,7 +227,7 @@ function ProjectCompliance({institutes, clients}) {
                             <span className="material-icons-round" style={{fontSize:15, color:'var(--text3)'}}>handshake</span>
                             <div>
                               <div style={{fontWeight:700, fontSize:13}}>{r.group.name}</div>
-                              <div style={{fontSize:10, color:'var(--text3)', marginTop:1}}>
+                              <div style={{fontSize:11, color:'var(--text3)', marginTop:1}}>
                                 {r.partnerStats.map(p => p.inst.acronym || p.inst.name.split(' ').slice(0,2).join(' ')).join(' · ')}
                               </div>
                             </div>
@@ -235,7 +235,7 @@ function ProjectCompliance({institutes, clients}) {
                         </td>
                         <td className="mono" style={{fontSize:12}}>
                           {r.combinedTurnover > 0
-                            ? <span style={{fontWeight:600}}>NPR {fmt(r.combinedTurnover)}<div style={{fontSize:10, color:'var(--text3)', fontWeight:400}}>combined</div></span>
+                            ? <span style={{fontWeight:600}}>NPR {fmt(r.combinedTurnover)}<div style={{fontSize:11, color:'var(--text3)', fontWeight:400}}>combined</div></span>
                             : <span style={{color:'var(--text3)'}}>—</span>}
                         </td>
                         {renderOccCells(r)}
@@ -250,13 +250,13 @@ function ProjectCompliance({institutes, clients}) {
                         <tr key={p.inst.id} style={{background:'color-mix(in srgb, var(--accent) 2%, var(--surface))'}}>
                           <td style={{paddingLeft:32}}>
                             <div style={{fontSize:11, color:'var(--text2)'}}>↳ {p.inst.name}</div>
-                            {p.inst.acronym && <span className="badge badge-purple" style={{fontSize:9}}>{p.inst.acronym}</span>}
+                            {p.inst.acronym && <span className="badge badge-purple" style={{fontSize:11}}>{p.inst.acronym}</span>}
                           </td>
                           <td className="mono" style={{fontSize:11, color:'var(--text3)'}}>
                             {p.avgTurnover > 0 ? `NPR ${fmt(p.avgTurnover)}` : '—'}
                           </td>
                           {renderOccCells(p)}
-                          <td style={{fontSize:10, color:'var(--text3)'}}>
+                          <td style={{fontSize:11, color:'var(--text3)'}}>
                             {p.allDistricts.length > 0
                               ? <><span style={{fontWeight:600}}>{p.allDistricts.length}</span> — {p.allDistricts.join(', ')}</>
                               : '—'}
@@ -269,7 +269,7 @@ function ProjectCompliance({institutes, clients}) {
                   {/* Divider between JVs and individual firms */}
                   {jvResults.length > 0 && results.length > 0 && (
                     <tr>
-                      <td colSpan={99} style={{padding:'4px 16px', background:'var(--bg2)', fontSize:10, color:'var(--text3)', fontWeight:600, letterSpacing:'0.5px', textTransform:'uppercase'}}>
+                      <td colSpan={99} style={{padding:'4px 16px', background:'var(--bg2)', fontSize:11, color:'var(--text3)', fontWeight:600, letterSpacing:'0.5px', textTransform:'uppercase'}}>
                         Individual firms
                       </td>
                     </tr>
@@ -280,11 +280,11 @@ function ProjectCompliance({institutes, clients}) {
                     <tr key={r.inst.id}>
                       <td>
                         <div style={{fontWeight:600, fontSize:13}}>{r.inst.name}</div>
-                        {r.inst.acronym && <span className="badge badge-purple" style={{fontSize:10, fontFamily:'var(--font-mono)'}}>{r.inst.acronym}</span>}
+                        {r.inst.acronym && <span className="badge badge-purple" style={{fontSize:11, fontFamily:'var(--font-mono)'}}>{r.inst.acronym}</span>}
                       </td>
                       <td className="mono" style={{fontSize:12}}>
                         {r.avgTurnover > 0
-                          ? <span>NPR {fmt(r.avgTurnover)}{selectedFYs.length > 0 && <span style={{fontSize:10, color:'var(--text3)', display:'block'}}>{selectedFYs.length} FY avg</span>}</span>
+                          ? <span>NPR {fmt(r.avgTurnover)}{selectedFYs.length > 0 && <span style={{fontSize:11, color:'var(--text3)', display:'block'}}>{selectedFYs.length} FY avg</span>}</span>
                           : <span style={{color:'var(--text3)'}}>—</span>}
                       </td>
                       {renderOccCells(r)}

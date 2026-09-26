@@ -83,3 +83,21 @@ export function openFileUrl(src) {
   if (!isSafeFileUrl(src)) return null;
   return window.open(String(src).trim(), '_blank', 'noopener');
 }
+
+/**
+ * A stored file address, safe to put in a link — or undefined, which leaves
+ * the link inert. React 18 still renders `javascript:` hrefs, and these values
+ * come from records anyone with write access can edit.
+ */
+export function safeHref(src) {
+  return isSafeFileUrl(src) ? String(src).trim() : undefined;
+}
+
+/** A website typed into a record: http(s) only, with https:// added to a bare domain. */
+export function safeWebHref(v) {
+  const s = String(v ?? '').trim();
+  if (!s) return undefined;
+  if (/^https?:\/\//i.test(s)) return s;
+  if (/^[a-z][a-z0-9+.-]*:/i.test(s)) return undefined;   // any other scheme, e.g. javascript:
+  return `https://${s.replace(/^\/+/, '')}`;
+}

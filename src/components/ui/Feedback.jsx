@@ -83,7 +83,7 @@ export function FeedbackHost() {
               style={{
                 display:'flex', alignItems:'flex-start', gap:9, padding:'10px 13px',
                 background:'var(--surface)', border:`1px solid color-mix(in srgb, ${s.fg} 35%, var(--border))`,
-                borderLeft:`3px solid ${s.fg}`, borderRadius:8, fontSize:12.5, color:'var(--text)',
+                borderLeft:`3px solid ${s.fg}`, borderRadius:8, fontSize:13, color:'var(--text)',
                 boxShadow:'0 4px 14px rgba(0,0,0,.16)',
               }}>
               <span className="material-icons-round" style={{fontSize:16, color:s.fg, flexShrink:0}}>{s.icon}</span>

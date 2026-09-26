@@ -159,7 +159,7 @@ function LoginPage({ onLogin }) {
               <div style={{width:40,height:40,borderRadius:10,background:'rgba(93,135,255,0.18)',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
                 <span className="material-icons-round" style={{fontSize:20,color:'var(--primary)'}}>{f.icon}</span>
               </div>
-              <span style={{fontSize:13.5,color:'rgba(255,255,255,0.6)',fontWeight:500}}>{f.text}</span>
+              <span style={{fontSize:14,color:'rgba(255,255,255,0.6)',fontWeight:500}}>{f.text}</span>
             </div>
           ))}
         </div>
@@ -169,7 +169,7 @@ function LoginPage({ onLogin }) {
       <div className="login-panel-right" style={{flex:1,display:'flex',alignItems:'center',justifyContent:'center',padding:'48px 32px'}}>
         <div style={{width:'100%',maxWidth:420}}>
           <div style={{marginBottom:36}}>
-            <div style={{fontSize:28,fontWeight:800,color:'var(--text)',letterSpacing:-0.5,marginBottom:8}}>Welcome back</div>
+            <div style={{fontSize:24,fontWeight:700,color:'var(--text)',letterSpacing:-0.5,marginBottom:8}}>Welcome back</div>
             <div style={{fontSize:14,color:'var(--text3)'}}>Sign in to your TVETtrack account</div>
           </div>
           <div style={{background:'var(--surface)',borderRadius:16,padding:'36px 40px',boxShadow:'var(--shadow-md)',border:'1px solid var(--border)'}}>
@@ -194,7 +194,7 @@ function LoginPage({ onLogin }) {
                 </div>
               )}
               <Btn type="submit" className="btn btn-primary" disabled={loading}
-                style={{width:'100%',justifyContent:'center',padding:'12px',fontSize:14.5}}>
+                style={{width:'100%',justifyContent:'center',padding:'12px',fontSize:14}}>
                 {loading
                   ? <><span className="material-icons-round" style={{fontSize:16,animation:'spin 1s linear infinite'}}>refresh</span> Signing in…</>
                   : <><span className="material-icons-round" style={{fontSize:16}}>login</span> Sign In</>}
@@ -493,7 +493,7 @@ function UserManagement({institutes, isSuperAdmin}) {
           <span className="search-icon material-icons-round" style={{fontSize:16}}>search</span>
           <input className="search-input" placeholder="Search users…" value={search} onChange={e => setSearch(e.target.value)} />
         </div>
-        <Btn className="btn btn-primary btn-sm" onClick={() => setModal('add')}>+ Add user</Btn>
+        <Btn className="btn btn-primary btn-sm" onClick={() => setModal('add')}><span className="material-icons-round">add</span>Add user</Btn>
       </div>
       <div className="card" style={{ padding: 0 }}>
         <div className="table-wrap">
@@ -542,12 +542,12 @@ function UserManagement({institutes, isSuperAdmin}) {
                   <td>
                     <span className={`badge ${u.is_active ? 'badge-active' : 'badge-gray'}`}>{u.is_active ? 'Active' : 'Inactive'}</span>
                     {u.can_access_hr && (
-                      <span className="badge badge-info" style={{ fontSize: 10, marginLeft: 4 }} title="Can open the trainer pool">
+                      <span className="badge badge-info" style={{ fontSize:11, marginLeft: 4 }} title="Can open the trainer pool">
                         Pool
                       </span>
                     )}
                     {u.can_access_tenders && (
-                      <span className="badge badge-purple" style={{ fontSize: 10, marginLeft: 4 }} title="Can open tenders">
+                      <span className="badge badge-purple" style={{ fontSize:11, marginLeft: 4 }} title="Can open tenders">
                         Tenders
                       </span>
                     )}

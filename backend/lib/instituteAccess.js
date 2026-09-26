@@ -39,3 +39,7 @@ async function canWriteInstitutes(user, ids) {
 }
 
 module.exports = { visibleInstitutesClause, canWriteInstitutes };
+
+/** A stored document address: an upload (data:/blob:), a web address or an app path. */
+const isDocUrl = (v) => v == null || v === '' || /^(data:|blob:|https?:\/\/|\/)/i.test(String(v).trim());
+module.exports.isDocUrl = isDocUrl;

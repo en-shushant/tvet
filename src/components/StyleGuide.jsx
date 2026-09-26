@@ -144,9 +144,9 @@ export default function StyleGuide() {
       <Section title="Type scale" note="Hierarchy comes from weight and size, not colour.">
         <div style={{background:'var(--canvas-card)', borderRadius:'var(--radius-card)', padding:24}}>
           <div style={{fontSize:'var(--fs-display)', fontWeight:400, letterSpacing:'-0.02em'}}>
-            Display <strong style={{fontWeight:800}}>38px</strong>
+            Display <strong style={{fontWeight:700}}>38px</strong>
           </div>
-          <div style={{fontSize:'var(--fs-kpi)', fontWeight:800, letterSpacing:'-0.03em', marginTop:10}}>11,843</div>
+          <div style={{fontSize:'var(--fs-kpi)', fontWeight:700, letterSpacing:'-0.03em', marginTop:10}}>11,843</div>
           <div style={{fontSize:'var(--fs-title)', fontWeight:700, marginTop:10}}>Section title 22px</div>
           <div style={{fontSize:'var(--fs-card)', fontWeight:700, marginTop:8}}>Card title 16px</div>
           <div style={{fontSize:'var(--fs-body)', marginTop:8}}>Body 14px — the default for tables and forms.</div>

@@ -502,7 +502,7 @@ describe('an employer that is not in the client list yet', () => {
   it('can be added to the client list without leaving the tender', () => {
     // The second typing is where the spelling drifts, so the common case must
     // not need a trip to Master Data.
-    expect(view).toMatch(/\+ Add to client list/);
+    expect(view).toMatch(/<span className="material-icons-round">add<\/span>Add to client list/);
     expect(view).toMatch(/function NewClientModal/);
     expect(view).toMatch(/api\('POST', '\/clients'/);
   });

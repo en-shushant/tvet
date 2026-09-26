@@ -3,6 +3,7 @@ import { ErrorBanner } from './ui/Modal.jsx';
 import { api } from '../utils/api.js';
 import { Btn } from '../md.jsx';
 import { confirmDialog } from './ui/Feedback.jsx';
+import { openFileUrl, safeHref } from '../utils/safeWindow.js';
 
 function ClientDocuments({ client, instituteId, token, canEdit, isAdmin }) {
   const [docs, setDocs] = useState([]);
@@ -109,7 +110,7 @@ function ClientDocuments({ client, instituteId, token, canEdit, isAdmin }) {
                     <div key={doc.id} style={{width:120, position:'relative', border:'1px solid var(--border)', borderRadius:'var(--radius)', overflow:'hidden', background:'var(--bg2)'}}>
                       {/* Thumbnail */}
                       <div style={{height:90, display:'flex', alignItems:'center', justifyContent:'center', background:'var(--bg)', cursor:'pointer'}}
-                        onClick={() => doc.url && window.open(doc.url, '_blank')}>
+                        onClick={() => openFileUrl(doc.url)}>
                         {isImage(doc.content_type) && doc.url
                           ? <img src={doc.url} alt={doc.file_name} style={{width:'100%', height:'100%', objectFit:'cover'}}/>
                           : <span className="material-icons-round" style={{fontSize:36, color:'var(--text3)'}}>{isPdf(doc.content_type) ? 'picture_as_pdf' : 'attach_file'}</span>
@@ -118,10 +119,10 @@ function ClientDocuments({ client, instituteId, token, canEdit, isAdmin }) {
                       {/* Label */}
                       <div style={{padding:'6px 8px'}}>
                         <div style={{fontSize:11, fontWeight:500, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', color:'var(--text)'}} title={doc.file_name}>{doc.file_name}</div>
-                        <div style={{fontSize:10, color:'var(--text3)', marginTop:2}}>{fmtSize(doc.file_size)} · {new Date(doc.uploaded_at).toLocaleDateString()}</div>
+                        <div style={{fontSize:11, color:'var(--text3)', marginTop:2}}>{fmtSize(doc.file_size)} · {new Date(doc.uploaded_at).toLocaleDateString()}</div>
                         <div style={{display:'flex', gap:4, marginTop:6}}>
-                          {doc.url && <a href={doc.url} target="_blank" rel="noreferrer" className="btn btn-ghost btn-sm" style={{fontSize:10, padding:'2px 6px'}}>View</a>}
-                          {(canEdit || isAdmin) && <Btn className="btn btn-danger btn-sm" style={{fontSize:10, padding:'2px 6px'}} onClick={()=>deleteDoc(doc)}><span className="material-icons-round" style={{fontSize:14}}>delete</span></Btn>}
+                          {doc.url && <a href={safeHref(doc.url)} target="_blank" rel="noreferrer" className="btn btn-ghost btn-sm" style={{fontSize:11, padding:'2px 6px'}}>View</a>}
+                          {(canEdit || isAdmin) && <Btn className="btn btn-danger btn-sm" style={{fontSize:11, padding:'2px 6px'}} onClick={()=>deleteDoc(doc)}><span className="material-icons-round" style={{fontSize:14}}>delete</span></Btn>}
                         </div>
                       </div>
                     </div>
@@ -138,7 +139,7 @@ function ClientDocuments({ client, instituteId, token, canEdit, isAdmin }) {
                 <div key={i} style={{display:'flex', alignItems:'center', gap:10, marginBottom:8}}>
                   {item.preview
                     ? <img src={item.preview} alt="" style={{width:44, height:44, objectFit:'cover', borderRadius:4, border:'1px solid var(--border)', flexShrink:0}}/>
-                    : <div style={{width:44, height:44, display:'flex', alignItems:'center', justifyContent:'center', borderRadius:4, border:'1px solid var(--border)', background:'var(--bg)', flexShrink:0, fontSize:22}}>
+                    : <div style={{width:44, height:44, display:'flex', alignItems:'center', justifyContent:'center', borderRadius:4, border:'1px solid var(--border)', background:'var(--bg)', flexShrink:0, fontSize:20}}>
                         <span className="material-icons-round" style={{fontSize:22, color:'var(--text3)'}}>{item.file.type.includes('pdf') ? 'picture_as_pdf' : 'attach_file'}</span>
                       </div>
                   }

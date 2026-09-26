@@ -30,14 +30,14 @@ function ExpCard({exp, clients, institute, showFY, setModal, deleteExperience, c
           <div style={{display:'flex', alignItems:'flex-start', gap:8, flexWrap:'wrap', marginBottom:4}}>
             {showFY && (
               <span style={{
-                fontSize:10, fontWeight:600, padding:'2px 8px', borderRadius:100,
+                fontSize:11, fontWeight:600, padding:'2px 8px', borderRadius:100,
                 background:'var(--bg2)', color:'var(--text3)', whiteSpace:'nowrap', alignSelf:'center',
               }}>FY {exp.fy}{fyToAD(exp.fy)?` · ${fyToAD(exp.fy)}`:''}</span>
             )}
             <span style={{fontWeight:600, fontSize:14, color:'var(--text)', lineHeight:1.4}}>{exp.assignmentName}</span>
             {exp.isOngoing && (
               <span title="Currently running — in the portfolio, not yet counted as completed experience"
-                style={{fontSize:10, fontWeight:700, color:'var(--green,#16a34a)',
+                style={{fontSize:11, fontWeight:700, color:'var(--green,#16a34a)',
                   background:'color-mix(in srgb, var(--green,#16a34a) 12%, transparent)',
                   border:'1px solid color-mix(in srgb, var(--green,#16a34a) 30%, transparent)',
                   borderRadius:100, padding:'2px 8px', whiteSpace:'nowrap', alignSelf:'center',
@@ -48,14 +48,14 @@ function ExpCard({exp, clients, institute, showFY, setModal, deleteExperience, c
                 which rows are missing from the reports they generate. */}
             {exp.isSuperAdminOnly && (
               <span title="Superadmin only — hidden from every other user and excluded from all reports"
-                style={{fontSize:10, fontWeight:700, color:'var(--text2)', background:'var(--bg2)',
+                style={{fontSize:11, fontWeight:700, color:'var(--text2)', background:'var(--bg2)',
                   border:'1px solid var(--border)', borderRadius:100, padding:'2px 8px',
                   whiteSpace:'nowrap', alignSelf:'center',
                 }}><span className="material-icons-round" style={{fontSize:10,verticalAlign:'middle'}}>lock</span> Superadmin only</span>
             )}
             {missingOccs.length > 0 && (
               <span title={missingOccs.map(o=>getOccupation(o.ctevtOccupationId).name||o.nameInLetter).join(', ') + ' — missing level or duration'}
-                style={{fontSize:10, fontWeight:600, color:'var(--warning)', background:'var(--warning-light)',
+                style={{fontSize:11, fontWeight:600, color:'var(--warning)', background:'var(--warning-light)',
                   border:'1px solid rgba(255,174,31,.3)', borderRadius:100, padding:'2px 8px', whiteSpace:'nowrap', alignSelf:'center',
                 }}><span className="material-icons-round" style={{fontSize:10,verticalAlign:'middle'}}>warning</span> Missing ({missingOccs.length})</span>
             )}
@@ -76,8 +76,8 @@ function ExpCard({exp, clients, institute, showFY, setModal, deleteExperience, c
           {/* Tag row: GESI, Residential */}
           {(exp.isGesi || exp.isResidential) && (
             <div style={{display:'flex', gap:6, marginBottom:8}}>
-              {exp.isGesi && <span style={{fontSize:10, fontWeight:600, padding:'2px 9px', borderRadius:100, background:'var(--purple-light)', color:'var(--purple)'}}>GESI</span>}
-              {exp.isResidential && <span style={{fontSize:10, fontWeight:600, padding:'2px 9px', borderRadius:100, background:'var(--secondary-light)', color:'var(--secondary)'}}>Residential</span>}
+              {exp.isGesi && <span style={{fontSize:11, fontWeight:600, padding:'2px 9px', borderRadius:100, background:'var(--purple-light)', color:'var(--purple)'}}>GESI</span>}
+              {exp.isResidential && <span style={{fontSize:11, fontWeight:600, padding:'2px 9px', borderRadius:100, background:'var(--secondary-light)', color:'var(--secondary)'}}>Residential</span>}
             </div>
           )}
 
@@ -93,8 +93,8 @@ function ExpCard({exp, clients, institute, showFY, setModal, deleteExperience, c
                 }}>
                   {getOccupation(occ.ctevtOccupationId).name || occ.nameInLetter}
                   <span style={{fontWeight:700, color:'var(--primary)'}}>{occ.trainees ? `: ${Number(occ.trainees).toLocaleString()}` : ''}</span>
-                  {occ.skillTestProvisioned && <span title="Skill test provisioned" style={{fontSize:9, fontWeight:700, color:'var(--teal)'}}>ST</span>}
-                  {occ.employmentProvisioned && <span title="Employment provisioned" style={{fontSize:9, fontWeight:700, color:'var(--success)'}}>EP</span>}
+                  {occ.skillTestProvisioned && <span title="Skill test provisioned" style={{fontSize:11, fontWeight:700, color:'var(--teal)'}}>ST</span>}
+                  {occ.employmentProvisioned && <span title="Employment provisioned" style={{fontSize:11, fontWeight:700, color:'var(--success)'}}>EP</span>}
                 </span>
               ))}
             </div>
@@ -102,7 +102,7 @@ function ExpCard({exp, clients, institute, showFY, setModal, deleteExperience, c
 
           {/* Locations */}
           {(districts.length > 0 || localLevels.length > 0) && (
-            <div style={{fontSize:11.5, color:'var(--text3)', display:'flex', gap:4, alignItems:'flex-start'}}>
+            <div style={{fontSize:12, color:'var(--text3)', display:'flex', gap:4, alignItems:'flex-start'}}>
               <span className="material-icons-round" style={{fontSize:13, marginTop:1, color:'var(--error)', flexShrink:0}}>location_on</span>
               <span>
                 {districts.join(', ')}
