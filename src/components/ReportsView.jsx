@@ -11,6 +11,7 @@ import { TOOL_COLUMN_OPTIONS, TOOL_TYPE_OPTIONS, DEFAULT_TOOL_COLS } from '../re
 import { PillTabs } from './ui/primitives.jsx';
 import { fetchToolsFor, countToolsFor } from '../utils/occupationTools.js';
 import Select from './ui/Select.jsx';
+import { openSafeDocument } from '../utils/safeWindow.js';
 
 const FILTER_KEY = 'tvettrack_reports_filters_v1';
 function loadFilters() {
@@ -703,10 +704,8 @@ function ReportsView({ institutes, clients }) {
   useEffect(() => { setRenderedSig(null); }, [reportId, familyId]);
 
   const handlePrint = () => {
-    const w = window.open('', '_blank');
-    w.document.write(family.buildPrintHTML(reportInst, activeExps, clients, report.id, fyRangeLabel, opts));
-    w.document.close();
-    setTimeout(() => w.print(), 300);
+    const w = openSafeDocument(family.buildPrintHTML(reportInst, activeExps, clients, report.id, fyRangeLabel, opts));
+    if (w) setTimeout(() => w.print(), 300);
   };
 
   const handleCSV = () => {
@@ -759,10 +758,8 @@ function ReportsView({ institutes, clients }) {
   const handlePrintTools = async () => {
     const data = await fetchToolsDataForPrint();
     const printOpts = { ...opts, toolsData: data };
-    const w = window.open('', '_blank');
-    w.document.write(family.buildPrintHTML(null, [], clients, report.id, null, printOpts));
-    w.document.close();
-    setTimeout(() => w.print(), 300);
+    const w = openSafeDocument(family.buildPrintHTML(null, [], clients, report.id, null, printOpts));
+    if (w) setTimeout(() => w.print(), 300);
   };
 
   const handleReset = () => {
@@ -1831,10 +1828,8 @@ function ReportsView({ institutes, clients }) {
                   combined = docs[0].replace(/<body[^>]*>[\s\S]*<\/body>/i,
                     `<body>${bodyParts.join('<div style="page-break-before:always"></div>')}</body>`);
                 }
-                const w = window.open('', '_blank');
-                w.document.write(combined);
-                w.document.close();
-                setTimeout(() => w.print(), 300);
+                const w = openSafeDocument(combined);
+                if (w) setTimeout(() => w.print(), 300);
               }} disabled={!canPrint || isStale}
                 title={isStale ? 'Rebuild first — settings have changed since this was built' : undefined}>Export PDF</Btn>
             </div>

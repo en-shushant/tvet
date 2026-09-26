@@ -557,6 +557,10 @@ export default function LetterBuilder({ row: initialRow, token, onClose, allRows
     try {
       const A4_W = 794, A4_H = 1123;
       const iframe = document.createElement('iframe');
+      // Sandboxed without scripts: the letter is built from firm and client names
+      // as typed, and must render as a page, never run as code with the app's
+      // session. allow-same-origin keeps it readable for the PDF render below.
+      iframe.setAttribute('sandbox', 'allow-same-origin');
       iframe.style.cssText = `position:fixed;left:-9999px;top:0;width:${A4_W}px;height:${A4_H}px;border:none;visibility:hidden;`;
       document.body.appendChild(iframe);
       await new Promise(r => { iframe.onload = r; iframe.srcdoc = buildHtml(); });
@@ -680,6 +684,7 @@ export default function LetterBuilder({ row: initialRow, token, onClose, allRows
             : <iframe
                 ref={iframeRef}
                 srcDoc={previewHtml}
+                sandbox="allow-same-origin"
                 style={{ width:794, height:1123, border:'none', boxShadow:'0 4px 24px rgba(0,0,0,.4)', background:'#fff', flexShrink:0 }}
                 title="Letter Preview"
               />

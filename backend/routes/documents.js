@@ -1,6 +1,7 @@
 // routes/documents.js — institute client documents
 // Stores files in Cloudflare R2 when configured, falls back to PostgreSQL base64
 const { pool } = require('../db/pool');
+const { sendStoredFile } = require('../lib/safeDownload');
 const { authenticate, requireWriter } = require('../middleware/auth');
 const { S3Client, PutObjectCommand, DeleteObjectCommand, GetObjectCommand } = require('@aws-sdk/client-s3');
 const { getSignedUrl } = require('@aws-sdk/s3-request-presigner');
@@ -76,9 +77,7 @@ async function plugin(fastify, opts) {
     const doc = rows[0];
     if (!doc.file_data) return reply.code(404).send({ error: 'No file data stored' });
     const buf = Buffer.from(doc.file_data, 'base64');
-    reply.header('Content-Type', doc.content_type || 'application/octet-stream');
-    reply.header('Content-Disposition', `inline; filename="${doc.file_name}"`);
-    return reply.send(buf);
+    return sendStoredFile(reply, doc, buf);
   });
 
   fastify.post('/', { preHandler: requireWriter }, async (request, reply) => {

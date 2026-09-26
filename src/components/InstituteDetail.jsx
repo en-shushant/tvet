@@ -27,6 +27,7 @@ import { exportSummaryToMD, exportSummaryToPDF, exportSummaryToCSV } from '../ut
 import { fmt, fyToAD, getClient, getOccupation, pct } from '../utils/format.js';
 import { toast } from './ui/Feedback.jsx';
 import Select from './ui/Select.jsx';
+import { openFileViewer, openFileUrl } from '../utils/safeWindow.js';
 
 
 
@@ -1037,16 +1038,16 @@ function InstituteDetail({institute, clients, onUpdateClients, onBack, onUpdate,
                     {exp.referenceFileName?.match(/\.(jpg|jpeg|png|gif|webp)$/i) ? (
                       <img src={exp.referenceFile} alt={exp.referenceFileName||'letter'}
                         style={{width:64, height:64, objectFit:'cover', borderRadius:6, border:'1px solid var(--border)', cursor:'pointer', flexShrink:0}}
-                        onClick={()=>window.open(exp.referenceFile)}/>
+                        onClick={()=>openFileUrl(exp.referenceFile)}/>
                     ) : (
                       <div style={{width:64, height:64, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', borderRadius:6, border:'1px solid var(--border)', background:'var(--bg2)', cursor:'pointer', flexShrink:0}}
-                        onClick={()=>{const w=window.open(); w.document.write(`<iframe src="${exp.referenceFile}" width="100%" height="100%" style="border:none"/>`)}}>
+                        onClick={()=>{openFileViewer(exp.referenceFile);}}>
                         <span className="material-icons-round" style={{fontSize:28, color:'var(--error)'}}>picture_as_pdf</span>
                         <span style={{fontSize:9, color:'var(--text3)'}}>PDF</span>
                       </div>
                     )}
                     <span style={{fontSize:13, fontWeight:600, color:'var(--primary-dark)', cursor:'pointer', textDecoration:'underline'}}
-                      onClick={()=>{ if(exp.referenceFile){ if(exp.referenceFileName?.match(/\.pdf$/i)){const w=window.open();w.document.write(`<iframe src="${exp.referenceFile}" width="100%" height="100%" style="border:none"/>`);} else {window.open(exp.referenceFile);}} }}>
+                      onClick={()=>{ if(exp.referenceFile){ if(exp.referenceFileName?.match(/\.pdf$/i)){openFileViewer(exp.referenceFile);} else {openFileUrl(exp.referenceFile);}} }}>
                       {exp.referenceFileName || 'View letter'}
                     </span>
                   </div>

@@ -120,6 +120,18 @@ export function Btn({ className = '', children, style, ...rest }) {
 
   if (isIcon) return <_IconBtn className={extra || undefined} style={style} {...rest}>{children}</_IconBtn>;
 
+  // A leading Material icon goes in the button's icon slot, which spaces it
+  // from the label. Passed as plain content it sat flush against the text
+  // ("≡+New Shortlist").
+  const kids = React.Children.toArray(children);
+  const first = kids[0];
+  if (React.isValidElement(first) && !first.props.slot && kids.length > 1
+      && /material-(icons|symbols)/.test(first.props.className || '')) {
+    kids[0] = React.cloneElement(first, { slot: 'icon' });
+    children = kids;
+    rest = { ...rest, hasIcon: true };
+  }
+
   // Prominent destructive: the confirm action in a dialog, where it is the
   // primary and needs to outweigh Cancel.
   if (dangerStrong) return <_TonalBtn className={['danger', cls].filter(Boolean).join(' ')} style={style} {...rest}>{children}</_TonalBtn>;

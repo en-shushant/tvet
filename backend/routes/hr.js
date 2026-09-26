@@ -1,5 +1,6 @@
 // routes/hr.js — the human resource pool
 const { pool } = require('../db/pool');
+const { sendStoredFile } = require('../lib/safeDownload');
 const { authenticate, requireHRAccess, requireAdmin } = require('../middleware/auth');
 
 /**
@@ -425,9 +426,7 @@ async function plugin(fastify, opts) {
     const { rows } = await pool.query(
       'SELECT file_name, content_type, file_data FROM hr_documents WHERE id = $1', [request.params.id]);
     if (!rows.length || !rows[0].file_data) return reply.code(404).send({ error: 'Not found' });
-    reply.header('Content-Type', rows[0].content_type || 'application/octet-stream');
-    reply.header('Content-Disposition', `inline; filename="${rows[0].file_name}"`);
-    return reply.send(Buffer.from(rows[0].file_data, 'base64'));
+    return sendStoredFile(reply, rows[0], Buffer.from(rows[0].file_data, 'base64'));
   });
 
   fastify.delete('/documents/:id', async (request) => {

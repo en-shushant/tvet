@@ -1,4 +1,5 @@
 import { toast } from '../components/ui/Feedback.jsx';
+import { openSafeDocument } from './safeWindow.js';
 export function exportToCSV(rows, filename) {
   if(!rows || rows.length === 0) { toast.error('No data to export.'); return; }
   const headers = Object.keys(rows[0]);
@@ -98,10 +99,8 @@ export function exportSummaryToPDF(institute, summaryRows, selectedFYs) {
   </table>
   </body></html>`;
 
-  const win = window.open('', '_blank');
-  win.document.write(html);
-  win.document.close();
-  win.onload = () => win.print();
+  const win = openSafeDocument(html);
+  if (win) setTimeout(() => win.print(), 300);
 }
 
 export function exportSummaryToCSV(institute, summaryRows, selectedFYs) {

@@ -10,6 +10,7 @@ import { useState } from 'react';
 import { fmtDate } from '../../utils/format.js';
 import { statusColor, LetterBuilderWrapper } from './common.jsx';
 import { BillModal, LetterOptsModal, ViewDocumentsModal } from './modals.jsx';
+import { writeSafeDocument } from '../../utils/safeWindow.js';
 
 export function ShortlistRow({ row, idx, canEdit, isAdmin, isSuperAdmin, onEdit, onDelete, onBillSave, saving, token, showFY=true }) {
   const sc = statusColor(row.status);
@@ -82,33 +83,34 @@ export function ShortlistRow({ row, idx, canEdit, isAdmin, isSuperAdmin, onEdit,
         {showBuilder && <LetterBuilderWrapper row={row} onClose={()=>setShowBuilder(false)}/>}
         {showBill && <BillModal row={row} token={token} saving={saving} onClose={()=>setShowBill(false)} onSave={async (patch) => { await onBillSave(row.id, patch); setShowBill(false); }}/>}
         {showDocs && <ViewDocumentsModal instituteId={row.institute_id} token={token} onClose={()=>setShowDocs(false)}/>}
-        <button title="View Documents" onClick={() => setShowDocs(true)}
+        <button title="View Documents" aria-label="View Documents" onClick={() => setShowDocs(true)}
           style={{width:30,height:30,borderRadius:50,border:'none',background:'transparent',color:'var(--text3)',cursor:'pointer',display:'inline-flex',alignItems:'center',justifyContent:'center'}}
           onMouseEnter={e=>{e.currentTarget.style.background='var(--bg2)';e.currentTarget.style.color='var(--text)';}}
           onMouseLeave={e=>{e.currentTarget.style.background='';e.currentTarget.style.color='var(--text3)';}}
         ><span className="material-icons-round" style={{fontSize:15}}>folder_open</span></button>
         {canEdit && (
-          <button title={hasBill ? 'Bill uploaded — click to update' : 'Upload bill / certificate'} onClick={() => setShowBill(true)}
+          <button title={hasBill ? 'Bill uploaded — click to update' : 'Upload bill / certificate'}
+            aria-label={hasBill ? 'Update bill or certificate' : 'Upload bill or certificate'} onClick={() => setShowBill(true)}
             style={{width:30,height:30,borderRadius:50,border:'none',background: hasBill ? 'var(--success-light)' : 'transparent',color: hasBill ? 'var(--success)' : 'var(--text3)',cursor:'pointer',display:'inline-flex',alignItems:'center',justifyContent:'center'}}
             onMouseEnter={e=>{e.currentTarget.style.background='var(--success-light)';e.currentTarget.style.color='#0b9b85';}}
             onMouseLeave={e=>{e.currentTarget.style.background= hasBill ? 'var(--success-light)' : '';e.currentTarget.style.color= hasBill ? 'var(--success)' : 'var(--text3)';}}
           ><span className="material-icons-round" style={{fontSize:15}}>receipt</span></button>
         )}
-        <button title="Generate Letter"
+        <button title="Generate Letter" aria-label="Generate Letter"
           onClick={() => setShowLetterOpts(true)}
           style={{width:30,height:30,borderRadius:50,border:'none',background:'transparent',color:'var(--text3)',cursor:'pointer',display:'inline-flex',alignItems:'center',justifyContent:'center'}}
           onMouseEnter={e=>{e.currentTarget.style.background='var(--primary-light)';e.currentTarget.style.color='var(--primary-dark)';}}
           onMouseLeave={e=>{e.currentTarget.style.background='';e.currentTarget.style.color='var(--text3)';}}
         ><span className="material-icons-round" style={{fontSize:15}}>description</span></button>
         {canEdit && (
-          <button title="Edit" onClick={() => onEdit(row)}
+          <button title="Edit" aria-label="Edit" onClick={() => onEdit(row)}
             style={{width:30,height:30,borderRadius:50,border:'none',background:'transparent',color:'var(--text3)',cursor:'pointer',display:'inline-flex',alignItems:'center',justifyContent:'center'}}
             onMouseEnter={e=>{e.currentTarget.style.background='var(--bg2)';e.currentTarget.style.color='var(--text)';}}
             onMouseLeave={e=>{e.currentTarget.style.background='';e.currentTarget.style.color='var(--text3)';}}
           ><span className="material-icons-round" style={{fontSize:15}}>edit</span></button>
         )}
         {isAdmin && (
-          <button title="Delete" onClick={() => onDelete(row)}
+          <button title="Delete" aria-label="Delete" onClick={() => onDelete(row)}
             style={{width:30,height:30,borderRadius:50,border:'none',background:'transparent',color:'var(--text3)',cursor:'pointer',display:'inline-flex',alignItems:'center',justifyContent:'center'}}
             onMouseEnter={e=>{e.currentTarget.style.background='var(--error-light)';e.currentTarget.style.color='var(--error)';}}
             onMouseLeave={e=>{e.currentTarget.style.background='';e.currentTarget.style.color='var(--text3)';}}
@@ -183,6 +185,12 @@ export function printShortlistReport(rows, groupBy, filters = {}) {
   }
   const groups = [...map.entries()].sort((a, b) => a[1].label.localeCompare(b[1].label));
 
+  // Every value below comes from user-entered records and is written into a
+  // same-origin window, so it is escaped: a firm named "<img onerror=…>" must
+  // print as text, not run with the app's session.
+  const esc = (v) => String(v ?? '').replace(/[&<>"']/g, c =>
+    ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
   const statusColor = (s) =>
     s === 'Active'  ? '#166534' :
     s === 'Expired' ? '#991b1b' : '#92400e';
@@ -214,14 +222,14 @@ export function printShortlistReport(rows, groupBy, filters = {}) {
       const st    = r.status || 'Active';
       return `<tr style="background:${i % 2 === 0 ? '#fff' : '#f9fafb'}">
         <td style="padding:7px 10px;border-bottom:1px solid #e5e7eb;font-size:12px;font-weight:500">${i + 1}</td>
-        <td style="padding:7px 10px;border-bottom:1px solid #e5e7eb;font-size:12px">${name}</td>
-        <td style="padding:7px 10px;border-bottom:1px solid #e5e7eb;font-size:12px;color:#6b7280">${list}</td>
-        <td style="padding:7px 10px;border-bottom:1px solid #e5e7eb;font-size:12px">${date}</td>
-        <td style="padding:7px 10px;border-bottom:1px solid #e5e7eb;font-size:12px;color:#6b7280">${valid}</td>
-        <td style="padding:7px 10px;border-bottom:1px solid #e5e7eb;font-size:12px;color:#6b7280">${fy}</td>
-        <td style="padding:7px 10px;border-bottom:1px solid #e5e7eb;font-size:12px;color:#4b5563">${amt}</td>
+        <td style="padding:7px 10px;border-bottom:1px solid #e5e7eb;font-size:12px">${esc(name)}</td>
+        <td style="padding:7px 10px;border-bottom:1px solid #e5e7eb;font-size:12px;color:#6b7280">${esc(list)}</td>
+        <td style="padding:7px 10px;border-bottom:1px solid #e5e7eb;font-size:12px">${esc(date)}</td>
+        <td style="padding:7px 10px;border-bottom:1px solid #e5e7eb;font-size:12px;color:#6b7280">${esc(valid)}</td>
+        <td style="padding:7px 10px;border-bottom:1px solid #e5e7eb;font-size:12px;color:#6b7280">${esc(fy)}</td>
+        <td style="padding:7px 10px;border-bottom:1px solid #e5e7eb;font-size:12px;color:#4b5563">${esc(amt)}</td>
         <td style="padding:7px 10px;border-bottom:1px solid #e5e7eb;font-size:12px">
-          <span style="padding:2px 8px;border-radius:100px;font-size:11px;font-weight:600;background:${statusBg(st)};color:${statusColor(st)}">${st}</span>
+          <span style="padding:2px 8px;border-radius:100px;font-size:11px;font-weight:600;background:${statusBg(st)};color:${statusColor(st)}">${esc(st)}</span>
         </td>
       </tr>`;
     }).join('');
@@ -230,7 +238,7 @@ export function printShortlistReport(rows, groupBy, filters = {}) {
     return `
       <div style="margin-bottom:32px;page-break-inside:avoid">
         <div style="display:flex;align-items:baseline;gap:10px;margin-bottom:8px;padding-bottom:6px;border-bottom:2px solid #1e3a5f">
-          <div style="font-size:14px;font-weight:700;color:#1e3a5f">${g.label}</div>
+          <div style="font-size:14px;font-weight:700;color:#1e3a5f">${esc(g.label)}</div>
           <div style="font-size:11px;color:#6b7280;font-weight:500">${g.rows.length} entr${g.rows.length === 1 ? 'y' : 'ies'}</div>
         </div>
         <table style="width:100%;border-collapse:collapse;border:1px solid #e5e7eb;border-radius:6px;overflow:hidden">
@@ -276,7 +284,7 @@ export function printShortlistReport(rows, groupBy, filters = {}) {
 <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px">
   <div>
     <div style="font-size:20px;font-weight:700;color:#1e3a5f;letter-spacing:-0.3px">${reportTitle}</div>
-    ${filterDesc ? `<div style="font-size:11px;color:#6b7280;margin-top:3px">${filterDesc}</div>` : ''}
+    ${filterDesc ? `<div style="font-size:11px;color:#6b7280;margin-top:3px">${esc(filterDesc)}</div>` : ''}
   </div>
   <div style="text-align:right;font-size:11px;color:#6b7280">
     <div>Generated: ${now}</div>
@@ -293,6 +301,5 @@ ${sectionsHtml}
 </div>
 </body></html>`;
 
-  const w = window.open('', '_blank', 'width=1100,height=800');
-  if (w) { w.document.write(html); w.document.close(); }
+  writeSafeDocument(window.open('', '_blank', 'width=1100,height=800'), html);
 }

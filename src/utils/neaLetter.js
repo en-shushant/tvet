@@ -494,6 +494,8 @@ export async function openShortlistLetter(row, opts = {}) {
   // Render only the letter body into a hidden iframe — attachments are no
   // longer part of this HTML at all (see above).
   const iframe = document.createElement('iframe');
+  // Sandboxed without scripts: names are written into this HTML as typed.
+  iframe.setAttribute('sandbox', 'allow-same-origin');
   iframe.style.cssText = `position:fixed;left:-9999px;top:0;width:${A4_W}px;height:${A4_H}px;border:none;visibility:hidden;`;
   document.body.appendChild(iframe);
 

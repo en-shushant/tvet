@@ -16,6 +16,7 @@ import { fyToAD, uid } from '../utils/format.js';
 import { toast } from './ui/Feedback.jsx';
 import { useOccupations } from '../utils/useMasterData.js';
 import Select from './ui/Select.jsx';
+import { openFileViewer, openFileUrl } from '../utils/safeWindow.js';
 
 
 
@@ -689,7 +690,7 @@ function ExperienceForm({exp, clients, institute, onSave, onClose, onDuplicate, 
               )}
               {form.referenceFile && form.referenceFileName?.match(/\.pdf$/i) && (
                 <Btn className="btn btn-ghost btn-sm" onClick={()=>{
-                  const w=window.open(); w.document.write(`<iframe src="${form.referenceFile}" width="100%" height="100%" style="border:none"/>`);
+                  openFileViewer(form.referenceFile);
                 }}><span className="material-icons-round" style={{fontSize:14,verticalAlign:'middle',marginRight:4}}>visibility</span>Preview PDF</Btn>
               )}
             </div>
@@ -705,11 +706,11 @@ function ExperienceForm({exp, clients, institute, onSave, onClose, onDuplicate, 
           {form.referenceFile && form.referenceFileName?.match(/\.(jpg|jpeg|png|gif|webp)$/i) && (
             <img src={form.referenceFile} alt="preview"
               style={{width:64, height:64, objectFit:'cover', borderRadius:'var(--radius)', border:'1px solid var(--border)', cursor:'pointer', flexShrink:0}}
-              onClick={()=>window.open(form.referenceFile)}/>
+              onClick={()=>openFileUrl(form.referenceFile)}/>
           )}
           {form.referenceFile && form.referenceFileName?.match(/\.pdf$/i) && (
             <div style={{width:64, height:64, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', borderRadius:'var(--radius)', border:'1px solid var(--border)', background:'var(--bg2)', fontSize:10, color:'var(--text3)', flexShrink:0, cursor:'pointer'}}
-              onClick={()=>{const w=window.open(); w.document.write(`<iframe src="${form.referenceFile}" width="100%" height="100%" style="border:none"/>`)}}>
+              onClick={()=>{openFileViewer(form.referenceFile);}}>
               <span className="material-icons-round" style={{fontSize:24, color:'var(--error)'}}>picture_as_pdf</span>PDF
             </div>
           )}

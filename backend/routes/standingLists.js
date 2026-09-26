@@ -6,6 +6,7 @@
 // untouched by anything here.
 const { pool } = require('../db/pool');
 const { authenticate, requireAdmin, requireWriter } = require('../middleware/auth');
+const { canWriteInstitutes } = require('../lib/instituteAccess');
 
 async function plugin(fastify) {
   fastify.addHook('preHandler', authenticate);
@@ -91,6 +92,9 @@ async function plugin(fastify) {
 
     const { rows: [list] } = await pool.query('SELECT * FROM standing_lists WHERE id=$1', [id]);
     if (!list) return reply.code(404).send({ error: 'Standing list not found' });
+    if (!(await canWriteInstitutes(request.user, ids))) {
+      return reply.code(403).send({ error: 'You can only add firms you are assigned to.' });
+    }
 
     // Firm entries inherit the list's organisation / FY / name / dates
     const { rows } = await pool.query(
@@ -114,6 +118,9 @@ async function plugin(fastify) {
   // Remove a single firm from a list
   fastify.delete('/:id/firms/:instituteId', { preHandler: requireWriter }, async (request, reply) => {
     const { id, instituteId } = request.params;
+    if (!(await canWriteInstitutes(request.user, [instituteId]))) {
+      return reply.code(403).send({ error: 'You are not assigned to this firm.' });
+    }
     const { rowCount } = await pool.query(
       'DELETE FROM shortlists WHERE standing_list_id=$1 AND institute_id=$2', [id, instituteId]
     );

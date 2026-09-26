@@ -1,6 +1,9 @@
 // routes/shortlists.js
 const { pool } = require('../db/pool');
 const { authenticate, requireWriter, requireAdmin } = require('../middleware/auth');
+const { visibleInstitutesClause, canWriteInstitutes } = require('../lib/instituteAccess');
+
+const NOT_YOURS = { error: 'You are not assigned to this firm.' };
 
 async function plugin(fastify, opts) {
   fastify.addHook('preHandler', authenticate);
@@ -12,6 +15,8 @@ async function plugin(fastify, opts) {
     const params = [];
     if (client_id)    { params.push(client_id);    conditions.push(`sl.client_id=$${params.length}`); }
     if (institute_id) { params.push(institute_id); conditions.push(`sl.institute_id=$${params.length}`); }
+    // A firm's entries are shown only to people who can see that firm.
+    conditions.push(visibleInstitutesClause(request.user, 'sl.institute_id', params));
     const where = conditions.length ? 'WHERE ' + conditions.join(' AND ') : '';
     const q = `
       SELECT sl.*,
@@ -65,6 +70,7 @@ async function plugin(fastify, opts) {
             letter_type } = request.body;
     if (!institute_id || !shortlist_date)
       return reply.code(400).send({ error: 'institute_id and shortlist_date are required' });
+    if (!(await canWriteInstitutes(request.user, [institute_id]))) return reply.code(403).send(NOT_YOURS);
     const { rows: [row] } = await pool.query(
       `INSERT INTO shortlists
         (client_id, client_name_manual, institute_id, standing_list_name, fy, shortlist_date, valid_until, status, remarks, contract_amount, shortlist_doc, letter_type)
@@ -80,6 +86,10 @@ async function plugin(fastify, opts) {
     const { client_id, client_name_manual, institute_id, standing_list_name, fy,
             shortlist_date, valid_until, status, remarks, contract_amount, shortlist_doc,
             letter_type } = request.body;
+    // Both the firm it is on now and the one it is being moved to.
+    const { rows: [cur] } = await pool.query('SELECT institute_id FROM shortlists WHERE id=$1', [request.params.id]);
+    if (!cur) return reply.code(404).send({ error: 'Not found' });
+    if (!(await canWriteInstitutes(request.user, [cur.institute_id, institute_id]))) return reply.code(403).send(NOT_YOURS);
     const { rows } = await pool.query(
       `UPDATE shortlists SET client_id=$1, client_name_manual=$2, institute_id=$3, standing_list_name=$4,
         fy=$5, shortlist_date=$6, valid_until=$7, status=$8, remarks=$9,

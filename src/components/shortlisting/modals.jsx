@@ -1,3 +1,4 @@
+import { createPortal } from 'react-dom';
 /**
  * Every dialog the shortlisting screen opens.
  *
@@ -26,7 +27,9 @@ function LetterPreviewModal({ url, filename, onClose }) {
     window.open(url, '_blank', 'noopener');
   };
 
-  return (
+  // Portalled to <body>: inside the page's animated wrapper, `position: fixed`
+  // is measured against that wrapper, and the viewer came out a short strip.
+  return createPortal(
     <div style={{position:'fixed', inset:0, background:'rgba(0,0,0,.6)', zIndex:1300, display:'flex', flexDirection:'column'}}>
       <div style={{display:'flex', alignItems:'center', gap:10, padding:'10px 20px', background:'var(--surface)', borderBottom:'1px solid var(--border)', flexShrink:0}}>
         <div style={{fontWeight:700, fontSize:16, color:'var(--text)'}}>Letter Preview</div>
@@ -44,8 +47,8 @@ function LetterPreviewModal({ url, filename, onClose }) {
       </div>
       <iframe ref={frameRef} src={url} title="Letter preview"
         style={{flex:1, border:'none', background:'#666', width:'100%'}}/>
-    </div>
-  );
+    </div>,
+    document.body);
 }
 
 const DOC_LABELS = {

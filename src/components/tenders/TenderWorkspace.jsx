@@ -13,6 +13,7 @@ import TeamStep from './TeamStep.jsx';
 import SubmitStep from './SubmitStep.jsx';
 import CopyTender from './CopyTender.jsx';
 import Select from '../ui/Select.jsx';
+import { openSafeDocument } from '../../utils/safeWindow.js';
 
 /**
  * One tender, worked through in the order the work happens.
@@ -150,10 +151,8 @@ export default function TenderWorkspace({ tenderId, startAt, clients, institutes
       const pack = await api('GET', `/tenders/${tender.id}/cv?bidder_id=${bidder.id}`, null, token);
       if (!pack.cvs.length) { setErr(`Nobody is on ${bidder.display_name}’s team yet.`); return; }
       if (mode === 'word') { await cv.downloadDOCX(pack); return; }
-      const w = window.open('', '_blank');
-      w.document.write(cv.buildPrintHTML(pack));
-      w.document.close();
-      setTimeout(() => w.print(), 300);
+      const w = openSafeDocument(cv.buildPrintHTML(pack));
+      if (w) setTimeout(() => w.print(), 300);
     } catch (e) { setErr(e.message || 'Could not build the CVs.'); }
     finally { setBusy(false); }
   };

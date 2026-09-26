@@ -806,12 +806,12 @@ export default function Shortlisting({ institutes, clients, isAdmin, isEditor, i
                         <span className="material-icons-round" style={{fontSize:15}}>group_add</span>
                         Assign firms
                       </Btn>
-                      <button title="Edit shortlist" onClick={() => setListModal({ type:'edit', data:list })}
+                      <button title="Edit shortlist" aria-label="Edit shortlist" onClick={() => setListModal({ type:'edit', data:list })}
                         style={{width:30, height:30, borderRadius:50, border:'none', background:'transparent', color:'var(--text3)', cursor:'pointer'}}>
                         <span className="material-icons-round" style={{fontSize:17}}>edit</span>
                       </button>
                       {isAdmin && (
-                        <button title="Delete shortlist" onClick={() => setListModal({ type:'delete', data:list })}
+                        <button title="Delete shortlist" aria-label="Delete shortlist" onClick={() => setListModal({ type:'delete', data:list })}
                           style={{width:30, height:30, borderRadius:50, border:'none', background:'transparent', color:'var(--text3)', cursor:'pointer'}}
                           onMouseEnter={e=>{e.currentTarget.style.background='var(--error-light)'; e.currentTarget.style.color='var(--error)';}}
                           onMouseLeave={e=>{e.currentTarget.style.background='transparent'; e.currentTarget.style.color='var(--text3)';}}>
@@ -941,18 +941,13 @@ export default function Shortlisting({ institutes, clients, isAdmin, isEditor, i
           </button>
         )}
 
-        <div style={{height:28, width:1, background:'var(--border)', flexShrink:0}}/>
+        {/* Filters on one row, view controls on the next. */}
+        <div style={{flexBasis:'100%', height:0}} aria-hidden="true"/>
 
         {/* Group by toggle */}
-        <div style={{display:'flex', background:'var(--bg)', borderRadius:100, padding:3, gap:2, flexShrink:0}}>
+        <div className="seg" role="group" aria-label="Group by" style={{flexShrink:0}}>
           {[['fy','By FY'],['org','By Organization'],['firm','By Firm']].map(([v,lbl]) => (
-            <button key={v} onClick={() => setGroupBy(v)} style={{
-              padding:'5px 14px', borderRadius:100, border:'none', cursor:'pointer',
-              fontFamily:'inherit', fontSize:12.5, fontWeight:500, transition:'all .15s',
-              background: groupBy===v ? 'var(--surface)' : 'transparent',
-              color: groupBy===v ? 'var(--primary)' : 'var(--text3)',
-              boxShadow: groupBy===v ? 'var(--shadow)' : 'none',
-            }}>{lbl}</button>
+            <button key={v} type="button" aria-pressed={groupBy===v} onClick={() => setGroupBy(v)}>{lbl}</button>
           ))}
         </div>
 
