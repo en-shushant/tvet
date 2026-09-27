@@ -620,7 +620,7 @@ body {
 .breadcrumb-cur { color: var(--text2); font-weight: 500; }
 .topbar-title { font-size: 14px; font-weight: 500; flex: 1; color: var(--text); }
 
-.page-content { flex: 1; overflow-y: auto; padding: 6px 20px 32px; }
+.page-content { flex: 1; overflow-y: auto; --page-pad-b: 32px; padding: 6px 20px var(--page-pad-b); }
 /* The title the shell prints for screens that do not carry their own. */
 .shell-head { display: flex; align-items: flex-start; gap: 16px; flex-wrap: wrap; margin: 4px 0 18px; }
 .shell-head-sub { font-size: 13px; color: var(--text3); margin-top: 4px; }
@@ -1314,7 +1314,7 @@ md-filled-button.on-ink, md-filled-tonal-button.on-ink {
   /* Topbar: hide user name text, keep avatar */
   .topbar-user-name { display: none !important; }
   /* Page padding */
-  .page-content { padding: 14px 12px; }
+  .page-content { --page-pad-b: 14px; padding: 14px 12px var(--page-pad-b); }
   /* Grids */
   .grid-4, .grid-3 { grid-template-columns: 1fr 1fr; }
   .grid-2 { grid-template-columns: 1fr 1fr; }
@@ -1339,7 +1339,7 @@ md-filled-button.on-ink, md-filled-tonal-button.on-ink {
 
 @media (max-width: 480px) {
   .grid-4, .grid-3, .grid-2 { grid-template-columns: 1fr; }
-  .page-content { padding: 10px 10px; }
+  .page-content { --page-pad-b: 10px; padding: 10px 10px var(--page-pad-b); }
   .topbar { padding: 0 10px; }
   .modal-body { padding: 16px 14px; }
   .modal-header { padding: 14px 16px 12px; }
@@ -2286,8 +2286,8 @@ md-outlined-button.danger {
 .pf-line-voc2 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 .pf-line-trn  { grid-template-columns: 110px minmax(0, 1fr) 120px 96px 32px; }
 .pf-line-trn.is-tot { grid-template-columns: 110px minmax(0, 1fr) 80px 32px; }
-.pf-line-dates { grid-template-columns: repeat(4, minmax(0, 1fr)); }
-@media (max-width: 760px) { .pf-line-dates { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.pf-line-dates { grid-template-columns: repeat(2, minmax(0, 220px)); }
+@media (max-width: 520px) { .pf-line-dates { grid-template-columns: minmax(0, 1fr); } }
 .pf-mirror { display: flex; align-items: center; background: var(--muted); color: var(--text-2, #4b5563); }
 .pf-line-exp  { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 118px 118px 32px; }
 .pf-line-lang { grid-template-columns: minmax(0, 1.4fr) repeat(3, minmax(0, 1fr)) 32px; }
@@ -3013,3 +3013,8 @@ h1, h2, h3, .page-title, .tw-panel-title { text-wrap: balance; }
 .rule-level-block .rule-level-name { font-size: 13px; font-weight: 600; margin-bottom: 4px; }
 .rule-level-block .rule-level-row { border-top: none; padding: 3px 0; }
 .rule-level-role { font-size: 12px; color: var(--text2); min-width: 90px; }
+
+/* Sticky footers sit on the screen's real bottom edge. A sticky element stops at
+   the scroll container's padding edge, so with bottom: 0 the bar hovered 32px
+   up and the form scrolled into view beneath it. */
+.tw-foot { bottom: calc(-1 * var(--page-pad-b, 0px)); }

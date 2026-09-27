@@ -482,20 +482,14 @@ export default function PersonEditor({ person, rules, occupations, onSave, onCan
                   // The certificate prints English dates; type those and the Nepali
                   // dates fill in (or the other way round). Both are saved.
                   <>
-                  <div className="tw-hint pf-dates-hint">Type the dates as printed on the certificate, in either calendar — the other fills in.</div>
                   <div className="pf-line pf-line-dates">
-                    {[['start', 'Start'], ['end', 'End']].map(([k, lbl]) => (
-                      <Fragment key={k}>
-                        <Field label={`${lbl} · English`}>
-                          <input className="tw-in" type="date" value={q[`${k}_date_ad`] || ''}
-                            onChange={e => setTotDate(i, k, 'ad', e.target.value)} />
-                        </Field>
-                        <Field label={`${lbl} · Nepali (BS)`}>
-                          <input className="tw-in" value={q[`${k}_date`] || ''} inputMode="numeric" maxLength={10}
-                            placeholder={k === 'start' ? '2076/04/01' : '2076/04/21'}
-                            onChange={e => setTotDate(i, k, 'bs', maskBsDate(e.target.value))} />
-                        </Field>
-                      </Fragment>
+                    {[['start', 'Start date'], ['end', 'End date']].map(([k, lbl]) => (
+                      <Field key={k} label={`${lbl} (as on certificate)`}>
+                        {/* English only; the Nepali date is worked out and saved with it. An
+                            older TOT that has only a Nepali date shows its English equivalent. */}
+                        <input className="tw-in" type="date" value={q[`${k}_date_ad`] || bsToAdDate(q[`${k}_date`]) || ''}
+                          onChange={e => setTotDate(i, k, 'ad', e.target.value)} />
+                      </Field>
                     ))}
                   </div>
                   </>
