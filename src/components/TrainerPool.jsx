@@ -10,7 +10,7 @@ import { PERSON_TYPES, BLANK_PERSON, initials, normaliseQual, topGeneral, topVoc
 import PersonEditor from './pool/PersonEditor.jsx';
 import PersonProfile from './pool/PersonProfile.jsx';
 import { experienceYears } from '../utils/hrFit.js';
-import { BLANK_FILTERS, applyFilters, activeFilterCount, poolKpis, SORTS } from './pool/filters.js';
+import { BLANK_FILTERS, applyFilters, activeFilterCount, poolKpis, SORTS, isPending } from './pool/filters.js';
 import { GENERAL_LEVELS, VOCATIONAL_LEVELS, teachableLevels, teachableByRole, labelOfGeneral, labelOfVocational } from '../constants/education.js';
 import { useOccupations } from '../utils/useMasterData.js';
 import { api } from '../utils/api.js';
@@ -504,7 +504,15 @@ function TrainerPool({ isAdmin, isSuperAdmin }) {
     const saved = form.id
       ? await api('PUT', `/hr/people/${form.id}`, body, token)
       : await api('POST', '/hr/people', body, token);
-    toast(form.id ? 'Saved.' : `${form.full_name} added to the pool.`);
+    // An editor's save needs an admin/superadmin to confirm it before it
+    // counts as verified — said plainly here rather than left to be noticed
+    // later as a "Pending review" tag.
+    const needsReview = saved?.is_verified === false;
+    toast(form.id
+      ? (needsReview ? 'Saved — waiting on an admin or superadmin to verify it.' : 'Saved.')
+      : (needsReview
+        ? `${form.full_name} added to the pool — waiting on an admin or superadmin to verify it.`
+        : `${form.full_name} added to the pool.`));
     await load();
     // "Save and add another" stays in the editor with a blank form; otherwise
     // the record just saved is shown, which is how the entry gets checked.
@@ -551,7 +559,7 @@ function TrainerPool({ isAdmin, isSuperAdmin }) {
   }
   if (profile) {
     return (
-      <PersonProfile person={profile} token={token} canDelete={isSuperAdmin}
+      <PersonProfile person={profile} token={token} canDelete={isSuperAdmin} canVerify={isAdmin}
         onBack={() => setProfile(null)} onEdit={(p) => setEditing(p)} onDelete={deletePerson}
         onReload={() => openPerson(profile.id)} />
     );
@@ -615,6 +623,15 @@ function TrainerPool({ isAdmin, isSuperAdmin }) {
               <button key={l} type="button" aria-pressed={filters.role === v} onClick={() => setF({ role: v })}>{l}</button>
             ))}
           </div>
+          {kpi.pendingReview > 0 && (
+            <Btn className={filters.pending ? 'btn btn-primary btn-sm' : 'btn btn-secondary btn-sm'}
+              onClick={() => setF({ pending: !filters.pending })}
+              title="Added or edited by an editor, waiting on an admin or superadmin to confirm it">
+              <span className="material-icons-round" style={{ fontSize: 15, verticalAlign: 'middle', marginRight: 4 }}>
+                verified_user</span>
+              Pending review · {kpi.pendingReview}
+            </Btn>
+          )}
           <Btn className={wanted.length ? 'btn btn-primary btn-sm' : 'btn btn-secondary btn-sm'}
             onClick={() => setShowMatch(v => !v)}>
             <span className="material-icons-round" style={{ fontSize: 15, verticalAlign: 'middle', marginRight: 4 }}>
@@ -739,6 +756,11 @@ function TrainerPool({ isAdmin, isSuperAdmin }) {
                             <span className="pp-avatar pp-avatar-sm" aria-hidden="true">{initials(p.full_name)}</span>
                             <span>
                               <span className="pp-person-name">{p.full_name}</span>
+                              {isPending(p) && (
+                                <span className="badge badge-amber pp-pending-badge"
+                                  title="Added or edited by an editor, waiting on an admin or superadmin to confirm it">
+                                  Pending review</span>
+                              )}
                               <span className="pp-person-sub">
                                 {p.hr_no && <span className="pp-hr-no">{p.hr_no} · </span>}
                                 {p.person_type}

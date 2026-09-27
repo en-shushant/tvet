@@ -12,10 +12,13 @@ import { sectionOf } from './common.js';
 
 export const BLANK_FILTERS = {
   q: '', role: '', trades: [], requireAll: false, minEducation: '', minNstb: '',
-  tot: false, minYears: '', availability: 'available', missing: '',
+  tot: false, minYears: '', availability: 'available', missing: '', pending: false,
 };
 
 const isAvailable = (p) => p.is_active !== false;
+// An editor's addition or edit, waiting for an admin/superadmin to confirm it.
+// Records saved before this existed default to verified on the server.
+export const isPending = (p) => p.is_verified === false;
 const hasTot = (p) => (p.qualifications || []).some(q => q.kind === 'TOT');
 const hasNstb = (p) => (p.qualifications || []).some(q => sectionOf(q) === 'vocational');
 const hasDoc = (p, type) => (p.doc_types || []).includes(type);
@@ -51,13 +54,14 @@ export function applyFilters(people = [], f = BLANK_FILTERS, nowBS) {
       if (!Number.isInteger(y) || y < minYears) return false;
     }
     if (f.missing && hasDoc(p, f.missing)) return false;
+    if (f.pending && !isPending(p)) return false;
     return true;
   });
 }
 
 /** How many filters are narrowing the list, not counting the default "available only". */
 export const activeFilterCount = (f) => [f.q?.trim(), f.role, f.trades?.length, f.minEducation, f.minNstb,
-  f.tot, f.minYears, f.availability !== 'available', f.missing].filter(Boolean).length;
+  f.tot, f.minYears, f.availability !== 'available', f.missing, f.pending].filter(Boolean).length;
 
 /**
  * The pool at a glance.
@@ -83,6 +87,7 @@ export function poolKpis(people = []) {
   const nstb = available.filter(hasNstb).length;
   const missingCv = available.filter(p => !hasDoc(p, 'CV')).length;
   const missingCitizenship = available.filter(p => !hasDoc(p, 'Citizenship')).length;
+  const pendingReview = people.filter(isPending).length;
   return {
     total: people.length,
     available: available.length,
@@ -93,7 +98,7 @@ export function poolKpis(people = []) {
     thinTrades: trades.filter(t => t.count === 1).sort((a, b) => a.name.localeCompare(b.name)),
     tot, totPct: pct(tot, trainers.length),
     nstb, nstbPct: pct(nstb, available.length),
-    missingCv, missingCitizenship,
+    missingCv, missingCitizenship, pendingReview,
     readyPct: pct(available.filter(p => hasDoc(p, 'CV') && hasDoc(p, 'Citizenship')).length, available.length),
   };
 }

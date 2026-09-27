@@ -2,7 +2,7 @@
  * Narrowing the pool, and the numbers that describe it.
  */
 import { describe, it, expect } from 'vitest';
-import { applyFilters, poolKpis, activeFilterCount, BLANK_FILTERS, SORTS } from '../src/components/pool/filters.js';
+import { applyFilters, poolKpis, activeFilterCount, isPending, BLANK_FILTERS, SORTS } from '../src/components/pool/filters.js';
 
 const NOW = 2082;
 const gen = (level, year) => ({ kind: 'Academic', stream: 'General', education_level: level, passed_year: year });
@@ -109,5 +109,28 @@ describe('the pool at a glance', () => {
 
   it('does not divide by zero on an empty pool', () => {
     expect(poolKpis([])).toMatchObject({ total: 0, totPct: 0, nstbPct: 0, readyPct: 0 });
+  });
+});
+
+describe('review status — an editor\'s addition or edit waits for an admin/superadmin', () => {
+  const reviewPeople = [
+    { id: 20, full_name: 'Verified Person', person_type: 'Trainer', is_active: true, is_verified: true, qualifications: [] },
+    { id: 21, full_name: 'Pending Person', person_type: 'Trainer', is_active: true, is_verified: false, qualifications: [] },
+    { id: 22, full_name: 'Old Record', person_type: 'Trainer', is_active: true, qualifications: [] }, // saved before is_verified existed
+  ];
+
+  it('is pending only when the server says so explicitly', () => {
+    expect(isPending(reviewPeople[0])).toBe(false);
+    expect(isPending(reviewPeople[1])).toBe(true);
+    expect(isPending(reviewPeople[2])).toBe(false); // undefined defaults to verified, not pending
+  });
+
+  it('can be filtered to just the pending ones', () => {
+    const shown = applyFilters(reviewPeople, { ...BLANK_FILTERS, pending: true }, NOW).map(p => p.full_name);
+    expect(shown).toEqual(['Pending Person']);
+  });
+
+  it('is counted for the pool-at-a-glance regardless of availability', () => {
+    expect(poolKpis(reviewPeople).pendingReview).toBe(1);
   });
 });

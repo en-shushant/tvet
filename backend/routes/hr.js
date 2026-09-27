@@ -135,6 +135,13 @@ const personValues = (b) => PERSON_FIELDS.map(f =>
     : f === 'nationality' ? (b.nationality || 'Nepali')
     : (b[f] ?? null));
 
+/**
+ * Whether this request's actor can vouch for a person record outright. An
+ * editor's own additions/edits need a second pair of eyes; admin and
+ * superadmin ARE that second pair, so their own saves count as reviewed.
+ */
+const isReviewer = (request) => request.user.role === 'admin' || request.user.role === 'superadmin';
+
 async function plugin(fastify, opts) {
   fastify.addHook('preHandler', authenticate);
   fastify.addHook('preHandler', requireHRAccess);
@@ -424,15 +431,18 @@ async function plugin(fastify, opts) {
 
   fastify.post('/people', async (request, reply) => {
     if (!request.body?.full_name?.trim()) return reply.code(400).send({ error: 'A name is required' });
+    const verified = isReviewer(request);
     const client = await pool.connect();
     try {
       await client.query('BEGIN');
       const cols = PERSON_FIELDS.join(',');
       const holders = PERSON_FIELDS.map((_, i) => `$${i + 1}`).join(',');
+      const n = PERSON_FIELDS.length;
       const { rows: [p] } = await client.query(
-        `INSERT INTO hr_people (${cols}, created_by)
-         VALUES (${holders}, $${PERSON_FIELDS.length + 1}) RETURNING *`,
-        [...personValues(request.body), request.user.id]);
+        `INSERT INTO hr_people (${cols}, created_by, is_verified, verified_by, verified_at)
+         VALUES (${holders}, $${n + 1}, $${n + 2}, $${n + 3}, $${n + 4}) RETURNING *`,
+        [...personValues(request.body), request.user.id, verified,
+         verified ? request.user.id : null, verified ? new Date() : null]);
       await saveChildren(client, p.id, request.body);
       await client.query('COMMIT');
       return reply.code(201).send(p);
@@ -442,20 +452,36 @@ async function plugin(fastify, opts) {
 
   fastify.put('/people/:id', async (request, reply) => {
     if (!request.body?.full_name?.trim()) return reply.code(400).send({ error: 'A name is required' });
+    // A change is only as trustworthy as whoever last touched it: an editor's
+    // edit puts even a previously-verified record back up for review.
+    const verified = isReviewer(request);
     const client = await pool.connect();
     try {
       await client.query('BEGIN');
       const sets = PERSON_FIELDS.map((f, i) => `${f}=$${i + 1}`).join(',');
+      const n = PERSON_FIELDS.length;
       const { rows } = await client.query(
-        `UPDATE hr_people SET ${sets}, updated_at = NOW()
-          WHERE id = $${PERSON_FIELDS.length + 1} RETURNING *`,
-        [...personValues(request.body), request.params.id]);
+        `UPDATE hr_people SET ${sets}, is_verified = $${n + 1}, verified_by = $${n + 2},
+                verified_at = $${n + 3}, updated_at = NOW()
+          WHERE id = $${n + 4} RETURNING *`,
+        [...personValues(request.body), verified, verified ? request.user.id : null,
+         verified ? new Date() : null, request.params.id]);
       if (!rows.length) { await client.query('ROLLBACK'); return reply.code(404).send({ error: 'Not found' }); }
       await saveChildren(client, request.params.id, request.body);
       await client.query('COMMIT');
       return rows[0];
     } catch (e) { await client.query('ROLLBACK'); throw e; }
     finally { client.release(); }
+  });
+
+  /** A one-click sign-off: an admin/superadmin confirms the record as-is. */
+  fastify.post('/people/:id/verify', { preHandler: requireAdmin }, async (request, reply) => {
+    const { rows } = await pool.query(
+      `UPDATE hr_people SET is_verified = TRUE, verified_by = $1, verified_at = NOW()
+        WHERE id = $2 RETURNING *`,
+      [request.user.id, request.params.id]);
+    if (!rows.length) return reply.code(404).send({ error: 'Not found' });
+    return rows[0];
   });
 
   fastify.delete('/people/:id', { preHandler: requireSuperAdmin }, async (request) => {

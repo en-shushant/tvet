@@ -618,3 +618,42 @@ describe('every on-screen table keeps its layout under .page-content/.modal-body
     expect(read('src/index.css')).toMatch(/\.data-table \{ display: table !important; \}/);
   });
 });
+
+describe('editor additions/edits need an admin or superadmin to verify them', () => {
+  const hr = read('backend/routes/hr.js');
+  const server = read('backend/server.js');
+  const pool = read('src/components/TrainerPool.jsx');
+  const profile = read('src/components/pool/PersonProfile.jsx');
+
+  it('the server stamps verification from the actor\'s own role, not the request body', () => {
+    expect(hr).toMatch(/const isReviewer = \(request\) => request\.user\.role === 'admin' \|\| request\.user\.role === 'superadmin';/);
+    expect(hr).toMatch(/const verified = isReviewer\(request\);/g);
+    // Both create and edit re-stamp it — an editor's edit puts a previously
+    // verified record back up for review, not just a first-time addition.
+    expect([...hr.matchAll(/const verified = isReviewer\(request\);/g)]).toHaveLength(2);
+  });
+
+  it('a dedicated, admin-only endpoint signs a record off without re-submitting the form', () => {
+    expect(hr).toMatch(/fastify\.post\('\/people\/:id\/verify', \{ preHandler: requireAdmin \}/);
+    expect(hr).toMatch(/UPDATE hr_people SET is_verified = TRUE, verified_by = \$1, verified_at = NOW\(\)/);
+  });
+
+  it('the migration adds the review columns and defaults existing records to verified', () => {
+    expect(server).toMatch(/ALTER TABLE hr_people ADD COLUMN IF NOT EXISTS is_verified BOOLEAN DEFAULT TRUE/);
+    expect(server).toMatch(/ALTER TABLE hr_people ADD COLUMN IF NOT EXISTS verified_by UUID/);
+    expect(server).toMatch(/ALTER TABLE hr_people ADD COLUMN IF NOT EXISTS verified_at TIMESTAMPTZ/);
+  });
+
+  it('the roster flags a pending record and offers a way to filter to them', () => {
+    expect(pool).toMatch(/isPending\(p\) && \(/);
+    expect(pool).toMatch(/kpi\.pendingReview > 0 && \(/);
+    expect(pool).toMatch(/onClick=\{\(\) => setF\(\{ pending: !filters\.pending \}\)\}/);
+  });
+
+  it('the profile shows the status and lets an admin\'s admin\/superadmin verify it', () => {
+    expect(profile).toMatch(/const pending = person\.is_verified === false;/);
+    expect(profile).toMatch(/api\('POST', `\/hr\/people\/\$\{person\.id\}\/verify`, null, token\)/);
+    expect(profile).toMatch(/\{canVerify && pending && \(/);
+    expect(pool).toMatch(/canVerify=\{isAdmin\}/);
+  });
+});

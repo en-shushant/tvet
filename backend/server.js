@@ -796,6 +796,12 @@ async function runMigrations() {
        PERFORM setval('hr_people_no_seq', GREATEST(maxno, 1), maxno > 0);
      END $$`,
     `ALTER TABLE hr_people ADD CONSTRAINT hr_people_hr_no_key UNIQUE (hr_no)`,
+    // A review flag: an editor's addition needs an admin or superadmin to
+    // confirm it before it counts as verified. Existing rows default to
+    // verified so this does not retroactively flag the whole pool.
+    `ALTER TABLE hr_people ADD COLUMN IF NOT EXISTS is_verified BOOLEAN DEFAULT TRUE`,
+    `ALTER TABLE hr_people ADD COLUMN IF NOT EXISTS verified_by UUID`,
+    `ALTER TABLE hr_people ADD COLUMN IF NOT EXISTS verified_at TIMESTAMPTZ`,
   ];
   for (const sql of migrations) {
     try { await pool.query(sql); }

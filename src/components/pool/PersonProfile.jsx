@@ -17,10 +17,25 @@ import Select from '../ui/Select.jsx';
  * table is. The record follows in CV order, with the personal details and the
  * documents in a side column where they are looked up rather than read.
  */
-export default function PersonProfile({ person, token, canDelete, onBack, onEdit, onDelete, onReload }) {
+export default function PersonProfile({ person, token, canDelete, canVerify, onBack, onEdit, onDelete, onReload }) {
   const [uploading, setUploading] = useState(false);
   const [docType, setDocType] = useState('CV');
   const [err, setErr] = useState('');
+  const [verifying, setVerifying] = useState(false);
+
+  // Added or last edited by an editor: waiting on an admin/superadmin to
+  // confirm the record before it counts as verified. Records saved before
+  // this existed, or last touched by an admin/superadmin, are verified.
+  const pending = person.is_verified === false;
+  const verify = async () => {
+    setVerifying(true); setErr('');
+    try {
+      await api('POST', `/hr/people/${person.id}/verify`, null, token);
+      toast(`${person.full_name} marked as verified.`);
+      onReload();
+    } catch (e) { setErr(e.message || 'Could not verify this record.'); }
+    finally { setVerifying(false); }
+  };
 
   const quals = person.qualifications || [];
   const general = quals.filter(q => sectionOf(q) === 'general');
@@ -110,6 +125,9 @@ export default function PersonProfile({ person, token, canDelete, onBack, onEdit
             {person.hr_no && <span className="tw-tag gray pp-hr-no" title="Unique identifier">{person.hr_no}</span>}
             <span className="tw-tag gray">{person.person_type}</span>
             {person.is_active === false && <span className="tw-tag amber">No longer available</span>}
+            {pending
+              ? <span className="tw-tag amber" title="Added or edited by an editor, waiting on an admin or superadmin to confirm it">Pending review</span>
+              : <span className="tw-tag green" title="Confirmed by an admin or superadmin">Verified</span>}
           </div>
           {contact.length > 0 && (
             <div className="pp-contact">
@@ -125,6 +143,13 @@ export default function PersonProfile({ person, token, canDelete, onBack, onEdit
               onClick={() => onDelete(person)}>
               <span className="material-icons-round" style={{ fontSize: 19 }}>delete_outline</span>
             </button>
+          )}
+          {canVerify && pending && (
+            <Btn className="btn btn-secondary btn-sm" disabled={verifying} onClick={verify}>
+              <span className="material-icons-round" style={{ fontSize: 15, verticalAlign: 'middle', marginRight: 4 }}>
+                verified_user</span>
+              {verifying ? 'Verifying…' : 'Verify'}
+            </Btn>
           )}
           <Btn className="btn btn-primary btn-sm" onClick={() => onEdit(person)}>
             <span className="material-icons-round" style={{ fontSize: 15, verticalAlign: 'middle', marginRight: 4 }}>edit</span>

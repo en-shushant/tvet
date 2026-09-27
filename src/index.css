@@ -2234,6 +2234,7 @@ md-outlined-button.danger {
 .tw-tag.red { background: var(--error-light); color: var(--red); }
 .tw-tag.amber { background: var(--warning-light); color: var(--amber); }
 .tw-tag.gray { background: var(--bg2); color: var(--text2); }
+.tw-tag.green { background: var(--success-light); color: var(--success-dark); }
 
 /* Submit: one card per bidder, one row per document. */
 .tw-bidder { border: 1px solid var(--border); border-radius: var(--radius-lg); margin-bottom: 14px; overflow: hidden; }
@@ -3064,3 +3065,5 @@ span.pp-hr-no.tw-tag { font-family: var(--font-mono, monospace); }
    without opinions on spacing/columns, so it is safe to add anywhere. */
 .data-table { display: table !important; }
 .summary-table { display: table !important; width: 100%; }
+
+.pp-pending-badge { margin-left: 8px; vertical-align: middle; height: 18px; font-size: 11px; padding: 0 6px; }
