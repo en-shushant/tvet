@@ -2959,3 +2959,40 @@ body { font-feature-settings: 'cv11' 1; }            /* Inter's single-storey a:
 table, .kpi-value, .kp-value, .stat-value, .num, .tw-count { font-variant-numeric: tabular-nums; }
 h1, h2, h3, .page-title, .tw-panel-title { text-wrap: balance; }
 .page-title { letter-spacing: -0.015em; }
+
+/* ── Trainer type + NSTB lookup (person editor) ── */
+.pf-type-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.nstb { margin-top: 14px; border: 1px solid color-mix(in srgb, var(--brand) 22%, var(--border)); border-radius: 12px;
+  background: var(--brand-softer); padding: 14px 16px; }
+.nstb-title { font-size: 14px; font-weight: 600; color: var(--text); margin-bottom: 2px; }
+.nstb-grid { display: grid; grid-template-columns: 200px minmax(0, 1fr); gap: 16px; margin-top: 12px; align-items: start; }
+@media (max-width: 760px) { .nstb-grid { grid-template-columns: minmax(0, 1fr); } }
+.nstb-label { display: block; font-size: 12px; font-weight: 500; color: var(--text2); margin-bottom: 6px; }
+.nstb-dob { display: block; }
+.nstb-err { display: block; font-size: 12px; color: var(--t-rose); margin-top: 4px; }
+.nstb-row + .nstb-row { margin-top: 10px; }
+.nstb-row-in { display: flex; gap: 8px; align-items: center; }
+.nstb-row-in .tw-in { flex: 1; min-width: 0; }
+.nstb-go { flex-shrink: 0; }
+.nstb-go .material-icons-round { font-size: 17px; }
+.nstb-x { flex-shrink: 0; width: 30px; height: 30px; border: none; background: none; border-radius: 8px; color: var(--text3); cursor: pointer; display: inline-flex; align-items: center; justify-content: center; }
+.nstb-x:hover { background: var(--muted); color: var(--text); }
+.nstb-x .material-icons-round { font-size: 17px; }
+.nstb-msg { font-size: 12px; color: var(--text2); margin-top: 6px; }
+.nstb-msg.is-bad { color: var(--t-rose); }
+.nstb-msg.is-warn { color: var(--t-amber); }
+.nstb-card { margin-top: 8px; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; }
+.nstb-card-top { display: flex; justify-content: space-between; gap: 12px; align-items: flex-start; }
+.nstb-name { font-size: 14px; font-weight: 600; color: var(--text); }
+.nstb-sub { font-size: 12px; color: var(--text3); margin-top: 2px; }
+.nstb-badge { font-size: 12px; font-weight: 600; padding: 3px 9px; border-radius: 999px; white-space: nowrap; }
+.nstb-badge.is-ok { background: var(--t-teal-soft); color: var(--t-teal); }
+.nstb-badge.is-bad { background: var(--t-rose-soft); color: var(--t-rose); }
+.nstb-badge.is-warn { background: var(--t-amber-soft); color: var(--t-amber); }
+.nstb-facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 8px 14px; margin: 10px 0 0; }
+.nstb-facts dt { font-size: 11px; color: var(--text3); text-transform: uppercase; letter-spacing: .03em; }
+.nstb-facts dd { margin: 2px 0 0; font-size: 13px; color: var(--text); font-weight: 500; }
+.nstb-actions { margin-top: 10px; display: flex; justify-content: flex-end; }
+.nstb-added { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--t-teal); font-weight: 500; }
+.nstb-added .material-icons-round { font-size: 18px; }
+.nstb-more { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }

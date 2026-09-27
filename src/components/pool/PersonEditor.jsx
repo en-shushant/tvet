@@ -7,6 +7,7 @@ import { PERSON_TYPES, TRAINING_KINDS, FLUENCY, BLANK_PERSON, emptyGeneral, empt
          emptyTraining, emptyExp, emptyLang, sectionOf, DEFAULT_LANGUAGES, TOT_TITLE,
          maskBsDate, isBsDate, bsDaysBetween } from './common.js';
 import Select from '../ui/Select.jsx';
+import NstbLookup from './NstbLookup.jsx';
 
 /**
  * Adding or editing someone in the pool, as one page.
@@ -155,6 +156,37 @@ export default function PersonEditor({ person, rules, occupations, onSave, onCan
 
         <div className="tw-panel">
           <ErrorBanner msg={err} onDismiss={() => setErr('')} />
+
+          {/* ── Type ── */}
+          {/* Chosen first: it decides how their education is entered. A
+              vocational trainer's NSTB certificates can be read straight from
+              the published results by symbol number. */}
+          <section className="pf-section pf-type">
+            <div className="pf-type-head">
+              <h2 className="tw-panel-title" style={{ margin: 0 }}>Trainer type</h2>
+              <div className="tw-seg" role="group" aria-label="Trainer type">
+                <button type="button" aria-pressed={stream === 'general'} onClick={() => setStream('general')}>
+                  General</button>
+                <button type="button" aria-pressed={stream === 'vocational'} onClick={() => setStream('vocational')}>
+                  Vocational (NSTB)</button>
+              </div>
+            </div>
+            <p className="tw-hint" style={{ margin: '6px 0 0' }}>
+              {stream === 'vocational'
+                ? 'Qualified by NSTB skill tests. Enter their date of birth and a symbol number for each level passed; the certificates are added under Education below.'
+                : 'Qualified by school or university: SLC/SEE, +2, Diploma, Bachelor and above. Enter them under Education below.'}
+            </p>
+            {stream === 'vocational' && (
+              <NstbLookup
+                dob={form.date_of_birth} onDob={v => set('date_of_birth', v)}
+                occupations={occupations} personName={form.full_name}
+                existing={vocational.map(({ q }) => q)}
+                onAdd={row => addRow('qualifications', row)}
+                onFillPerson={({ full_name, father_name }) => setForm(f => ({ ...f,
+                  full_name: f.full_name?.trim() ? f.full_name : (full_name || ''),
+                  father_name: f.father_name?.trim() ? f.father_name : (father_name || '') }))}/>
+            )}
+          </section>
 
           {/* ── Personal ── */}
           <section ref={refs.personal} className="pf-section">

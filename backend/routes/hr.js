@@ -1,6 +1,8 @@
 // routes/hr.js — the human resource pool
 const { pool } = require('../db/pool');
 const { sendStoredFile } = require('../lib/safeDownload');
+const { lookupNstbResult, LookupError, makeLimiter } = require('../lib/nstbResult');
+const nstbLimit = makeLimiter();
 const { authenticate, requireHRAccess, requireAdmin } = require('../middleware/auth');
 
 /**
@@ -122,6 +124,21 @@ const personValues = (b) => PERSON_FIELDS.map(f =>
 async function plugin(fastify, opts) {
   fastify.addHook('preHandler', authenticate);
   fastify.addHook('preHandler', requireHRAccess);
+
+  // ─── NSTB result lookup ─────────────────────────────────────────────────────
+  // Fills a vocational certificate from the published skill-test result. Not
+  // stored, and limited per user: see lib/nstbResult.js.
+  fastify.post('/nstb-result', async (request, reply) => {
+    if (!nstbLimit(request.user.id)) {
+      return reply.code(429).send({ error: 'Too many lookups. Wait a few minutes and try again.' });
+    }
+    try {
+      return await lookupNstbResult(request.body || {});
+    } catch (e) {
+      if (e instanceof LookupError) return reply.code(e.status).send({ error: e.message });
+      throw e;
+    }
+  });
 
   // ─── Qualification rules ───────────────────────────────────────────────────
 
