@@ -502,3 +502,18 @@ describe('storing what a post accepts', () => {
     expect(fn).toMatch(/\.filter\(a => a\.any\.length\)/);
   });
 });
+
+describe('qualification rules from people', () => {
+  const hr = read('backend/routes/hr.js');
+  it('links a degree or training to its rule by name, or creates one', () => {
+    expect(hr).toMatch(/lower\(btrim\(name\)\) = lower\(\$2\)/);
+    expect(hr).toMatch(/INSERT INTO hr_qualification_rules \(name, kind, grant_scope, qual_level, notes, auto_created\)/);
+    expect(hr).toMatch(/q\.rule_id = await ruleFor\(client, q\)/);
+  });
+  it('leaves vocational certificates to the NSTB ladder', () => {
+    expect(hr).toMatch(/if \(!title \|\| vocational\) return null;/);
+  });
+  it('reports who holds each rule', () => {
+    expect(hr).toMatch(/AS holders/);
+  });
+});

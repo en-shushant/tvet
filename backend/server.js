@@ -570,8 +570,12 @@ async function runMigrations() {
     `ALTER TABLE hr_qualifications ADD COLUMN IF NOT EXISTS end_date_ad TEXT`,
     // Which NSTB levels of a named trade a rule grants (empty = just that occupation).
     `ALTER TABLE hr_rule_occupations ADD COLUMN IF NOT EXISTS levels TEXT[]`,
+    // Levels of that trade a holder may lead as main trainer (\`levels\` is co-trainer).
+    `ALTER TABLE hr_rule_occupations ADD COLUMN IF NOT EXISTS main_levels TEXT[]`,
     // The qualification's own level (a general level for academic, NSTB for vocational).
     `ALTER TABLE hr_qualification_rules ADD COLUMN IF NOT EXISTS qual_level TEXT`,
+    // Rules created automatically when a person's degree or training was new.
+    `ALTER TABLE hr_qualification_rules ADD COLUMN IF NOT EXISTS auto_created BOOLEAN DEFAULT FALSE`,
     `UPDATE hr_qualifications SET kind = 'Academic', stream = 'Vocational' WHERE kind = 'Skill Test'`,
     // Rows entered before the toggle: an NSTB level and no degree level was a
     // vocational certificate; anything else academic was general education.

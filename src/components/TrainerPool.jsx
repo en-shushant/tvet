@@ -11,7 +11,7 @@ import PersonEditor from './pool/PersonEditor.jsx';
 import PersonProfile from './pool/PersonProfile.jsx';
 import { experienceYears } from '../utils/hrFit.js';
 import { BLANK_FILTERS, applyFilters, activeFilterCount, poolKpis, SORTS } from './pool/filters.js';
-import { GENERAL_LEVELS, VOCATIONAL_LEVELS, teachableLevels, labelOfGeneral, labelOfVocational } from '../constants/education.js';
+import { GENERAL_LEVELS, VOCATIONAL_LEVELS, teachableLevels, teachableByRole, labelOfGeneral, labelOfVocational } from '../constants/education.js';
 import { useOccupations } from '../utils/useMasterData.js';
 import { api } from '../utils/api.js';
 import { getSession } from '../utils/auth.js';
@@ -98,6 +98,7 @@ function RuleForm({ rule, occupations, onSave, onClose }) {
     // objects; the form and the API both want plain ids.
     occupation_ids: rule ? (rule.occupations || []).map(o => o.id) : [],
     occupation_levels: Object.fromEntries((rule?.occupations || []).map(o => [o.id, o.levels || []])),
+    occupation_main_levels: Object.fromEntries((rule?.occupations || []).map(o => [o.id, o.main_levels || []])),
   }));
   const [err, setErr] = useState('');
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
@@ -106,8 +107,10 @@ function RuleForm({ rule, occupations, onSave, onClose }) {
   const setQualLevel = (lv) => setForm(f => {
     const auto = teachableLevels(f.kind, lv);
     if (!auto.length) return { ...f, qual_level: lv };
+    const { main } = teachableByRole(f.kind, lv);
     return { ...f, qual_level: lv, max_level: auto[auto.length - 1],
-      occupation_levels: Object.fromEntries(f.occupation_ids.map(id => [id, auto])) };
+      occupation_levels: Object.fromEntries(f.occupation_ids.map(id => [id, auto])),
+      occupation_main_levels: Object.fromEntries(f.occupation_ids.map(id => [id, main])) };
   });
 
   const save = async () => {
@@ -205,32 +208,43 @@ function RuleForm({ rule, occupations, onSave, onClose }) {
               // A ticked trade starts at its own level; the others are marked below.
               if (!on) {
                 const own = occupations.find(o => o.id === id)?.level;
-                const auto = teachableLevels(form.kind, form.qual_level);
-                set('occupation_levels', { ...form.occupation_levels, [id]: auto.length ? auto : own ? [own] : [] });
+                const { main, co } = teachableByRole(form.kind, form.qual_level);
+                set('occupation_levels', { ...form.occupation_levels, [id]: co.length ? co : own ? [own] : [] });
+                set('occupation_main_levels', { ...form.occupation_main_levels, [id]: main.length ? main : own ? [own] : [] });
               }
             }} />
           {form.occupation_ids.length > 0 && (
             <div className="rule-levels">
               <div style={{ fontSize:12, color: 'var(--text3)', margin: '10px 0 6px' }}>
-                Levels this qualifies them to train
+                Levels this qualifies them to train, as main trainer and as co-trainer
               </div>
               {form.occupation_ids.map(id => {
                 const o = occupations.find(x => x.id === id);
                 if (!o) return null;
-                const held = form.occupation_levels[id] || [];
+                const roles = [
+                  ['occupation_main_levels', 'Main trainer', 'Leads the class'],
+                  ['occupation_levels', 'Co-trainer', 'Assists; also counts as able to train'],
+                ];
                 return (
-                  <div key={id} className="rule-level-row">
-                    <span className="rule-level-name">{o.name}</span>
-                    <div className="seg" role="group" aria-label={`${o.name} levels`}>
-                      {NSTB_LEVELS.map(l => (
-                        <button key={l} type="button" aria-pressed={held.includes(l)}
-                          className={held.includes(l) ? 'on' : ''}
-                          onClick={() => set('occupation_levels', { ...form.occupation_levels,
-                            [id]: held.includes(l) ? held.filter(x => x !== l) : [...held, l] })}>
-                          {l === 'Professional' ? 'Level 4' : l}
-                        </button>
-                      ))}
-                    </div>
+                  <div key={id} className="rule-level-block">
+                    <div className="rule-level-name">{o.name}</div>
+                    {roles.map(([key, label, hint]) => {
+                      const held = form[key]?.[id] || [];
+                      return (
+                        <div key={key} className="rule-level-row">
+                          <span className="rule-level-role" title={hint}>{label}</span>
+                          <div className="seg" role="group" aria-label={`${o.name} — ${label} levels`}>
+                            {NSTB_LEVELS.map(l => (
+                              <button key={l} type="button" aria-pressed={held.includes(l)}
+                                onClick={() => set(key, { ...form[key],
+                                  [id]: held.includes(l) ? held.filter(x => x !== l) : [...held, l] })}>
+                                {l === 'Professional' ? 'Level 4' : l}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
                 );
               })}
@@ -259,6 +273,7 @@ function RulesTab({ rules, occupations, isAdmin, onReload, token, setErr }) {
       notes: form.notes, qual_level: levelOptions(form.kind).length ? form.qual_level : null,
       occupation_ids: form.grant_scope === 'occupations' ? form.occupation_ids : [],
       occupation_levels: form.grant_scope === 'occupations' ? form.occupation_levels : {},
+      occupation_main_levels: form.grant_scope === 'occupations' ? form.occupation_main_levels : {},
     };
     if (modal?.data?.id) await api('PUT', `/hr/rules/${modal.data.id}`, body, token);
     else await api('POST', '/hr/rules', body, token);
@@ -284,12 +299,18 @@ function RulesTab({ rules, occupations, isAdmin, onReload, token, setErr }) {
       return `Every occupation in ${r.sector}${r.max_level ? ` up to ${r.max_level}` : ''}`;
     }
     if (r.grant_scope === 'certificate_occupation') return 'The occupation named on the certificate';
-    const names = (r.occupations || []).map(o => o.levels?.length
-      ? `${o.name} (${describeLevels(o.levels)})` : o.name);
+    const names = (r.occupations || []).map(o => {
+      const parts = [o.main_levels?.length && `main ${describeLevels(o.main_levels)}`,
+                     o.levels?.length && `co ${describeLevels(o.levels)}`].filter(Boolean);
+      return parts.length ? `${o.name} (${parts.join('; ')})` : o.name;
+    });
     return names.length ? names.join(', ') : 'No occupations chosen yet';
   };
 
-  const shown = rules.filter(r => (kindF === 'all' || r.kind === kindF) && (!levelF || r.qual_level === levelF));
+  const needsTrades = (r) => r.grant_scope === 'occupations' && !(r.occupations || []).length;
+  const needCount = rules.filter(needsTrades).length;
+  const shown = rules.filter(r => (kindF === 'all' || (kindF === 'needs' ? needsTrades(r) : r.kind === kindF))
+    && (!levelF || r.qual_level === levelF));
   const levelsHere = levelOptions(kindF).filter(l => rules.some(r => r.qual_level === l.value && r.kind === kindF));
 
   return (
@@ -297,7 +318,8 @@ function RulesTab({ rules, occupations, isAdmin, onReload, token, setErr }) {
       {rules.length > 0 && (
         <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center', marginBottom: 12 }}>
           <div className="seg" role="group" aria-label="Kind">
-            {[{ value: 'all', label: 'All' }, ...QUAL_KINDS].map(k => (
+            {[{ value: 'all', label: 'All' }, ...QUAL_KINDS,
+              ...(needCount ? [{ value: 'needs', label: `Needs trades · ${needCount}` }] : [])].map(k => (
               <button key={k.value} type="button" aria-pressed={kindF === k.value}
                 onClick={() => { setKindF(k.value); setLevelF(''); }}>{k.label}</button>
             ))}
@@ -334,11 +356,22 @@ function RulesTab({ rules, occupations, isAdmin, onReload, token, setErr }) {
               )}
               {shown.map(r => (
                 <tr key={r.id}>
-                  <td style={{ fontWeight: 500, fontSize: 13 }}>{r.name}</td>
+                  <td style={{ fontWeight: 500, fontSize: 13 }}>
+                    {r.name}
+                    <div style={{ fontSize: 12, color: 'var(--text3)', fontWeight: 400, marginTop: 2 }}>
+                      {r.holders ? `Held by ${r.holders} ${r.holders === 1 ? 'person' : 'people'}` : 'Nobody holds it yet'}
+                      {r.auto_created && ' · added from a person’s record'}
+                    </div>
+                  </td>
                   <td><span className="badge badge-gray" style={{ fontSize:11 }}>{r.kind}</span></td>
                   <td style={{ fontSize: 12 }}>{r.qual_level
                     ? (isVocationalKind(r.kind) ? labelOfVocational(r.qual_level) : labelOfGeneral(r.qual_level)) : '—'}</td>
-                  <td style={{ fontSize: 12, color: 'var(--text2)' }}>{describe(r)}</td>
+                  <td style={{ fontSize: 12, color: 'var(--text2)' }}>
+                    {needsTrades(r)
+                      ? <span className="badge badge-amber" title="Holding this qualifies nobody for anything until its trades are chosen">
+                          Needs trades — edit to choose</span>
+                      : describe(r)}
+                  </td>
                   <td style={{ display: 'flex', gap: 4, justifyContent: 'flex-end' }}>
                     {isAdmin && <>
                       <Btn className="btn btn-ghost btn-sm" onClick={() => setModal({ type: 'edit', data: r })}>

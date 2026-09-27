@@ -8,6 +8,8 @@ import { PERSON_TYPES, TRAINING_KINDS, FLUENCY, BLANK_PERSON, emptyGeneral, empt
          maskBsDate, isBsDate, bsDaysBetween, adDaysBetween, adToBsDate, bsToAdDate } from './common.js';
 import Select from '../ui/Select.jsx';
 import NstbLookup from './NstbLookup.jsx';
+import NewTradeForm from './NewTradeForm.jsx';
+import SuggestInput from '../ui/SuggestInput.jsx';
 
 /**
  * Adding or editing someone in the pool, as one page.
@@ -41,6 +43,7 @@ export default function PersonEditor({ person, rules, occupations, onSave, onCan
     return v > g ? 'vocational' : 'general';
   });
   const [occQuery, setOccQuery] = useState('');
+  const [newTradeAt, setNewTradeAt] = useState(null);   // qualification index adding a trade
   // Usually the same as permanent; ticked only when it is not.
   const [tempDifferent, setTempDifferent] = useState(() => !!person?.temporary_address
     && String(person.temporary_address).trim() !== String(person.permanent_address || '').trim());
@@ -52,6 +55,28 @@ export default function PersonEditor({ person, rules, occupations, onSave, onCan
     setForm(f => ({ ...f, [key]: f[key].map((r, idx) => idx === i ? { ...r, [k]: v } : r) }));
   const addRow = (key, row) => setForm(f => ({ ...f, [key]: [...f[key], row] }));
   const delRow = (key, i) => setForm(f => ({ ...f, [key]: f[key].filter((_, idx) => idx !== i) }));
+  // Degrees and trainings are named after qualification rules: typing a name
+  // that matches one links it; a new name becomes a rule when the person is saved.
+  const ruleKind = (q) => (q.kind === 'TOT' ? 'TOT' : q.kind === 'Training' ? 'Training' : 'Academic');
+  const rulesOfKind = (kind) => rules.filter(r => r.kind === kind);
+  const ruleNamed = (kind, name) => {
+    const n = String(name || '').trim().toLowerCase();
+    return n ? rulesOfKind(kind).find(r => r.name.trim().toLowerCase() === n) : null;
+  };
+  // Only degree rules at this row's level: a Diploma row never suggests a Bachelor.
+  const degreeNames = (level) => (level ? rulesOfKind('Academic').filter(r => r.qual_level === level).map(r => r.name) : []);
+  const setTitle = (i, v) => setForm(f => ({ ...f, qualifications: f.qualifications.map((q, idx) => {
+    if (idx !== i) return q;
+    const kind = ruleKind(q);
+    const linked = rules.find(r => String(r.id) === String(q.rule_id));
+    // Follow the title only while the rule was chosen by the title (or not at all).
+    const follows = !q.rule_id || (linked && ruleNamed(kind, q.title)?.id === linked.id);
+    return { ...q, title: v, ...(follows ? { rule_id: ruleNamed(kind, v)?.id || '' } : {}) };
+  }) }));
+  const ruleHint = (q, fallback) => (String(q.title || '').trim() && !q.rule_id
+    ? `“${q.title.trim()}” is new — it will be added to Qualification rules when saved, to choose its trades there.`
+    : fallback);
+
   // A TOT date typed in one calendar fills the other.
   const setTotDate = (i, which, cal, v) => setForm(f => ({ ...f, qualifications: f.qualifications.map((q, idx) => {
     if (idx !== i) return q;
@@ -311,8 +336,8 @@ export default function PersonEditor({ person, rules, occupations, onSave, onCan
                         </Select>
                       </Field>
                       <Field label="Course / faculty">
-                        <input className="tw-in" value={q.title || ''} placeholder="e.g. Diploma in Civil Engineering"
-                          onChange={e => setRow('qualifications', i, 'title', e.target.value)} />
+                        <SuggestInput className="tw-in" value={q.title || ''} placeholder="e.g. Diploma in Civil Engineering"
+                          suggestions={degreeNames(q.education_level)} onChange={v => setTitle(i, v)} />
                       </Field>
                       <Field label="Passed (BS)">
                         <input className="tw-in num" value={q.passed_year || ''} placeholder="2072" inputMode="numeric"
@@ -333,11 +358,12 @@ export default function PersonEditor({ person, rules, occupations, onSave, onCan
                         <input className="tw-in" value={q.board || ''} placeholder="e.g. TU, CTEVT, NEB"
                           onChange={e => setRow('qualifications', i, 'board', e.target.value)} />
                       </Field>
-                      <Field label="Qualifies them to train" hint="Pick the rule that turns this degree into trades.">
+                      <Field label="Qualifies them to train" hint={ruleHint(q, 'Picked from the course name when it matches a rule.')}>
                         <Select className="tw-in" value={q.rule_id || ''}
                           onChange={e => setRow('qualifications', i, 'rule_id', e.target.value)}>
-                          <option value="">Nothing on its own</option>
-                          {rules.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
+                          <option value="">{String(q.title || '').trim() ? 'New rule from this course name' : 'Nothing on its own'}</option>
+                          {rulesOfKind('Academic').filter(r => !q.education_level || !r.qual_level || r.qual_level === q.education_level || String(r.id) === String(q.rule_id))
+                            .map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
                         </Select>
                       </Field>
                     </div>
@@ -365,9 +391,12 @@ export default function PersonEditor({ person, rules, occupations, onSave, onCan
                     </Field>
                     <Field label="Trade on the certificate">
                       <Select className="tw-in" value={q.occupation_id || ''}
-                        onChange={e => setRow('qualifications', i, 'occupation_id', e.target.value)}>
+                        onChange={e => e.target.value === '__new'
+                          ? setNewTradeAt(i)
+                          : setRow('qualifications', i, 'occupation_id', e.target.value)}>
                         <option value="">Choose the occupation…</option>
-                        {occupations.map(o => <option key={o.id} value={o.id}>{o.name}</option>)}
+                        {occupations.map(o => <option key={o.id} value={o.id}>{o.name}{o.level ? ` · ${o.level}` : ''}</option>)}
+                        <option value="__new">+ Add a new trade…</option>
                       </Select>
                     </Field>
                     <Field label="Passed (BS)">
@@ -376,6 +405,10 @@ export default function PersonEditor({ person, rules, occupations, onSave, onCan
                     </Field>
                     <RemoveBtn label="this certificate" onClick={() => delRow('qualifications', i)} />
                   </div>
+                  {newTradeAt === i && (
+                    <NewTradeForm level={q.level} onCancel={() => setNewTradeAt(null)}
+                      onDone={occ => { setRow('qualifications', i, 'occupation_id', occ.id); setNewTradeAt(null); }}/>
+                  )}
                   <div className="pf-line pf-line-voc2">
                     <Field label="Certificate number">
                       <input className="tw-in" value={q.certificate_no || ''}
@@ -421,8 +454,8 @@ export default function PersonEditor({ person, rules, occupations, onSave, onCan
                     </Select>
                   </Field>
                   <Field label="Title">
-                    <input className="tw-in" value={q.title || ''} placeholder={q.kind === 'TOT' ? TOT_TITLE : 'e.g. Basic Computer Application'}
-                      onChange={e => setRow('qualifications', i, 'title', e.target.value)} />
+                    <SuggestInput className="tw-in" value={q.title || ''} placeholder={q.kind === 'TOT' ? TOT_TITLE : 'e.g. Basic Computer Application'}
+                      suggestions={rulesOfKind(ruleKind(q)).map(r => r.name)} onChange={v => setTitle(i, v)} />
                   </Field>
                   {q.kind === 'TOT' ? (() => {
                     const auto = adDaysBetween(q.start_date_ad, q.end_date_ad) ?? bsDaysBetween(q.start_date, q.end_date);
@@ -476,11 +509,11 @@ export default function PersonEditor({ person, rules, occupations, onSave, onCan
                     <input className="tw-in" value={q.certificate_no || ''}
                       onChange={e => setRow('qualifications', i, 'certificate_no', e.target.value)} />
                   </Field>
-                  <Field label="Qualifies them to train">
+                  <Field label="Qualifies them to train" hint={ruleHint(q)}>
                     <Select className="tw-in" value={q.rule_id || ''}
                       onChange={e => setRow('qualifications', i, 'rule_id', e.target.value)}>
-                      <option value="">Nothing on its own</option>
-                      {rules.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
+                      <option value="">{String(q.title || '').trim() ? 'New rule from this title' : 'Nothing on its own'}</option>
+                      {rulesOfKind(ruleKind(q)).map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
                     </Select>
                   </Field>
                 </div>

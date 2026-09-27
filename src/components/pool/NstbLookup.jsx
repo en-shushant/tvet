@@ -14,6 +14,7 @@ import { api } from '../../utils/api.js';
 import { getSession } from '../../utils/auth.js';
 import { labelOfVocational } from '../../constants/education.js';
 import { maskBsDate, isBsDate } from './common.js';
+import NewTradeForm from './NewTradeForm.jsx';
 
 const OUTCOME = {
   pass:     { label: 'Passed',   tone: 'ok' },
@@ -52,6 +53,7 @@ export function certificateFrom(result, occupations) {
 
 export default function NstbLookup({ dob, onDob, occupations = [], personName, onAdd, onFillPerson, existing = [] }) {
   const [rows, setRows] = useState([blankRow()]);
+  const [addingTrade, setAddingTrade] = useState(null);   // row index
   const setRow = (i, patch) => setRows(rs => rs.map((r, k) => (k === i ? { ...r, ...patch } : r)));
   const dobOk = isBsDate(dob);
 
@@ -154,8 +156,15 @@ export default function NstbLookup({ dob, onDob, occupations = [], personName, o
                       )}
                     </dl>
                     {nameDiffers && <div className="nstb-msg is-warn">The name on this result differs from the name entered above — check it is the same person.</div>}
-                    {!matched(res) && res.occupation && (
-                      <div className="nstb-msg is-warn">“{res.occupation}” is not in the occupation list; the trade will need choosing on the certificate.</div>
+                    {!matched(res) && res.occupation && addingTrade !== i && (
+                      <div className="nstb-msg is-warn">
+                        “{res.occupation}” is not in the occupation list yet.{' '}
+                        <button type="button" className="nstb-link" onClick={() => setAddingTrade(i)}>Add it as a trade</button>
+                      </div>
+                    )}
+                    {addingTrade === i && (
+                      <NewTradeForm initialName={res.occupation} level={res.level}
+                        onCancel={() => setAddingTrade(null)} onDone={() => setAddingTrade(null)}/>
                     )}
                     {!res.level && <div className="nstb-msg is-warn">The level could not be read; it will need choosing on the certificate.</div>}
                     <div className="nstb-actions">

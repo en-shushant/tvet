@@ -47,3 +47,18 @@ describe('picker criteria', () => {
     expect(c[0]).toMatchObject({ key: 'occ', label: 'Plumber Level 2+', ok: true });
   });
 });
+
+import { teachableByRole } from '../src/constants/education.js';
+describe('main trainer and co-trainer levels', () => {
+  it('fills co-trainer with every level covered and main trainer one below the top', () => {
+    expect(teachableByRole('Academic', 'Diploma')).toEqual({ main: ['Level 1', 'Level 2'], co: ['Level 1', 'Level 2', 'Level 3'] });
+    expect(teachableByRole('Skill Test', 'Level 2')).toEqual({ main: ['Level 1'], co: ['Level 1', 'Level 2'] });
+    expect(teachableByRole('Academic', 'SLC/SEE')).toEqual({ main: ['Level 1'], co: ['Level 1'] });
+  });
+  it('lets a rule name someone main trainer outright', () => {
+    const person = { eligible_occupations: occ.filter(o => o.id === 2), main_occupations: [2] };
+    // Holding only Level 2 would not make them main trainer for Level 2; the rule does.
+    expect(fitsTrainerLevel(person, occ[1], occ, 'Main Trainer')).toBe(true);
+    expect(fitsTrainerLevel({ ...person, main_occupations: [] }, occ[1], occ, 'Main Trainer')).toBe(false);
+  });
+});

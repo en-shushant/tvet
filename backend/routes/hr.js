@@ -99,6 +99,19 @@ const ELIGIBILITY_CTE = `
     UNION
     SELECT person_id, occupation_id FROM hr_person_occupations WHERE mode = 'add'
   ),
+  -- Main-trainer grants a rule marks explicitly: every occupation of the trade's
+  -- name at the marked main-trainer levels. Without them the team picker falls
+  -- back to "one level above the class".
+  main_granted AS (
+    SELECT q.person_id, o2.id AS occupation_id
+      FROM hr_qualifications q
+      JOIN hr_qualification_rules r ON r.id = q.rule_id AND r.is_active
+      JOIN hr_rule_occupations ro ON ro.rule_id = r.id AND cardinality(ro.main_levels) > 0
+      JOIN occupations o1 ON o1.id = ro.occupation_id
+      JOIN occupations o2 ON o2.is_active AND lower(trim(o2.name)) = lower(trim(o1.name))
+                         AND o2.level = ANY(ro.main_levels)
+     WHERE r.grant_scope = 'occupations'
+  ),
   eligible AS (
     SELECT w.person_id, w.occupation_id
       FROM with_adds w
@@ -146,8 +159,9 @@ async function plugin(fastify, opts) {
     const { rows } = await pool.query(`
       SELECT r.*,
              COALESCE(json_agg(json_build_object('id', o.id, 'name', o.name, 'sector', o.sector, 'level', o.level,
-                                        'levels', coalesce(ro.levels, '{}'))
-                      ORDER BY o.name) FILTER (WHERE o.id IS NOT NULL), '[]') AS occupations
+                                        'levels', coalesce(ro.levels, '{}'), 'main_levels', coalesce(ro.main_levels, '{}'))
+                      ORDER BY o.name) FILTER (WHERE o.id IS NOT NULL), '[]') AS occupations,
+             (SELECT COUNT(DISTINCT q.person_id)::int FROM hr_qualifications q WHERE q.rule_id = r.id) AS holders
         FROM hr_qualification_rules r
         LEFT JOIN hr_rule_occupations ro ON ro.rule_id = r.id
         LEFT JOIN occupations o ON o.id = ro.occupation_id AND o.is_active
@@ -158,19 +172,20 @@ async function plugin(fastify, opts) {
   });
 
   const RULE_LEVELS = ['Level 1', 'Level 2', 'Level 3', 'Professional'];
-  const saveRuleOccupations = async (client, ruleId, ids, levelsById = {}) => {
+  const saveRuleOccupations = async (client, ruleId, ids, levelsById = {}, mainById = {}) => {
     await client.query('DELETE FROM hr_rule_occupations WHERE rule_id = $1', [ruleId]);
     const clean = [...new Set((ids || []).map(n => parseInt(n, 10)).filter(Number.isInteger))];
     for (const id of clean) {
-      const lv = [...new Set((levelsById?.[id] || []).filter(l => RULE_LEVELS.includes(l)))];
+      const clean = (list) => [...new Set((list || []).filter(l => RULE_LEVELS.includes(l)))];
+      const lv = clean(levelsById?.[id]), main = clean(mainById?.[id]);
       await client.query(
-        `INSERT INTO hr_rule_occupations (rule_id, occupation_id, levels)
-         VALUES ($1, $2, $3) ON CONFLICT DO NOTHING`, [ruleId, id, lv.length ? lv : null]);
+        `INSERT INTO hr_rule_occupations (rule_id, occupation_id, levels, main_levels)
+         VALUES ($1, $2, $3, $4) ON CONFLICT DO NOTHING`, [ruleId, id, lv.length ? lv : null, main.length ? main : null]);
     }
   };
 
   fastify.post('/rules', { preHandler: requireAdmin }, async (request, reply) => {
-    const { name, kind, grant_scope, sector, max_level, notes, occupation_ids, occupation_levels, qual_level } = request.body || {};
+    const { name, kind, grant_scope, sector, max_level, notes, occupation_ids, occupation_levels, occupation_main_levels, qual_level } = request.body || {};
     if (!name?.trim()) return reply.code(400).send({ error: 'A name is required' });
     if (grant_scope === 'sector' && !sector) {
       return reply.code(400).send({ error: 'A sector-wide rule needs a sector' });
@@ -183,7 +198,7 @@ async function plugin(fastify, opts) {
          VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING *`,
         [name.trim(), kind || 'Academic', grant_scope || 'occupations',
          sector || null, (kind === 'Skill Test' || qual_level) ? (max_level || null) : null, notes || null, qual_level || null]);
-      await saveRuleOccupations(client, rule.id, occupation_ids, occupation_levels);
+      await saveRuleOccupations(client, rule.id, occupation_ids, occupation_levels, occupation_main_levels);
       await client.query('COMMIT');
       return reply.code(201).send(rule);
     } catch (e) { await client.query('ROLLBACK'); throw e; }
@@ -191,7 +206,7 @@ async function plugin(fastify, opts) {
   });
 
   fastify.put('/rules/:id', { preHandler: requireAdmin }, async (request, reply) => {
-    const { name, kind, grant_scope, sector, max_level, notes, occupation_ids, occupation_levels, qual_level } = request.body || {};
+    const { name, kind, grant_scope, sector, max_level, notes, occupation_ids, occupation_levels, occupation_main_levels, qual_level } = request.body || {};
     const client = await pool.connect();
     try {
       await client.query('BEGIN');
@@ -202,7 +217,7 @@ async function plugin(fastify, opts) {
         [name, kind || 'Academic', grant_scope || 'occupations',
          sector || null, (kind === 'Skill Test' || qual_level) ? (max_level || null) : null, notes || null, request.params.id, qual_level || null]);
       if (!rows.length) { await client.query('ROLLBACK'); return reply.code(404).send({ error: 'Not found' }); }
-      await saveRuleOccupations(client, request.params.id, occupation_ids, occupation_levels);
+      await saveRuleOccupations(client, request.params.id, occupation_ids, occupation_levels, occupation_main_levels);
       await client.query('COMMIT');
       return rows[0];
     } catch (e) { await client.query('ROLLBACK'); throw e; }
@@ -261,6 +276,9 @@ async function plugin(fastify, opts) {
                                   ORDER BY o.name)
                     FROM eligible e JOIN occupations o ON o.id = e.occupation_id AND o.is_active
                    WHERE e.person_id = p.id), '[]') AS eligible_occupations,
+        -- Occupations a rule explicitly lets them lead as main trainer.
+        COALESCE((SELECT json_agg(DISTINCT m.occupation_id) FROM main_granted m
+                   WHERE m.person_id = p.id), '[]') AS main_occupations,
         (SELECT COUNT(*)::int FROM hr_qualifications x WHERE x.person_id = p.id) AS qualification_count,
         -- Enough of each qualification to check someone against a tender's
         -- stated minimums without a second request per candidate.
@@ -319,12 +337,38 @@ async function plugin(fastify, opts) {
     };
   });
 
+  /**
+   * The rule a degree, training or TOT row belongs to, found by name — or
+   * created, so every qualification anyone enters shows up under Qualification
+   * rules, where its trades and levels are filled in once for everyone holding
+   * it. Vocational certificates are left alone: the NSTB level ladder already
+   * decides what they cover. A row that names a rule already keeps it.
+   */
+  const AUTO_RULE_NOTE = 'Added from the trainer pool. Choose the trades (and levels) it qualifies someone to train.';
+  const ruleFor = async (client, q) => {
+    if (q.rule_id) return q.rule_id;
+    const title = String(q.title || '').trim();
+    const vocational = (q.kind || 'Academic') === 'Academic' && q.stream === 'Vocational';
+    if (!title || vocational) return null;
+    const kind = q.kind === 'TOT' ? 'TOT' : q.kind === 'Training' ? 'Training' : 'Academic';
+    const { rows: [found] } = await client.query(
+      `SELECT id FROM hr_qualification_rules
+        WHERE is_active AND kind = $1 AND lower(btrim(name)) = lower($2) ORDER BY id LIMIT 1`, [kind, title]);
+    if (found) return found.id;
+    const { rows: [made] } = await client.query(
+      `INSERT INTO hr_qualification_rules (name, kind, grant_scope, qual_level, notes, auto_created)
+       VALUES ($1, $2, 'occupations', $3, $4, TRUE) RETURNING id`,
+      [title, kind, kind === 'Academic' ? (q.education_level || null) : null, AUTO_RULE_NOTE]);
+    return made.id;
+  };
+
   /** Replaces a person's qualifications, experience and overrides wholesale. */
   const saveChildren = async (client, personId, body) => {
     await client.query('DELETE FROM hr_qualifications WHERE person_id = $1', [personId]);
     const quals = body.qualifications || [];
     for (let i = 0; i < quals.length; i++) {
-      const q = quals[i];
+      const q = { ...quals[i] };
+      q.rule_id = await ruleFor(client, q);
       await client.query(
         `INSERT INTO hr_qualifications (person_id, kind, rule_id, title, institution, board,
            occupation_id, level, passed_year, duration_hours, division, certificate_no, remarks, sort_order,

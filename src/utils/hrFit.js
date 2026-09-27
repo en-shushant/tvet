@@ -206,7 +206,10 @@ export function rankNeededFor(occupation, allOccupations = [], main = false) {
 export function fitsTrainerLevel(person, occupation, allOccupations = [], title = '') {
   if (!occupation) return true;
   const eligible = person?.eligible_occupations || [];
-  const needed = rankNeededFor(occupation, allOccupations, isMainTrainerRole(title));
+  const main = isMainTrainerRole(title);
+  // A qualification rule can name the levels someone may lead as main trainer.
+  if (main && (person?.main_occupations || []).some(id => String(id) === String(occupation.id))) return true;
+  const needed = rankNeededFor(occupation, allOccupations, main);
   if (needed == null) return eligible.some(o => o.id === occupation.id);
   // The highest level of this trade they hold, read off what they are eligible for.
   const held = Math.max(0, ...eligible

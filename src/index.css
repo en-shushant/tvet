@@ -3000,3 +3000,16 @@ h1, h2, h3, .page-title, .tw-panel-title { text-wrap: balance; }
 .nstb-more { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
 
 .pf-dates-hint { margin: 2px 0 6px; }
+
+/* Inline "add a trade" inside the person form */
+.new-trade { margin: 8px 0; padding: 12px 14px; border: 1px dashed color-mix(in srgb, var(--brand) 40%, var(--border)); border-radius: 10px; background: var(--brand-softer); }
+.new-trade-title { font-size: 13px; font-weight: 600; margin-bottom: 8px; }
+.new-trade-grid { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 2fr) minmax(0, 1fr); gap: 10px; }
+.new-trade-grid label { display: block; }
+.new-trade-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 10px; }
+.nstb-link { background: none; border: none; padding: 0; color: var(--brand); font: inherit; font-weight: 600; cursor: pointer; text-decoration: underline; text-underline-offset: 2px; }
+
+.rule-level-block { padding: 8px 0; border-top: 1px solid var(--border); }
+.rule-level-block .rule-level-name { font-size: 13px; font-weight: 600; margin-bottom: 4px; }
+.rule-level-block .rule-level-row { border-top: none; padding: 3px 0; }
+.rule-level-role { font-size: 12px; color: var(--text2); min-width: 90px; }

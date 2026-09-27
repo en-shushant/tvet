@@ -137,3 +137,15 @@ export function teachableLevels(kind, level) {
   const n = (kind === 'Skill Test' ? TEACH_UP_TO_VOCATIONAL : kind === 'Academic' ? TEACH_UP_TO_GENERAL : {})[level] || 0;
   return LADDER.slice(0, n);
 }
+
+/**
+ * The levels a qualification lets someone teach, split by role. A co-trainer
+ * teaches every level the qualification covers; a main trainer leads one level
+ * below the highest (a Level 3 holder leads up to Level 2). Where it covers a
+ * single level, that level serves for both.
+ */
+export function teachableByRole(kind, level) {
+  const co = teachableLevels(kind, level);
+  const main = co.length > 1 ? co.slice(0, -1) : co;
+  return { main, co };
+}
