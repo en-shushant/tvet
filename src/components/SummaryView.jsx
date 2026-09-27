@@ -377,7 +377,7 @@ function SummaryView({institutes, clients}) {
             ) : (
               <div style={{background:'var(--surface)',border:'1px solid var(--border)',borderRadius:12,overflow:'hidden'}}>
                 <div className="table-wrap">
-                  <table style={{fontSize:12,borderCollapse:'collapse',width:'100%'}}>
+                  <table className="data-table" style={{fontSize:12,borderCollapse:'collapse',width:'100%'}}>
                     <thead>
                       <tr style={{background:'var(--bg2)'}}>
                         <th rowSpan="2" style={{padding:'6px 10px',textAlign:'left',borderBottom:'2px solid var(--border)',fontSize:11,fontWeight:700,color:'var(--text2)',whiteSpace:'nowrap'}}>Occupation</th>

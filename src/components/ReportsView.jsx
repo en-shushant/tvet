@@ -102,7 +102,7 @@ function ColumnLayoutPicker({ options, selected, onToggle, locked = ['sn', 'name
   });
   return (
     <div style={{overflowX: 'auto', border: '1px solid var(--border)', borderRadius: 10}}>
-      <table style={{borderCollapse: 'collapse', width: '100%'}}>
+      <table className="data-table" style={{borderCollapse: 'collapse', width: '100%'}}>
         <thead>
           <tr>
             {options.map(c => {
@@ -1664,7 +1664,7 @@ function ReportsView({ institutes, clients }) {
                           Comparative — Appeared Trainees by Occupation &amp; Firm
                           {fyRangeLabel && <span style={{fontWeight:400, fontSize:11, marginLeft:8, color:'var(--text3)'}}>({fyRangeLabel})</span>}
                         </div>
-                        <table style={{borderCollapse:'collapse', width:'100%', minWidth: firmData.length * 120 + 200}}>
+                        <table className="data-table" style={{borderCollapse:'collapse', width:'100%', minWidth: firmData.length * 120 + 200}}>
                           <thead>
                             <tr>
                               <th style={{...TH2, textAlign:'left'}}>Occupation</th>

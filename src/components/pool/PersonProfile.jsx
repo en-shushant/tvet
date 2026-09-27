@@ -107,6 +107,7 @@ export default function PersonProfile({ person, token, canDelete, onBack, onEdit
             {person.full_name_np && <span className="pp-np">{person.full_name_np}</span>}
           </h1>
           <div className="pp-tags">
+            {person.hr_no && <span className="tw-tag gray pp-hr-no" title="Unique identifier">{person.hr_no}</span>}
             <span className="tw-tag gray">{person.person_type}</span>
             {person.is_active === false && <span className="tw-tag amber">No longer available</span>}
           </div>

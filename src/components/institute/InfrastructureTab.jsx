@@ -96,7 +96,7 @@ export function InfrastructureTab({ instituteId, token, canEdit }) {
       </div>
       {err && <div style={{color:'#c00', marginBottom:8, fontSize:13}}>{err}</div>}
       <div className="table-wrap">
-        <table style={{width:'100%', borderCollapse:'collapse'}}>
+        <table className="data-table" style={{width:'100%', borderCollapse:'collapse'}}>
           <thead>
             <tr>{INFRA_COLS.map(h=><th key={h} style={thS}>{h}</th>)}{canEdit && <th style={thS}>Actions</th>}</tr>
           </thead>
@@ -147,7 +147,7 @@ export function InfrastructureTab({ instituteId, token, canEdit }) {
         <div style={{marginTop:16, border:'1px solid var(--border)', borderRadius:6, padding:12, background:'var(--bg2)'}}>
           <div style={{fontWeight:600, fontSize:13, marginBottom:8}}>Add rows</div>
           <div className="table-wrap">
-            <table style={{width:'100%', borderCollapse:'collapse'}}>
+            <table className="data-table" style={{width:'100%', borderCollapse:'collapse'}}>
               <thead>
                 <tr>
                   <th style={thS}>#</th>

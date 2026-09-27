@@ -692,7 +692,7 @@ function App() {
               </div>
             </div>
           )}
-          {screen === 'hr' && canAccessHr && <TrainerPool isAdmin={isAdmin}/>}
+          {screen === 'hr' && canAccessHr && <TrainerPool isAdmin={isAdmin} isSuperAdmin={isSuperAdmin}/>}
           {screen === 'hr' && !canAccessHr && (
             <div className="empty-state">
               <div className="empty-state-icon">

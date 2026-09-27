@@ -126,7 +126,7 @@ function LocationsEditor({token}) {
               <span style={{fontWeight:600,fontSize:13}}>Local Levels — {district.name} ({(district.local_levels||[]).length})</span>
               <Btn className="btn btn-primary btn-sm" onClick={()=>setModal({type:'addLL'})}>+</Btn>
             </div>
-            <table style={{width:'100%'}}>
+            <table className="data-table" style={{width:'100%'}}>
               <thead><tr><th>#</th><th>Name</th><th>Type</th><th></th></tr></thead>
               <tbody>
                 {(district.local_levels||[]).map((ll,i)=>(

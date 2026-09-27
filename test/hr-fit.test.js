@@ -510,8 +510,9 @@ describe('qualification rules from people', () => {
     expect(hr).toMatch(/INSERT INTO hr_qualification_rules \(name, kind, grant_scope, qual_level, notes, auto_created\)/);
     expect(hr).toMatch(/q\.rule_id = await ruleFor\(client, q\)/);
   });
-  it('leaves vocational certificates to the NSTB ladder', () => {
-    expect(hr).toMatch(/if \(!title \|\| vocational\) return null;/);
+  it('links a vocational certificate to its trade-and-level rule', () => {
+    expect(hr).toMatch(/if \(vocational\) return vocationalRuleFor\(client, q\.occupation_id, q\.level\);/);
+    expect(read('backend/server.js')).toMatch(/backfillVocationalRules\(pool\)/);
   });
   it('reports who holds each rule', () => {
     expect(hr).toMatch(/AS holders/);
@@ -528,5 +529,92 @@ describe('years since qualifying', () => {
     const both = { qualifications: [...voc.qualifications, { kind: 'Academic', stream: 'General', education_level: 'Bachelor', passed_year: '2075' }] };
     expect(experienceYears(both, '', 2083)).toBe(8);
     expect(experienceYears(both, 'Bachelor', 2083)).toBe(8);
+  });
+});
+
+describe('trade rules for NSTB certificates', () => {
+  it('names the rule after the trade and level, and grants what the ladder did', async () => {
+    const { createRequire } = await import('node:module');
+    const { levelsFor, ruleName } = createRequire(import.meta.url)('../backend/lib/vocationalRules.js');
+    expect(ruleName('Tailoring', 'Level 2')).toBe('Tailoring — Level 2 (NSTB)');
+    expect(ruleName('Mason', 'Professional')).toBe('Mason — Level 4 (NSTB)');
+    expect(levelsFor('Level 2')).toEqual({ co: ['Level 1', 'Level 2'], main: ['Level 1'] });
+    expect(levelsFor('Level 1')).toEqual({ co: ['Level 1'], main: ['Level 1'] });
+    expect(levelsFor('Technician')).toEqual({ co: ['Level 1', 'Level 2'], main: ['Level 1'] });
+  });
+});
+
+describe('deleting a qualification rule or a person is superadmin-only', () => {
+  const hr = read('backend/routes/hr.js');
+  const pool = read('src/components/TrainerPool.jsx');
+
+  it('the server checks superadmin, not just admin, before deleting', () => {
+    expect(hr).toMatch(/fastify\.delete\('\/rules\/:id', \{ preHandler: requireSuperAdmin \}/);
+    expect(hr).toMatch(/fastify\.delete\('\/people\/:id', \{ preHandler: requireSuperAdmin \}/);
+    // Creating and editing a rule is still an admin action.
+    expect(hr).toMatch(/fastify\.post\('\/rules', \{ preHandler: requireAdmin \}/);
+    expect(hr).toMatch(/fastify\.put\('\/rules\/:id', \{ preHandler: requireAdmin \}/);
+  });
+
+  it('the delete buttons themselves are behind isSuperAdmin', () => {
+    expect(pool).toMatch(/\{isSuperAdmin && \(\s*<Btn className="btn btn-danger btn-sm" onClick=\{\(\) => remove\(r\)\}/);
+    expect(pool).toMatch(/<PersonProfile person=\{profile\} token=\{token\} canDelete=\{isSuperAdmin\}/);
+    expect(read('src/App.jsx')).toMatch(/<TrainerPool isAdmin=\{isAdmin\} isSuperAdmin=\{isSuperAdmin\}\/>/);
+  });
+});
+
+describe('a unique identifier for every HR record', () => {
+  const server = read('backend/server.js');
+
+  it('is assigned by the database, sequential and permanent', () => {
+    expect(server).toMatch(/CREATE SEQUENCE IF NOT EXISTS hr_people_no_seq/);
+    expect(server).toMatch(/ALTER TABLE hr_people ADD COLUMN IF NOT EXISTS hr_no TEXT/);
+    expect(server).toMatch(/SET DEFAULT \('HR-' \|\| lpad\(nextval\('hr_people_no_seq'\)::text, 5, '0'\)\)/);
+    // Existing records are backfilled in id order, oldest first.
+    expect(server).toMatch(/row_number\(\) OVER \(ORDER BY id\) AS rn FROM hr_people WHERE hr_no IS NULL/);
+  });
+
+  it('shows on the roster row, the profile header, and is searchable', () => {
+    const pool = read('src/components/TrainerPool.jsx');
+    expect(pool).toMatch(/\{p\.hr_no && <span className="pp-hr-no">\{p\.hr_no\} · <\/span>\}/);
+    expect(read('src/components/pool/PersonProfile.jsx')).toMatch(/\{person\.hr_no && <span className="tw-tag gray pp-hr-no"/);
+    expect(read('src/components/pool/filters.js')).toMatch(/const hay = \[p\.hr_no, p\.full_name/);
+  });
+});
+
+describe('every on-screen table keeps its layout under .page-content/.modal-body', () => {
+  // `.page-content table` and `.modal-body table` force display:block so wide
+  // tables scroll on narrow screens; anything with rowSpan/colSpan or many
+  // columns needs real table layout restored, or it collapses into one
+  // full-width block per cell (reported: the qualification-rules table, and
+  // reproduced for the Summary comparison table's rowSpan/colSpan header).
+  const SAFE = ['data-table', 'tw-table', 'pp-table', 'pp-roster', 'tw-list-table',
+    'occ-table', 'review-table', 'compliance-table', 'docs-table', 'rules-table', 'summary-table'];
+  const files = [
+    'src/components/InstituteList.jsx', 'src/components/InstituteDetail.jsx',
+    'src/components/ComparisonView.jsx', 'src/components/SummaryView.jsx',
+    'src/components/NSTBForms.jsx', 'src/components/ReportsView.jsx',
+    'src/components/LocationsEditor.jsx', 'src/components/LoginPage.jsx',
+    'src/components/MasterData.jsx', 'src/components/TrainerPool.jsx',
+    'src/components/DocumentsCentre.jsx', 'src/components/ClientsView.jsx',
+    'src/components/ComplianceCentre.jsx', 'src/components/ProjectCompliance.jsx',
+    'src/components/TendersView.jsx', 'src/components/ExperienceForm.jsx',
+    'src/components/tenders/RequirementsStep.jsx',
+    'src/components/institute/InfrastructureTab.jsx', 'src/components/pool/PersonProfile.jsx',
+  ];
+  it('has a display:table override, not a bare <table>', () => {
+    for (const f of files) {
+      const src = read(f);
+      for (const m of src.matchAll(/<table(\s[^>]*)?>/g)) {
+        const opening = m[0];
+        const ok = SAFE.some(cls => opening.includes(`"${cls}"`) || opening.includes(`'${cls}'`)
+          || new RegExp(`className=\\{[^}]*['"]${cls}['"]`).test(opening));
+        expect(ok, `${f}: ${opening}`).toBe(true);
+      }
+    }
+  });
+  it('.summary-table (rowSpan/colSpan headers) and .rules-table restore real table layout', () => {
+    expect(read('src/index.css')).toMatch(/\.summary-table \{ display: table !important/);
+    expect(read('src/index.css')).toMatch(/\.data-table \{ display: table !important; \}/);
   });
 });

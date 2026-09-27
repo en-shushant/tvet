@@ -745,7 +745,7 @@ function InstituteDetail({institute, clients, onUpdateClients, onBack, onUpdate,
                 </button>
                 {expandedFY['nstb-'+fy] && (
                   <div className="table-wrap">
-                    <table>
+                    <table className="data-table">
                       <thead><tr>
                         <th>Occupation</th><th>Level</th><th>Applied</th><th>Appeared</th><th>Pass</th>
                         <th>Appear rate</th><th>Pass rate</th><th>Letter</th><th></th>
@@ -787,7 +787,7 @@ function InstituteDetail({institute, clients, onUpdateClients, onBack, onUpdate,
             ? <div className="empty-state"><div className="empty-state-icon"><span className="material-icons-round" style={{fontSize:42, color:'var(--text3)', opacity:.4}}>receipt_long</span></div><div className="empty-state-title">No tax clearance records</div></div>
             : (
               <div className="card" style={{padding:0, overflow:'hidden'}}>
-                <table>
+                <table className="data-table">
                   <thead><tr>
                     <th>Fiscal year</th><th>Total turnover (NPR)</th><th>Taxable income (NPR)</th>
                     <th>Tax paid (NPR)</th><th>Certificate date</th><th>Kar Chukta No.</th><th></th>
@@ -841,7 +841,7 @@ function InstituteDetail({institute, clients, onUpdateClients, onBack, onUpdate,
                 </button>
                 {expandedFY['aff-'+aff.id] && (
                   <div className="table-wrap">
-                    <table>
+                    <table className="data-table">
                       <thead><tr><th>Program</th><th>Level</th><th>Duration (hrs)</th><th>Seats/batch</th></tr></thead>
                       <tbody>
                         {aff.programs.map((p,i)=>(

@@ -34,7 +34,7 @@ export function applyFilters(people = [], f = BLANK_FILTERS, nowBS) {
     if (needle) {
       // Trades are searchable too: typing "plumb" is the quickest way to ask
       // "who can teach plumbing".
-      const hay = [p.full_name, p.full_name_np, p.designation, p.citizenship_no, p.phone, p.email,
+      const hay = [p.hr_no, p.full_name, p.full_name_np, p.designation, p.citizenship_no, p.phone, p.email,
         ...(p.eligible_occupations || []).map(o => o.name)].filter(Boolean).join(' ').toLowerCase();
       if (!hay.includes(needle)) return false;
     }

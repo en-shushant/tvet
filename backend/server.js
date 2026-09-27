@@ -777,6 +777,25 @@ async function runMigrations() {
          'road asset management and maintenance training'
        )
      )`,
+    // Every HR record gets a short, permanent identifier — HR-00001, HR-00002...
+    // — for referring to a trainer outside the database (CVs, letters, tender
+    // packs). New rows get one automatically via the column default; existing
+    // rows are numbered here in id order the first time this runs.
+    `CREATE SEQUENCE IF NOT EXISTS hr_people_no_seq`,
+    `ALTER TABLE hr_people ADD COLUMN IF NOT EXISTS hr_no TEXT`,
+    `ALTER TABLE hr_people ALTER COLUMN hr_no
+       SET DEFAULT ('HR-' || lpad(nextval('hr_people_no_seq')::text, 5, '0'))`,
+    `DO $$
+     DECLARE maxno INT;
+     BEGIN
+       UPDATE hr_people p SET hr_no = 'HR-' || lpad(sub.rn::text, 5, '0')
+         FROM (SELECT id, row_number() OVER (ORDER BY id) AS rn FROM hr_people WHERE hr_no IS NULL) sub
+        WHERE p.id = sub.id;
+       SELECT COALESCE(MAX(substring(hr_no from 4)::int), 0) INTO maxno
+         FROM hr_people WHERE hr_no LIKE 'HR-%';
+       PERFORM setval('hr_people_no_seq', GREATEST(maxno, 1), maxno > 0);
+     END $$`,
+    `ALTER TABLE hr_people ADD CONSTRAINT hr_people_hr_no_key UNIQUE (hr_no)`,
   ];
   for (const sql of migrations) {
     try { await pool.query(sql); }
@@ -891,6 +910,9 @@ fastify.setErrorHandler((err, request, reply) => {
 // ─── START ────────────────────────────────────────────────────────────────────
 runMigrations()
   .then(() => console.log('Migrations OK'))
+  // NSTB certificates saved before trades had rules get theirs now.
+  .then(() => require('./lib/vocationalRules').backfillVocationalRules(pool))
+  .then(n => { if (n) console.log(`Linked ${n} vocational certificate(s) to trade rules`); })
   .catch(e => console.error('Migration error:', e.message))
   .finally(() => {
     fastify.listen({ port: PORT, host: '0.0.0.0' }, (err) => {

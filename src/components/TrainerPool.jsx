@@ -45,7 +45,9 @@ const isVocationalKind = (k) => k === 'Skill Test';
 // The ladder a rule's own level is picked from; training and TOT have none.
 const levelOptions = (kind) => kind === 'Academic' ? GENERAL_LEVELS
   : kind === 'Skill Test' ? VOCATIONAL_LEVELS : [];
-const describeLevels = (ls) => ls.map(l => l === 'Professional' ? 'Level 4' : l).join(', ') || 'no levels';
+const LEVEL_ORDER = ['Level 1', 'Level 2', 'Level 3', 'Professional', 'Technician'];
+const sortLevels = (ls) => [...ls].sort((a, b) => LEVEL_ORDER.indexOf(a) - LEVEL_ORDER.indexOf(b));
+const describeLevels = (ls) => sortLevels(ls).map(l => l === 'Professional' ? 'Level 4' : l).join(', ') || 'no levels';
 const GRANT_SCOPES = [
   { id: 'sector', label: 'A whole sector',
     hint: 'A Diploma in Civil Engineering covers plumber, mason, shuttering carpenter and building painter alike.' },
@@ -260,7 +262,7 @@ function RuleForm({ rule, occupations, onSave, onClose }) {
   );
 }
 
-function RulesTab({ rules, occupations, isAdmin, onReload, token, setErr }) {
+function RulesTab({ rules, occupations, isAdmin, isSuperAdmin, onReload, token, setErr }) {
   const [modal, setModal] = useState(null);
   const [kindF, setKindF] = useState('all');
   const [levelF, setLevelF] = useState('');
@@ -294,17 +296,45 @@ function RulesTab({ rules, occupations, isAdmin, onReload, token, setErr }) {
     catch (e) { setErr(e.message); }
   };
 
+  // Plain text, for contexts (titles, CSV-ish uses) that cannot hold markup.
   const describe = (r) => {
     if (r.grant_scope === 'sector') {
       return `Every occupation in ${r.sector}${r.max_level ? ` up to ${r.max_level}` : ''}`;
     }
     if (r.grant_scope === 'certificate_occupation') return 'The occupation named on the certificate';
     const names = (r.occupations || []).map(o => {
-      const parts = [o.main_levels?.length && `main ${describeLevels(o.main_levels)}`,
-                     o.levels?.length && `co ${describeLevels(o.levels)}`].filter(Boolean);
-      return parts.length ? `${o.name} (${parts.join('; ')})` : o.name;
+      const parts = [o.main_levels?.length && `main trainer: ${describeLevels(o.main_levels)}`,
+                     o.levels?.length && `co-trainer: ${describeLevels(o.levels)}`].filter(Boolean);
+      return parts.length ? `${o.name} (${parts.join(' · ')})` : o.name;
     });
-    return names.length ? names.join(', ') : 'No occupations chosen yet';
+    return names.length ? names.join('; ') : 'No occupations chosen yet';
+  };
+
+  // The table cell: one line per trade, main/co levels as their own badges
+  // rather than packed into one run of text — a trade with several levels on
+  // both roles was unreadable ("Plumber (co Level 2, Level 3, Level 4, Level 1)").
+  const renderQualifies = (r) => {
+    if (r.grant_scope === 'sector') return describe(r);
+    if (r.grant_scope === 'certificate_occupation') return describe(r);
+    if (!(r.occupations || []).length) return 'No occupations chosen yet';
+    return (
+      <div className="rule-trade-list">
+        {r.occupations.map(o => (
+          <div key={o.id} className="rule-trade-line">
+            <span className="rule-trade-name">{o.name}</span>
+            {o.main_levels?.length > 0 && (
+              <span className="rule-trade-badge is-main">Main: {describeLevels(o.main_levels)}</span>
+            )}
+            {o.levels?.length > 0 && (
+              <span className="rule-trade-badge is-co">Co: {describeLevels(o.levels)}</span>
+            )}
+            {!o.main_levels?.length && !o.levels?.length && (
+              <span className="rule-trade-badge">Whole trade</span>
+            )}
+          </div>
+        ))}
+      </div>
+    );
   };
 
   const needsTrades = (r) => r.grant_scope === 'occupations' && !(r.occupations || []).length;
@@ -348,7 +378,7 @@ function RulesTab({ rules, occupations, isAdmin, onReload, token, setErr }) {
           body="Add one for each qualification your trainers hold — a diploma that covers a whole sector, or a skill certificate that covers only the trade named on it." />
       ) : (
         <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
-          <table>
+          <table className="rules-table">
             <thead><tr><th>Qualification</th><th>Kind</th><th>Level</th><th>Qualifies to train</th><th></th></tr></thead>
             <tbody>
               {shown.length === 0 && (
@@ -370,15 +400,17 @@ function RulesTab({ rules, occupations, isAdmin, onReload, token, setErr }) {
                     {needsTrades(r)
                       ? <span className="badge badge-amber" title="Holding this qualifies nobody for anything until its trades are chosen">
                           Needs trades — edit to choose</span>
-                      : describe(r)}
+                      : renderQualifies(r)}
                   </td>
                   <td style={{ display: 'flex', gap: 4, justifyContent: 'flex-end' }}>
-                    {isAdmin && <>
+                    {isAdmin && (
                       <Btn className="btn btn-ghost btn-sm" onClick={() => setModal({ type: 'edit', data: r })}>
                         <span className="material-icons-round" style={{ fontSize: 14 }}>edit</span></Btn>
+                    )}
+                    {isSuperAdmin && (
                       <Btn className="btn btn-danger btn-sm" onClick={() => remove(r)}>
                         <span className="material-icons-round" style={{ fontSize: 14 }}>delete</span></Btn>
-                    </>}
+                    )}
                   </td>
                 </tr>
               ))}
@@ -416,7 +448,7 @@ function Kpi({ label, value, note, tone, title, onClick }) {
  * and typed at length, and a dialog over the roster made both feel like a
  * detour you were meant to leave quickly.
  */
-function TrainerPool({ isAdmin }) {
+function TrainerPool({ isAdmin, isSuperAdmin }) {
   const token = getSession()?.token;
   const occupations = useOccupations();
 
@@ -519,7 +551,7 @@ function TrainerPool({ isAdmin }) {
   }
   if (profile) {
     return (
-      <PersonProfile person={profile} token={token} canDelete={isAdmin}
+      <PersonProfile person={profile} token={token} canDelete={isSuperAdmin}
         onBack={() => setProfile(null)} onEdit={(p) => setEditing(p)} onDelete={deletePerson}
         onReload={() => openPerson(profile.id)} />
     );
@@ -543,7 +575,7 @@ function TrainerPool({ isAdmin }) {
         value={tab} onChange={setTab} ariaLabel="Trainer pool sections" />
 
       {tab === 'rules' && (
-        <RulesTab rules={rules} occupations={occupations} isAdmin={isAdmin}
+        <RulesTab rules={rules} occupations={occupations} isAdmin={isAdmin} isSuperAdmin={isSuperAdmin}
           onReload={load} token={token} setErr={setErr} />
       )}
 
@@ -576,7 +608,7 @@ function TrainerPool({ isAdmin }) {
           <div className="search-wrap" style={{ flex: 1, minWidth: 220 }}>
             <span className="search-icon material-icons-round" style={{ fontSize: 16 }}>search</span>
             <input value={filters.q} onChange={e => setF({ q: e.target.value })} aria-label="Search the pool"
-              placeholder="Search name, trade, citizenship no., phone…" />
+              placeholder="Search HR no., name, trade, citizenship no., phone…" />
           </div>
           <div className="tw-seg" role="group" aria-label="Role">
             {[['', 'Everyone'], ['Trainer', 'Trainers'], ['Support Staff', 'Support']].map(([v, l]) => (
@@ -708,6 +740,7 @@ function TrainerPool({ isAdmin }) {
                             <span>
                               <span className="pp-person-name">{p.full_name}</span>
                               <span className="pp-person-sub">
+                                {p.hr_no && <span className="pp-hr-no">{p.hr_no} · </span>}
                                 {p.person_type}
                                 {p.is_active === false && ' · no longer available'}
                               </span>

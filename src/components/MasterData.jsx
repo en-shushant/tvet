@@ -703,7 +703,7 @@ function MasterData({clients, onUpdateClients, token, isAdmin, isEditor, isSuper
                 )}
               </button>
               {showUnlinked && (
-                <table style={{marginTop:12}}>
+                <table className="data-table" style={{marginTop:12}}>
                   <thead><tr><th>Typed name</th><th>Used by</th><th>Status</th><th></th></tr></thead>
                   <tbody>
                     {unlinked.map(u => (
@@ -749,7 +749,7 @@ function MasterData({clients, onUpdateClients, token, isAdmin, isEditor, isSuper
             </div>
           )}
           <div className="card" style={{padding:0, overflow:'hidden'}}>
-            <table>
+            <table className="data-table">
               <thead><tr>
                 {isAdmin && <th style={{width:34}}></th>}
                 <th>Short name</th><th>Full name</th><th>Type</th><th>Address</th>
@@ -850,7 +850,7 @@ function MasterData({clients, onUpdateClients, token, isAdmin, isEditor, isSuper
             </div>
           )}
           <div className="card" style={{padding:0, overflow:'hidden'}}>
-            <table>
+            <table className="data-table">
               <thead><tr>
                 {isAdmin && <th style={{width:34}}></th>}
                 <th>#</th><th>Occupation name</th><th>Sector</th><th>Level</th><th>Duration</th>
@@ -929,7 +929,7 @@ function MasterData({clients, onUpdateClients, token, isAdmin, isEditor, isSuper
             </div>
           </div>
           <div className="card" style={{padding:0, overflow:'hidden', marginBottom:16}}>
-            <table>
+            <table className="data-table">
               <thead>
                 <tr>
                   <th style={{width:40}}>#</th>
@@ -1039,7 +1039,7 @@ function MasterData({clients, onUpdateClients, token, isAdmin, isEditor, isSuper
                     </div>
                   </div>
                   <div style={{overflowX:'auto'}}>
-                    <table style={{width:'100%', borderCollapse:'collapse'}}>
+                    <table className="data-table" style={{width:'100%', borderCollapse:'collapse'}}>
                       <thead>
                         <tr>
                           <th style={{width:30, padding:'6px 4px', fontSize:11}}></th>
@@ -1092,7 +1092,7 @@ function MasterData({clients, onUpdateClients, token, isAdmin, isEditor, isSuper
                 <div style={{padding:24, textAlign:'center', color:'var(--text3)'}}>Loading...</div>
               ) : (
                 <div style={{overflowX:'auto'}}>
-                  <table>
+                  <table className="data-table">
                     <thead>
                       <tr>
                         {canManageOccs && <th style={{width:30}}><input type="checkbox" checked={toolsList.length>0 && toolsSelected.length===toolsList.length} onChange={toggleAllTools}/></th>}
@@ -1158,7 +1158,7 @@ function MasterData({clients, onUpdateClients, token, isAdmin, isEditor, isSuper
             <Btn className="btn btn-primary btn-sm" onClick={addTT}><span className="material-icons-round">add</span>Add</Btn>
           </div>
           <div className="card" style={{padding:0, overflow:'hidden'}}>
-            <table>
+            <table className="data-table">
               <thead><tr><th>#</th><th>Training type</th><th></th></tr></thead>
               <tbody>
                 {trainingTypes.map((t, i) => (
@@ -1209,7 +1209,7 @@ function MasterData({clients, onUpdateClients, token, isAdmin, isEditor, isSuper
             <Btn className="btn btn-primary btn-sm" onClick={addFY}><span className="material-icons-round">add</span>Add</Btn>
           </div>
           <div className="card" style={{padding:0, overflow:'hidden'}}>
-            <table>
+            <table className="data-table">
               <thead><tr><th>#</th><th>Fiscal Year (BS)</th><th>AD</th><th></th></tr></thead>
               <tbody>
                 {fiscalYears.map((fy, i) => {

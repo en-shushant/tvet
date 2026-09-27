@@ -99,7 +99,7 @@ function InstituteTable({ rows, onSelect, showStats, selected, onToggle, onToggl
   return (
     <div style={{background:'var(--surface)', border:'.5px solid var(--border)', borderRadius:'var(--radius-lg)', boxShadow:'var(--card-frame)', margin:5, overflow:'hidden'}}>
       <div style={{overflowX:'auto'}}>
-        <table style={{width:'100%', borderCollapse:'collapse', minWidth:720}}>
+        <table className="data-table" style={{width:'100%', borderCollapse:'collapse', minWidth:720}}>
           <thead>
             <tr>
               {onToggle && (

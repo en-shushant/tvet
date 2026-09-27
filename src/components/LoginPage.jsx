@@ -497,7 +497,7 @@ function UserManagement({institutes, isSuperAdmin}) {
       </div>
       <div className="card" style={{ padding: 0 }}>
         <div className="table-wrap">
-          <table>
+          <table className="data-table">
             <thead>
               <tr>
                 <th>Name</th><th>Email</th><th>Role</th><th>Assigned Firms</th><th>Status</th><th>Created</th><th></th>

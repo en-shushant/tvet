@@ -3018,3 +3018,49 @@ h1, h2, h3, .page-title, .tw-panel-title { text-wrap: balance; }
    the scroll container's padding edge, so with bottom: 0 the bar hovered 32px
    up and the form scrolled into view beneath it. */
 .tw-foot { bottom: calc(-1 * var(--page-pad-b, 0px)); }
+
+/* Qualification rules table: page-content forces tables to display:block for
+   horizontal scrolling (see the comment by .occ-table); without an override
+   here every th/tr/td fell back to block, stacking the columns on top of each
+   other exactly like the broken screenshot. Restore real table layout. */
+.rules-table,
+.rules-table thead, .rules-table tbody, .rules-table tr {
+  display: revert !important;
+}
+.rules-table { width: 100%; table-layout: fixed; }
+.rules-table th, .rules-table td { display: revert !important; }
+/* Kind and Level hold one short word — most of the row was empty margin
+   around them. Give them just enough room and let the qualification and
+   trade columns (the ones that actually hold content) take the rest. */
+.rules-table th:nth-child(1), .rules-table td:nth-child(1) { width: 26%; }
+.rules-table th:nth-child(2), .rules-table td:nth-child(2) { width: 100px; }
+.rules-table th:nth-child(3), .rules-table td:nth-child(3) { width: 110px; }
+.rules-table th:nth-child(4), .rules-table td:nth-child(4) { width: auto; }
+.rules-table th:last-child, .rules-table td:last-child { width: 76px; }
+
+/* One trade per line in the "Qualifies to train" cell, with its main/co
+   levels as their own badges instead of one run of packed text. */
+.rule-trade-list { display: flex; flex-direction: column; gap: 4px; }
+.rule-trade-line { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.rule-trade-name { font-weight: 500; color: var(--text); }
+.rule-trade-badge {
+  font-size: 11px; font-weight: 500; padding: 1px 7px; border-radius: 999px;
+  background: var(--muted); color: var(--text2); white-space: nowrap;
+}
+.rule-trade-badge.is-main { background: var(--brand-soft); color: var(--brand-strong); }
+.rule-trade-badge.is-co   { background: var(--bg2); color: var(--text2); }
+
+/* HR identifier: a permanent code (HR-00001), so it reads as a reference
+   number rather than prose — tabular digits, slightly muted. */
+.pp-hr-no { font-variant-numeric: tabular-nums; letter-spacing: .02em; }
+span.pp-hr-no.tw-tag { font-family: var(--font-mono, monospace); }
+
+/* Every remaining plain <table> in the app, once "add explicit display" was
+   applied to a handful (.occ-table, .review-table, .compliance-table,
+   .docs-table, .tw-table, .pp-table, .pp-roster, .tw-list-table, .rules-table)
+   because .page-content/.modal-body force table→block for mobile scrolling —
+   the rest were never given the same treatment and can collapse to a stack of
+   full-width rows the same way. One shared class restores real table layout
+   without opinions on spacing/columns, so it is safe to add anywhere. */
+.data-table { display: table !important; }
+.summary-table { display: table !important; width: 100%; }

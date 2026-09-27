@@ -2,8 +2,9 @@
 const { pool } = require('../db/pool');
 const { sendStoredFile } = require('../lib/safeDownload');
 const { lookupNstbResult, LookupError, makeLimiter } = require('../lib/nstbResult');
+const { vocationalRuleFor } = require('../lib/vocationalRules');
 const nstbLimit = makeLimiter();
-const { authenticate, requireHRAccess, requireAdmin } = require('../middleware/auth');
+const { authenticate, requireHRAccess, requireAdmin, requireSuperAdmin } = require('../middleware/auth');
 
 /**
  * Skill levels as an order, for the optional cap on a qualification rule.
@@ -230,7 +231,7 @@ async function plugin(fastify, opts) {
    * people would silently lose the occupations it granted with nothing on
    * screen to say why.
    */
-  fastify.delete('/rules/:id', { preHandler: requireAdmin }, async (request) => {
+  fastify.delete('/rules/:id', { preHandler: requireSuperAdmin }, async (request) => {
     await pool.query('UPDATE hr_qualification_rules SET is_active = FALSE WHERE id = $1', [request.params.id]);
     return { deactivated: true };
   });
@@ -341,15 +342,17 @@ async function plugin(fastify, opts) {
    * The rule a degree, training or TOT row belongs to, found by name — or
    * created, so every qualification anyone enters shows up under Qualification
    * rules, where its trades and levels are filled in once for everyone holding
-   * it. Vocational certificates are left alone: the NSTB level ladder already
-   * decides what they cover. A row that names a rule already keeps it.
+   * it. A vocational certificate gets its trade-and-level rule. A row that
+   * names a rule already keeps it.
    */
   const AUTO_RULE_NOTE = 'Added from the trainer pool. Choose the trades (and levels) it qualifies someone to train.';
   const ruleFor = async (client, q) => {
     if (q.rule_id) return q.rule_id;
     const title = String(q.title || '').trim();
     const vocational = (q.kind || 'Academic') === 'Academic' && q.stream === 'Vocational';
-    if (!title || vocational) return null;
+    // A vocational certificate links to its trade-and-level rule (lib/vocationalRules.js).
+    if (vocational) return vocationalRuleFor(client, q.occupation_id, q.level);
+    if (!title) return null;
     const kind = q.kind === 'TOT' ? 'TOT' : q.kind === 'Training' ? 'Training' : 'Academic';
     const { rows: [found] } = await client.query(
       `SELECT id FROM hr_qualification_rules
@@ -455,7 +458,7 @@ async function plugin(fastify, opts) {
     finally { client.release(); }
   });
 
-  fastify.delete('/people/:id', { preHandler: requireAdmin }, async (request) => {
+  fastify.delete('/people/:id', { preHandler: requireSuperAdmin }, async (request) => {
     await pool.query('DELETE FROM hr_people WHERE id = $1', [request.params.id]);
     return { deleted: true };
   });

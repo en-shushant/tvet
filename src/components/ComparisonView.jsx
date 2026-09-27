@@ -159,7 +159,7 @@ function ComparisonView({institutes, clients}) {
 
         {/* NSTB detail table */}
         <div className="table-wrap">
-          <table>
+          <table className="data-table">
             <thead><tr>
               <th>Occupation</th><th>Level</th><th>FY</th>
               <th>Applied</th><th>Appeared</th><th>Pass</th>
