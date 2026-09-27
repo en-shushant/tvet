@@ -727,7 +727,10 @@ function TrainerPool({ isAdmin }) {
                             : <span style={{ color: 'var(--text3)' }}>—</span>}
                         </td>
                         <td className="num" style={{ fontSize:13 }}>
-                          {Number.isInteger(yrs) ? `${yrs} yrs` : <span className="tw-hint">—</span>}
+                          {Number.isInteger(yrs) ? `${yrs} yrs`
+                            : (p.qualifications || []).some(q => !q.kind || q.kind === 'Academic')
+                              ? <span className="tw-hint" title="Add the year each degree or certificate was passed">No passed year</span>
+                              : <span className="tw-hint">—</span>}
                         </td>
                         <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
                           <Btn className="btn btn-ghost btn-sm" onClick={() => openPerson(p.id)}>Open</Btn>

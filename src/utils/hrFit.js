@@ -52,12 +52,18 @@ export function highestEducation(person) {
  * When the position names a minimum level, the clock starts at the *earliest*
  * degree that already meets it — someone who took a Master's on top of a
  * qualifying Bachelor's does not lose the years in between. With no minimum
- * stated, it runs from their earliest academic record.
+ * stated, it runs from their earliest academic record or NSTB certificate.
  */
 export function experienceYears(person, minLevel = '', nowBS = currentBSYear()) {
   const need = educationRank(minLevel);
-  const years = academics(person)
-    .filter(q => need < 0 || q.rank >= need)
+  const quals = academics(person).filter(q => need < 0 || q.rank >= need);
+  // With no degree level asked for, an NSTB certificate starts the clock too:
+  // a trainer qualified only by skill tests has years since qualifying as well.
+  if (need < 0) {
+    quals.push(...(person?.qualifications || person?.academics || [])
+      .filter(q => (!q.kind || q.kind === 'Academic') && streamOf(q) === 'Vocational'));
+  }
+  const years = quals
     .map(q => passedYearBS(q.passed_year, nowBS))
     .filter(y => Number.isInteger(y));
   if (!years.length) return null;

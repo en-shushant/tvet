@@ -517,3 +517,16 @@ describe('qualification rules from people', () => {
     expect(hr).toMatch(/AS holders/);
   });
 });
+
+describe('years since qualifying', () => {
+  it('counts an NSTB certificate when there is no degree', async () => {
+    const { experienceYears } = await import('../src/utils/hrFit.js');
+    const voc = { qualifications: [{ kind: 'Academic', stream: 'Vocational', level: 'Level 1', passed_year: '2079' }] };
+    expect(experienceYears(voc, '', 2083)).toBe(4);
+    // A post asking for a degree level still counts degrees only.
+    expect(experienceYears(voc, 'Diploma', 2083)).toBeNull();
+    const both = { qualifications: [...voc.qualifications, { kind: 'Academic', stream: 'General', education_level: 'Bachelor', passed_year: '2075' }] };
+    expect(experienceYears(both, '', 2083)).toBe(8);
+    expect(experienceYears(both, 'Bachelor', 2083)).toBe(8);
+  });
+});
