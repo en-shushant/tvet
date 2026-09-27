@@ -328,8 +328,9 @@ async function plugin(fastify, opts) {
       await client.query(
         `INSERT INTO hr_qualifications (person_id, kind, rule_id, title, institution, board,
            occupation_id, level, passed_year, duration_hours, division, certificate_no, remarks, sort_order,
-           specialisation, duration_text, education_level, stream, start_date, end_date, duration_days)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21)`,
+           specialisation, duration_text, education_level, stream, start_date, end_date, duration_days,
+           start_date_ad, end_date_ad)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23)`,
         [personId, q.kind || 'Academic', q.rule_id || null, q.title || null, q.institution || null,
          q.board || null, q.occupation_id || null, q.level || null, q.passed_year || null,
          q.duration_hours || null, q.division || null, q.certificate_no || null, q.remarks || null, i,
@@ -337,7 +338,9 @@ async function plugin(fastify, opts) {
          // Only academic rows are on a ladder; a training or TOT has no stream.
          (q.kind || 'Academic') === 'Academic' ? (q.stream === 'Vocational' ? 'Vocational' : 'General') : null,
          q.start_date || null, q.end_date || null,
-         Number.isInteger(parseInt(q.duration_days, 10)) ? parseInt(q.duration_days, 10) : null]);
+         Number.isInteger(parseInt(q.duration_days, 10)) ? parseInt(q.duration_days, 10) : null,
+         /^\d{4}-\d{2}-\d{2}$/.test(q.start_date_ad || '') ? q.start_date_ad : null,
+         /^\d{4}-\d{2}-\d{2}$/.test(q.end_date_ad || '') ? q.end_date_ad : null]);
     }
     await client.query('DELETE FROM hr_experience WHERE person_id = $1', [personId]);
     const exps = body.experience || [];

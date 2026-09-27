@@ -40,10 +40,12 @@ export function certificateFrom(result, occupations) {
     rule_id: '', kind: 'Academic', stream: 'Vocational', education_level: '',
     level: result.level || '', occupation_id: occ ? occ.id : '',
     title: [labelOfVocational(result.level), result.occupation].filter(Boolean).join(' — '),
-    passed_year: /^\d{4}$/.test(result.year) ? result.year : '',
+    passed_year: result.yearBs || (/^\d{4}$/.test(result.year) ? result.year : ''),
     certificate_no: result.certificateNo || '',
-    board: 'NSTB', institution: '', division: '', duration_hours: '', specialisation: '', duration_text: '',
-    remarks: [result.symbolNo && `Symbol no. ${result.symbolNo}`, result.testCenter && `tested at ${result.testCenter}`,
+    // The test centre is also where they trained (NSTB tests at training centres).
+    board: 'NSTB', institution: result.testCenter || '', division: '', duration_hours: '', specialisation: '', duration_text: '',
+    remarks: [result.symbolNo && `Symbol no. ${result.symbolNo}`, result.registration && `Reg. no. ${result.registration}`,
+      result.year && `tested ${result.year}`, result.testCenter && `at ${result.testCenter}`,
       result.performance].filter(Boolean).join(' · '),
   };
 }
@@ -144,8 +146,9 @@ export default function NstbLookup({ dob, onDob, occupations = [], personName, o
                     <dl className="nstb-facts">
                       <div><dt>Trade</dt><dd>{res.occupation || '—'}</dd></div>
                       <div><dt>Level</dt><dd>{res.level ? labelOfVocational(res.level) : (res.levelText || '—')}</dd></div>
-                      <div><dt>Year</dt><dd>{res.year || '—'}</dd></div>
+                      <div><dt>Tested</dt><dd>{res.year || '—'}{res.yearBs && res.yearBs !== res.year ? ` (BS ${res.yearBs})` : ''}</dd></div>
                       <div><dt>Certificate</dt><dd>{res.certificateNo || '—'}</dd></div>
+                      <div><dt>Registration</dt><dd>{res.registration || '—'}</dd></div>
                       {(res.theoryMarks || res.theoryStatus) && (
                         <div><dt>Theory</dt><dd>{[res.theoryMarks, res.theoryStatus].filter(Boolean).join(' · ')}</dd></div>
                       )}

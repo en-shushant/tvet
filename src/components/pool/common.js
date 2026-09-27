@@ -4,7 +4,7 @@
  */
 import { streamOf, levelOfQualification, educationRank, labelOfGeneral,
          labelOfVocational, VOCATIONAL_LEVELS } from '../../constants/education.js';
-import { BS_YEARS, bsToAD } from '../../constants/nepali.js';
+import { BS_YEARS, bsToAD, adToBS } from '../../constants/nepali.js';
 
 export const PERSON_TYPES = ['Trainer', 'Support Staff'];
 export const TRAINING_KINDS = ['Training', 'TOT'];
@@ -32,7 +32,8 @@ export const emptyVocational = (level = '') =>
 // A TOT is almost always titled exactly this, so it starts there.
 export const TOT_TITLE = 'Training of Trainers';
 export const emptyTraining = (kind = 'Training') =>
-  ({ ...baseQual, kind, title: kind === 'TOT' ? TOT_TITLE : '', start_date: '', end_date: '', duration_days: '' });
+  ({ ...baseQual, kind, title: kind === 'TOT' ? TOT_TITLE : '', start_date: '', end_date: '',
+     start_date_ad: '', end_date_ad: '', duration_days: '' });
 export const emptyExp = () => ({ organisation: '', position: '', occupation_id: '',
   from_date: '', to_date: '', is_current: false, description: '',
   country: '', project_name: '', reference_text: '' });
@@ -87,11 +88,45 @@ export function bsDaysBetween(start, end) {
   return Math.round((b - a) / 86400000) + 1;
 }
 
-/** "21 days, 2076/04/01 – 2076/04/21" — what the CV prints for a TOT. */
+/** A complete AD date as the date input gives it: "2019-07-17". */
+export const isAdDate = (v) => /^\d{4}-\d{2}-\d{2}$/.test(String(v || '')) && !Number.isNaN(Date.parse(v));
+
+/** "2019-07-17" → "2076/04/01", or '' outside the calendar. */
+export function adToBsDate(v) {
+  if (!isAdDate(v)) return '';
+  const [y, m, d] = v.split('-').map(Number);
+  try {
+    const bs = adToBS(new Date(Date.UTC(y, m - 1, d)));
+    return bs && bs.y ? `${bs.y}/${String(bs.m).padStart(2, '0')}/${String(bs.d).padStart(2, '0')}` : '';
+  } catch { return ''; }
+}
+
+/** "2076/04/01" → "2019-07-17", or '' outside the calendar. */
+export function bsToAdDate(v) {
+  if (!isBsDate(v)) return '';
+  const [y, m, d] = v.split('/').map(Number);
+  if (y < Math.min(...BS_YEARS) || y > Math.max(...BS_YEARS)) return '';
+  try { const out = bsToAD(y, m, d); return isAdDate(out) && adToBsDate(out) === v ? out : ''; } catch { return ''; }
+}
+
+/** Days from start to end inclusive, from AD dates — exact at any year. */
+export function adDaysBetween(start, end) {
+  if (!isAdDate(start) || !isAdDate(end)) return null;
+  const n = Math.round((Date.parse(end) - Date.parse(start)) / 86400000) + 1;
+  return n >= 1 ? n : null;
+}
+
+/** "21 days, 2076/04/01 – 2076/04/21 (17 Jul – 6 Aug 2019)" — what the CV prints for a TOT. */
 export function totDuration(q) {
   const days = parseInt(q.duration_days, 10);
   const span = [q.start_date, q.end_date].filter(Boolean).join(' – ');
-  return [Number.isInteger(days) && days > 0 ? `${days} day${days === 1 ? '' : 's'}` : '', span].filter(Boolean).join(', ');
+  const fmt = (v, withYear) => new Date(`${v}T00:00:00Z`).toLocaleDateString('en-GB',
+    { day: 'numeric', month: 'short', ...(withYear ? { year: 'numeric' } : {}), timeZone: 'UTC' });
+  const ad = isAdDate(q.start_date_ad) && isAdDate(q.end_date_ad)
+    ? `${fmt(q.start_date_ad, q.start_date_ad.slice(0, 4) !== q.end_date_ad.slice(0, 4))} – ${fmt(q.end_date_ad, true)}`
+    : isAdDate(q.start_date_ad) ? fmt(q.start_date_ad, true) : '';
+  const dates = [span, ad && (span ? `(${ad})` : ad)].filter(Boolean).join(' ');
+  return [Number.isInteger(days) && days > 0 ? `${days} day${days === 1 ? '' : 's'}` : '', dates].filter(Boolean).join(', ');
 }
 
 /** Which list a qualification belongs to on screen: general, vocational or training. */
@@ -151,8 +186,13 @@ export function normaliseQual(q, occupations = []) {
       out.title = String(q.title || '').trim() || TOT_TITLE;
       // The dates decide the rest: the year counted for experience, and the
       // duration the Form 5 CV prints.
-      if (isBsDate(q.end_date)) out.passed_year = q.end_date.slice(0, 4);
-      const auto = bsDaysBetween(q.start_date, q.end_date);
+      // Whichever calendar was typed fills the other, so both are always kept.
+      if (isAdDate(q.start_date_ad) && !isBsDate(q.start_date)) out.start_date = adToBsDate(q.start_date_ad);
+      if (isAdDate(q.end_date_ad) && !isBsDate(q.end_date)) out.end_date = adToBsDate(q.end_date_ad);
+      if (isBsDate(out.start_date) && !isAdDate(q.start_date_ad)) out.start_date_ad = bsToAdDate(out.start_date);
+      if (isBsDate(out.end_date) && !isAdDate(q.end_date_ad)) out.end_date_ad = bsToAdDate(out.end_date);
+      if (isBsDate(out.end_date)) out.passed_year = out.end_date.slice(0, 4);
+      const auto = adDaysBetween(out.start_date_ad, out.end_date_ad) ?? bsDaysBetween(out.start_date, out.end_date);
       out.duration_days = auto ?? (parseInt(q.duration_days, 10) || null);
       out.duration_text = totDuration(out) || q.duration_text || '';
     }

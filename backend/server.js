@@ -565,6 +565,9 @@ async function runMigrations() {
     `ALTER TABLE hr_qualifications ADD COLUMN IF NOT EXISTS start_date TEXT`,
     `ALTER TABLE hr_qualifications ADD COLUMN IF NOT EXISTS end_date TEXT`,
     `ALTER TABLE hr_qualifications ADD COLUMN IF NOT EXISTS duration_days INTEGER`,
+    // A TOT certificate prints its dates in English; both are kept.
+    `ALTER TABLE hr_qualifications ADD COLUMN IF NOT EXISTS start_date_ad TEXT`,
+    `ALTER TABLE hr_qualifications ADD COLUMN IF NOT EXISTS end_date_ad TEXT`,
     // Which NSTB levels of a named trade a rule grants (empty = just that occupation).
     `ALTER TABLE hr_rule_occupations ADD COLUMN IF NOT EXISTS levels TEXT[]`,
     // The qualification's own level (a general level for academic, NSTB for vocational).

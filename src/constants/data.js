@@ -1,10 +1,11 @@
-import { BS_YEARS } from './nepali.js';
+import { getNepaliDate } from './nepali.js';
 
 const FY_KEY = 'tvettrack_fiscal_years';
-// Runs to the latest year the app's own BS calendar data (BS_DATA) covers,
-// rather than a fixed end year that goes stale every year it isn't bumped.
+// Runs to three years past the current BS year, rather than a fixed end year
+// that goes stale every year it isn't bumped. (It used to follow the calendar
+// table's last year; the table now runs to 2089, far past any fiscal year in use.)
 function defaultFYs() {
-  const endYear = Math.max(...BS_YEARS, 2083);
+  const endYear = Math.max(getNepaliDate().bs.y + 3, 2083);
   const fys = [];
   for (let y = 2065; y <= endYear; y++) fys.push(`${y}/${String(y + 1).slice(-2)}`);
   return fys;

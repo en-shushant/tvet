@@ -1,11 +1,11 @@
-import { useState, useMemo, useRef } from 'react';
+import { Fragment, useState, useMemo, useRef } from 'react';
 import { ErrorBanner } from '../ui/Modal.jsx';
 import { Btn } from '../../md.jsx';
 import { GENERAL_LEVELS, VOCATIONAL_LEVELS, levelOfQualification,
          labelOfGeneral } from '../../constants/education.js';
 import { PERSON_TYPES, TRAINING_KINDS, FLUENCY, BLANK_PERSON, emptyGeneral, emptyVocational,
          emptyTraining, emptyExp, emptyLang, sectionOf, DEFAULT_LANGUAGES, TOT_TITLE,
-         maskBsDate, isBsDate, bsDaysBetween } from './common.js';
+         maskBsDate, isBsDate, bsDaysBetween, adDaysBetween, adToBsDate, bsToAdDate } from './common.js';
 import Select from '../ui/Select.jsx';
 import NstbLookup from './NstbLookup.jsx';
 
@@ -52,6 +52,15 @@ export default function PersonEditor({ person, rules, occupations, onSave, onCan
     setForm(f => ({ ...f, [key]: f[key].map((r, idx) => idx === i ? { ...r, [k]: v } : r) }));
   const addRow = (key, row) => setForm(f => ({ ...f, [key]: [...f[key], row] }));
   const delRow = (key, i) => setForm(f => ({ ...f, [key]: f[key].filter((_, idx) => idx !== i) }));
+  // A TOT date typed in one calendar fills the other.
+  const setTotDate = (i, which, cal, v) => setForm(f => ({ ...f, qualifications: f.qualifications.map((q, idx) => {
+    if (idx !== i) return q;
+    // The other calendar is recomputed on every change, and blank while the
+    // typed one is incomplete — so the two never disagree.
+    return cal === 'ad'
+      ? { ...q, [`${which}_date_ad`]: v, [`${which}_date`]: adToBsDate(v) }
+      : { ...q, [`${which}_date`]: v, [`${which}_date_ad`]: bsToAdDate(v) };
+  }) }));
 
   // Indices kept alongside, so a row in one list still writes to its real place
   // in the single array the server saves.
@@ -416,22 +425,14 @@ export default function PersonEditor({ person, rules, occupations, onSave, onCan
                       onChange={e => setRow('qualifications', i, 'title', e.target.value)} />
                   </Field>
                   {q.kind === 'TOT' ? (() => {
-                    const auto = bsDaysBetween(q.start_date, q.end_date);
-                    return (<>
-                      <Field label="Start (BS)">
-                        <input className="tw-in" value={q.start_date || ''} placeholder="2076/04/01" inputMode="numeric" maxLength={10}
-                          onChange={e => setRow('qualifications', i, 'start_date', maskBsDate(e.target.value))} />
-                      </Field>
-                      <Field label="End (BS)">
-                        <input className="tw-in" value={q.end_date || ''} placeholder="2076/04/21" inputMode="numeric" maxLength={10}
-                          onChange={e => setRow('qualifications', i, 'end_date', maskBsDate(e.target.value))} />
-                      </Field>
+                    const auto = adDaysBetween(q.start_date_ad, q.end_date_ad) ?? bsDaysBetween(q.start_date, q.end_date);
+                    return (
                       <Field label="Days" hint={auto ? 'Counted from the dates' : undefined}>
                         <input className="tw-in num" value={auto ?? (q.duration_days || '')} readOnly={auto != null}
                           inputMode="numeric" placeholder="21"
                           onChange={e => setRow('qualifications', i, 'duration_days', e.target.value.replace(/\D/g, ''))} />
                       </Field>
-                    </>);
+                    );
                   })() : (<>
                   <Field label="Duration">
                     <input className="tw-in" value={q.duration_text || ''} placeholder="e.g. 10 days"
@@ -444,6 +445,28 @@ export default function PersonEditor({ person, rules, occupations, onSave, onCan
                   </>)}
                   <RemoveBtn label="this training" onClick={() => delRow('qualifications', i)} />
                 </div>
+                {q.kind === 'TOT' && (
+                  // The certificate prints English dates; type those and the Nepali
+                  // dates fill in (or the other way round). Both are saved.
+                  <>
+                  <div className="tw-hint pf-dates-hint">Type the dates as printed on the certificate, in either calendar — the other fills in.</div>
+                  <div className="pf-line pf-line-dates">
+                    {[['start', 'Start'], ['end', 'End']].map(([k, lbl]) => (
+                      <Fragment key={k}>
+                        <Field label={`${lbl} · English`}>
+                          <input className="tw-in" type="date" value={q[`${k}_date_ad`] || ''}
+                            onChange={e => setTotDate(i, k, 'ad', e.target.value)} />
+                        </Field>
+                        <Field label={`${lbl} · Nepali (BS)`}>
+                          <input className="tw-in" value={q[`${k}_date`] || ''} inputMode="numeric" maxLength={10}
+                            placeholder={k === 'start' ? '2076/04/01' : '2076/04/21'}
+                            onChange={e => setTotDate(i, k, 'bs', maskBsDate(e.target.value))} />
+                        </Field>
+                      </Fragment>
+                    ))}
+                  </div>
+                  </>
+                )}
                 <div className="pf-line pf-line-gen2">
                   <Field label="Given by">
                     <input className="tw-in" value={q.institution || ''}

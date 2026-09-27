@@ -2285,7 +2285,9 @@ md-outlined-button.danger {
 .pf-line-voc  { grid-template-columns: 190px minmax(0, 1fr) 96px 32px; }
 .pf-line-voc2 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 .pf-line-trn  { grid-template-columns: 110px minmax(0, 1fr) 120px 96px 32px; }
-.pf-line-trn.is-tot { grid-template-columns: 110px minmax(0, 1fr) 116px 116px 72px 32px; }
+.pf-line-trn.is-tot { grid-template-columns: 110px minmax(0, 1fr) 80px 32px; }
+.pf-line-dates { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+@media (max-width: 760px) { .pf-line-dates { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 .pf-mirror { display: flex; align-items: center; background: var(--muted); color: var(--text-2, #4b5563); }
 .pf-line-exp  { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 118px 118px 32px; }
 .pf-line-lang { grid-template-columns: minmax(0, 1.4fr) repeat(3, minmax(0, 1fr)) 32px; }
@@ -2996,3 +2998,5 @@ h1, h2, h3, .page-title, .tw-panel-title { text-wrap: balance; }
 .nstb-added { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--t-teal); font-weight: 500; }
 .nstb-added .material-icons-round { font-size: 18px; }
 .nstb-more { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+
+.pf-dates-hint { margin: 2px 0 6px; }

@@ -1,3 +1,6 @@
+import NepaliDateModule from 'nepali-date-converter';
+// The package is CommonJS: bundlers unwrap its default export, plain Node does not.
+const NepaliDate = NepaliDateModule.default || NepaliDateModule;
 export const BS_MONTHS = ['बैशाख','जेठ','असार','साउन','भदौ','असोज','कार्तिक','मंसिर','पुस','माघ','फाल्गुन','चैत'];
 // Romanised Bikram Sambat months, for English-language documents such as the
 // Standard EOI form where dates are still BS but the paperwork is in English.
@@ -7,88 +10,41 @@ export const BS_DAYS   = ['आइतबार','सोमबार','मंग�
 export const NP_DIGITS = ['०','१','२','३','४','५','६','७','८','९'];
 export const toNpNum   = n => String(n).split('').map(d=>NP_DIGITS[+d]||d).join('');
 
-// Accurate month lengths per BS year (index 0 = Baisakh)
-// Verified against Nepal government calendar
-export const BS_DATA = {
-  2080:[31,32,31,32,31,30,30,30,29,29,30,30], // 2080/01/01 = 2023/04/14
-  2081:[31,31,32,32,31,30,30,30,29,30,30,30], // 2081/01/01 = 2024/04/13
-  2082:[31,31,32,32,31,30,30,30,29,30,29,31], // 2082/01/01 = 2025/04/13
-  2083:[31,31,32,31,31,31,30,30,29,30,30,30], // 2083/01/01 = 2026/04/13
-  2084:[31,31,32,31,31,30,30,30,29,30,30,30],
-  2085:[31,32,31,32,31,30,30,30,29,30,30,30],
-  2086:[31,32,31,32,31,30,30,30,29,30,29,31],
-};
+// ── Bikram Sambat calendar ──────────────────────────────────────────────────
+// Month lengths come from nepali-date-converter (BS 2000–2089 complete), not a
+// hand-typed table: the old table here covered only 2080–2086 and was a day
+// early on real dates (it put New Year 2081 on 12 April 2024; it was the 13th).
+// Checked against New Years 2080–2082 and Laxmi Puja 2081 — see test/nepali.test.js.
 
-// Reference: BS 2083/01/01 = AD 2026/04/14 (UTC)
-export const BS_REF = { bs:{y:2083,m:1,d:1}, ad: new Date(Date.UTC(2026,3,14)) };
+const pad = (n) => String(n).padStart(2, '0');
+const localDate = (y, m, d) => new Date(y, m - 1, d);   // the package reads local date fields
 
-export function adToBS(adUtcDate) {
-  let days = Math.round((adUtcDate - BS_REF.ad) / 86400000);
-  let y = BS_REF.bs.y, m = 1, d = 1;
-  if (days >= 0) {
-    outer: for(;;) {
-      const months = BS_DATA[y];
-      if(!months) break;
-      for(let mi=0; mi<12; mi++) {
-        const len = months[mi];
-        if(days < len) { m=mi+1; d=days+1; break outer; }
-        days -= len;
-      }
-      y++;
-    }
-  } else {
-    // go backwards
-    days = -days - 1;
-    outer: for(;;) {
-      if(y <= 2079) break;
-      y--;
-      const months = BS_DATA[y];
-      if(!months) break;
-      for(let mi=11; mi>=0; mi--) {
-        const len = months[mi];
-        if(days < len) { m=mi+1; d=len-days; break outer; }
-        days -= len;
-      }
-    }
+/** Month lengths (index 0 = Baisakh) for every BS year the calendar covers. */
+export const BS_DATA = (() => {
+  const out = {};
+  for (let y = 2000; y <= 2089; y++) {
+    const starts = [];
+    for (let m = 1; m <= 12; m++) starts.push(new NepaliDate(y, m - 1, 1).toJsDate());
+    starts.push(new NepaliDate(y + 1, 0, 1).toJsDate());
+    out[y] = starts.slice(0, 12).map((s, i) => Math.round((starts[i + 1] - s) / 86400000));
   }
-  return {y,m,d};
+  return out;
+})();
+
+// Reference: BS 2083/01/01 = AD 2026/04/14.
+export const BS_REF = { bs: { y: 2083, m: 1, d: 1 }, ad: new Date(Date.UTC(2026, 3, 14)) };
+
+/** AD date (read in UTC, as callers pass Date.UTC midnights) → { y, m, d } in BS. */
+export function adToBS(adUtcDate) {
+  const d = adUtcDate instanceof Date ? adUtcDate : new Date(adUtcDate);
+  const nd = new NepaliDate(localDate(d.getUTCFullYear(), d.getUTCMonth() + 1, d.getUTCDate()));
+  return { y: nd.getYear(), m: nd.getMonth() + 1, d: nd.getDate() };
 }
 
+/** BS year, month, day → "YYYY-MM-DD" in AD. */
 export function bsToAD(y, m, d) {
-  // count days from BS_REF (2083/01/01) to target
-  let days = 0;
-  if (y > BS_REF.bs.y || (y === BS_REF.bs.y && m > 1) || (y === BS_REF.bs.y && m === 1 && d >= 1)) {
-    // count forward
-    let cy = BS_REF.bs.y, cm = 1, cd = 1;
-    while (cy < y || cm < m || cd < d) {
-      const months = BS_DATA[cy];
-      if (!months) break;
-      const maxD = months[cm - 1];
-      if (cy === y && cm === m && cd === d) break;
-      cd++;
-      days++;
-      if (cd > maxD) { cd = 1; cm++; }
-      if (cm > 12) { cm = 1; cy++; }
-    }
-  } else {
-    // count backward from ref
-    let cy = BS_REF.bs.y, cm = 1, cd = 1;
-    while (cy > y || cm > m || cd > d) {
-      cd--;
-      days--;
-      if (cd < 1) {
-        cm--;
-        if (cm < 1) { cm = 12; cy--; }
-        const months = BS_DATA[cy];
-        cd = months ? months[cm - 1] : 30;
-      }
-    }
-  }
-  const adDate = new Date(BS_REF.ad.getTime() + days * 86400000);
-  const yy = adDate.getUTCFullYear();
-  const mm = String(adDate.getUTCMonth() + 1).padStart(2, '0');
-  const dd = String(adDate.getUTCDate()).padStart(2, '0');
-  return `${yy}-${mm}-${dd}`;
+  const js = new NepaliDate(Number(y), Number(m) - 1, Number(d)).toJsDate();
+  return `${js.getFullYear()}-${pad(js.getMonth() + 1)}-${pad(js.getDate())}`;
 }
 
 export function getNepaliDate() {

@@ -47,6 +47,24 @@ function outcomeOf(result) {
   return null;
 }
 
+/**
+ * The test date as a BS year. The service writes it as an English month and
+ * year ("Feb, 2019"); a plain four-digit year is taken as BS if it looks like
+ * one (2040+) and converted otherwise. BS turns over in mid-April, so Jan–Mar
+ * is AD + 56 and Apr–Dec AD + 57 (April itself is ambiguous; + 57). null when
+ * unreadable.
+ */
+const MONTHS = ['jan','feb','mar','apr','may','jun','jul','aug','sep','oct','nov','dec'];
+function bsYearOf(raw) {
+  const s = clean(raw).toLowerCase();
+  const y = /(\d{4})/.exec(s);
+  if (!y) return null;
+  const year = Number(y[1]);
+  if (year >= 2040) return String(year);                 // already BS
+  const m = MONTHS.findIndex(mo => s.includes(mo));
+  return String(year + (m >= 0 && m < 3 ? 56 : 57));
+}
+
 function normaliseDob(v) {
   const s = clean(v).replace(/-/g, '/');
   const m = /^(\d{4})\/(\d{1,2})\/(\d{1,2})$/.exec(s);
@@ -99,6 +117,7 @@ async function lookupNstbResult({ symbolNo, dateOfBirth }, fetchImpl = fetch) {
     levelText: clean(data.Level),
     level: levelOf(data.Level),
     year: clean(data.Year),
+    yearBs: bsYearOf(data.Year),
     certificateNo: clean(data.CertificateNo),
     testCenter: clean(data.TestCenter),
     isTheory: data.IsTheory ?? null,
@@ -125,4 +144,4 @@ function makeLimiter({ perUser = 20, overall = 200, windowMs = 10 * 60 * 1000 } 
   return (userId, now = Date.now()) => take(`u:${userId}`, perUser, now) && take('*', overall, now);
 }
 
-module.exports = { lookupNstbResult, LookupError, levelOf, outcomeOf, normaliseDob, makeLimiter };
+module.exports = { lookupNstbResult, LookupError, levelOf, outcomeOf, normaliseDob, bsYearOf, makeLimiter };

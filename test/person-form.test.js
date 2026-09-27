@@ -18,9 +18,11 @@ describe('BS date entry', () => {
     expect(isBsDate('2058/13/11')).toBe(false);
     expect(isBsDate('2058/09')).toBe(false);
   });
-  it('counts days only inside the calendar table', () => {
+  it('counts days wherever the calendar reaches', () => {
     expect(bsDaysBetween('2081/01/01', '2081/01/21')).toBe(21);
-    expect(bsDaysBetween('2060/01/01', '2060/01/21')).toBeNull();
+    // The calendar now runs from BS 2000, so older certificates are counted too.
+    expect(bsDaysBetween('2060/01/01', '2060/01/21')).toBe(21);
+    expect(bsDaysBetween('1990/01/01', '1990/01/21')).toBeNull();
   });
 });
 
@@ -34,7 +36,7 @@ describe('TOT', () => {
     expect(out.title).toBe(TOT_TITLE);
     expect(out.passed_year).toBe('2081');
     expect(out.duration_days).toBe(21);
-    expect(out.duration_text).toBe('21 days, 2081/01/01 – 2081/01/21');
+    expect(out.duration_text).toBe('21 days, 2081/01/01 – 2081/01/21 (13 Apr – 3 May 2024)');
   });
   it('keeps a typed day count when the dates are outside the table', () => {
     const out = normaliseQual({ ...emptyTraining('TOT'), start_date: '2070/01/01', end_date: '2070/01/10', duration_days: '10' });
@@ -87,5 +89,32 @@ describe('levels a qualification teaches', () => {
 describe('technician certificate', () => {
   it('teaches up to Level 2', () => {
     expect(teachableLevels('Skill Test', 'Technician')).toEqual(['Level 1', 'Level 2']);
+  });
+});
+
+import { adToBsDate, bsToAdDate, adDaysBetween, totDuration } from '../src/components/pool/common.js';
+describe('TOT dates in both calendars', () => {
+  it('converts either way, for old certificates too', () => {
+    expect(adToBsDate('2019-02-13')).toBe('2075/11/01');
+    expect(bsToAdDate('2075/11/01')).toBe('2019-02-13');
+    expect(adToBsDate('2008-01-15')).toBe('2064/10/01');
+    expect(bsToAdDate('2064/10/01')).toBe('2008-01-15');
+    expect(adToBsDate('2019-02-3')).toBe('');
+    expect(bsToAdDate('2075/13/01')).toBe('');
+  });
+  it('counts days from the English dates', () => {
+    expect(adDaysBetween('2019-07-17', '2019-08-06')).toBe(21);
+    expect(adDaysBetween('2019-08-06', '2019-07-17')).toBeNull();
+  });
+  it('keeps both calendars whichever was typed', () => {
+    const fromAd = normaliseQual({ ...emptyTraining('TOT'), start_date_ad: '2019-07-17', end_date_ad: '2019-08-06' });
+    expect(fromAd).toMatchObject({ start_date: '2076/04/01', end_date: '2076/04/21', passed_year: '2076', duration_days: 21 });
+    const fromBs = normaliseQual({ ...emptyTraining('TOT'), start_date: '2076/04/01', end_date: '2076/04/21' });
+    expect(fromBs).toMatchObject({ start_date_ad: '2019-07-17', end_date_ad: '2019-08-06', duration_days: 21 });
+    expect(fromBs.duration_text).toBe('21 days, 2076/04/01 – 2076/04/21 (17 Jul – 6 Aug 2019)');
+  });
+  it('prints both on the CV line', () => {
+    expect(totDuration({ duration_days: 5, start_date: '2080/09/15', end_date: '2080/09/19',
+      start_date_ad: '2023-12-31', end_date_ad: '2024-01-04' })).toBe('5 days, 2080/09/15 – 2080/09/19 (31 Dec 2023 – 4 Jan 2024)');
   });
 });

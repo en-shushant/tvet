@@ -3,7 +3,7 @@ import { createRequire } from 'node:module';
 import { certificateFrom, matchOccupation } from '../src/components/pool/NstbLookup.jsx';
 
 const require = createRequire(import.meta.url);
-const { lookupNstbResult, levelOf, outcomeOf, normaliseDob, makeLimiter } = require('../backend/lib/nstbResult.js');
+const { lookupNstbResult, levelOf, outcomeOf, normaliseDob, bsYearOf, makeLimiter } = require('../backend/lib/nstbResult.js');
 
 const reply = (data) => async (url, init) => {
   reply.last = { url, body: JSON.parse(init.body) };
@@ -59,9 +59,29 @@ describe('a result becomes a certificate', () => {
       symbolNo: '81234567', testCenter: 'Balaju', performance: 'Standard Met' }, occupations);
     expect(row).toMatchObject({ stream: 'Vocational', level: 'Level 2', occupation_id: 7, passed_year: '2079',
       certificate_no: 'NSTB-99', board: 'NSTB' });
-    expect(row.remarks).toBe('Symbol no. 81234567 · tested at Balaju · Standard Met');
+    expect(row.remarks).toBe('Symbol no. 81234567 · tested 2079 · at Balaju · Standard Met');
   });
   it('leaves the trade blank when it is not in the list', () => {
     expect(certificateFrom({ occupation: 'Shoe Maker', level: 'Level 1' }, occupations).occupation_id).toBe('');
+  });
+});
+
+describe('the test date', () => {
+  it('becomes a BS year, as the service writes it in English', () => {
+    expect(bsYearOf('Feb, 2019')).toBe('2075');   // a real result: Level 3, tested Feb 2019
+    expect(bsYearOf('Jun, 2019')).toBe('2076');
+    expect(bsYearOf('2079')).toBe('2079');
+    expect(bsYearOf('')).toBeNull();
+  });
+  it('fills the certificate from a real-shaped reply', async () => {
+    const r = await lookupNstbResult({ symbolNo: '20319/075-076', dateOfBirth: '2029/09/29' }, reply({
+      IsTheory: '1', TheoryMarks: '64', TheoryStatus: 'Pass', PERFORMANCE: 'Standard Met', Status: 'Pass',
+      Registration: '211668/070', SymbolNo: '20319/075-076', Occupation: 'Tailor & Dress Maker', Level: '3',
+      Year: 'Feb, 2019', CertificateNo: '345818', TestCenter: 'Nepal Army Vocational Training Center' }));
+    expect(r.result).toMatchObject({ level: 'Level 3', yearBs: '2075', registration: '211668/070', outcome: 'pass' });
+    const row = certificateFrom(r.result, [{ id: 3, name: 'Tailor & Dress Maker', level: 'Level 3' }]);
+    expect(row).toMatchObject({ level: 'Level 3', occupation_id: 3, passed_year: '2075', certificate_no: '345818',
+      institution: 'Nepal Army Vocational Training Center' });
+    expect(row.remarks).toContain('Reg. no. 211668/070');
   });
 });

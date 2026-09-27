@@ -411,7 +411,7 @@ describe('saving a qualification from the toggle', () => {
     const server = read('backend/server.js');
     expect(server).toMatch(/ADD COLUMN IF NOT EXISTS stream TEXT/);
     expect(server).toMatch(/SET kind = 'Academic', stream = 'Vocational' WHERE kind = 'Skill Test'/);
-    expect(read('backend/routes/hr.js')).toMatch(/education_level, stream, start_date, end_date, duration_days\)/);
+    expect(read('backend/routes/hr.js')).toMatch(/education_level, stream, start_date, end_date, duration_days,\s+start_date_ad, end_date_ad\)/);
   });
 
   it('keeps a button group out of a label', () => {
