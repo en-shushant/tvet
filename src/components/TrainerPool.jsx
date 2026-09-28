@@ -502,9 +502,21 @@ function TrainerPool({ isAdmin, isSuperAdmin }) {
       experience: form.experience || [],
       occupation_overrides: form.occupation_overrides || [],
     };
-    const saved = form.id
-      ? await api('PUT', `/hr/people/${form.id}`, body, token)
-      : await api('POST', '/hr/people', body, token);
+    const send = (b) => (form.id
+      ? api('PUT', `/hr/people/${form.id}`, b, token)
+      : api('POST', '/hr/people', b, token));
+    let saved;
+    try { saved = await send(body); }
+    catch (e) {
+      // An exact duplicate is refused outright; a lookalike asks first.
+      let info = {};
+      try { info = JSON.parse(e.rawBody || '{}'); } catch { /* not ours */ }
+      if (e.status !== 409 || !info.likely) throw e;
+      const different = await confirmDialog({
+        title: 'Possible duplicate', message: info.error, confirmLabel: 'They are different people — save' });
+      if (!different) throw new Error('Not saved. Open the existing record from the pool to update it.');
+      saved = await send({ ...body, not_duplicate: true });
+    }
     // An editor's save needs an admin/superadmin to confirm it before it
     // counts as verified — said plainly here rather than left to be noticed
     // later as a "Pending review" tag.

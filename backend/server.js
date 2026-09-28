@@ -800,6 +800,12 @@ async function runMigrations() {
     // confirm it before it counts as verified. Existing rows default to
     // verified so this does not retroactively flag the whole pool.
     `ALTER TABLE hr_people ADD COLUMN IF NOT EXISTS is_verified BOOLEAN DEFAULT TRUE`,
+    // Lookalike HR records someone confirmed are different people (low id first).
+    `CREATE TABLE IF NOT EXISTS hr_not_duplicates (
+       person_a INT NOT NULL REFERENCES hr_people(id) ON DELETE CASCADE,
+       person_b INT NOT NULL REFERENCES hr_people(id) ON DELETE CASCADE,
+       confirmed_by UUID, confirmed_at TIMESTAMPTZ DEFAULT NOW(),
+       PRIMARY KEY (person_a, person_b))`,
     `ALTER TABLE hr_people ADD COLUMN IF NOT EXISTS verified_by UUID`,
     `ALTER TABLE hr_people ADD COLUMN IF NOT EXISTS verified_at TIMESTAMPTZ`,
   ];

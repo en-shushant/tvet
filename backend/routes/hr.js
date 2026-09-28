@@ -146,6 +146,8 @@ const personValues = (b) => PERSON_FIELDS.map(f =>
  */
 const isReviewer = (request) => request.user.role === 'admin' || request.user.role === 'superadmin';
 
+const { findDuplicate, duplicateMessage, findLikelyDuplicate, likelyMessage, confirmNotDuplicates } = require('../lib/hrDuplicates');
+
 async function plugin(fastify, opts) {
   fastify.addHook('preHandler', authenticate);
   fastify.addHook('preHandler', requireHRAccess);
@@ -441,6 +443,15 @@ async function plugin(fastify, opts) {
     const client = await pool.connect();
     try {
       await client.query('BEGIN');
+      // Serialise pool saves so two at once cannot both pass the duplicate check.
+      await client.query("SELECT pg_advisory_xact_lock(hashtext('hr_people_dedupe'))");
+      const dup = await findDuplicate(client, request.body, null);
+      if (dup) { await client.query('ROLLBACK'); return reply.code(409).send({ error: duplicateMessage(dup), duplicate_id: dup.id }); }
+      // A lookalike (similar name, same degree or trade) is a question, not a refusal.
+      if (!request.body?.not_duplicate) {
+        const like = await findLikelyDuplicate(client, request.body, null);
+        if (like) { await client.query('ROLLBACK'); return reply.code(409).send({ error: likelyMessage(like), duplicate_id: like.id, likely: true }); }
+      }
       const cols = PERSON_FIELDS.join(',');
       const holders = PERSON_FIELDS.map((_, i) => `$${i + 1}`).join(',');
       const n = PERSON_FIELDS.length;
@@ -450,6 +461,7 @@ async function plugin(fastify, opts) {
         [...personValues(request.body), request.user.id, verified,
          verified ? request.user.id : null, verified ? new Date() : null]);
       await saveChildren(client, p.id, request.body);
+      if (request.body.not_duplicate) await confirmNotDuplicates(client, p.id, request.body, request.user.id);
       await client.query('COMMIT');
       return reply.code(201).send(p);
     } catch (e) { await client.query('ROLLBACK'); throw e; }
@@ -464,6 +476,15 @@ async function plugin(fastify, opts) {
     const client = await pool.connect();
     try {
       await client.query('BEGIN');
+      // Serialise pool saves so two at once cannot both pass the duplicate check.
+      await client.query("SELECT pg_advisory_xact_lock(hashtext('hr_people_dedupe'))");
+      const dup = await findDuplicate(client, request.body, request.params.id);
+      if (dup) { await client.query('ROLLBACK'); return reply.code(409).send({ error: duplicateMessage(dup), duplicate_id: dup.id }); }
+      // A lookalike (similar name, same degree or trade) is a question, not a refusal.
+      if (!request.body?.not_duplicate) {
+        const like = await findLikelyDuplicate(client, request.body, request.params.id);
+        if (like) { await client.query('ROLLBACK'); return reply.code(409).send({ error: likelyMessage(like), duplicate_id: like.id, likely: true }); }
+      }
       const sets = PERSON_FIELDS.map((f, i) => `${f}=$${i + 1}`).join(',');
       const n = PERSON_FIELDS.length;
       const { rows } = await client.query(
@@ -474,6 +495,7 @@ async function plugin(fastify, opts) {
          verified ? new Date() : null, request.params.id]);
       if (!rows.length) { await client.query('ROLLBACK'); return reply.code(404).send({ error: 'Not found' }); }
       await saveChildren(client, request.params.id, request.body);
+      if (request.body.not_duplicate) await confirmNotDuplicates(client, request.params.id, request.body, request.user.id);
       await client.query('COMMIT');
       return rows[0];
     } catch (e) { await client.query('ROLLBACK'); throw e; }
