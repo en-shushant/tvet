@@ -4,6 +4,7 @@ import { toNpNum, BS_DATA } from '../constants/nepali.js';
 import { api } from '../utils/api.js';
 import { loadKalimatiCss } from '../utils/kalimatiFont.js';
 import Select from './ui/Select.jsx';
+import NepaliInput from './ui/NepaliInput.jsx';
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
 function todayBS() {
@@ -662,12 +663,12 @@ export default function LetterBuilder({ row: initialRow, token, onClose, allRows
               <div key={key}>
                 <div style={{ fontSize:11, fontWeight:600, color:'var(--text3)', marginBottom:4, textTransform:'uppercase', letterSpacing:.5 }}>{def.label}</div>
                 {def.multiline
-                  ? <textarea value={fields[key] ?? ''} onChange={e => setFields(f => ({...f, [key]: e.target.value}))}
+                  ? <NepaliInput multiline value={fields[key] ?? ''} onChange={e => setFields(f => ({...f, [key]: e.target.value}))}
                       rows={3}
                       style={{ width:'100%', padding:'8px 10px', border:'1px solid var(--border)', borderRadius:6, fontSize:13,
                         fontFamily:'Kalimati,Noto Sans Devanagari,Arial Unicode MS,sans-serif', resize:'vertical',
                         background:'var(--surface)', color:'var(--text)', outline:'none', lineHeight:1.7 }}/>
-                  : <input value={fields[key] ?? ''} onChange={e => setFields(f => ({...f, [key]: e.target.value}))}
+                  : <NepaliInput value={fields[key] ?? ''} onChange={e => setFields(f => ({...f, [key]: e.target.value}))}
                       style={{ width:'100%', padding:'8px 10px', border:'1px solid var(--border)', borderRadius:6, fontSize:13,
                         fontFamily:'Kalimati,Noto Sans Devanagari,Arial Unicode MS,sans-serif',
                         background:'var(--surface)', color:'var(--text)', outline:'none' }}/>

@@ -9,6 +9,7 @@ import { useState, useEffect } from 'react';
 import { Btn, MdTextField } from '../../md.jsx';
 import { api, instToAPI } from '../../utils/api.js';
 import { safeHref } from '../../utils/safeWindow.js';
+import NepaliInput from '../ui/NepaliInput.jsx';
 
 const ACCEPT = 'image/*';
 
@@ -290,17 +291,20 @@ export function DocumentsTab({ institute, token, canEdit, onUpdate, isShortlistO
           <div className="section-title" style={{marginBottom:4}}>नेपाली विवरण</div>
           <div style={{fontSize:12, color:'var(--text3)', marginBottom:16}}>Used in the generated letter. Leave blank to fall back to English fields.</div>
           <div className="form-group">
-            <MdTextField label="संस्थाको नाम (नेपालीमा)" value={fields.nameNp} disabled={!canEdit}
-              onChange={e=>set('nameNp',e.target.value)} placeholder="e.g. वर्ल्ड लिङ्क टेक्निकल ट्रेनिङ् इन्स्टिच्च्यूट प्रा.लि." style={{width:'100%'}}/>
+            <label>संस्थाको नाम (नेपालीमा)</label>
+            <NepaliInput className="tw-in" value={fields.nameNp||''} disabled={!canEdit}
+              onChange={e=>set('nameNp',e.target.value)} placeholder="e.g. वर्ल्ड लिङ्क टेक्निकल ट्रेनिङ् इन्स्टिच्च्यूट प्रा.लि."/>
           </div>
           <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:'0 20px'}}>
             <div className="form-group">
-              <MdTextField label="ठेगाना (नेपालीमा)" value={fields.addressNp} disabled={!canEdit}
-                onChange={e=>set('addressNp',e.target.value)} placeholder="e.g. टोखा-१०, काठमाडौं" style={{width:'100%'}}/>
+              <label>ठेगाना (नेपालीमा)</label>
+              <NepaliInput className="tw-in" value={fields.addressNp||''} disabled={!canEdit}
+                onChange={e=>set('addressNp',e.target.value)} placeholder="e.g. टोखा-१०, काठमाडौं"/>
             </div>
             <div className="form-group">
-              <MdTextField label="मुख्य व्यक्तिको नाम (नेपालीमा)" value={fields.contactPersonNp} disabled={!canEdit}
-                onChange={e=>set('contactPersonNp',e.target.value)} placeholder="e.g. ठाकुर सुवेदी" style={{width:'100%'}}/>
+              <label>मुख्य व्यक्तिको नाम (नेपालीमा)</label>
+              <NepaliInput className="tw-in" value={fields.contactPersonNp||''} disabled={!canEdit}
+                onChange={e=>set('contactPersonNp',e.target.value)} placeholder="e.g. ठाकुर सुवेदी"/>
             </div>
           </div>
         </div>

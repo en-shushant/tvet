@@ -13,6 +13,7 @@ import { confirmDialog, toast } from './ui/Feedback.jsx';
 import { PageHeader, PillTabs } from './ui/primitives.jsx';
 import { useOccupations } from '../utils/useMasterData.js';
 import Select from './ui/Select.jsx';
+import NepaliInput from './ui/NepaliInput.jsx';
 
 
 /**
@@ -73,10 +74,12 @@ const ClientForm = ({client, onSave, onClose}) => {
         </div>
         <div className="form-row form-row-2">
           <div className="form-group">
-            <MdTextField label="Name in Nepali (नाम)" value={form.nameNp||''} onChange={e=>set('nameNp',e.target.value)} placeholder="e.g. नागार्जुन नगरपालिका"/>
+            <label>Name in Nepali (नाम)</label>
+            <NepaliInput className="tw-in" value={form.nameNp||''} onChange={e=>set('nameNp',e.target.value)} placeholder="e.g. nagarjun nagarpalika → नागार्जुन नगरपालिका"/>
           </div>
           <div className="form-group">
-            <MdTextField label="Address in Nepali (ठेगाना)" value={form.addressNp||''} onChange={e=>set('addressNp',e.target.value)} placeholder="e.g. काठमाडौँ"/>
+            <label>Address in Nepali (ठेगाना)</label>
+            <NepaliInput className="tw-in" value={form.addressNp||''} onChange={e=>set('addressNp',e.target.value)} placeholder="e.g. kathmandu → काठमाडौँ"/>
           </div>
         </div>
         <div style={{fontSize:12, color:'var(--text3)', marginTop:-4, marginBottom:12}}>

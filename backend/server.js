@@ -880,6 +880,7 @@ fastify.register(require('./routes/standingLists'),   { prefix: '/api/standing-l
 fastify.register(require('./routes/contracts'),        { prefix: '/api/contracts' });
 fastify.register(require('./routes/quotations'),       { prefix: '/api/quotations' });
 fastify.register(require('./routes/upload'),           { prefix: '/api/upload' });
+fastify.register(require('./routes/transliterate'),    { prefix: '/api/transliterate' });
 
 // ─── SPA FALLBACK ─────────────────────────────────────────────────────────────
 /**

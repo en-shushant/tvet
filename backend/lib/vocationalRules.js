@@ -33,8 +33,8 @@ async function vocationalRuleFor(client, occupationId, level) {
     `SELECT id FROM hr_qualification_rules
       WHERE is_active AND kind = 'Skill Test' AND lower(btrim(name)) = lower($1) ORDER BY id LIMIT 1`, [name]);
   if (found) return found.id;
-  // A trade listed without a level is granted as itself, as the ladder did.
-  const { co, main } = occ.level ? levelsFor(level) : { co: [], main: [] };
+  // A trade listed without a ladder level (blank, "N/A") is granted as itself.
+  const { co, main } = TOP[occ.level] && occ.level !== 'Technician' ? levelsFor(level) : { co: [], main: [] };
   const { rows: [rule] } = await client.query(
     `INSERT INTO hr_qualification_rules (name, kind, grant_scope, qual_level, notes, auto_created)
      VALUES ($1, 'Skill Test', 'occupations', $2, $3, TRUE) RETURNING id`,

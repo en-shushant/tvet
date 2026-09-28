@@ -3067,3 +3067,14 @@ span.pp-hr-no.tw-tag { font-family: var(--font-mono, monospace); }
 .summary-table { display: table !important; width: 100%; }
 
 .pp-pending-badge { margin-left: 8px; vertical-align: middle; height: 18px; font-size: 11px; padding: 0 6px; }
+
+/* Nepali typing (NepaliInput) */
+.np-field { position: relative; display: block; width: 100%; }
+.np-field > input, .np-field > textarea { width: 100%; padding-right: 34px; }
+.np-toggle { position: absolute; right: 6px; top: 6px; width: 24px; height: 24px; border-radius: 6px;
+  border: 1px solid var(--border, #d0d5dd); background: var(--surface, #fff); color: var(--text-2, #667085);
+  font-size: 13px; line-height: 1; cursor: pointer; padding: 0; }
+.np-field:not(.is-multi) .np-toggle { top: 50%; transform: translateY(-50%); }
+.np-toggle.is-on { color: var(--accent, #2563eb); border-color: currentColor; font-weight: 600; }
+.np-list .sel-opt { display: flex; justify-content: space-between; gap: 12px; font-size: 15px; }
+.np-hint { font-size: 11px; color: var(--text-3, #98a2b3); }

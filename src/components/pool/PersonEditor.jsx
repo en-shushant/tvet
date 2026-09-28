@@ -10,6 +10,7 @@ import Select from '../ui/Select.jsx';
 import NstbLookup from './NstbLookup.jsx';
 import NewTradeForm from './NewTradeForm.jsx';
 import SuggestInput from '../ui/SuggestInput.jsx';
+import NepaliInput from '../ui/NepaliInput.jsx';
 
 /**
  * Adding or editing someone in the pool, as one page.
@@ -239,7 +240,7 @@ export default function PersonEditor({ person, rules, occupations, onSave, onCan
                   onChange={e => set('full_name', e.target.value)} placeholder="As on the citizenship" />
               </Field>
               <Field label="Name in Nepali">
-                <input className="tw-in" value={form.full_name_np || ''} onChange={e => set('full_name_np', e.target.value)} />
+                <NepaliInput className="tw-in" value={form.full_name_np || ''} onChange={e => set('full_name_np', e.target.value)} />
               </Field>
               <Field label="Phone">
                 <input className="tw-in" type="tel" value={form.phone || ''} onChange={e => set('phone', e.target.value)} />

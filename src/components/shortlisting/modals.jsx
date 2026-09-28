@@ -14,6 +14,7 @@ import { getCurrentFY } from '../../constants/data.js';
 import { openShortlistLetter } from '../../utils/neaLetter.js';
 import { parseDocUrls, FYS, ACCEPT, uploadToR2 } from './common.jsx';
 import { safeHref } from '../../utils/safeWindow.js';
+import NepaliInput from '../ui/NepaliInput.jsx';
 
 function LetterPreviewModal({ url, filename, onClose }) {
   const frameRef = useRef(null);
@@ -128,22 +129,26 @@ export function StandingListModal({ list, onSave, onClose, saving }) {
         </div>
         {/* Address block — printed verbatim at the top of the generated letter */}
         <div className="form-group">
-          <MdTextField label="Addressee title" value={f.addressee}
+          <label>Addressee title</label>
+          <NepaliInput className="tw-in" value={f.addressee||''}
             onChange={e=>set('addressee', e.target.value)} placeholder="e.g. कार्यालय प्रमुख"/>
           <div style={{fontSize:11, color:'var(--text3)', marginTop:4}}>
             Printed as: <b>श्री {f.addressee.trim() || 'कार्यालय प्रमुख'} ज्यू,</b>
           </div>
         </div>
         <div className="form-group">
-          <MdTextField label="Organization name *" value={f.client_name_manual}
+          <label>Organization name *</label>
+          <NepaliInput className="tw-in" value={f.client_name_manual||''}
             onChange={e=>set('client_name_manual', e.target.value)} placeholder="e.g. नेपाल विद्युत प्राधिकरण"/>
         </div>
         <div className="form-group">
-          <MdTextField label="Department / Level 2 (optional)" value={f.client_name2_manual}
+          <label>Department / Level 2 (optional)</label>
+          <NepaliInput className="tw-in" value={f.client_name2_manual||''}
             onChange={e=>set('client_name2_manual', e.target.value)} placeholder="e.g. वातावरण तथा सामाजिक अध्ययन विभाग"/>
         </div>
         <div className="form-group">
-          <MdTextField label="Organization address" value={f.client_address_manual}
+          <label>Organization address</label>
+          <NepaliInput className="tw-in" value={f.client_address_manual||''}
             onChange={e=>set('client_address_manual', e.target.value)} placeholder="e.g. लाजिम्पाट, काठमाडौं"/>
         </div>
         <div style={{

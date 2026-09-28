@@ -59,7 +59,11 @@ const ELIGIBILITY_CTE = `
       FROM hr_qualifications q
       JOIN hr_qualification_rules r ON r.id = q.rule_id AND r.is_active
       JOIN hr_rule_occupations ro ON ro.rule_id = r.id
-     WHERE r.grant_scope = 'occupations' AND coalesce(cardinality(ro.levels), 0) = 0
+      JOIN occupations o0 ON o0.id = ro.occupation_id
+     WHERE r.grant_scope = 'occupations'
+       -- A trade with no ladder level ("N/A", blank) is granted as itself even
+       -- when levels are marked: the levels would otherwise match nothing.
+       AND (coalesce(cardinality(ro.levels), 0) = 0 OR ${LEVEL_RANK('o0.level')} = 0)
     UNION
     -- Levels marked on a rule's trade: every occupation of that name at those levels.
     SELECT q.person_id, o2.id
