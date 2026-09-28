@@ -7,6 +7,7 @@ import { labelOfGeneral, labelOfVocational, levelOfQualification } from '../../c
 import { experienceYears } from '../../utils/hrFit.js';
 import { DOC_TYPES, initials, sectionOf, topGeneral, topVocational } from './common.js';
 import Select from '../ui/Select.jsx';
+import CanTrain from './CanTrain.jsx';
 
 /**
  * A person in the pool, read the way a CV is read.
@@ -172,12 +173,7 @@ export default function PersonProfile({ person, token, canDelete, canVerify, onB
           <section className="pp-card">
             <h2 className="pp-h">Can train</h2>
             {person.eligible_occupations?.length ? (
-              <div className="tw-people" style={{ marginTop: 0 }}>
-                {person.eligible_occupations.map(o => (
-                  <span key={o.id} className="pp-trade">{o.name}
-                    {o.level && <span className="pp-trade-level">{o.level}</span>}</span>
-                ))}
-              </div>
+              <CanTrain person={person}/>
             ) : (
               <p className="tw-empty">Nothing yet. A vocational certificate names its trade; a degree needs a qualification rule to grant trades.</p>
             )}

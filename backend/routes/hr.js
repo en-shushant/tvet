@@ -328,7 +328,8 @@ async function plugin(fastify, opts) {
                          file_key, file_size, content_type, uploaded_at
                     FROM hr_documents WHERE person_id = $1 ORDER BY uploaded_at DESC`, [id]),
       pool.query(`WITH ${ELIGIBILITY_CTE}
-                  SELECT o.id, o.name, o.sector, o.level
+                  SELECT o.id, o.name, o.sector, o.level,
+                         EXISTS (SELECT 1 FROM main_granted m WHERE m.person_id = $1 AND m.occupation_id = o.id) AS main_rule
                     FROM eligible e JOIN occupations o ON o.id = e.occupation_id AND o.is_active
                    WHERE e.person_id = $1 ORDER BY o.name`, [id]),
       pool.query('SELECT * FROM hr_languages WHERE person_id = $1 ORDER BY sort_order, id', [id]),
@@ -344,7 +345,8 @@ async function plugin(fastify, opts) {
       experience: exp.rows,
       documents: docs.rows,
       languages: languages.rows,
-      eligible_occupations: elig.rows,
+      eligible_occupations: elig.rows.map(({ main_rule, ...o }) => o),
+      main_occupations: elig.rows.filter(o => o.main_rule).map(o => o.id),
       occupation_overrides: overrides.rows,
     };
   });

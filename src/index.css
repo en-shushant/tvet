@@ -3078,3 +3078,8 @@ span.pp-hr-no.tw-tag { font-family: var(--font-mono, monospace); }
 .np-toggle.is-on { color: var(--accent, #2563eb); border-color: currentColor; font-weight: 600; }
 .np-list .sel-opt { display: flex; justify-content: space-between; gap: 12px; font-size: 15px; }
 .np-hint { font-size: 11px; color: var(--text-3, #98a2b3); }
+
+/* Can train: trade + main/co levels */
+.ct-list { display: flex; flex-direction: column; gap: 5px; }
+.ct-line { display: flex; flex-wrap: wrap; align-items: center; gap: 5px; }
+.ct-name { color: var(--text); margin-right: 2px; }

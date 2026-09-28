@@ -9,6 +9,7 @@ import { SECTORS, NSTB_LEVELS } from '../constants/data.js';
 import { PERSON_TYPES, BLANK_PERSON, initials, normaliseQual, topGeneral, topVocational } from './pool/common.js';
 import PersonEditor from './pool/PersonEditor.jsx';
 import PersonProfile from './pool/PersonProfile.jsx';
+import CanTrain from './pool/CanTrain.jsx';
 import { experienceYears } from '../utils/hrFit.js';
 import { BLANK_FILTERS, applyFilters, activeFilterCount, poolKpis, SORTS, isPending } from './pool/filters.js';
 import { GENERAL_LEVELS, VOCATIONAL_LEVELS, teachableLevels, teachableByRole, labelOfGeneral, labelOfVocational } from '../constants/education.js';
@@ -777,8 +778,7 @@ function TrainerPool({ isAdmin, isSuperAdmin }) {
                         </td>
                         <td style={{ fontSize:13, color: 'var(--text2)' }}>
                           {p.eligible_occupations?.length
-                            ? p.eligible_occupations.slice(0, 3).map(o => o.name).join(', ')
-                              + (p.eligible_occupations.length > 3 ? ` +${p.eligible_occupations.length - 3}` : '')
+                            ? <CanTrain person={p} limit={3}/>
                             : <span style={{ color: 'var(--text3)' }}>—</span>}
                         </td>
                         <td className="num" style={{ fontSize:13 }}>

@@ -273,3 +273,26 @@ function topVocationalOf(person) {
     .map(q => labelOfVocational(q.level));
   return v.length ? `NSTB ${v[v.length - 1]}` : '';
 }
+
+/**
+ * What someone can train, one entry per trade: the levels they may take as
+ * co-trainer, and those they may lead as main trainer. Unlevelled trades are
+ * listed with no levels.
+ */
+export function canTrainByTrade(person, allOccupations = []) {
+  const trades = new Map();
+  for (const o of person?.eligible_occupations || []) {
+    const key = tradeKey(o.name);
+    const t = trades.get(key) || { name: o.name, levelled: false, main: [], co: [] };
+    if (TRADE_RANK[o.level]) {
+      t.levelled = true;
+      if (!t.co.includes(o.level)) t.co.push(o.level);
+      if (fitsTrainerLevel(person, o, allOccupations, 'Main trainer') && !t.main.includes(o.level)) t.main.push(o.level);
+    }
+    trades.set(key, t);
+  }
+  const byRank = (a, b) => TRADE_RANK[a] - TRADE_RANK[b];
+  return [...trades.values()]
+    .map(t => ({ ...t, main: t.main.sort(byRank), co: t.co.sort(byRank) }))
+    .sort((a, b) => a.name.localeCompare(b.name));
+}
