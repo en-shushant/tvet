@@ -306,6 +306,9 @@ async function plugin(fastify, opts) {
         (SELECT COUNT(*)::int FROM hr_documents d WHERE d.person_id = p.id) AS document_count,
         -- Which kinds are on file, so the roster can say who is missing a CV
         -- or citizenship without opening every record.
+        (SELECT u.name FROM users u WHERE u.id = p.created_by) AS created_by_name,
+        (SELECT u.name FROM users u WHERE u.id = p.updated_by) AS updated_by_name,
+        (SELECT u.name FROM users u WHERE u.id = p.verified_by) AS verified_by_name,
         COALESCE((SELECT array_agg(DISTINCT d.doc_type) FROM hr_documents d WHERE d.person_id = p.id), '{}') AS doc_types
         FROM hr_people p
         ${where}
@@ -316,7 +319,11 @@ async function plugin(fastify, opts) {
   fastify.get('/people/:id', async (request, reply) => {
     const { id } = request.params;
     const [person, quals, exp, docs, elig, languages, overrides] = await Promise.all([
-      pool.query('SELECT * FROM hr_people WHERE id = $1', [id]),
+      pool.query(`SELECT p.*,
+        (SELECT u.name FROM users u WHERE u.id = p.created_by) AS created_by_name,
+        (SELECT u.name FROM users u WHERE u.id = p.updated_by) AS updated_by_name,
+        (SELECT u.name FROM users u WHERE u.id = p.verified_by) AS verified_by_name
+        FROM hr_people p WHERE p.id = $1`, [id]),
       pool.query(`SELECT q.*, o.name AS occupation_name, o.sector AS occupation_sector,
                          r.name AS rule_name, r.grant_scope, r.sector AS rule_sector
                     FROM hr_qualifications q
@@ -489,10 +496,10 @@ async function plugin(fastify, opts) {
       const n = PERSON_FIELDS.length;
       const { rows } = await client.query(
         `UPDATE hr_people SET ${sets}, is_verified = $${n + 1}, verified_by = $${n + 2},
-                verified_at = $${n + 3}, updated_at = NOW()
+                verified_at = $${n + 3}, updated_at = NOW(), updated_by = $${n + 5}
           WHERE id = $${n + 4} RETURNING *`,
         [...personValues(request.body), verified, verified ? request.user.id : null,
-         verified ? new Date() : null, request.params.id]);
+         verified ? new Date() : null, request.params.id, request.user.id]);
       if (!rows.length) { await client.query('ROLLBACK'); return reply.code(404).send({ error: 'Not found' }); }
       await saveChildren(client, request.params.id, request.body);
       if (request.body.not_duplicate) await confirmNotDuplicates(client, request.params.id, request.body, request.user.id);

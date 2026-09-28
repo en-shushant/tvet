@@ -808,6 +808,7 @@ async function runMigrations() {
        PRIMARY KEY (person_a, person_b))`,
     `ALTER TABLE hr_people ADD COLUMN IF NOT EXISTS verified_by UUID`,
     `ALTER TABLE hr_people ADD COLUMN IF NOT EXISTS verified_at TIMESTAMPTZ`,
+    `ALTER TABLE hr_people ADD COLUMN IF NOT EXISTS updated_by UUID`,
   ];
   for (const sql of migrations) {
     try { await pool.query(sql); }

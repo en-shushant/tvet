@@ -12,7 +12,7 @@ import { sectionOf } from './common.js';
 
 export const BLANK_FILTERS = {
   q: '', role: '', trades: [], requireAll: false, minEducation: '', minNstb: '',
-  tot: false, minYears: '', availability: 'available', missing: '', pending: false,
+  tot: false, minYears: '', availability: 'available', missing: '', pending: false, enteredBy: '',
 };
 
 const isAvailable = (p) => p.is_active !== false;
@@ -34,6 +34,7 @@ export function applyFilters(people = [], f = BLANK_FILTERS, nowBS) {
     if (f.availability === 'available' && !isAvailable(p)) return false;
     if (f.availability === 'unavailable' && isAvailable(p)) return false;
     if (f.role && p.person_type !== f.role) return false;
+    if (f.enteredBy && String(p.created_by || 'none') !== f.enteredBy) return false;
     if (needle) {
       // Trades are searchable too: typing "plumb" is the quickest way to ask
       // "who can teach plumbing".
@@ -61,7 +62,7 @@ export function applyFilters(people = [], f = BLANK_FILTERS, nowBS) {
 
 /** How many filters are narrowing the list, not counting the default "available only". */
 export const activeFilterCount = (f) => [f.q?.trim(), f.role, f.trades?.length, f.minEducation, f.minNstb,
-  f.tot, f.minYears, f.availability !== 'available', f.missing, f.pending].filter(Boolean).length;
+  f.tot, f.minYears, f.availability !== 'available', f.missing, f.pending, f.enteredBy].filter(Boolean).length;
 
 /**
  * The pool at a glance.
@@ -110,3 +111,14 @@ export const SORTS = {
   education: { label: 'Highest education', fn: (a, b) => topGeneralRank(b) - topGeneralRank(a) },
   trades: { label: 'Most trades', fn: (a, b) => (b.eligible_occupations?.length || 0) - (a.eligible_occupations?.length || 0) },
 };
+
+/** Who entered records, for the "Entered by" filter: [{ id, name, count }], most first. */
+export function enteredByOptions(people = []) {
+  const m = new Map();
+  for (const p of people) {
+    const id = String(p.created_by || 'none');
+    const o = m.get(id) || { id, name: p.created_by ? (p.created_by_name || 'Deleted user') : 'Not recorded', count: 0 };
+    o.count++; m.set(id, o);
+  }
+  return [...m.values()].sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));
+}

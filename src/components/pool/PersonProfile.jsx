@@ -18,6 +18,8 @@ import CanTrain from './CanTrain.jsx';
  * table is. The record follows in CV order, with the personal details and the
  * documents in a side column where they are looked up rather than read.
  */
+const fmtWhen = (t) => new Date(t).toLocaleString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+
 export default function PersonProfile({ person, token, canDelete, canVerify, onBack, onEdit, onDelete, onReload }) {
   const [uploading, setUploading] = useState(false);
   const [docType, setDocType] = useState('CV');
@@ -129,6 +131,15 @@ export default function PersonProfile({ person, token, canDelete, canVerify, onB
             {pending
               ? <span className="tw-tag amber" title="Added or edited by an editor, waiting on an admin or superadmin to confirm it">Pending review</span>
               : <span className="tw-tag green" title="Confirmed by an admin or superadmin">Verified</span>}
+          </div>
+          <div className="pp-audit">
+            {[['Added', person.created_by_name, person.created_at],
+              ['Last edited', person.updated_by_name, person.updated_by ? person.updated_at : null],
+              [pending ? null : 'Verified', person.verified_by_name, person.verified_at]]
+              .filter(([label, who, at]) => label && (who || at))
+              .map(([label, who, at]) => (
+                <span key={label}>{label}{who ? ` by ${who}` : ''}{at ? ` · ${fmtWhen(at)}` : ''}</span>
+              ))}
           </div>
           {contact.length > 0 && (
             <div className="pp-contact">

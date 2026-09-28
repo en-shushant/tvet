@@ -134,3 +134,20 @@ describe('review status — an editor\'s addition or edit waits for an admin/sup
     expect(poolKpis(reviewPeople).pendingReview).toBe(1);
   });
 });
+
+describe('who entered a record', async () => {
+  const { applyFilters, enteredByOptions, BLANK_FILTERS } = await import('../src/components/pool/filters.js');
+  const people = [
+    { id: 1, full_name: 'A', created_by: 'u1', created_by_name: 'Sita', is_active: true },
+    { id: 2, full_name: 'B', created_by: 'u1', created_by_name: 'Sita', is_active: true },
+    { id: 3, full_name: 'C', created_by: 'u2', created_by_name: 'Hari', is_active: true },
+    { id: 4, full_name: 'D', created_by: null, is_active: true },
+  ];
+  it('lists each person who entered records, most first', () => {
+    expect(enteredByOptions(people).map(o => `${o.name}:${o.count}`)).toEqual(['Sita:2', 'Hari:1', 'Not recorded:1']);
+  });
+  it('filters to one person\'s entries, or those with no record of who', () => {
+    expect(applyFilters(people, { ...BLANK_FILTERS, enteredBy: 'u1' }).map(p => p.id)).toEqual([1, 2]);
+    expect(applyFilters(people, { ...BLANK_FILTERS, enteredBy: 'none' }).map(p => p.id)).toEqual([4]);
+  });
+});

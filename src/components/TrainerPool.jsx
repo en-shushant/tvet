@@ -11,7 +11,7 @@ import PersonEditor from './pool/PersonEditor.jsx';
 import PersonProfile from './pool/PersonProfile.jsx';
 import CanTrain from './pool/CanTrain.jsx';
 import { experienceYears } from '../utils/hrFit.js';
-import { BLANK_FILTERS, applyFilters, activeFilterCount, poolKpis, SORTS, isPending } from './pool/filters.js';
+import { BLANK_FILTERS, applyFilters, activeFilterCount, poolKpis, SORTS, isPending, enteredByOptions } from './pool/filters.js';
 import { GENERAL_LEVELS, VOCATIONAL_LEVELS, teachableLevels, teachableByRole, labelOfGeneral, labelOfVocational } from '../constants/education.js';
 import { useOccupations } from '../utils/useMasterData.js';
 import { api } from '../utils/api.js';
@@ -685,6 +685,11 @@ function TrainerPool({ isAdmin, isSuperAdmin }) {
                 <option value="Citizenship">No citizenship on file</option>
                 <option value="Experience Letter">No experience letter</option>
               </Select></label>
+            <label className="pf-field"><span className="pf-label">Entered by</span>
+              <Select className="tw-in" value={filters.enteredBy} onChange={e => setF({ enteredBy: e.target.value })}>
+                <option value="">Anyone</option>
+                {enteredByOptions(people).map(o => <option key={o.id} value={o.id}>{o.name} ({o.count})</option>)}
+              </Select></label>
             <label className="pf-field"><span className="pf-label">Show</span>
               <Select className="tw-in" value={filters.availability} onChange={e => setF({ availability: e.target.value })}>
                 <option value="available">Available to propose</option>
@@ -778,6 +783,7 @@ function TrainerPool({ isAdmin, isSuperAdmin }) {
                                 {p.hr_no && <span className="pp-hr-no">{p.hr_no} · </span>}
                                 {p.person_type}
                                 {p.is_active === false && ' · no longer available'}
+                                {p.created_by_name && <span title={`Entered by ${p.created_by_name}`}> · by {p.created_by_name}</span>}
                               </span>
                             </span>
                           </button>
