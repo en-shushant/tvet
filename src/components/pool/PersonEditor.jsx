@@ -127,6 +127,11 @@ export default function PersonEditor({ person, rules, occupations, onSave, onCan
     if (noGiver) out.push({ at: 'training', msg: 'A TOT with dates needs who gave it — choose TITI, NAVT or Other.' });
     const noLevel = form.qualifications.find(q => sectionOf(q) === 'vocational' && !q.level);
     if (noLevel) out.push({ at: 'education', msg: 'A vocational certificate needs its level.' });
+    const noTrade = form.qualifications.find(q => sectionOf(q) === 'vocational' && !q.occupation_id);
+    if (noTrade) out.push({ at: 'education', msg: 'A vocational certificate needs its trade — choose the occupation, or add it as a new trade.' });
+    const gen = form.qualifications.filter(q => sectionOf(q) === 'general');
+    if (gen.some(q => !String(q.title || '').trim())) out.push({ at: 'education', msg: 'Each general qualification needs its course / faculty.' });
+    if (gen.some(q => !String(q.institution || '').trim())) out.push({ at: 'education', msg: 'Each general qualification needs its college / institute.' });
     return out;
   };
 
@@ -338,7 +343,7 @@ export default function PersonEditor({ person, rules, occupations, onSave, onCan
                           {GENERAL_LEVELS.map(l => <option key={l.value} value={l.value}>{l.label}</option>)}
                         </Select>
                       </Field>
-                      <Field label="Course / faculty">
+                      <Field label="Course / faculty *">
                         <SuggestInput className="tw-in" value={q.title || ''} placeholder="e.g. Diploma in Civil Engineering"
                           suggestions={degreeNames(q.education_level)} onChange={v => setTitle(i, v)} />
                       </Field>
@@ -353,8 +358,8 @@ export default function PersonEditor({ person, rules, occupations, onSave, onCan
                       <RemoveBtn label="this qualification" onClick={() => delRow('qualifications', i)} />
                     </div>
                     <div className="pf-line pf-line-gen2">
-                      <Field label="College / institute">
-                        <input className="tw-in" value={q.institution || ''}
+                      <Field label="College / institute *">
+                        <input className="tw-in" value={q.institution || ''} aria-invalid={!String(q.institution || '').trim()}
                           onChange={e => setRow('qualifications', i, 'institution', e.target.value)} />
                       </Field>
                       <Field label="Board / university">
@@ -392,7 +397,7 @@ export default function PersonEditor({ person, rules, occupations, onSave, onCan
                         {VOCATIONAL_LEVELS.map(l => <option key={l.value} value={l.value}>{l.label}</option>)}
                       </Select>
                     </Field>
-                    <Field label="Trade on the certificate">
+                    <Field label="Trade on the certificate *">
                       <Select className="tw-in" value={q.occupation_id || ''}
                         onChange={e => e.target.value === '__new'
                           ? setNewTradeAt(i)

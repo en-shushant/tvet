@@ -146,6 +146,23 @@ const personValues = (b) => PERSON_FIELDS.map(f =>
  */
 const isReviewer = (request) => request.user.role === 'admin' || request.user.role === 'superadmin';
 
+/** What is missing from a qualification that must be complete, or null. */
+function qualificationProblem(quals) {
+  // Same reading as streamOf() in src/constants/education.js.
+  const stream = (q) => (q.stream === 'General' || q.stream === 'Vocational') ? q.stream
+    : q.kind === 'Skill Test' ? 'Vocational'
+    : q.kind && q.kind !== 'Academic' ? null
+    : q.level && !q.education_level ? 'Vocational' : 'General';
+  const list = quals.filter(Boolean);
+  if (list.some(q => stream(q) === 'Vocational' && !q.occupation_id)) {
+    return 'A vocational certificate needs its trade (occupation).';
+  }
+  const general = list.filter(q => stream(q) === 'General');
+  if (general.some(q => !String(q.title || '').trim())) return 'Each general qualification needs its course / faculty.';
+  if (general.some(q => !String(q.institution || '').trim())) return 'Each general qualification needs its college / institute.';
+  return null;
+}
+
 const { findDuplicate, duplicateMessage, findLikelyDuplicate, likelyMessage, confirmNotDuplicates } = require('../lib/hrDuplicates');
 
 async function plugin(fastify, opts) {
@@ -450,6 +467,8 @@ async function plugin(fastify, opts) {
       && [q.start_date, q.end_date, q.start_date_ad, q.end_date_ad].some(d => String(d || '').trim())
       && !String(q.institution || '').trim());
     if (noGiver) return reply.code(400).send({ error: 'A TOT with dates needs who gave it (TITI, NAVT or another institute).' });
+    const qerr = qualificationProblem(request.body.qualifications || []);
+    if (qerr) return reply.code(400).send({ error: qerr });
     const verified = isReviewer(request);
     const client = await pool.connect();
     try {
@@ -485,6 +504,8 @@ async function plugin(fastify, opts) {
       && [q.start_date, q.end_date, q.start_date_ad, q.end_date_ad].some(d => String(d || '').trim())
       && !String(q.institution || '').trim());
     if (noGiver) return reply.code(400).send({ error: 'A TOT with dates needs who gave it (TITI, NAVT or another institute).' });
+    const qerr = qualificationProblem(request.body.qualifications || []);
+    if (qerr) return reply.code(400).send({ error: qerr });
     // A change is only as trustworthy as whoever last touched it: an editor's
     // edit puts even a previously-verified record back up for review.
     const verified = isReviewer(request);

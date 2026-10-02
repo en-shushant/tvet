@@ -25,13 +25,16 @@ const OUTCOME = {
 const blankRow = () => ({ symbol: '', state: 'idle', result: null, error: '', added: false });
 const norm = (s) => String(s || '').trim().toLowerCase().replace(/\s+/g, ' ');
 
-/** The occupation in the master list whose name matches the certificate's trade. */
+/**
+ * The occupation in the master list with exactly the certificate's trade name.
+ * No partial matching: "Tailoring" is not "Garment Machine Operator (Tailoring)",
+ * nor "Garment Fabricator" — an unlisted trade is offered to be added instead.
+ */
 export function matchOccupation(occupations, name, level) {
   const n = norm(name);
   if (!n) return null;
   const same = occupations.filter(o => norm(o.name) === n);
-  return same.find(o => o.level === level) || same[0]
-    || occupations.find(o => norm(o.name).includes(n) || n.includes(norm(o.name))) || null;
+  return same.find(o => o.level === level) || same[0] || null;
 }
 
 /** The vocational qualification row a result becomes. */

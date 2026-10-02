@@ -104,7 +104,12 @@ async function runMigrations() {
     `ALTER TABLE users DROP CONSTRAINT IF EXISTS users_role_check`,
     `ALTER TABLE users ADD CONSTRAINT users_role_check CHECK (role IN ('admin','user','editor','viewer','superadmin','shortlist'))`,
     `ALTER TABLE occupations ADD COLUMN IF NOT EXISTS level TEXT`,
-    `DELETE FROM occupations WHERE is_custom = FALSE AND NOT EXISTS (SELECT 1 FROM assignment_occupations ao WHERE ao.ctevt_occupation_id = occupations.id)`,
+    `DELETE FROM occupations WHERE is_custom = FALSE
+       AND NOT EXISTS (SELECT 1 FROM assignment_occupations ao WHERE ao.ctevt_occupation_id = occupations.id)
+       AND NOT EXISTS (SELECT 1 FROM hr_qualifications q WHERE q.occupation_id = occupations.id)
+       AND NOT EXISTS (SELECT 1 FROM hr_rule_occupations ro WHERE ro.occupation_id = occupations.id)
+       AND NOT EXISTS (SELECT 1 FROM hr_experience e WHERE e.occupation_id = occupations.id)
+       AND NOT EXISTS (SELECT 1 FROM hr_person_occupations po WHERE po.occupation_id = occupations.id)`,
     `ALTER TABLE assignment_occupations ADD COLUMN IF NOT EXISTS level TEXT`,
     `ALTER TABLE institutes ADD COLUMN IF NOT EXISTS desc_template_id TEXT`,
     `ALTER TABLE institutes ADD COLUMN IF NOT EXISTS narrative_template_id TEXT`,
@@ -809,6 +814,34 @@ async function runMigrations() {
     `ALTER TABLE hr_people ADD COLUMN IF NOT EXISTS verified_by UUID`,
     `ALTER TABLE hr_people ADD COLUMN IF NOT EXISTS verified_at TIMESTAMPTZ`,
     `ALTER TABLE hr_people ADD COLUMN IF NOT EXISTS updated_by UUID`,
+    // NSTB lookups once linked a trade by partial name ("Tailoring" to "Garment
+    // Machine Operator (Tailoring)"). Relink those to the exact trade, adding it
+    // if missing; rule_id is cleared so the vocational rule is rebuilt at start.
+    `DO $$
+     DECLARE r RECORD; occ INT;
+     BEGIN
+       FOR r IN
+         SELECT q.id, q.level, o.sector, o.name AS oname,
+                btrim(substring(q.title from position(' — ' in q.title) + 3)) AS trade
+           FROM hr_qualifications q JOIN occupations o ON o.id = q.occupation_id
+          WHERE q.stream = 'Vocational' AND position(' — ' in q.title) > 0
+            AND q.remarks LIKE 'Symbol no.%'
+       LOOP
+         CONTINUE WHEN r.trade = '' OR lower(r.trade) = lower(btrim(r.oname));
+         CONTINUE WHEN NOT (lower(r.oname) LIKE '%' || lower(r.trade) || '%'
+                            OR lower(r.trade) LIKE '%' || lower(btrim(r.oname)) || '%');
+         SELECT id INTO occ FROM occupations
+          WHERE is_active AND lower(btrim(name)) = lower(r.trade)
+          ORDER BY (level IS NOT DISTINCT FROM r.level) DESC, id LIMIT 1;
+         IF occ IS NULL THEN
+           INSERT INTO occupations (name, sector, level, is_custom)
+           VALUES (r.trade, r.sector,
+                   CASE WHEN r.level IN ('Level 1','Level 2','Level 3','Professional') THEN r.level END, TRUE)
+           RETURNING id INTO occ;
+         END IF;
+         UPDATE hr_qualifications SET occupation_id = occ, rule_id = NULL WHERE id = r.id;
+       END LOOP;
+     END $$`,
     // A TOT with dates but no "given by" was given by TITI (2026-10 entry drive).
     `UPDATE hr_qualifications SET institution = 'Training Institute for Technical Instruction'
       WHERE kind = 'TOT' AND coalesce(btrim(institution), '') = ''

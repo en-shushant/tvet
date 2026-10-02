@@ -85,3 +85,12 @@ describe('the test date', () => {
     expect(row.remarks).toContain('Reg. no. 211668/070');
   });
 });
+
+describe('trade matching is by exact name only', () => {
+  const occs = [{ id: 1, name: 'Garment Machine Operator (Tailoring)', level: 'Level 2' }, { id: 2, name: 'Garment Fabricator', level: 'Level 1' }];
+  it('does not pass "Tailoring" off as another trade that mentions it', () => {
+    expect(matchOccupation(occs, 'Tailoring', 'Level 2')).toBeNull();
+    expect(matchOccupation(occs, 'Garment', 'Level 1')).toBeNull();
+    expect(matchOccupation(occs, ' garment fabricator ', 'Level 1').id).toBe(2);
+  });
+});
