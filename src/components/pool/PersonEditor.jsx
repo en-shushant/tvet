@@ -4,7 +4,7 @@ import { Btn } from '../../md.jsx';
 import { GENERAL_LEVELS, VOCATIONAL_LEVELS, levelOfQualification,
          labelOfGeneral } from '../../constants/education.js';
 import { PERSON_TYPES, TRAINING_KINDS, FLUENCY, BLANK_PERSON, emptyGeneral, emptyVocational,
-         emptyTraining, emptyExp, emptyLang, sectionOf, DEFAULT_LANGUAGES, TOT_TITLE,
+         emptyTraining, emptyExp, emptyLang, sectionOf, DEFAULT_LANGUAGES, TOT_TITLE, TOT_PROVIDERS, totProviderOf, totHasDates,
          maskBsDate, isBsDate, bsDaysBetween, adDaysBetween, adToBsDate, bsToAdDate } from './common.js';
 import Select from '../ui/Select.jsx';
 import NstbLookup from './NstbLookup.jsx';
@@ -123,6 +123,8 @@ export default function PersonEditor({ person, rules, occupations, onSave, onCan
       && ((q.start_date && !isBsDate(q.start_date)) || (q.end_date && !isBsDate(q.end_date))
         || (isBsDate(q.start_date) && isBsDate(q.end_date) && q.end_date < q.start_date)));
     if (badTot) out.push({ at: 'training', msg: 'A TOT’s dates need to be complete (2076/04/01), and it cannot end before it starts.' });
+    const noGiver = form.qualifications.find(q => q.kind === 'TOT' && totHasDates(q) && !String(q.institution || '').trim());
+    if (noGiver) out.push({ at: 'training', msg: 'A TOT with dates needs who gave it — choose TITI, NAVT or Other.' });
     const noLevel = form.qualifications.find(q => sectionOf(q) === 'vocational' && !q.level);
     if (noLevel) out.push({ at: 'education', msg: 'A vocational certificate needs its level.' });
     return out;
@@ -496,10 +498,38 @@ export default function PersonEditor({ person, rules, occupations, onSave, onCan
                   </>
                 )}
                 <div className="pf-line pf-line-gen2">
+                  {q.kind === 'TOT' ? (() => {
+                    const choice = q.given_by_other ? 'Other' : totProviderOf(q.institution);
+                    const required = totHasDates(q);
+                    const missing = required && !String(q.institution || '').trim();
+                    return (
+                      <Field label={required ? 'Given by *' : 'Given by'}
+                        hint={TOT_PROVIDERS.find(p => p.id === choice)?.name}>
+                        <Select className="tw-in" value={choice} aria-invalid={missing}
+                          onChange={e => {
+                            const v = e.target.value;
+                            const known = TOT_PROVIDERS.find(p => p.id === v);
+                            setRow('qualifications', i, 'given_by_other', v === 'Other');
+                            setRow('qualifications', i, 'institution', known ? known.name
+                              : v === 'Other' && totProviderOf(q.institution) === 'Other' ? q.institution : '');
+                          }}>
+                          <option value="">{required ? 'Choose…' : 'Not recorded'}</option>
+                          {TOT_PROVIDERS.map(p => <option key={p.id} value={p.id}>{p.id}</option>)}
+                          <option value="Other">Other</option>
+                        </Select>
+                        {choice === 'Other' && (
+                          <input className="tw-in" style={{ marginTop: 6 }} value={q.institution || ''} autoFocus={!q.institution}
+                            placeholder="Name of the institute" aria-invalid={missing}
+                            onChange={e => setRow('qualifications', i, 'institution', e.target.value)} />
+                        )}
+                      </Field>
+                    );
+                  })() : (
                   <Field label="Given by">
                     <input className="tw-in" value={q.institution || ''}
                       onChange={e => setRow('qualifications', i, 'institution', e.target.value)} />
                   </Field>
+                  )}
                   <Field label="Certificate number">
                     <input className="tw-in" value={q.certificate_no || ''}
                       onChange={e => setRow('qualifications', i, 'certificate_no', e.target.value)} />

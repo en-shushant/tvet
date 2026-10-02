@@ -29,6 +29,22 @@ export const emptyGeneral = (education_level = '') =>
 // The testing board is almost always the NSTB, so it is filled in rather than asked.
 export const emptyVocational = (level = '') =>
   ({ ...baseQual, kind: 'Academic', stream: 'Vocational', level, board: 'NSTB' });
+// Who gives a TOT: nearly always one of these two, otherwise typed.
+export const TOT_PROVIDERS = [
+  { id: 'TITI', name: 'Training Institute for Technical Instruction' },
+  { id: 'NAVT', name: 'National Academy of Vocational Training' },
+];
+/** 'TITI' | 'NAVT' | 'Other' | '' for a TOT's "given by" text. */
+export function totProviderOf(text) {
+  const t = String(text || '').trim().toLowerCase();
+  if (!t) return '';
+  for (const p of TOT_PROVIDERS) {
+    if (new RegExp(`\\b${p.id.toLowerCase()}\\b`).test(t) || t.includes(p.name.toLowerCase())) return p.id;
+  }
+  return 'Other';
+}
+export const totHasDates = (q) => !!(q.start_date || q.end_date || q.start_date_ad || q.end_date_ad);
+
 // A TOT is almost always titled exactly this, so it starts there.
 export const TOT_TITLE = 'Training of Trainers';
 export const emptyTraining = (kind = 'Training') =>

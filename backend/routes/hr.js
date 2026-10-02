@@ -446,6 +446,10 @@ async function plugin(fastify, opts) {
 
   fastify.post('/people', async (request, reply) => {
     if (!request.body?.full_name?.trim()) return reply.code(400).send({ error: 'A name is required' });
+    const noGiver = (request.body.qualifications || []).find(q => q?.kind === 'TOT'
+      && [q.start_date, q.end_date, q.start_date_ad, q.end_date_ad].some(d => String(d || '').trim())
+      && !String(q.institution || '').trim());
+    if (noGiver) return reply.code(400).send({ error: 'A TOT with dates needs who gave it (TITI, NAVT or another institute).' });
     const verified = isReviewer(request);
     const client = await pool.connect();
     try {
@@ -477,6 +481,10 @@ async function plugin(fastify, opts) {
 
   fastify.put('/people/:id', async (request, reply) => {
     if (!request.body?.full_name?.trim()) return reply.code(400).send({ error: 'A name is required' });
+    const noGiver = (request.body.qualifications || []).find(q => q?.kind === 'TOT'
+      && [q.start_date, q.end_date, q.start_date_ad, q.end_date_ad].some(d => String(d || '').trim())
+      && !String(q.institution || '').trim());
+    if (noGiver) return reply.code(400).send({ error: 'A TOT with dates needs who gave it (TITI, NAVT or another institute).' });
     // A change is only as trustworthy as whoever last touched it: an editor's
     // edit puts even a previously-verified record back up for review.
     const verified = isReviewer(request);

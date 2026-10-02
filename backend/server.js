@@ -809,6 +809,10 @@ async function runMigrations() {
     `ALTER TABLE hr_people ADD COLUMN IF NOT EXISTS verified_by UUID`,
     `ALTER TABLE hr_people ADD COLUMN IF NOT EXISTS verified_at TIMESTAMPTZ`,
     `ALTER TABLE hr_people ADD COLUMN IF NOT EXISTS updated_by UUID`,
+    // A TOT with dates but no "given by" was given by TITI (2026-10 entry drive).
+    `UPDATE hr_qualifications SET institution = 'Training Institute for Technical Instruction'
+      WHERE kind = 'TOT' AND coalesce(btrim(institution), '') = ''
+        AND btrim(concat(start_date, end_date, start_date_ad, end_date_ad)) <> ''`,
   ];
   for (const sql of migrations) {
     try { await pool.query(sql); }
