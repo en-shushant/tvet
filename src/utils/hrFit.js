@@ -208,13 +208,27 @@ export function rankNeededFor(occupation, allOccupations = [], main = false) {
   return Math.min(lv + 1, top);
 }
 
+/** Ids a rule marks as main-trainer for this occupation's trade, or null if none does. */
+function ruledMainIds(person, occupation, allOccupations = []) {
+  const ids = (person?.main_occupations || []).map(String);
+  if (!ids.length) return null;
+  const known = [...(person?.eligible_occupations || []), ...allOccupations];
+  const key = tradeKey(occupation.name);
+  const mine = ids.filter(id => known.some(o => String(o.id) === id && tradeKey(o.name) === key));
+  return mine.length ? new Set(mine) : null;
+}
+
 /** Whether a person can take a trainer post for this class. */
 export function fitsTrainerLevel(person, occupation, allOccupations = [], title = '') {
   if (!occupation) return true;
   const eligible = person?.eligible_occupations || [];
   const main = isMainTrainerRole(title);
-  // A qualification rule can name the levels someone may lead as main trainer.
-  if (main && (person?.main_occupations || []).some(id => String(id) === String(occupation.id))) return true;
+  // A qualification rule can name the levels someone may lead as main trainer;
+  // where it does for this trade, it decides — the fallback below does not add more.
+  if (main) {
+    const ruled = ruledMainIds(person, occupation, allOccupations);
+    if (ruled) return ruled.has(String(occupation.id));
+  }
   const needed = rankNeededFor(occupation, allOccupations, main);
   if (needed == null) return eligible.some(o => o.id === occupation.id);
   // The highest level of this trade they hold, read off what they are eligible for.

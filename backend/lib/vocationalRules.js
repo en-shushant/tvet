@@ -83,6 +83,35 @@ async function backfillVocationalRules(pool) {
     `SELECT COUNT(*)::int AS n FROM hr_qualifications q JOIN occupations o ON o.id = q.occupation_id WHERE NOT o.is_active`);
   if (left.n) console.log(`${left.n} certificate(s) still on a deleted trade with no active match`);
 
+  // Certificates whose trade was deleted out from under them (the link is
+  // cleared): the title still names it — "Level 1 — Tailor" — so relink by name.
+  const { rows: lost } = await pool.query(
+    `SELECT id, level, title FROM hr_qualifications
+      WHERE stream = 'Vocational' AND occupation_id IS NULL AND coalesce(btrim(title), '') <> ''`);
+  const unmatched = new Map();
+  let relinked = 0;
+  for (const q of lost) {
+    const trade = (q.title.includes(' — ') ? q.title.slice(q.title.indexOf(' — ') + 3) : q.title).trim();
+    const { rows: [named] } = await pool.query(
+      `SELECT id FROM occupations WHERE is_active AND lower(btrim(name)) = lower($1)
+        ORDER BY (level IS NOT DISTINCT FROM $2) DESC, id LIMIT 1`, [trade, q.level]);
+    if (!named) { unmatched.set(trade, (unmatched.get(trade) || 0) + 1); continue; }
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+      const occ = await occupationAtLevel(client, named.id, q.level);
+      await client.query('UPDATE hr_qualifications SET occupation_id = $1, rule_id = NULL WHERE id = $2', [occ, q.id]);
+      await client.query('COMMIT');
+      relinked++;
+    } catch (e) { await client.query('ROLLBACK'); throw e; }
+    finally { client.release(); }
+  }
+  if (relinked) console.log(`Relinked ${relinked} certificate(s) that had lost their trade`);
+  if (unmatched.size) {
+    console.log(`Certificates with no trade and no matching occupation: ${
+      [...unmatched].map(([t, n]) => `${t} (${n})`).join('; ')}`);
+  }
+
   // Certificates linked to their trade at another level: move them to their own.
   const { rows: offLevel } = await pool.query(
     `SELECT q.id, q.occupation_id, q.level FROM hr_qualifications q JOIN occupations o ON o.id = q.occupation_id
