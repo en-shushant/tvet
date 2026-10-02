@@ -151,3 +151,19 @@ describe('who entered a record', async () => {
     expect(applyFilters(people, { ...BLANK_FILTERS, enteredBy: 'none' }).map(p => p.id)).toEqual([4]);
   });
 });
+
+describe('review next: same trade and level', async () => {
+  const { sameReviewGroup } = await import('../src/components/pool/filters.js');
+  const voc = (name, level) => ({ kind: 'Academic', stream: 'Vocational', occupation_name: name, level });
+  const gen = (education_level) => ({ kind: 'Academic', stream: 'General', education_level, title: 'x' });
+  it('matches the same trade at the same level only', () => {
+    const a = { qualifications: [voc('Tailor', 'Level 2')] };
+    expect(sameReviewGroup(a, { qualifications: [voc('tailor', 'Level 2')] })).toBe(true);
+    expect(sameReviewGroup(a, { qualifications: [voc('Tailor', 'Level 1')] })).toBe(false);
+    expect(sameReviewGroup(a, { qualifications: [voc('Garment Fabricator', 'Level 2')] })).toBe(false);
+  });
+  it('without trades, matches the same highest education level', () => {
+    expect(sameReviewGroup({ qualifications: [gen('Bachelor')] }, { qualifications: [gen('Bachelor')] })).toBe(true);
+    expect(sameReviewGroup({ qualifications: [gen('Bachelor')] }, { qualifications: [gen('Master')] })).toBe(false);
+  });
+});

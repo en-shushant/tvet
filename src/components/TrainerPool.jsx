@@ -11,7 +11,7 @@ import PersonEditor from './pool/PersonEditor.jsx';
 import PersonProfile from './pool/PersonProfile.jsx';
 import CanTrain from './pool/CanTrain.jsx';
 import { experienceYears } from '../utils/hrFit.js';
-import { BLANK_FILTERS, applyFilters, activeFilterCount, poolKpis, SORTS, isPending, enteredByOptions } from './pool/filters.js';
+import { BLANK_FILTERS, applyFilters, activeFilterCount, poolKpis, SORTS, isPending, enteredByOptions, sameReviewGroup } from './pool/filters.js';
 import { GENERAL_LEVELS, VOCATIONAL_LEVELS, teachableLevels, teachableByRole, labelOfGeneral, labelOfVocational } from '../constants/education.js';
 import { useOccupations } from '../utils/useMasterData.js';
 import { api } from '../utils/api.js';
@@ -551,6 +551,18 @@ function TrainerPool({ isAdmin, isSuperAdmin }) {
   const kpi = useMemo(() => poolKpis(people), [people]);
   const shown = useMemo(() => applyFilters(people, filters).sort(SORTS[sort].fn), [people, filters, sort]);
   const pagination = usePagination(shown, 20);
+  /** The next record waiting for review, in the order the list is showing, wrapping round. */
+  // Only records of the same trade and level, so a reviewer checks like against like.
+  const pendingLike = (id) => {
+    const cur = people.find(p => p.id === id);
+    return cur ? people.filter(p => p.id !== id && isPending(p) && sameReviewGroup(cur, p)) : [];
+  };
+  const nextPendingAfter = (id) => {
+    const like = new Set(pendingLike(id).map(p => p.id));
+    const at = shown.findIndex(p => p.id === id);
+    const order = at < 0 ? shown : [...shown.slice(at + 1), ...shown.slice(0, at)];
+    return order.find(p => like.has(p.id)) || people.find(p => like.has(p.id)) || null;
+  };
   const wanted = filters.trades;
   const wantedNames = occupations.filter(o => wanted.includes(o.id)).map(o => o.name);
   const narrowed = activeFilterCount(filters);
@@ -574,7 +586,14 @@ function TrainerPool({ isAdmin, isSuperAdmin }) {
     return (
       <PersonProfile person={profile} token={token} canDelete={isSuperAdmin} canVerify={isAdmin}
         onBack={() => setProfile(null)} onEdit={(p) => setEditing(p)} onDelete={deletePerson}
-        onReload={() => openPerson(profile.id)} />
+        onReload={() => openPerson(profile.id)}
+        pendingLeft={pendingLike(profile.id).length}
+        onVerifiedNext={async () => {
+          const next = nextPendingAfter(profile.id);
+          await load();
+          if (next) await openPerson(next.id);
+          else { toast('No one else of this trade and level is waiting for review.'); await openPerson(profile.id); }
+        }} />
     );
   }
 

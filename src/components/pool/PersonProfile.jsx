@@ -20,7 +20,7 @@ import CanTrain from './CanTrain.jsx';
  */
 const fmtWhen = (t) => new Date(t).toLocaleString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
 
-export default function PersonProfile({ person, token, canDelete, canVerify, onBack, onEdit, onDelete, onReload }) {
+export default function PersonProfile({ person, token, canDelete, canVerify, onBack, onEdit, onDelete, onReload, onVerifiedNext, pendingLeft = 0 }) {
   const [uploading, setUploading] = useState(false);
   const [docType, setDocType] = useState('CV');
   const [err, setErr] = useState('');
@@ -30,12 +30,12 @@ export default function PersonProfile({ person, token, canDelete, canVerify, onB
   // confirm the record before it counts as verified. Records saved before
   // this existed, or last touched by an admin/superadmin, are verified.
   const pending = person.is_verified === false;
-  const verify = async () => {
+  const verify = async (andNext = false) => {
     setVerifying(true); setErr('');
     try {
       await api('POST', `/hr/people/${person.id}/verify`, null, token);
       toast(`${person.full_name} marked as verified.`);
-      onReload();
+      if (andNext && onVerifiedNext) await onVerifiedNext(); else onReload();
     } catch (e) { setErr(e.message || 'Could not verify this record.'); }
     finally { setVerifying(false); }
   };
@@ -157,10 +157,18 @@ export default function PersonProfile({ person, token, canDelete, canVerify, onB
             </button>
           )}
           {canVerify && pending && (
-            <Btn className="btn btn-secondary btn-sm" disabled={verifying} onClick={verify}>
+            <Btn className="btn btn-secondary btn-sm" disabled={verifying} onClick={() => verify(false)}>
               <span className="material-icons-round" style={{ fontSize: 15, verticalAlign: 'middle', marginRight: 4 }}>
                 verified_user</span>
               {verifying ? 'Verifying…' : 'Verify'}
+            </Btn>
+          )}
+          {canVerify && pending && onVerifiedNext && pendingLeft > 0 && (
+            <Btn className="btn btn-primary btn-sm" disabled={verifying} onClick={() => verify(true)}
+              title={`Verify this record and open the next one of the same trade and level (${pendingLeft} waiting)`}>
+              <span className="material-icons-round" style={{ fontSize: 15, verticalAlign: 'middle', marginRight: 4 }}>
+                skip_next</span>
+              Verify &amp; next · {pendingLeft}
             </Btn>
           )}
           <Btn className="btn btn-primary btn-sm" onClick={() => onEdit(person)}>

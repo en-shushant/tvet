@@ -122,3 +122,25 @@ export function enteredByOptions(people = []) {
   }
   return [...m.values()].sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));
 }
+
+/**
+ * What a record is reviewed against: each trade + level it holds a vocational
+ * certificate in, or — with none — its highest general education level.
+ */
+export function reviewKeys(p) {
+  const quals = p?.qualifications || [];
+  const voc = quals.filter(q => sectionOf(q) === 'vocational' && q.level)
+    .map(q => `trade:${String(q.occupation_name || '').trim().toLowerCase()}|${q.level}`);
+  if (voc.length) return new Set(voc);
+  const top = quals.filter(q => sectionOf(q) === 'general')
+    .map(q => levelOfQualification(q)).filter(Boolean)
+    .sort((a, b) => educationRank(b) - educationRank(a))[0];
+  return new Set([`edu:${top || 'none'}`]);
+}
+
+/** Whether two records share a trade and level (or, without trades, an education level). */
+export function sameReviewGroup(a, b) {
+  const ka = reviewKeys(a);
+  for (const k of reviewKeys(b)) if (ka.has(k)) return true;
+  return false;
+}
