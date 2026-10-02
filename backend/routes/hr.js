@@ -2,7 +2,7 @@
 const { pool } = require('../db/pool');
 const { sendStoredFile } = require('../lib/safeDownload');
 const { lookupNstbResult, LookupError, makeLimiter } = require('../lib/nstbResult');
-const { vocationalRuleFor } = require('../lib/vocationalRules');
+const { vocationalRuleFor, occupationAtLevel } = require('../lib/vocationalRules');
 const nstbLimit = makeLimiter();
 const { authenticate, requireHRAccess, requireAdmin, requireSuperAdmin } = require('../middleware/auth');
 
@@ -410,6 +410,11 @@ async function plugin(fastify, opts) {
     const quals = body.qualifications || [];
     for (let i = 0; i < quals.length; i++) {
       const q = { ...quals[i] };
+      if (q.stream === 'Vocational' && q.occupation_id) {
+        const occ = await occupationAtLevel(client, q.occupation_id, q.level);
+        // A certificate moved to its own level gets that level's rule, not the old one.
+        if (String(occ) !== String(q.occupation_id)) { q.occupation_id = occ; q.rule_id = null; }
+      }
       q.rule_id = await ruleFor(client, q);
       await client.query(
         `INSERT INTO hr_qualifications (person_id, kind, rule_id, title, institution, board,

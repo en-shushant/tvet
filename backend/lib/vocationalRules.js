@@ -46,8 +46,42 @@ async function vocationalRuleFor(client, occupationId, level) {
   return rule.id;
 }
 
+/**
+ * The occupation for a certificate's trade at the certificate's own level: a
+ * Level 1 Tailor certificate belongs to "Tailor · Level 1", not "Tailor · Level 2".
+ * Created (same name and sector) when the trade has no row at that level yet.
+ * Trades listed without a ladder level, and Technician certificates, stay as they are.
+ */
+async function occupationAtLevel(client, occupationId, level) {
+  if (!occupationId || !LADDER.includes(level)) return occupationId;
+  const { rows: [occ] } = await client.query('SELECT id, name, sector, level FROM occupations WHERE id = $1', [occupationId]);
+  if (!occ || !LADDER.includes(occ.level) || occ.level === level) return occupationId;
+  const { rows: [same] } = await client.query(
+    `SELECT id FROM occupations WHERE is_active AND lower(btrim(name)) = lower(btrim($1)) AND level = $2
+      ORDER BY id LIMIT 1`, [occ.name, level]);
+  if (same) return same.id;
+  const { rows: [made] } = await client.query(
+    `INSERT INTO occupations (name, sector, level, is_custom) VALUES ($1, $2, $3, TRUE) RETURNING id`,
+    [occ.name, occ.sector, level]);
+  return made.id;
+}
+
 /** Link every vocational certificate saved before this existed. Idempotent. */
 async function backfillVocationalRules(pool) {
+  // Certificates linked to their trade at another level: move them to their own.
+  const { rows: offLevel } = await pool.query(
+    `SELECT q.id, q.occupation_id, q.level FROM hr_qualifications q JOIN occupations o ON o.id = q.occupation_id
+      WHERE q.stream = 'Vocational' AND q.level = ANY($1) AND o.level = ANY($1) AND o.level <> q.level`, [LADDER]);
+  for (const q of offLevel) {
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+      const occ = await occupationAtLevel(client, q.occupation_id, q.level);
+      await client.query('UPDATE hr_qualifications SET occupation_id = $1, rule_id = NULL WHERE id = $2', [occ, q.id]);
+      await client.query('COMMIT');
+    } catch (e) { await client.query('ROLLBACK'); throw e; }
+    finally { client.release(); }
+  }
   const { rows } = await pool.query(
     `SELECT id, occupation_id, level FROM hr_qualifications
       WHERE rule_id IS NULL AND stream = 'Vocational' AND occupation_id IS NOT NULL AND level IS NOT NULL`);
@@ -65,4 +99,4 @@ async function backfillVocationalRules(pool) {
   return linked;
 }
 
-module.exports = { vocationalRuleFor, backfillVocationalRules, levelsFor, ruleName };
+module.exports = { occupationAtLevel, vocationalRuleFor, backfillVocationalRules, levelsFor, ruleName };
