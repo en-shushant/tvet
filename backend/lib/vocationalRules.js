@@ -68,6 +68,21 @@ async function occupationAtLevel(client, occupationId, level) {
 
 /** Link every vocational certificate saved before this existed. Idempotent. */
 async function backfillVocationalRules(pool) {
+  // Certificates on a merged or deleted trade: onto the trade it was merged
+  // into, else an active one of the same name (same level first).
+  const moved = await pool.query(`
+    UPDATE hr_qualifications q SET occupation_id = sub.to_id, rule_id = NULL
+      FROM (SELECT q2.id, COALESCE(
+                     (SELECT m.id FROM occupations m WHERE m.id = o.merged_into AND m.is_active),
+                     (SELECT a.id FROM occupations a WHERE a.is_active AND lower(btrim(a.name)) = lower(btrim(o.name))
+                       ORDER BY (a.level IS NOT DISTINCT FROM q2.level) DESC, a.id LIMIT 1)) AS to_id
+              FROM hr_qualifications q2 JOIN occupations o ON o.id = q2.occupation_id AND NOT o.is_active) sub
+     WHERE q.id = sub.id AND sub.to_id IS NOT NULL`);
+  if (moved.rowCount) console.log(`Moved ${moved.rowCount} certificate(s) off merged/deleted trades`);
+  const { rows: [left] } = await pool.query(
+    `SELECT COUNT(*)::int AS n FROM hr_qualifications q JOIN occupations o ON o.id = q.occupation_id WHERE NOT o.is_active`);
+  if (left.n) console.log(`${left.n} certificate(s) still on a deleted trade with no active match`);
+
   // Certificates linked to their trade at another level: move them to their own.
   const { rows: offLevel } = await pool.query(
     `SELECT q.id, q.occupation_id, q.level FROM hr_qualifications q JOIN occupations o ON o.id = q.occupation_id

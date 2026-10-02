@@ -814,6 +814,7 @@ async function runMigrations() {
     `ALTER TABLE hr_people ADD COLUMN IF NOT EXISTS verified_by UUID`,
     `ALTER TABLE hr_people ADD COLUMN IF NOT EXISTS verified_at TIMESTAMPTZ`,
     `ALTER TABLE hr_people ADD COLUMN IF NOT EXISTS updated_by UUID`,
+    `ALTER TABLE occupations ADD COLUMN IF NOT EXISTS merged_into INT`,
     // NSTB lookups once linked a trade by partial name ("Tailoring" to "Garment
     // Machine Operator (Tailoring)"). Relink those to the exact trade, adding it
     // if missing; rule_id is cleared so the vocational rule is rebuilt at start.

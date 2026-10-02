@@ -82,7 +82,8 @@ const ELIGIBILITY_CTE = `
     UNION
     SELECT q.person_id, q.occupation_id
       FROM hr_qualifications q
-     WHERE q.rule_id IS NULL AND q.occupation_id IS NOT NULL
+     WHERE q.occupation_id IS NOT NULL
+       AND (q.rule_id IS NULL OR q.stream = 'Vocational')
     UNION
     -- The NSTB ladder: a Plumber Level 2 certificate also teaches Plumber
     -- Level 1, a Level 3 teaches 1 to 3. Same trade name, any level at or below
@@ -95,7 +96,10 @@ const ELIGIBILITY_CTE = `
       JOIN occupations o1 ON o1.id = q.occupation_id
       JOIN occupations o2 ON o2.is_active AND lower(trim(o2.name)) = lower(trim(o1.name))
      WHERE q.occupation_id IS NOT NULL
-       AND (q.rule_id IS NULL OR (r.is_active AND r.grant_scope = 'certificate_occupation'))
+       -- A vocational certificate always teaches its own trade, whatever its rule
+       -- (deleted, deactivated, or left without trades) says; rules only add.
+       AND (q.rule_id IS NULL OR q.stream = 'Vocational'
+            OR (r.is_active AND r.grant_scope = 'certificate_occupation'))
        AND ${LEVEL_RANK('q.level')} > 0
        AND ${LEVEL_RANK('o2.level')} BETWEEN 1 AND ${LEVEL_RANK('q.level')}
   ),

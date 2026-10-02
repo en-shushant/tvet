@@ -228,7 +228,11 @@ describe('the eligibility rule in SQL', () => {
 
   it('still honours a trade certificate recorded before any rule existed', () => {
     // Otherwise a record entered on day one silently grants nothing.
-    expect(cte).toMatch(/q\.rule_id IS NULL AND q\.occupation_id IS NOT NULL/);
+    expect(cte).toMatch(/q\.occupation_id IS NOT NULL\s+AND \(q\.rule_id IS NULL OR q\.stream = 'Vocational'\)/);
+  });
+
+  it('a vocational certificate grants its own trade whatever its rule says', () => {
+    expect(cte).toMatch(/q\.rule_id IS NULL OR q\.stream = 'Vocational'\s+OR \(r\.is_active AND r\.grant_scope = 'certificate_occupation'\)/);
   });
 
   it('lets a removal beat every grant, including an explicit add', () => {

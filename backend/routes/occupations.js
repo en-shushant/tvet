@@ -96,6 +96,18 @@ async function plugin(fastify, opts) {
         `UPDATE occupation_tools SET occupation_id = $1 WHERE occupation_id = ANY($2::int[])`,
         [targetId, sourceIds]);
 
+      // The trainer pool points at occupations too; leaving it on a deactivated
+      // one empties "Can train". Rows keyed on (x, occupation) drop duplicates first.
+      await client.query('UPDATE hr_qualifications SET occupation_id = $1 WHERE occupation_id = ANY($2::int[])', [targetId, sourceIds]);
+      await client.query('UPDATE hr_experience SET occupation_id = $1 WHERE occupation_id = ANY($2::int[])', [targetId, sourceIds]);
+      await client.query(`DELETE FROM hr_rule_occupations s WHERE s.occupation_id = ANY($2::int[])
+        AND EXISTS (SELECT 1 FROM hr_rule_occupations t WHERE t.rule_id = s.rule_id AND t.occupation_id = $1)`, [targetId, sourceIds]);
+      await client.query('UPDATE hr_rule_occupations SET occupation_id = $1 WHERE occupation_id = ANY($2::int[])', [targetId, sourceIds]);
+      await client.query(`DELETE FROM hr_person_occupations s WHERE s.occupation_id = ANY($2::int[])
+        AND EXISTS (SELECT 1 FROM hr_person_occupations t WHERE t.person_id = s.person_id AND t.occupation_id = $1)`, [targetId, sourceIds]);
+      await client.query('UPDATE hr_person_occupations SET occupation_id = $1 WHERE occupation_id = ANY($2::int[])', [targetId, sourceIds]);
+      await client.query('UPDATE occupations SET merged_into = $1 WHERE id = ANY($2::int[])', [targetId, sourceIds]);
+
       const deactivated = await client.query(
         'UPDATE occupations SET is_active = FALSE WHERE id = ANY($1::int[]) RETURNING id, name',
         [sourceIds]);
