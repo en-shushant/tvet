@@ -815,6 +815,14 @@ async function runMigrations() {
     `ALTER TABLE hr_people ADD COLUMN IF NOT EXISTS verified_at TIMESTAMPTZ`,
     `ALTER TABLE hr_people ADD COLUMN IF NOT EXISTS updated_by UUID`,
     `ALTER TABLE occupations ADD COLUMN IF NOT EXISTS merged_into INT`,
+    // Trades named on NSTB certificates that were never in the list (2026-10).
+    `INSERT INTO occupations (name, sector, level, is_custom)
+     SELECT DISTINCT t.name, 'Tailoring, Garment, Textile and Hosiery', q.level, TRUE
+       FROM (VALUES ('Hand Embroiderer'), ('Woolen Tailor')) AS t(name)
+       JOIN hr_qualifications q ON q.stream = 'Vocational' AND q.occupation_id IS NULL
+        AND lower(btrim(substring(q.title from position(' — ' in q.title) + 3))) = lower(t.name)
+      WHERE NOT EXISTS (SELECT 1 FROM occupations o WHERE o.is_active
+                          AND lower(btrim(o.name)) = lower(t.name) AND o.level IS NOT DISTINCT FROM q.level)`,
     // NSTB lookups once linked a trade by partial name ("Tailoring" to "Garment
     // Machine Operator (Tailoring)"). Relink those to the exact trade, adding it
     // if missing; rule_id is cleared so the vocational rule is rebuilt at start.
