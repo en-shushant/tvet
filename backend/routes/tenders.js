@@ -760,7 +760,7 @@ async function plugin(fastify, opts) {
     };
 
     const { rows: proposed } = await pool.query(`
-      SELECT tp.*, o.name AS occupation_name, pos.task_role FROM tender_people tp
+      SELECT tp.*, o.name AS occupation_name, pos.task_role, pos.category AS post_category FROM tender_people tp
         LEFT JOIN occupations o ON o.id = tp.occupation_id
         LEFT JOIN tender_positions pos ON pos.id = tp.position_id
        WHERE tp.tender_id = $1 AND tp.bidder_id = $2
@@ -907,6 +907,7 @@ async function plugin(fastify, opts) {
         tender_person_id: tp.id,
         person: { ...person, years_with_entity: yearsWithFirm },
         proposed_position: vars.position,
+        post_category: tp.post_category || null, task_role: tp.task_role || null,
         occupation_name: tp.occupation_name || '',
         detailed_tasks: resolve(tp.detailed_tasks, tp.tasks_variant_id, '', 'detailed_tasks'),
         key_qualifications: resolve(tp.key_qualifications, tp.quals_variant_id, person.key_qualifications, 'key_qualifications'),

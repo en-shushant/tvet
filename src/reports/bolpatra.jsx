@@ -21,22 +21,28 @@ import { fillNarrativeTemplate, fillServicesTemplate } from '../utils/specificTe
 // assignments relevant to the EOI being bid for.
 const REPORTS = [
   { id: 'full', label: 'Complete EOI Document', aggregate: true, hasOccupationFilter: true, hasTurnoverFY: true, hasToolsPicker: true, hasSpecificOccFilter: true },
+  { id: '1',    label: '1. Letter of Application', aggregate: true },
   { id: '2',    label: "2. Applicant's Information Form", aggregate: true },
   { id: '3a',   label: '3(A) General Work Experience', aggregate: true },
   { id: '3b',   label: '3(B) Specific Experience', aggregate: true, hasOccupationFilter: true, hasSpecificOccFilter: true },
   { id: '3c',   label: '3(C) Geographic Experience', aggregate: true },
   { id: '4a',   label: '4(A) Financial Capacity', aggregate: true, hasTurnoverFY: true },
   { id: '4b',   label: '4(B) Infrastructure / Equipment', aggregate: true, hasOccupationFilter: true, hasToolsPicker: true },
+  { id: '5',    label: '5. Key Experts', aggregate: true },
 ];
 
-const SECTION_ORDER = ['2', '3a', '3b', '3c', '4a', '4b'];
+const SECTION_ORDER = ['1', '2', '3a', '3b', '3c', '4a', '4b', '5'];
 // 4(B) covers the whole applicant: every firm's office setup, then one tools
 // list. Tools are master data per occupation and level — identical for every
 // firm — so repeating them per member would pad the document with duplicates.
-const FIRM_SPANNING = new Set(['4b']);
+// The letter of application is the applicant's one letter, signed by the lead.
+const FIRM_SPANNING = new Set(['1', '4b']);
 const sectionsFor = (reportId) => reportId === 'full' ? SECTION_ORDER : [reportId];
 
 const SECTION_TITLES = {
+  '1':  { heading: '1.  Letter of Application', centered: true, note: '' },
+  '5':  { heading: '5.  Key Experts (Include details of Key Experts only)',
+          note: '(In case of joint venture of two or more firms to be filled separately for each constituent member)' },
   '2':  { heading: "2.  Applicant's Information Form", centered: true,
           note: '(In case of joint venture of two or more firms to be filled separately for each constituent member)' },
   '3a': { heading: '3(A). General Work Experience',
@@ -226,6 +232,95 @@ function model2(inst) {
 }
 
 /** Closing instruction printed under section 2 on the form. */
+// ─── 1. Letter of Application · 5. Key Experts ───────────────────────────────
+
+const PH = (t) => `[${t}]`;   // a blank the form leaves for the applicant to fill
+
+/**
+ * The letter, from the tender when the report was opened from one: the client,
+ * the work, and the lead firm as the applicant's contact. Opened on its own,
+ * the form's own blanks stay to be filled by hand.
+ */
+function model1(firms, opts = {}) {
+  const t = opts.tender || {};
+  const c = t.client || {};
+  const lead = firms[0]?.inst || {};
+  const applicant = t.applicant || (firms.length > 1
+    ? `${firms.map(f => f.inst?.name).filter(Boolean).join(' + ')} (JV)` : lead.name) || PH('Applicant');
+  const client = c.fullName || PH('Insert name of Client');
+  return {
+    date: new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
+    to: [['Full Name of Client', c.fullName], ['Full Address of Client', c.address], ['Telephone No.', c.phone],
+         ['Fax No.', c.fax], ['Email Address', c.email]],
+    paras: [
+      `Being duly authorized to represent and act on behalf of ${applicant} (hereinafter "the Applicant"), and having reviewed and fully understood all the short-listing information provided, the undersigned hereby apply to be short-listed by ${client} as Consultant for ${t.title || PH('Insert brief description of Work/Services')}.`,
+      'Attached to this letter are photocopies of original documents defining:',
+      `${client} and its authorized representatives are hereby authorized to verify the statements, documents, and information submitted in connection with this application. This Letter of Application will also serve as authorization to any individual or authorized representative of any institution referred to in the supporting information, to provide such information deemed necessary and requested by yourselves to verify statements and information provided in this application, or with regard to the resources, experience, and competence of the Applicant.`,
+      `${client} and its authorized representatives are authorized to contact any of the signatories to this letter for any further information.`,
+      'All further communication concerning this Application should be addressed to the following person,',
+      'We declare that, we have no conflict of interest in the proposed procurement proceedings and we have not been punished for an offense relating to the concerned profession or business and our Company/firm has not been declared ineligible.',
+      'We further confirm that, if any of our experts is engaged to prepare the TOR for any ensuing assignment resulting from our work product under this assignment, our firm, JV member or sub-consultant, and the expert(s) will be disqualified from short-listing and participation in the assignment.',
+      'The undersigned declares that the statements made and the information provided in the duly completed application are complete, true and correct in every detail.',
+    ],
+    attached: ["the Applicant's legal status;", 'the principal place of business;'],
+    contact: [lead.contactPerson || PH('Person'), lead.name || PH('Company'), lead.address || PH('Address'),
+      [lead.phone && `Phone: ${lead.phone}`, lead.fax && `Fax: ${lead.fax}`, lead.email && `Email: ${lead.email}`].filter(Boolean).join(', ') || PH('Phone, Fax, Email')],
+    signName: lead.contactPerson || '',
+    behalf: applicant,
+  };
+}
+
+// BS "2079/04/01" (or "2079") → months; the CV pack's dates are all BS.
+const bsMonth = (d) => { const m = String(d || '').match(/^(\d{4})(?:[/-](\d{1,2}))?/); return m ? (+m[1]) * 12 + ((+m[2] || 1) - 1) : null; };
+const nowBsMonth = () => (new Date().getFullYear() + 56) * 12 + new Date().getMonth() + 8;
+const norm = (x) => String(x || '').trim().toLowerCase();
+
+/**
+ * Form 5's rows from a tender's CV pack (GET /tenders/:id/cv): its "Key expert"
+ * posts only, each under the firm the person joined. Experience is the time in
+ * the jobs the CV lists; "specific" is the time in jobs of the same post.
+ */
+function keyExpertsFrom(pack) {
+  const lead = pack?.tender?.lead_institute_id;
+  return (pack?.cvs || []).filter(cv => cv.post_category === 'Key expert').map(cv => {
+    const months = (e) => { const f = bsMonth(e.from_date); const t = e.is_current ? nowBsMonth() : bsMonth(e.to_date);
+      return f != null && t != null && t > f ? t - f : 0; };
+    const post = norm(cv.task_role || cv.proposed_position);
+    const jobs = cv.experience || [];
+    const total = jobs.reduce((n, e) => n + months(e), 0);
+    const specific = jobs.filter(e => { const r = norm(e.role || e.position); return r && post && (r === post || r.includes(post) || post.includes(r)); })
+      .reduce((n, e) => n + months(e), 0);
+    const general = (cv.education || []).filter(q => q.stream !== 'Vocational' && q.title);
+    const best = general.sort((a, b) => (parseInt(b.passed_year, 10) || 0) - (parseInt(a.passed_year, 10) || 0))[0]
+      || (cv.education || []).find(q => q.title);
+    return {
+      firmId: (jobs.find(e => e.biddingFirm) || {}).institute_id || lead,
+      name: cv.person?.full_name, position: cv.proposed_position, qualification: best?.title || '',
+      years: total ? String(Math.floor(total / 12)) : '', specific: specific ? String(Math.floor(specific / 12)) : '',
+      nationality: cv.person?.nationality || 'Nepali',
+    };
+  });
+}
+
+const KEY_COLUMNS = ['SN', 'Name', 'Position', 'Highest Qualification', 'Work Experience (in year)', 'Specific Work Experience (in year)', 'Nationality'];
+const KEY_WIDTHS = [500, 1800, 1500, 1800, 1300, 1300, 1100];
+
+/**
+ * One firm's key experts. From the tender's team when there is one (its posts
+ * marked "Key expert", placed under the firm each person joined); otherwise the
+ * firm's own key-staff list, whose other columns are left to fill.
+ */
+function model5(inst, opts = {}) {
+  const t = opts.tender;
+  const rows = t?.keyExperts
+    ? t.keyExperts.filter(k => String(k.firmId) === String(inst?.id))
+        .map(k => [k.name, k.position, k.qualification, k.years, k.specific, k.nationality])
+    : (inst?.keyStaff || []).map(k => [k.name, k.position, '', '', '', 'Nepali']);
+  const filled = rows.map((r, i) => [String(i + 1), ...r.map(v => dash(v))]);
+  while (filled.length < 5) filled.push([String(filled.length + 1), '', '', '', '', '', '']);
+  return { columns: KEY_COLUMNS, widths: KEY_WIDTHS, rows: filled };
+}
+
 const SECTION2_NOTE = '(Provide Company Profile with description of the background and '
   + 'organization of the Consultant and, if applicable, for each joint venture partner for '
   + 'this assignment.)';
@@ -646,7 +741,32 @@ function Section4B({ firms, opts = {} }) {
   );
 }
 
+function Section1({ firms, opts = {} }) {
+  const m = model1(firms, opts);
+  return (
+    <div style={{fontSize:12.5, lineHeight:1.6}}>
+      <div style={{textAlign:'right'}}>Date: {m.date}</div>
+      <div style={{margin:'10px 0 4px'}}>To,</div>
+      {m.to.map(([k, v]) => <div key={k}>{k}: <b>{v || '____________________'}</b></div>)}
+      <div style={{margin:'12px 0 6px'}}>Sir/Madam,</div>
+      <ol style={{margin:0, paddingLeft:20}}>
+        {m.paras.map((t, i) => (
+          <li key={i} style={{marginBottom:8, textAlign:'justify'}}>{t}
+            {i === 1 && <ol type="a" style={{margin:'4px 0 0 18px'}}>{m.attached.map(a => <li key={a}>{a}</li>)}</ol>}
+            {i === 4 && <div style={{margin:'6px 0 0 14px'}}>{m.contact.map((c, k) => <div key={k}>{c}</div>)}</div>}
+          </li>
+        ))}
+      </ol>
+      <div style={{marginTop:24}}>Signed: ____________________</div>
+      <div>Name: <b>{m.signName}</b></div>
+      <div style={{fontWeight:600, marginTop:6}}>For and on behalf of (name of Applicant or partner of a joint venture): {m.behalf}</div>
+    </div>
+  );
+}
+
 function SectionBody({ section, inst, exps, clients, opts }) {
+  if (section === '1') return <Section1 firms={[{ inst }]} opts={opts} />;
+  if (section === '5') return <><GridTable model={model5(inst, opts)} /><div style={{fontSize:11.5, marginTop:6}}>(Please insert more rows as necessary)</div></>;
   if (section === '2') {
     return (
       <div>
@@ -786,7 +906,7 @@ function renderMultiAggregate(firms, clients, reportId, opts = {}) {
             textAlign: SECTION_TITLES[s].centered ? 'center' : 'left'}}>{SECTION_TITLES[s].heading}</div>
           <div style={{fontSize:11, color:'var(--text3)', fontStyle:'italic', marginBottom:14}}>{SECTION_TITLES[s].note}</div>
           {FIRM_SPANNING.has(s)
-            ? <Section4B firms={firms} opts={opts} />
+            ? (s === '1' ? <Section1 firms={firms} opts={opts} /> : <Section4B firms={firms} opts={opts} />)
             : firms.map(({ inst, exps }, fi) => (
                 <div key={inst?.id ?? fi} style={{
                   marginBottom:18, paddingLeft:14,
@@ -857,7 +977,29 @@ function html4B(firms, opts = {}) {
   return `${offices}${occHtml}`;
 }
 
+function html1(firms, opts = {}) {
+  const m = model1(firms, opts);
+  return `<div class="letter">
+    <p style="text-align:right">Date: ${esc(m.date)}</p>
+    <p>To,</p>${m.to.map(([k, v]) => `<div>${esc(k)}: <b>${esc(v) || '____________________'}</b></div>`).join('')}
+    <p>Sir/Madam,</p>
+    <ol>${m.paras.map((t, i) => `<li style="text-align:justify;margin-bottom:8px">${esc(t)}${
+      i === 1 ? `<ol type="a">${m.attached.map(a => `<li>${esc(a)}</li>`).join('')}</ol>` : ''}${
+      i === 4 ? `<div style="margin:6px 0 0 14px">${m.contact.map(c => `<div>${esc(c)}</div>`).join('')}</div>` : ''}</li>`).join('')}</ol>
+    <p style="margin-top:28px">Signed: ____________________</p>
+    <p>Name: <b>${esc(m.signName)}</b></p>
+    <p><b>For and on behalf of (name of Applicant or partner of a joint venture): ${esc(m.behalf)}</b></p>
+  </div>`;
+}
+
 function htmlSection(section, inst, exps, clients, opts) {
+  if (section === '1') return html1([{ inst }], opts);
+  if (section === '5') {
+    const m = model5(inst, opts);
+    return `<table><thead><tr>${m.columns.map(c => `<th>${esc(c)}</th>`).join('')}</tr></thead>
+      <tbody>${m.rows.map(r => `<tr>${r.map(v => `<td>${esc(v) || '&nbsp;'}</td>`).join('')}</tr>`).join('')}</tbody></table>
+      <p class="note-i">(Please insert more rows as necessary)</p>`;
+  }
   if (section === '2') {
     // The form prints this as a plain numbered list — no table, no rules.
     return `<ol class="info">${model2(inst).map(it => `
@@ -995,7 +1137,7 @@ function buildMultiPrintHTML(firms, clients, reportId, fyRange, opts = {}) {
       ${SECTION_TITLES[s].preHeading ? `<div class="cap-head">${esc(SECTION_TITLES[s].preHeading)}</div>` : ''}
       <h2 class="${SECTION_TITLES[s].centered ? 'h2-center' : ''}">${esc(SECTION_TITLES[s].heading)}</h2>
       <p class="sub">${esc(SECTION_TITLES[s].note)}</p>
-      ${html4B(firms, opts)}
+      ${s === '1' ? html1(firms, opts) : html4B(firms, opts)}
     </div>`);
       return;
     }
@@ -1141,10 +1283,39 @@ function docx4B(D, kit, firms, opts = {}) {
   return out;
 }
 
+function docx1(D, kit, firms, opts = {}) {
+  const { p } = kit;
+  const m = model1(firms, opts);
+  const out = [p(`Date: ${m.date}`, { align: D.AlignmentType.RIGHT, spacing: { after: 200 } }), p('To,')];
+  m.to.forEach(([k, v]) => out.push(p(`${k}: ${v || '____________________'}`)));
+  out.push(p('Sir/Madam,', { spacing: { before: 200, after: 120 } }));
+  m.paras.forEach((t, i) => {
+    out.push(p(`${i + 1}. ${t}`, { spacing: { after: 120 } }));
+    if (i === 1) m.attached.forEach((a, k) => out.push(p(`      ${'ab'[k]}) ${a}`)));
+    if (i === 4) m.contact.forEach(c => out.push(p(`      ${c}`)));
+  });
+  out.push(p('Signed: ____________________', { spacing: { before: 400 } }));
+  out.push(p(`Name: ${m.signName}`));
+  out.push(p(`For and on behalf of (name of Applicant or partner of a joint venture): ${m.behalf}`, { bold: true }));
+  return out;
+}
+
 function docxSection(D, kit, section, inst, exps, clients, opts) {
   const { Table, TableRow, WidthType, AlignmentType, HeightRule } = D;
   const { p, lines, cell } = kit;
   const out = [];
+
+  if (section === '1') return docx1(D, kit, [{ inst }], opts);
+  if (section === '5') {
+    const m = model5(inst, opts);
+    const w = scaleWidths(m.widths);
+    out.push(new Table({ width: { size: 100, type: WidthType.PERCENTAGE }, rows: [
+      new TableRow({ tableHeader: true, children: m.columns.map((c, i) => cell(p(c, { bold: true }), { width: w[i] })) }),
+      ...m.rows.map(r => new TableRow({ children: r.map((v, i) => cell(p(v || ''), { width: w[i] })) })),
+    ] }));
+    out.push(p('(Please insert more rows as necessary)', { size: 18, spacing: { before: 120 } }));
+    return out;
+  }
 
   if (section === '2') {
     // Numbered list, matching the form — not a table.
@@ -1282,7 +1453,7 @@ async function downloadMultiDOCX(firms, clients, reportId, opts = {}) {
         align: SECTION_TITLES[s].centered ? AlignmentType.CENTER : undefined,
         spacing: { before: 200, after: 40 } }));
       children.push(p(SECTION_TITLES[s].note, { italic: true, size: 17, spacing: { after: 140 } }));
-      children.push(...docx4B(D, kit, firms, opts));
+      children.push(...(s === '1' ? docx1(D, kit, firms, opts) : docx4B(D, kit, firms, opts)));
       return;
     }
     firms.forEach(({ inst, exps }, fi) => {
@@ -1372,4 +1543,4 @@ const bolpatra = {
 };
 
 export default bolpatra;
-export { model3b, captionOf };
+export { model3b, captionOf, model1, model5, keyExpertsFrom };

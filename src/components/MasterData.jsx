@@ -59,6 +59,9 @@ const ClientForm = ({client, onSave, onClose}) => {
         <div className="form-group">
           <MdTextField type="email" label="Email" value={form.email||''} onChange={e=>set('email',e.target.value)} placeholder="Office email"/>
         </div>
+        <div className="form-group">
+          <MdTextField label="Fax (optional)" value={form.fax||''} onChange={e=>set('fax',e.target.value)} placeholder="Printed on EOI letters of application"/>
+        </div>
       </div>
       <div className="form-group">
         <MdTextField label="Website (optional)" value={form.website||''} onChange={e=>set('website',e.target.value)} placeholder="https://"/>

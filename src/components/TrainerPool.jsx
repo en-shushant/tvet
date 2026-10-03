@@ -821,7 +821,8 @@ function TrainerPool({ isAdmin, isSuperAdmin }) {
                       <tr key={p.id} className={p.is_active === false ? 'pp-inactive' : undefined}>
                         <td>
                           <button type="button" className="pp-person" onClick={() => openPerson(p.id)}>
-                            <span className="pp-avatar pp-avatar-sm" aria-hidden="true">{initials(p.full_name)}</span>
+                            <span className={`pp-avatar pp-avatar-sm ${isPending(p) ? 'is-pending' : 'is-verified'}`} aria-hidden="true"
+                              title={isPending(p) ? 'Waiting for review' : 'Verified'}>{initials(p.full_name)}</span>
                             <span>
                               <span className="pp-person-name">{p.full_name}</span>
                               {isPending(p) && (

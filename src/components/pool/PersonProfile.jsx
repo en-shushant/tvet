@@ -118,7 +118,7 @@ export default function PersonProfile({ person, token, canDelete, canVerify, onB
       <ErrorBanner msg={err} onDismiss={() => setErr('')} />
 
       <header className="pp-head">
-        <div className="pp-avatar" aria-hidden="true">
+        <div className={`pp-avatar ${pending ? 'is-pending' : 'is-verified'}`} aria-hidden="true">
           {person.photo ? <img src={person.photo} alt="" /> : initials(person.full_name)}
         </div>
         <div className="pp-id">

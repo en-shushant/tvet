@@ -7,7 +7,7 @@ import { fyInRange, fyYear, completedOnly } from '../reports/helpers.js';
 import { takeTenderContext } from '../utils/tenderContext.js';
 import { FISCAL_YEARS } from '../constants/data.js';
 import REPORT_FAMILIES from '../reports/index.js';
-import { TOOL_COLUMN_OPTIONS, TOOL_TYPE_OPTIONS, DEFAULT_TOOL_COLS } from '../reports/bolpatra.jsx';
+import { TOOL_COLUMN_OPTIONS, TOOL_TYPE_OPTIONS, DEFAULT_TOOL_COLS, keyExpertsFrom } from '../reports/bolpatra.jsx';
 import { PillTabs } from './ui/primitives.jsx';
 import { fetchToolsFor, countToolsFor } from '../utils/occupationTools.js';
 import Select from './ui/Select.jsx';
@@ -193,6 +193,8 @@ function ReportsView({ institutes, clients }) {
   const [includeRestricted, setIncludeRestricted] = useState(true);
   // Set when Tenders sent us here, so the builder can say why it is pre-filled.
   const [fromTender, setFromTender] = useState(null);
+  // The tender's client, title and key experts, for the EOI's Forms 1 and 5.
+  const [tenderReport, setTenderReport] = useState(null);
 
   /**
    * Open on a tender's choices, when Tenders sent us here.
@@ -248,6 +250,20 @@ function ReportsView({ institutes, clients }) {
       setEoiSpecificOccs(ctx.occupationNames);
     }
     setFromTender(ctx);
+    if (ctx.tenderId && ctx.bidderId) {
+      api('GET', `/tenders/${ctx.tenderId}/cv?bidder_id=${ctx.bidderId}`, null, getSession()?.token)
+        .then(pack => {
+          const t = pack?.tender || {};
+          const c = (clients || []).find(x => String(x.id) === String(t.client_id));
+          setTenderReport({
+            title: t.title || ctx.title, applicant: t.institute_name || ctx.bidderName,
+            client: c ? { fullName: c.fullName, address: c.address, phone: c.phone, fax: c.fax, email: c.email }
+                      : { fullName: t.client_name_manual || '' },
+            keyExperts: keyExpertsFrom(pack),
+          });
+        })
+        .catch(() => setTenderReport({ title: ctx.title, applicant: ctx.bidderName, client: {}, keyExperts: null }));
+    }
     // Waits for the firm list: taking the id from it is what keeps the picker's
     // comparison working, and on a cold load it arrives after the first render.
   }, [institutes]);
@@ -644,7 +660,7 @@ function ReportsView({ institutes, clients }) {
     specificOccs: eoiSpecificOccs, eoiCombineTools, eoiSingleTable, occupations, sortBy,
     toolsOccIds, toolsLevel, toolsTypeFilter, toolsColumns, toolsLayout, toolsData, numGroups,
     enssureOccs, enssureOccIds, enssureToolsData, enssureToolsOccId, enssureToolsLevel, enssureEvents,
-    filterDuration, clients };
+    filterDuration, clients, tender: tenderReport || undefined };
 
   // Assignments for one firm in multi-institute mode, with the sidebar filters
   // applied. Shared by the per-firm render, the print path and the Word export so

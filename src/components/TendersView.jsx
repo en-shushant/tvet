@@ -136,6 +136,7 @@ function TendersView({ institutes = [], clients = [], onGoToReports, canAccessPo
       instituteId: lead?.institute_id || null,
       instituteIds: firms.map(f => f.institute_id),
       bidderName: bidder?.display_name || '',
+      bidderId: bidder?.id || null,
       fy: t.fy || '',
       occupationNames: (t.occupations || []).map(o => o.name),
     });

@@ -818,6 +818,8 @@ async function runMigrations() {
     // CV pack formats: each firm's default (a JV uses its lead's), the
     // "Adequacy for the Assignment" wording, and a job's type of employment.
     `ALTER TABLE institutes ADD COLUMN IF NOT EXISTS cv_format TEXT`,
+    // The EOI's Letter of Application asks for the client's fax.
+    `ALTER TABLE clients ADD COLUMN IF NOT EXISTS fax TEXT`,
     // Which CV wording a required post takes, whatever the notice calls it.
     `ALTER TABLE tender_positions ADD COLUMN IF NOT EXISTS task_role TEXT`,
     // A proposed person's time with the bidding firm, and with other firms of
