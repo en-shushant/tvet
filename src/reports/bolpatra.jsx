@@ -118,6 +118,20 @@ const DESCRIPTION_SLOT  = { field: 'descriptionOfWork',          templateKey: 'd
 const NARRATIVE_SLOT    = { field: 'narrativeDescription',       templateKey: 'narrativeTemplateId', fill: fillNarrativeTemplate };
 const SERVICES_SLOT     = { field: 'actualServicesDescription',  templateKey: 'servicesTemplateId',  fill: fillServicesTemplate };
 
+/**
+ * A joint venture prepares every partner's experience in its lead's format:
+ * the narrative templates come from the lead (firms[0]); the facts they are
+ * filled with stay the partner's own. A template the lead has not set falls
+ * back to the partner's.
+ */
+export const withLeadTemplates = (inst, firms) => {
+  const lead = firms?.[0]?.inst;
+  if (!inst || !lead || firms.length < 2 || lead === inst) return inst;
+  const pick = (k) => lead[k] || inst[k];
+  return { ...inst, descTemplateId: pick('descTemplateId'), narrativeTemplateId: pick('narrativeTemplateId'),
+           servicesTemplateId: pick('servicesTemplateId') };
+};
+
 const captionOf = (exp) => {
   const name = exp.assignmentName || '(unnamed assignment)';
   return exp.fy ? `Assignment Name: ${name} (FY ${exp.fy})` : `Assignment Name: ${name}`;
@@ -781,7 +795,7 @@ function renderMultiAggregate(firms, clients, reportId, opts = {}) {
                   <div style={{fontWeight:700, fontSize:12.5, marginBottom:10}}>
                     {firmLabel(inst, fi, firms.length)}
                   </div>
-                  <SectionBody section={s} inst={inst} exps={exps} clients={clients} opts={opts} />
+                  <SectionBody section={s} inst={withLeadTemplates(inst, firms)} exps={exps} clients={clients} opts={opts} />
                 </div>
               ))}
         </div>
@@ -986,7 +1000,7 @@ function buildMultiPrintHTML(firms, clients, reportId, fyRange, opts = {}) {
       return;
     }
     firms.forEach(({ inst, exps }, fi) => {
-      blocks.push(printBlock(s, inst, exps, clients, opts, firmLabel(inst, fi, firms.length)));
+      blocks.push(printBlock(s, withLeadTemplates(inst, firms), exps, clients, opts, firmLabel(inst, fi, firms.length)));
     });
   });
   const body = blocks.join('<div class="page-break"></div>');
@@ -1286,7 +1300,7 @@ async function downloadMultiDOCX(firms, clients, reportId, opts = {}) {
         spacing: { before: 200, after: 40 } }));
       children.push(p(SECTION_TITLES[s].note, { italic: true, size: 17, spacing: { after: 140 } }));
       children.push(p(firmLabel(inst, fi, firms.length), { bold: true, size: 22, spacing: { after: 140 } }));
-      children.push(...docxSection(D, kit, s, inst, exps, clients, opts));
+      children.push(...docxSection(D, kit, s, withLeadTemplates(inst, firms), exps, clients, opts));
     });
   });
 

@@ -125,3 +125,33 @@ export function teamProgress(positions = [], people = [], bidderId) {
 /** The bidder's lead firm — the one that signs, and whose name leads a JV. */
 export const leadOf = (bidder) =>
   (bidder?.firms || []).find(f => f.role === 'Lead') || bidder?.firms?.[0] || null;
+
+/*
+ * The posts the CV wording library is written for. A notice's own title for
+ * a post ("Senior Instructor – Tailoring", "M&E Expert") is mapped onto one of
+ * these, so the CV uses that post's tasks and adequacy whatever it is called.
+ * Mirrors the starter wording in backend/lib/cvWording*.js; names after the
+ * first are what notices also call the post.
+ */
+export const CV_ROLES = [
+  ['Main Trainer', 'Lead Trainer', 'Senior Trainer', 'Instructor'],
+  ['Database Officer', 'MIS Officer', 'Database and MIS Officer', 'Data Officer'],
+  ['Monitoring Officer', 'M&E Officer', 'Monitoring and Evaluation Officer'],
+  ['Monitoring and Placement Officer', 'M&E and Placement Officer', 'Placement and Monitoring Officer'],
+  ['Training Coordinator', 'Training Manager', 'Project Coordinator'],
+  ['Admin Officer', 'Administrative Officer', 'Administration Officer'],
+  ['Finance Officer', 'Accountant', 'Account Officer', 'Accounts Officer'],
+  ['Admin and Finance Officer', 'Administration and Finance Officer', 'Finance and Admin Officer'],
+  ['Placement and Counselling Officer', 'Placement and Counseling Officer', 'Placement Officer', 'Career Counsellor'],
+  ['Entrepreneurship Development Trainer', 'EDT', 'Entrepreneurship Trainer', 'MED Trainer'],
+  ['District Coordinator', 'District Project Coordinator', 'Field Coordinator'],
+];
+
+/** The wording role a post title matches by itself, or '' — what "Auto" will use. */
+export function guessRole(title, extra = []) {
+  const t = String(title || '').trim().toLowerCase();
+  if (!t) return '';
+  const roles = [...CV_ROLES, ...extra.map(r => [r])];
+  const exact = roles.find(names => names.some(n => n.toLowerCase() === t));
+  return exact ? exact[0] : '';
+}

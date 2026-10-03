@@ -7,6 +7,7 @@ import { Btn, MdTextField, MdSelect, MdOption, MdToggle } from '../md.jsx';
 import { DESCRIPTION_VARIATIONS } from '../utils/descriptionTemplates.js';
 import { NARRATIVE_VARIATIONS, SERVICES_VARIATIONS } from '../utils/specificTemplates.js';
 import { getSession } from '../utils/auth.js';
+import { CV_FORMATS } from '../reports/cv.jsx';
 
 
 function InstituteForm({institute, onSave, onClose, isSuperAdmin}) {
@@ -20,7 +21,7 @@ function InstituteForm({institute, onSave, onClose, isSuperAdmin}) {
     letterTopMargin: 15, letterLrPadding: 5, letterBottomPadding: 15,
     constitutionType:'', fax:'', contactDesignation:'', localAgent:'',
     orgProfile:'', totalStaff:'', professionalStaff:'', keyStaff:[],
-    descTemplateId:'', narrativeTemplateId:'', servicesTemplateId:'',
+    descTemplateId:'', narrativeTemplateId:'', servicesTemplateId:'', cvFormat:'',
   });
   const [showEoi, setShowEoi] = useState(false);
   const [showTpl, setShowTpl] = useState(false);
@@ -182,7 +183,7 @@ function InstituteForm({institute, onSave, onClose, isSuperAdmin}) {
               Auto-fill templates
             </span>
             <span style={{fontSize:11, color:'var(--text3)'}}>
-              {showTpl ? <><span className="material-icons-round" style={{fontSize:15, verticalAlign:'middle', marginRight:4}}>expand_less</span>Hide</> : <><span className="material-icons-round" style={{fontSize:15, verticalAlign:'middle', marginRight:4}}>expand_more</span>Show — wording used by this firm\u2019s assignments</>}
+              {showTpl ? <><span className="material-icons-round" style={{fontSize:15, verticalAlign:'middle', marginRight:4}}>expand_less</span>Hide</> : <><span className="material-icons-round" style={{fontSize:15, verticalAlign:'middle', marginRight:4}}>expand_more</span>Show — wording used by this firm’s assignments</>}
             </span>
           </button>
           {showTpl && (
@@ -213,7 +214,17 @@ function InstituteForm({institute, onSave, onClose, isSuperAdmin}) {
                 );
               })}
               <div className="input-hint" style={{marginTop:10}}>
-                Placeholders in braces are replaced with this firm\u2019s own assignment data when the Auto-fill button is used.
+                Placeholders in braces are replaced with this firm’s own assignment data when the Auto-fill button is used.
+                In a joint venture, every partner’s experience uses the lead firm’s templates.
+              </div>
+              <div style={{marginTop:16}}>
+                <MdSelect label="CV format" value={form.cvFormat || ''} onChange={e=>set('cvFormat', e.target.value)}>
+                  <MdOption value="">— PPMO EOI (default) —</MdOption>
+                  {CV_FORMATS.map(f => <MdOption key={f.id} value={f.id}>{f.label}</MdOption>)}
+                </MdSelect>
+                <div className="input-hint" style={{marginTop:6}}>
+                  The CV pack’s format when this firm bids, alone or as a joint venture’s lead. A bid can still pick another.
+                </div>
               </div>
             </div>
           )}

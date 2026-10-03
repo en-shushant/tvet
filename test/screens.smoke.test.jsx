@@ -38,7 +38,6 @@ import DataQuality from '../src/components/DataQuality.jsx';
 import ClientsView from '../src/components/ClientsView.jsx';
 import ProjectCompliance from '../src/components/ProjectCompliance.jsx';
 import MasterData from '../src/components/MasterData.jsx';
-import QuotationsView from '../src/components/QuotationsView.jsx';
 import ReportsView from '../src/components/ReportsView.jsx';
 import TrainerPool from '../src/components/TrainerPool.jsx';
 import CommandPalette from '../src/components/CommandPalette.jsx';
@@ -108,8 +107,8 @@ const SCREENS = {
   'Project Compliance': <ProjectCompliance institutes={institutes} clients={clients} />,
   'Master data':        <MasterData clients={clients} onUpdateClients={noop} token={token}
                           isAdmin isEditor={false} isSuperAdmin={false} />,
-  'Quotations':         <QuotationsView institutes={institutes} clients={clients} isAdmin
-                          isEditor={false} isShortlistOnly={false} />,
+  'Contracts & quotations': <Shortlisting institutes={institutes} clients={clients} isAdmin
+                          isEditor={false} isShortlistOnly={false} tab="contracts" />,
   'Reports':            <ReportsView institutes={institutes} clients={clients} />,
   'Command palette':    <CommandPalette open onClose={noop} institutes={institutes} clients={clients} actions={[]} />,
   'Trainer pool':       <TrainerPool isAdmin />,

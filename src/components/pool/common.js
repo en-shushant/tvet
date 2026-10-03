@@ -215,3 +215,19 @@ export function normaliseQual(q, occupations = []) {
   }
   return out;
 }
+
+/*
+ * Events a job can claim: at most four a year, one per full quarter worked —
+ * March 2019 to March 2026 is 84 months, so 28. Same rule as the server
+ * (backend/lib/cvWording.js), which also caps what is saved.
+ */
+const monthIndex = (d) => {
+  const m = String(d || '').trim().match(/^(\d{4})(?:[/-](\d{1,2}))?/);
+  return m ? parseInt(m[1], 10) * 12 + ((parseInt(m[2], 10) || 1) - 1) : null;
+};
+export function maxEvents(e, now = new Date()) {
+  const from = monthIndex(e.from_date);
+  const to = e.is_current ? (now.getFullYear() + 56) * 12 + now.getMonth() + 8 : monthIndex(e.to_date);
+  if (from == null || to == null || to < from) return null;
+  return Math.floor((to - from) / 3);
+}

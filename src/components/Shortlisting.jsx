@@ -10,6 +10,7 @@ import { NepaliDatePicker, ConfirmModal, LetterBuilderWrapper, FYS, ACCEPT, uplo
 import { StandingListModal, AssignFirmsModal, LetterOptsModal, BillModal, LETTER_TYPES } from './shortlisting/modals.jsx';
 import { ShortlistRow, GroupHeader, TableHead, printShortlistReport } from './shortlisting/table.jsx';
 import { ContractsPanel } from './shortlisting/ContractsPanel.jsx';
+import { ContractsTab } from './QuotationsView.jsx';
 import { bsDateLabel } from '../utils/neaLetter.js';
 import Select from './ui/Select.jsx';
 import { safeHref } from '../utils/safeWindow.js';
@@ -413,7 +414,7 @@ function ShortlistForm({ initial, institutes, clients, onSave, onClose, saving, 
 }
 
 // ── Letter Options Modal ───────────────────────────────────────────────────────
-export default function Shortlisting({ institutes, clients, isAdmin, isEditor, isShortlistOnly, isSuperAdmin }) {
+export default function Shortlisting({ institutes, clients, isAdmin, isEditor, isShortlistOnly, isSuperAdmin, tab = 'lists', onTab = () => {} }) {
   const session = getSession();
   const token = session?.token;
   const canEdit = !!(isAdmin || isEditor || isShortlistOnly);
@@ -746,6 +747,35 @@ export default function Shortlisting({ institutes, clients, isAdmin, isEditor, i
     return [...fromLists, ...filtered];
   }, [visibleStandingLists, firmsByList, filtered]);
 
+  /*
+   * One place for the whole job: who is shortlisted, per client, with that
+   * client's contracts and quotations underneath — and every contract across
+   * clients on its own tab. (Quotations used to be a second screen editing the
+   * same records.)
+   */
+  const tabBar = (
+    <div role="tablist" aria-label="Shortlisting views" className="hub-tabs" style={{ marginBottom: 0 }}>
+      {[['lists', 'playlist_add_check', 'Shortlists'], ['contracts', 'request_quote', 'Contracts & quotations']].map(([id, icon, label]) => (
+        <button key={id} type="button" role="tab" aria-selected={tab === id}
+          className={`hub-tab${tab === id ? ' is-active' : ''}`} onClick={() => onTab(id)}>
+          <span className="material-icons-round" aria-hidden="true">{icon}</span>{label}
+        </button>
+      ))}
+    </div>
+  );
+  if (tab === 'contracts') {
+    return (
+      <div className="fade-in" style={{display:'flex', flexDirection:'column', gap:20}}>
+        <div>
+          <h1 className="page-title">Shortlisting</h1>
+          <div className="shell-head-sub">Every contract and the quotations sent for it, across clients</div>
+        </div>
+        {tabBar}
+        <ContractsTab isAdmin={isAdmin} canEdit={canEdit} token={token}/>
+      </div>
+    );
+  }
+
   return (
     <div className="fade-in" style={{display:'flex', flexDirection:'column', gap:20}}>
       {showPageBuilder && <LetterBuilderWrapper row={rows[0] || {}} onClose={() => setShowPageBuilder(false)} allRows={rows}/>}
@@ -773,6 +803,8 @@ export default function Shortlisting({ institutes, clients, isAdmin, isEditor, i
           )}
         </div>
       </div>
+
+      {tabBar}
 
       {/* ── Standing lists: create the list, then assign firms to it ── */}
       {!loading && visibleStandingLists.length > 0 && (

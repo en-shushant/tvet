@@ -4,7 +4,7 @@ import { Btn } from '../../md.jsx';
 import { GENERAL_LEVELS, VOCATIONAL_LEVELS, levelOfQualification,
          labelOfGeneral } from '../../constants/education.js';
 import { PERSON_TYPES, TRAINING_KINDS, FLUENCY, BLANK_PERSON, emptyGeneral, emptyVocational,
-         emptyTraining, emptyExp, emptyLang, sectionOf, DEFAULT_LANGUAGES, TOT_TITLE, TOT_PROVIDERS, totProviderOf, totHasDates,
+         emptyTraining, emptyExp, emptyLang, sectionOf, DEFAULT_LANGUAGES, TOT_TITLE, TOT_PROVIDERS, totProviderOf, totHasDates, maxEvents,
          maskBsDate, isBsDate, bsDaysBetween, adDaysBetween, adToBsDate, bsToAdDate } from './common.js';
 import Select from '../ui/Select.jsx';
 import NstbLookup from './NstbLookup.jsx';
@@ -125,6 +125,8 @@ export default function PersonEditor({ person, rules, occupations, onSave, onCan
     if (badTot) out.push({ at: 'training', msg: 'A TOT’s dates need to be complete (2076/04/01), and it cannot end before it starts.' });
     const noGiver = form.qualifications.find(q => q.kind === 'TOT' && totHasDates(q) && !String(q.institution || '').trim());
     if (noGiver) out.push({ at: 'training', msg: 'A TOT with dates needs who gave it — choose TITI, NAVT or Other.' });
+    const tooMany = form.experience.find(e => { const cap = maxEvents(e); return cap != null && parseInt(e.events_count, 10) > cap; });
+    if (tooMany) out.push({ at: 'experience', msg: `${tooMany.organisation || 'A job'}: at most ${maxEvents(tooMany)} events for those dates — four a year.` });
     const noLevel = form.qualifications.find(q => sectionOf(q) === 'vocational' && !q.level);
     if (noLevel) out.push({ at: 'education', msg: 'A vocational certificate needs its level.' });
     const noTrade = form.qualifications.find(q => sectionOf(q) === 'vocational' && !q.occupation_id);
@@ -586,12 +588,19 @@ export default function PersonEditor({ person, rules, occupations, onSave, onCan
                 </div>
                 <div className="pf-line pf-line-gen2">
                   <Field label="Location">
-                    <input className="tw-in" value={e.country || ''} placeholder="e.g. Kathmandu, Nepal"
+                    <input className="tw-in" value={e.country || ''} placeholder="e.g. Bagmati, Kathmandu Metropolitan"
                       onChange={ev => setRow('experience', i, 'country', ev.target.value)} />
                   </Field>
                   <Field label="Project">
                     <input className="tw-in" value={e.project_name || ''}
                       onChange={ev => setRow('experience', i, 'project_name', ev.target.value)} />
+                  </Field>
+                  <Field label="Employment">
+                    <Select className="tw-in" value={e.employment_type || ''}
+                      onChange={ev => setRow('experience', i, 'employment_type', ev.target.value)}>
+                      <option value="">Not stated</option>
+                      {['Full time', 'Part time', 'Contractual'].map(t => <option key={t}>{t}</option>)}
+                    </Select>
                   </Field>
                   <label className="pf-check" style={{ alignSelf: 'end', marginBottom: 8 }}>
                     <input type="checkbox" checked={!!e.is_current}
@@ -599,7 +608,25 @@ export default function PersonEditor({ person, rules, occupations, onSave, onCan
                     Still working here
                   </label>
                 </div>
-                <Field label="What they did" hint="One task per line — each becomes a bullet on the CV.">
+                {(() => {
+                  const cap = maxEvents(e);
+                  const n = parseInt(e.events_count, 10);
+                  return (
+                    <div className="pf-line pf-line-gen2">
+                      <Field label="Clients (short names)" hint="As the experience letter names them, e.g. CTEVT, HELVETAS">
+                        <input className="tw-in" value={e.clients || ''} placeholder="CTEVT, HELVETAS"
+                          onChange={ev => setRow('experience', i, 'clients', ev.target.value)} />
+                      </Field>
+                      <Field label="Events conducted"
+                        hint={cap == null ? 'Enter the dates to see the most allowed' : `At most ${cap} for these dates (4 a year)`}>
+                        <input className="tw-in num" inputMode="numeric" value={e.events_count ?? ''}
+                          aria-invalid={cap != null && n > cap} placeholder={cap != null ? String(cap) : ''}
+                          onChange={ev => setRow('experience', i, 'events_count', ev.target.value.replace(/\D/g, ''))} />
+                      </Field>
+                    </div>
+                  );
+                })()}
+                <Field label="What they did" hint="One task per line — each becomes a bullet on the CV. Leave empty to use the firm’s wording for this position.">
                   <textarea className="tw-in pf-area" rows={2} value={e.description || ''}
                     onChange={ev => setRow('experience', i, 'description', ev.target.value)} />
                 </Field>

@@ -3133,3 +3133,15 @@ span.pp-hr-no.tw-tag { font-family: var(--font-mono, monospace); }
 .vs-chip { font-size: 12.5px; border: 1px solid var(--border); background: var(--bg); color: var(--text2); border-radius: 999px; padding: 3px 10px; cursor: pointer; }
 .vs-chip strong { color: var(--text); margin-left: 3px; font-variant-numeric: tabular-nums; }
 .vs-chip.is-on { border-color: var(--primary); color: var(--primary); background: var(--brand-soft, rgba(37,99,235,.08)); }
+
+/* Team step: experience with another firm, one row */
+.tw-fe-row { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-bottom: 8px;
+  padding-bottom: 8px; border-bottom: 1px dashed var(--border); }
+.tw-fe-row > * { flex: 1 1 130px; min-width: 0; }
+.tw-fe-row > :first-child { flex: 2 1 200px; }
+.tw-fe-row > .tw-x { flex: 0 0 28px; }
+
+/* Tender steps: save progress + autosave note */
+.tw-progress { display: inline-flex; align-items: center; gap: 8px; font-size: 12.5px; color: var(--text3); }
+.tw-progress-bad { color: var(--error, #b42318); }
+.tw-progress-restored { color: var(--primary); font-weight: 600; }

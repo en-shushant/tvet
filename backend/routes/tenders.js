@@ -47,6 +47,77 @@ const tenderValues = (b) => TENDER_FIELDS.map(f =>
  * blanked, so a typo shows up in the draft as `{postion}` instead of silently
  * swallowing the sentence around it.
  */
+const { eventsLine, eventsFor, monthIndex } = require('../lib/cvWording');
+/**
+ * Time with another firm, as typed on the Team step: a firm in our list
+ * (institute_id), or a company typed by hand (org_name, with the address and
+ * signatory its letter needs). Kept only if it names one or the other.
+ */
+const cleanFirmExperience = (rows) => (Array.isArray(rows) ? rows : [])
+  .filter(r => r && (parseInt(r.institute_id, 10) || String(r.org_name || '').trim()))
+  .map(r => ({
+    institute_id: parseInt(r.institute_id, 10) || null,
+    ...(parseInt(r.institute_id, 10) ? {} : {
+      org_name: String(r.org_name || '').trim(), org_address: String(r.org_address || '').trim(),
+      org_signatory: String(r.org_signatory || '').trim(), org_designation: String(r.org_designation || '').trim(),
+    }),
+    position: String(r.position || '').trim(),
+    from_date: String(r.from_date || '').trim(), to_date: String(r.to_date || '').trim(),
+    clients: String(r.clients || '').trim(),
+    events_count: eventsFor({ ...r, is_current: !String(r.to_date || '').trim() }),
+  }));
+
+/**
+ * When an assignment ran, in BS months: its contract dates where entered, else
+ * its fiscal years (Shrawan of the first to Asar of the last); an ongoing one
+ * runs to now.
+ */
+function assignmentSpan(a, nowMonth) {
+  const fyStart = (fy) => { const y = parseInt(String(fy || ''), 10); return y ? y * 12 + 3 : null; };
+  const fyEnd = (fy) => { const y = parseInt(String(fy || ''), 10); return y ? (y + 1) * 12 + 2 : null; };
+  const from = monthIndex(a.start_date) ?? fyStart(a.start_fy || a.fiscal_year);
+  const to = a.is_ongoing ? nowMonth : (monthIndex(a.end_date) ?? fyEnd(a.end_fy || a.fiscal_year));
+  return [from, to ?? from];
+}
+const overlaps = ([a1, a2], [b1, b2]) => a1 != null && a1 <= b2 && (a2 ?? a1) >= b1;
+
+const CV_FORMATS = ['ppmo_eoi', 'ppmo_rfp', 'helvetas', 'eoi_form5'];
+
+/**
+ * The wording for a CV section when none was picked by hand: the firm's own
+ * entry for this exact post, else for this kind of person, else its general
+ * one. A firm with none of its own gets one of the shared variations, chosen
+ * by its id (and `turn`, e.g. which job) so firms and jobs read differently.
+ */
+function pickFirmVariant(variants, field, instituteId, position, personType, turn = 0) {
+  if (!instituteId) return null;
+  const norm = (x) => String(x || '').trim().toLowerCase();
+  const tiers = (list) => [
+    // A post goes by several names in notices: "Monitoring Officer | M&E Officer".
+    list.filter(v => v.position && String(v.position).split('|').some(n => norm(n) === norm(position))),
+    list.filter(v => !v.position && v.person_type && v.person_type === personType),
+    list.filter(v => !v.position && !v.person_type),
+  ];
+  const mine = tiers(variants.filter(v => v.field === field && v.institute_id === instituteId)).find(t => t.length);
+  if (mine) return mine[0];
+  const shared = tiers(variants.filter(v => v.field === field && !v.institute_id)).find(t => t.length);
+  if (!shared) return null;
+  const sorted = [...shared].sort((a, b) => a.id - b.id);
+  return sorted[(Number(instituteId) + turn) % sorted.length];
+}
+
+/** Lines whose placeholder had nothing to fill are dropped, not printed as {events}. */
+const dropUnfilled = (text) => String(text || '').split('\n')
+  .filter(l => !/\{(events|clients|years)\}/.test(l)).join('\n');
+
+/** "Adequacy" with nothing written: the person's own record, as prior work. */
+function priorWorkOf(experience) {
+  return experience.filter(e => e.organisation || e.position).map(e => {
+    const when = [e.from_date, e.is_current ? 'present' : e.to_date].filter(Boolean).join(' – ');
+    return '• ' + [e.position, e.organisation].filter(Boolean).join(', ') + (when ? ' (' + when + ')' : '');
+  }).join('\n');
+}
+
 function applyVars(body, vars) {
   return String(body || '').replace(/\{(\w+)\}/g, (whole, key) =>
     (vars[key] === undefined || vars[key] === null || vars[key] === '') ? whole : String(vars[key]));
@@ -320,19 +391,19 @@ async function plugin(fastify, opts) {
           Number.isInteger(parseInt(p.min_experience_years, 10))
             ? parseInt(p.min_experience_years, 10) : null,
           p.required_training || null, p.occupation_id || null, p.notes || null, i,
-          JSON.stringify(cleanOptions(p.education_options))];
+          JSON.stringify(cleanOptions(p.education_options)), String(p.task_role || '').trim() || null];
         if (p.id) {
           await client.query(
             `UPDATE tender_positions SET title=$1, category=$2, count=$3, min_education=$4,
                min_experience_years=$5, required_training=$6, occupation_id=$7, notes=$8, sort_order=$9,
-               education_options=$10
-             WHERE id=$11 AND tender_id=$12`, [...vals, p.id, tenderId]);
+               education_options=$10, task_role=$11
+             WHERE id=$12 AND tender_id=$13`, [...vals, p.id, tenderId]);
         } else {
           await client.query(
             `INSERT INTO tender_positions (title, category, count, min_education,
                min_experience_years, required_training, occupation_id, notes, sort_order,
-               education_options, tender_id)
-             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)`, [...vals, tenderId]);
+               education_options, task_role, tender_id)
+             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)`, [...vals, tenderId]);
         }
       }
     }
@@ -380,12 +451,18 @@ async function plugin(fastify, opts) {
         await client.query(
           `INSERT INTO tender_people (tender_id, bidder_id, person_id, occupation_id,
              proposed_position, detailed_tasks, key_qualifications,
-             tasks_variant_id, quals_variant_id, sort_order, position_id)
-           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
+             tasks_variant_id, quals_variant_id, sort_order, position_id, adequacy, adequacy_variant_id,
+             joining_date, joined_institute_id, firm_experience, joining_clients, joining_events)
+           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18)
            ON CONFLICT DO NOTHING`,
           [tenderId, p.bidder_id || scope || null, p.person_id, p.occupation_id || null,
            p.proposed_position || null, p.detailed_tasks || null, p.key_qualifications || null,
-           p.tasks_variant_id || null, p.quals_variant_id || null, i, p.position_id || null]);
+           p.tasks_variant_id || null, p.quals_variant_id || null, i, p.position_id || null,
+           p.adequacy || null, p.adequacy_variant_id || null,
+           String(p.joining_date || '').trim() || null, p.joined_institute_id || null,
+           JSON.stringify(cleanFirmExperience(p.firm_experience)),
+           String(p.joining_clients || '').trim() || null,
+           eventsFor({ from_date: p.joining_date, is_current: true, events_count: p.joining_events })]);
       }
     }
   };
@@ -491,11 +568,11 @@ async function plugin(fastify, opts) {
       for (const pos of oldPositions) {
         const { rows: [np] } = await client.query(
           `INSERT INTO tender_positions (tender_id, title, category, count, min_education,
-             min_experience_years, required_training, occupation_id, notes, sort_order, education_options)
-           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING id`,
+             min_experience_years, required_training, occupation_id, notes, sort_order, education_options, task_role)
+           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12) RETURNING id`,
           [next.id, pos.title, pos.category, pos.count, pos.min_education,
            pos.min_experience_years, pos.required_training, pos.occupation_id, pos.notes, pos.sort_order,
-           JSON.stringify(pos.education_options || [])]);
+           JSON.stringify(pos.education_options || []), pos.task_role || null]);
         positionMap.set(pos.id, np.id);
       }
 
@@ -515,12 +592,14 @@ async function plugin(fastify, opts) {
             await client.query(
               `INSERT INTO tender_people (tender_id, bidder_id, person_id, occupation_id,
                  proposed_position, detailed_tasks, key_qualifications,
-                 tasks_variant_id, quals_variant_id, sort_order, position_id)
+                 tasks_variant_id, quals_variant_id, sort_order, position_id, adequacy, adequacy_variant_id,
+                 joining_date, joined_institute_id, firm_experience, joining_clients, joining_events)
                SELECT $1, $2, person_id, occupation_id, proposed_position, detailed_tasks,
                       key_qualifications, tasks_variant_id, quals_variant_id, sort_order,
                       (SELECT new_id FROM (SELECT unnest($5::int[]) AS old_id,
                                                   unnest($6::int[]) AS new_id) m
-                        WHERE m.old_id = tender_people.position_id)
+                        WHERE m.old_id = tender_people.position_id), adequacy, adequacy_variant_id,
+                 joining_date, joined_institute_id, firm_experience, joining_clients, joining_events
                  FROM tender_people WHERE tender_id = $3 AND bidder_id = $4
                ON CONFLICT DO NOTHING`,
               [next.id, nb.id, id, b.id, [...positionMap.keys()], [...positionMap.values()]]);
@@ -576,11 +655,11 @@ async function plugin(fastify, opts) {
       for (const pos of oldPositions) {
         const { rows: [np] } = await client.query(
           `INSERT INTO tender_positions (tender_id, title, category, count, min_education,
-             min_experience_years, required_training, occupation_id, notes, sort_order, education_options)
-           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING id`,
+             min_experience_years, required_training, occupation_id, notes, sort_order, education_options, task_role)
+           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12) RETURNING id`,
           [next.id, pos.title, pos.category, pos.count, pos.min_education,
            pos.min_experience_years, pos.required_training, pos.occupation_id,
-           pos.notes, pos.sort_order, JSON.stringify(pos.education_options || [])]);
+           pos.notes, pos.sort_order, JSON.stringify(pos.education_options || []), pos.task_role || null]);
         positionMap.set(pos.id, np.id);
       }
       /*
@@ -613,12 +692,14 @@ async function plugin(fastify, opts) {
         await client.query(
           `INSERT INTO tender_people (tender_id, bidder_id, person_id, occupation_id,
              proposed_position, detailed_tasks, key_qualifications,
-             tasks_variant_id, quals_variant_id, sort_order, position_id)
+             tasks_variant_id, quals_variant_id, sort_order, position_id, adequacy, adequacy_variant_id,
+             joining_date, joined_institute_id, firm_experience, joining_clients, joining_events)
            SELECT $1, $2, person_id, occupation_id, proposed_position, detailed_tasks,
                   key_qualifications, tasks_variant_id, quals_variant_id, sort_order,
                   (SELECT new_id FROM (SELECT unnest($5::int[]) AS old_id,
                                               unnest($6::int[]) AS new_id) m
-                    WHERE m.old_id = tender_people.position_id)
+                    WHERE m.old_id = tender_people.position_id), adequacy, adequacy_variant_id,
+                 joining_date, joined_institute_id, firm_experience, joining_clients, joining_events
              FROM tender_people WHERE tender_id = $3 AND bidder_id = $4
            ON CONFLICT DO NOTHING`,
           [next.id, nb.id, id, b.id, [...positionMap.keys()], [...positionMap.values()]]);
@@ -663,21 +744,28 @@ async function plugin(fastify, opts) {
      */
     const lead = shaped.firms.find(f => f.role === 'Lead') || shaped.firms[0] || {};
     const { rows: [leadInst] } = lead.institute_id
-      ? await pool.query('SELECT contact_person FROM institutes WHERE id = $1', [lead.institute_id])
+      ? await pool.query('SELECT id, contact_person, cv_format FROM institutes WHERE id = $1', [lead.institute_id])
       : { rows: [{}] };
+    // The format the client asked for, else the lead firm's — a JV prepares
+    // every partner's CVs in its lead's format.
+    const format = CV_FORMATS.includes(request.query.format) ? request.query.format
+      : CV_FORMATS.includes(leadInst?.cv_format) ? leadInst.cv_format : 'ppmo_eoi';
     const tender = {
       ...row,
       institute_name: shaped.display_name,
       institute_contact: leadInst?.contact_person || null,
       bidder: shaped,
+      cv_format: format,
+      lead_institute_id: leadInst?.id || null,
     };
 
     const { rows: proposed } = await pool.query(`
-      SELECT tp.*, o.name AS occupation_name FROM tender_people tp
+      SELECT tp.*, o.name AS occupation_name, pos.task_role FROM tender_people tp
         LEFT JOIN occupations o ON o.id = tp.occupation_id
+        LEFT JOIN tender_positions pos ON pos.id = tp.position_id
        WHERE tp.tender_id = $1 AND tp.bidder_id = $2
        ORDER BY tp.sort_order, tp.id`, [id, bidderId]);
-    if (!proposed.length) return { tender, cvs: [] };
+    if (!proposed.length) return { tender, format, cvs: [] };
 
     const ids = proposed.map(p => p.person_id);
     const [people, quals, exp, langs, variants] = await Promise.all([
@@ -685,13 +773,37 @@ async function plugin(fastify, opts) {
       pool.query(`SELECT q.*, o.name AS occupation_name FROM hr_qualifications q
                     LEFT JOIN occupations o ON o.id = q.occupation_id
                    WHERE q.person_id = ANY($1::int[]) ORDER BY q.sort_order, q.id`, [ids]),
-      pool.query(`SELECT * FROM hr_experience WHERE person_id = ANY($1::int[])
-                   ORDER BY sort_order, id`, [ids]),
+      pool.query(`SELECT e.*, o.name AS occupation_name FROM hr_experience e
+                    LEFT JOIN occupations o ON o.id = e.occupation_id
+                   WHERE e.person_id = ANY($1::int[]) ORDER BY e.sort_order, e.id`, [ids]),
       pool.query(`SELECT * FROM hr_languages WHERE person_id = ANY($1::int[])
                    ORDER BY sort_order, id`, [ids]),
       pool.query('SELECT * FROM cv_text_variants WHERE is_active'),
     ]);
     const byId = new Map(people.rows.map(p => [p.id, p]));
+    // Firms named in joining dates and other-firm experience, by id.
+    const firmIds = [...new Set(proposed.flatMap(tp => [tp.joined_institute_id || leadInst?.id,
+      ...(tp.firm_experience || []).map(f => f.institute_id)]).filter(Boolean))];
+    const { rows: firmRowsDb } = firmIds.length
+      ? await pool.query(`SELECT id, name, acronym, reg_no, pan, address, phone, mobile, email, contact_person,
+                                 contact_designation, letterhead, sign, stamp, letter_top_margin,
+                                 letter_lr_padding, letter_bottom_padding
+                            FROM institutes WHERE id = ANY($1::int[])`, [firmIds]) : { rows: [] };
+    const firmById = new Map(firmRowsDb.map(f => [f.id, f]));
+    /*
+     * Each of those firms' assignments: when it ran, its client, its trades.
+     * A trainer or staff member works one event per assignment, so the events
+     * a CV and letter claim with a firm are its assignments during their time.
+     */
+    const { rows: firmAssignments } = firmIds.length ? await pool.query(`
+      SELECT a.id, a.institute_id, a.start_date, a.end_date, a.fiscal_year, a.start_fy, a.end_fy, a.is_ongoing,
+             COALESCE(NULLIF(btrim(c.short_name), ''), c.full_name, a.client_name_manual) AS client,
+             COALESCE((SELECT array_agg(DISTINCT lower(btrim(o.name))) FROM assignment_occupations ao
+                         JOIN occupations o ON o.id = ao.ctevt_occupation_id WHERE ao.assignment_id = a.id), '{}') AS trades
+        FROM assignments a LEFT JOIN clients c ON c.id = a.client_id
+       WHERE a.institute_id = ANY($1::int[])`, [firmIds]) : { rows: [] };
+    const firmName = new Map(firmRowsDb.map(f => [f.id, f.name]));
+    const nowMonth = (new Date().getFullYear() + 56) * 12 + new Date().getMonth() + 8;
     const variantById = new Map(variants.rows.map(v => [v.id, v]));
     const forPerson = (rows, pid) => rows.filter(r => r.person_id === pid);
 
@@ -701,32 +813,130 @@ async function plugin(fastify, opts) {
       const vars = {
         firm: tender.institute_name || '', client: tender.client_name_manual || '',
         position: tp.proposed_position || person.designation || '',
-        staffName: person.full_name, occupation: tp.occupation_name || '',
+        staffName: person.full_name,
+        // The post's trade, else what their NSTB certificate or profession says.
+        occupation: tp.occupation_name
+          || forPerson(quals.rows, tp.person_id).find(q => q.stream === 'Vocational' && q.occupation_name)?.occupation_name
+          || person.profession || '',
         profession: person.profession || '', tender: tender.title,
       };
-      const resolve = (own, variantId, fallback) => {
+      /*
+       * Text typed for this bid, then the wording picked for the person, then
+       * the lead firm's own wording for this post (in a JV every partner's CV
+       * speaks in the lead's words), then the person's default.
+       */
+      // The post's chosen wording role wins over its title, which notices word every way.
+      const firmDefault = (field) => pickFirmVariant(variants.rows, field, leadInst?.id, tp.task_role || vars.position, person.person_type);
+      /*
+       * Employment, newest first: their time with the bidding firm (from the
+       * joining date set for this bid), time with other firms of ours the bid
+       * claims, and the jobs on their pool record.
+       */
+      const role = tp.task_role || vars.position;
+      const withFirm = tp.joining_date ? [{
+        organisation: firmName.get(tp.joined_institute_id || leadInst?.id) || tender.institute_name,
+        institute_id: tp.joined_institute_id || leadInst?.id, biddingFirm: true,
+        position: vars.position, role, from_date: tp.joining_date, is_current: true, employment_type: 'Full time',
+        clients: tp.joining_clients, events_count: tp.joining_events,
+      }] : [];
+      const otherFirms = (tp.firm_experience || []).map(f => ({
+        organisation: f.institute_id ? (firmName.get(f.institute_id) || '') : f.org_name,
+        institute_id: f.institute_id || null,
+        // A company typed by hand: its letter is generated from what was typed.
+        manualFirm: f.institute_id ? null : { name: f.org_name, address: f.org_address,
+          contact_person: f.org_signatory, contact_designation: f.org_designation },
+        position: f.position || vars.position,
+        role: f.position || role, from_date: f.from_date, to_date: f.to_date, is_current: !f.to_date,
+        clients: f.clients, events_count: f.events_count,
+      }));
+      // Their trades, for counting a trainer's assignments: certificates and jobs.
+      const trades = new Set([
+        ...forPerson(quals.rows, tp.person_id).filter(q => q.stream === 'Vocational' && q.occupation_name)
+          .map(q => q.occupation_name.trim().toLowerCase()),
+        ...(tp.occupation_name ? [tp.occupation_name.trim().toLowerCase()] : []),
+      ]);
+      const trainerLike = person.person_type !== 'Support Staff';
+      const countFromAssignments = (e) => {
+        if (!e.institute_id) return e;
+        const from = monthIndex(e.from_date);
+        const to = e.is_current ? nowMonth : monthIndex(e.to_date);
+        if (from == null || to == null) return e;
+        const ran = firmAssignments.filter(a => a.institute_id === e.institute_id
+          && overlaps(assignmentSpan(a, nowMonth), [from, to])
+          && (!trainerLike || !trades.size || !a.trades.length || a.trades.some(t => trades.has(t))));
+        const typed = parseInt(e.events_count, 10);
+        const events = Math.min(Number.isInteger(typed) ? typed : ran.length, ran.length, Math.floor((to - from) / 3));
+        const clients = String(e.clients || '').trim()
+          || [...new Set(ran.map(a => a.client).filter(Boolean))].join(', ');
+        return { ...e, events_count: events > 0 ? events : null, clients };
+      };
+      const startOf = (e) => monthIndex(e.from_date) ?? -1;
+      const allJobs = [...withFirm, ...otherFirms].map(countFromAssignments).concat(forPerson(exp.rows, tp.person_id))
+        .sort((a, b) => (b.is_current ? 1 : 0) - (a.is_current ? 1 : 0) || startOf(b) - startOf(a));
+      const experience = allJobs.map((e, i) => {
+        // What they did there: their own words, else the firm's wording for
+        // that job's position — opened by the count the experience letter states.
+        const v = (e.description || '').trim() ? null
+          : pickFirmVariant(variants.rows, 'activities', leadInst?.id, e.role || e.position, person.person_type, i);
+        const did = (e.description || '').trim() || (v ? applyVars(v.body, { ...vars, position: e.position || vars.position,
+          occupation: e.occupation_name || vars.occupation }).replace(/\{occupation\}/g, 'the trade') : '');
+        return { ...e, summary: [eventsLine(e, person.person_type === 'Support Staff' ? 'Supported' : 'Conducted'), did].filter(Boolean).join('\n') };
+      });
+      const events = experience.reduce((n, e) => n + (parseInt(e.events_count, 10) || 0), 0);
+      const clients = [...new Set(experience.flatMap(e => String(e.clients || '').split(','))
+        .map(c => c.trim()).filter(Boolean))].join(', ');
+      // Years actually spent in the jobs listed, not since the first one began.
+      const months = experience.reduce((n, e) => {
+        const from = monthIndex(e.from_date);
+        const to = e.is_current ? nowMonth : monthIndex(e.to_date);
+        return from != null && to != null && to > from ? n + (to - from) : n;
+      }, 0);
+      const years = Math.floor(months / 12);
+      Object.assign(vars, { events: events || '', clients, years: years > 0 ? years : '' });
+      const resolve = (own, variantId, fallback, field) => {
         if ((own || '').trim()) return own;
-        const v = variantId ? variantById.get(variantId) : null;
-        if (v) return applyVars(v.body, vars);
+        const v = (variantId ? variantById.get(variantId) : null) || firmDefault(field);
+        if (v) return dropUnfilled(applyVars(v.body, vars)).replace(/\{occupation\}/g, 'the trade');
         return fallback || '';
       };
+      // "Years with TP": from the joining date this bid states, else the pool record.
+      const joined = monthIndex(tp.joining_date);
+      const yearsWithFirm = joined != null && nowMonth >= joined
+        ? `${Math.floor((nowMonth - joined) / 12)} years (since ${tp.joining_date})` : person.years_with_entity;
       return {
         tender_person_id: tp.id,
-        person,
+        person: { ...person, years_with_entity: yearsWithFirm },
         proposed_position: vars.position,
         occupation_name: tp.occupation_name || '',
-        detailed_tasks: resolve(tp.detailed_tasks, tp.tasks_variant_id, ''),
-        key_qualifications: resolve(tp.key_qualifications, tp.quals_variant_id, person.key_qualifications),
+        detailed_tasks: resolve(tp.detailed_tasks, tp.tasks_variant_id, '', 'detailed_tasks'),
+        key_qualifications: resolve(tp.key_qualifications, tp.quals_variant_id, person.key_qualifications, 'key_qualifications'),
+        adequacy: resolve(tp.adequacy, tp.adequacy_variant_id, priorWorkOf(experience), 'adequacy'),
         education: forPerson(quals.rows, tp.person_id).filter(q => q.kind === 'Academic'),
         trainings: forPerson(quals.rows, tp.person_id).filter(q => q.kind !== 'Academic'),
-        experience: forPerson(exp.rows, tp.person_id),
+        experience,
+        /*
+         * Experience letters, stating exactly what the CV's employment row does
+         * — same post, dates, events and clients: the bidding firm's, and one
+         * for each company typed by hand. A firm already in our list has issued
+         * its own letter on paper, so none is generated for it.
+         */
+        letters: experience.filter(e => (e.biddingFirm && firmById.has(e.institute_id)) || e.manualFirm).map(e => ({
+          firm: e.manualFirm || firmById.get(e.institute_id), position: e.position, occupation: vars.occupation,
+          from_date: e.from_date, to_date: e.to_date, is_current: !!e.is_current,
+          events_count: e.events_count ?? null, clients: e.clients || '',
+          duties: String(e.summary || '').split('\n').filter(l => l.trim() && !/training events?/.test(l)).slice(0, 4),
+        })),
         languages: forPerson(langs.rows, tp.person_id),
       };
     }).filter(Boolean);
 
-    return { tender, cvs };
+    return { tender, format, cvs };
   });
 }
 
 module.exports = plugin;
 module.exports.applyVars = applyVars;
+module.exports.pickFirmVariant = pickFirmVariant;
+module.exports.dropUnfilled = dropUnfilled;
+module.exports.assignmentSpan = assignmentSpan;
+module.exports.priorWorkOf = priorWorkOf;

@@ -4,6 +4,9 @@ import { Btn, MdTextField, MdSelect, MdOption } from '../../md.jsx';
 import REPORT_CATALOG from '../../reports/catalog.js';
 import { BIDDER_STATUSES, leadOf } from './common.js';
 import Select from '../ui/Select.jsx';
+import { CV_FORMATS } from '../../reports/cv.jsx';
+
+const FIELD_TAG = { detailed_tasks: 'Tasks', key_qualifications: 'Qualifications', adequacy: 'Adequacy', activities: 'Activities' };
 
 /**
  * Step 5 — each bidder's documents, and how it fared.
@@ -12,13 +15,17 @@ import Select from '../ui/Select.jsx';
  * because it is what decides the next document: an EOI bidder marked
  * Shortlisted is the one invited to propose.
  */
-export default function SubmitStep({ tender, busy, variants, docFamily, setDocFamily,
+export default function SubmitStep({ tender, busy, variants, advanced = false, docFamily, setDocFamily,
                                      onPrepareReport, onMakeCVs, onSetBidderStatus,
                                      onAdvance, onOpenStage, onSaveVariant, footer }) {
   const bidders = tender.bidders || [];
   const isEOI = tender.stage === 'EOI';
   const shortlisted = bidders.filter(b => b.status === 'Shortlisted');
   const [variantModal, setVariantModal] = useState(null);
+  // '' = the lead firm's own CV format (set on the firm), decided by the server.
+  const [cvFormat, setCvFormat] = useState({});
+  // Experience letters follow each CV unless switched off for a bidder.
+  const [noLetters, setNoLetters] = useState({});
   const cvCount = (b) => (tender.people || []).filter(p => p.bidder_id === b.id).length;
 
   /**
@@ -103,11 +110,22 @@ export default function SubmitStep({ tender, busy, variants, docFamily, setDocFa
             <div className="tw-doc">
               <span className="tw-doc-name">CV pack</span>
               <span className="tw-doc-what">
-                {n ? `${n} CV${n === 1 ? '' : 's'} in Form 5, from the Team step.` : 'Nobody on this bidder’s team yet.'}
+                {n ? `${n} CV${n === 1 ? '' : 's'} from the Team step${b.firms.length > 1 ? `, in ${lead?.acronym || lead?.name}’s format and wording` : ''}.`
+                  : 'Nobody on this bidder’s team yet.'}
               </span>
-              <Btn className="btn btn-secondary btn-sm" disabled={busy || !n} onClick={() => onMakeCVs(b, 'print')}>
+              <Select className="tw-in" style={{ width: 'auto', minWidth: 170 }} aria-label={`CV format for ${b.display_name}`}
+                value={cvFormat[b.id] || ''} onChange={e => setCvFormat(f => ({ ...f, [b.id]: e.target.value }))}>
+                <option value="">{b.firms.length > 1 ? 'Lead firm’s format' : 'Firm’s format'}</option>
+                {CV_FORMATS.map(f => <option key={f.id} value={f.id}>{f.label}</option>)}
+              </Select>
+              <label className="tw-hint" style={{ display: 'inline-flex', alignItems: 'center', gap: 4, whiteSpace: 'nowrap' }}
+                title="Each CV followed by the experience letter of each firm of ours it lists">
+                <input type="checkbox" checked={!noLetters[b.id]} onChange={e => setNoLetters(x => ({ ...x, [b.id]: !e.target.checked }))} />
+                Experience letters
+              </label>
+              <Btn className="btn btn-secondary btn-sm" disabled={busy || !n} onClick={() => onMakeCVs(b, 'print', cvFormat[b.id], !noLetters[b.id])}>
                 Print</Btn>
-              <Btn className="btn btn-secondary btn-sm" disabled={busy || !n} onClick={() => onMakeCVs(b, 'word')}>
+              <Btn className="btn btn-secondary btn-sm" disabled={busy || !n} onClick={() => onMakeCVs(b, 'word', cvFormat[b.id], !noLetters[b.id])}>
                 Word</Btn>
             </div>
           </div>
@@ -143,11 +161,13 @@ export default function SubmitStep({ tender, busy, variants, docFamily, setDocFa
         </section>
       )}
 
-      <details className="tw-more" style={{ marginTop: 10 }}>
+      {advanced && <details className="tw-more" style={{ marginTop: 10 }}>
         <summary>CV wording library{library.length ? ` (${library.length})` : ''}</summary>
         <p className="tw-hint" style={{ marginTop: 0 }}>
-          Each firm&apos;s own wording for the CV&apos;s &ldquo;Tasks assigned&rdquo; and &ldquo;Key
-          qualifications&rdquo;. Pick one per person on the Team step.
+          Each firm&apos;s own wording for the CV&apos;s &ldquo;Tasks assigned&rdquo;, &ldquo;Key
+          qualifications&rdquo; and &ldquo;Adequacy for the assignment&rdquo;. A firm&apos;s wording for a post is
+          used automatically for anyone proposed in that post; pick another per person on the Team step.
+          In a joint venture every CV uses the lead firm&apos;s wording.
         </p>
         {library.length === 0
           ? <div className="tw-empty">No wording saved yet.</div>
@@ -155,7 +175,7 @@ export default function SubmitStep({ tender, busy, variants, docFamily, setDocFa
             <div className="tw-picker-list" style={{ maxHeight: 'none' }}>
               {library.map(v => (
                 <div key={v.id} className="tw-cand" style={{ background: 'var(--bg)' }}>
-                  <span className="tw-tag gray">{v.field === 'detailed_tasks' ? 'Tasks' : 'Qualifications'}</span>
+                  <span className="tw-tag gray">{FIELD_TAG[v.field] || v.field}</span>
                   <span className="tw-cand-main">{v.label}
                     <span className="tw-cand-sub">
                       {' · '}{v.institute_id ? (firmName(v.institute_id)?.acronym || firmName(v.institute_id)?.name) : 'shared'}
@@ -168,7 +188,7 @@ export default function SubmitStep({ tender, busy, variants, docFamily, setDocFa
           )}
         <Btn className="btn btn-secondary btn-sm" style={{ marginTop: 8 }}
           onClick={() => setVariantModal({ data: null })}><span className="material-icons-round">add</span>Add wording</Btn>
-      </details>
+      </details>}
 
       {footer({})}
 
@@ -201,13 +221,17 @@ function VariantForm({ variant, firms, onSave, onClose }) {
       <p className="tw-hint" style={{ margin: '0 0 12px' }}>
         Use <code>{'{firm}'}</code>, <code>{'{occupation}'}</code>, <code>{'{position}'}</code>,{' '}
         <code>{'{staffName}'}</code> and <code>{'{client}'}</code> — they are filled in when the CV is
-        produced. Start a line with • for a bullet.
+        produced. Adequacy can also use <code>{'{events}'}</code>, <code>{'{clients}'}</code> and{' '}
+        <code>{'{years}'}</code> from the person&apos;s jobs; a line whose value is missing is left out.
+        Start a line with • for a bullet.
       </p>
       <div className="form-row form-row-2">
         <div className="form-group">
           <MdSelect label="Section" value={form.field} onChange={e => set('field', e.target.value)}>
             <MdOption value="detailed_tasks">Tasks assigned</MdOption>
             <MdOption value="key_qualifications">Key qualifications</MdOption>
+            <MdOption value="adequacy">Adequacy for the assignment (prior work)</MdOption>
+            <MdOption value="activities">Activities in a job (by the job’s position)</MdOption>
           </MdSelect>
         </div>
         <div className="form-group">

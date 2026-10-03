@@ -4,7 +4,8 @@ import { Btn } from '../../md.jsx';
 import { OccupationPicker } from '../TrainerPool.jsx';
 import { GENERAL_LEVELS, VOCATIONAL_LEVELS, labelOfGeneral, labelOfVocational } from '../../constants/education.js';
 import { acceptedOf, describeAccepted } from '../../utils/hrFit.js';
-import { COMMON_POSITIONS, emptyPosition, isTrainer, totalNeeded } from './common.js';
+import { useProgress, ProgressNote } from './useProgress.jsx';
+import { COMMON_POSITIONS, CV_ROLES, emptyPosition, guessRole, isTrainer, totalNeeded } from './common.js';
 import Select from '../ui/Select.jsx';
 
 /**
@@ -14,7 +15,7 @@ import Select from '../ui/Select.jsx';
  * Each post is one line — title, how many, and the bar — so a notice with a
  * dozen posts still fits on a screen and reads the way the notice lists them.
  */
-export default function RequirementsStep({ tender, occupations, onSave, footer }) {
+export default function RequirementsStep({ tender, occupations, variants = [], advanced = false, onSave, onSaveProgress, footer }) {
   const [occIds, setOccIds] = useState(() => (tender.occupations || []).map(o => o.id));
   const [positions, setPositions] = useState(() => (tender.positions || []).map(p => ({ ...p,
     // A post saved with one general minimum opens as one alternative, so it is
@@ -30,6 +31,10 @@ export default function RequirementsStep({ tender, occupations, onSave, footer }
   const setRow = (i, k, v) => setPositions(ps => ps.map((p, n) => n === i ? { ...p, [k]: v } : p));
   const drop = (i) => setPositions(ps => ps.filter((_, n) => n !== i));
   const add = (category, extra) => setPositions(ps => [...ps, emptyPosition(category, extra)]);
+  // The wording posts: the standard list, plus any other post a firm wrote wording for.
+  const libraryPosts = [...new Set(variants.map(v => String(v.position || '').split('|')[0].trim()).filter(Boolean))]
+    .filter(n => !CV_ROLES.some(r => r.some(x => x.toLowerCase() === n.toLowerCase())));
+  const roleNames = [...CV_ROLES.map(r => r[0]), ...libraryPosts];
   /** Give every trade on the notice the same post, in one go. */
   const addToEveryTrade = (title) => setPositions(ps => [...ps,
     ...selectedOccupations.map(o => ({ ...emptyPosition('Trainer'), occupation_id: o.id, title }))]);
@@ -56,12 +61,26 @@ export default function RequirementsStep({ tender, occupations, onSave, footer }
         && !selectedOccupations.some(o => sameOcc(p.occupation_id, o.id))) },
   ].filter(g => g.rows.length > 0 || (g.key !== 'any' && !g.orphan));
 
+  // Posts typed so far are kept even half-finished; a post with no title waits locally.
+  const progress = useProgress({
+    key: `req-${tender.id}`, value: { occIds, positions },
+    restore: (d) => { setOccIds(d.occIds || []); setPositions(d.positions || []); },
+    persist: async (d) => {
+      if (d.positions.some(p => !String(p.title || '').trim())) throw new Error('Name every post to save it on the server — kept on this device meanwhile.');
+      const fresh = await onSaveProgress({ occupation_ids: d.occIds,
+        positions: d.positions.map(p => ({ ...p, min_education: null, task_role: p.task_role || null })) });
+      // Take the ids the server gave new posts, so the next save updates rather than duplicates them.
+      setPositions(ps => ps.map((p, i) => (p.id || !fresh?.positions?.[i] ? p : { ...p, id: fresh.positions[i].id })));
+    },
+  });
+
   const save = async () => {
     const unnamed = positions.filter(p => !String(p.title || '').trim()).length;
     if (unnamed) return setErr(`${unnamed} post${unnamed === 1 ? ' has' : 's have'} no title — name ${unnamed === 1 ? 'it' : 'them'} or remove ${unnamed === 1 ? 'it' : 'them'}.`);
     setErr(''); setSaving(true);
     try { await onSave({ occupation_ids: occIds,
-      positions: positions.map(p => ({ ...p, min_education: null })) }); }
+      // "Auto" is stored as the role the title matched, so the CV uses exactly what was shown.
+      positions: positions.map(p => ({ ...p, min_education: null, task_role: p.task_role || guessRole(p.title, roleNames) || null })) }); }
     catch (e) { setErr(e.message || 'Could not save the requirements.'); }
     finally { setSaving(false); }
   };
@@ -71,7 +90,7 @@ export default function RequirementsStep({ tender, occupations, onSave, footer }
       <h2 className="tw-panel-title">What the notice asks for</h2>
       <p className="tw-panel-lede">
         The trades it covers and the team it wants. Every bidder answers this same list, and the
-        Team step checks the pool against it.
+        Team step checks the pool against it. Experience is counted from the year the qualifying degree was passed.
       </p>
       <ErrorBanner msg={err} onDismiss={() => setErr('')} />
 
@@ -103,7 +122,7 @@ export default function RequirementsStep({ tender, occupations, onSave, footer }
           {experts.length > 0 && <span className="tw-count">{totalNeeded(experts.map(x => x.p))} needed</span>}
           <span className="tw-hint">Named once for the whole bid, whatever trades it covers.</span>
         </div>
-        <PostTable rows={experts} setRow={setRow} drop={drop} listId="pos-experts"
+        <PostTable roles={roleNames} advanced={advanced} rows={experts} setRow={setRow} drop={drop} listId="pos-experts"
           titles={COMMON_POSITIONS['Key expert']} />
         <div className="tw-chips" style={{ marginTop: 8 }}>
           {COMMON_POSITIONS['Key expert']
@@ -154,7 +173,7 @@ export default function RequirementsStep({ tender, occupations, onSave, footer }
                 is lost — remove them, or add the trade back.
               </div>
             )}
-            <PostTable rows={g.rows} setRow={setRow} drop={drop} listId={`pos-trade-${g.key}`}
+            <PostTable roles={roleNames} advanced={advanced} rows={g.rows} setRow={setRow} drop={drop} listId={`pos-trade-${g.key}`}
               titles={COMMON_POSITIONS.Trainer} />
             {!g.orphan && g.occupation_id !== '' && (
               <div className="tw-chips" style={{ marginTop: 6 }}>
@@ -177,14 +196,14 @@ export default function RequirementsStep({ tender, occupations, onSave, footer }
           <Btn className="btn btn-primary" disabled={saving} onClick={save}>
             {saving ? 'Saving…' : 'Save and continue →'}</Btn>
         ),
-        note: 'Experience is counted from the year the qualifying degree was passed.',
+        note: <ProgressNote progress={progress} />,
       })}
     </>
   );
 }
 
 /** Posts as one line each. Empty when there are none, so the chips below speak. */
-function PostTable({ rows, setRow, drop, listId, titles }) {
+function PostTable({ rows, setRow, drop, listId, titles, roles = [], advanced = false }) {
   // Which post's accepted-qualifications editor is open, by its row index.
   const [open, setOpen] = useState(null);
   if (!rows.length) return null;
@@ -195,8 +214,9 @@ function PostTable({ rows, setRow, drop, listId, titles }) {
           <th style={{ minWidth: 120 }}>Post</th>
           <th style={{ width: 62 }}>How many</th>
           <th style={{ minWidth: 180 }}>Accepted qualifications</th>
-          <th style={{ width: 70 }}>Min. years</th>
-          <th style={{ minWidth: 110 }}>Training required</th>
+          {advanced && <th style={{ width: 70 }}>Min. years</th>}
+          {advanced && <th style={{ minWidth: 110 }}>Training required</th>}
+          {advanced && <th style={{ minWidth: 150 }} title="Which post’s CV wording (tasks, adequacy) this post uses">CV wording</th>}
           <th style={{ width: 32 }} />
         </tr></thead>
         <tbody>
@@ -217,17 +237,24 @@ function PostTable({ rows, setRow, drop, listId, titles }) {
                     {describeAccepted(p) || <span className="tw-hint">Not stated — set it</span>}
                   </button>
                 </td>
-                <td>
+                {advanced && <td>
                   <input className="tw-in num" type="number" min="0" aria-label="Minimum years of experience"
                     value={String(p.min_experience_years ?? '')} placeholder="—"
                     title="Applies to every alternative that does not state its own"
                     onChange={e => setRow(i, 'min_experience_years', e.target.value)} />
-                </td>
-                <td>
+                </td>}
+                {advanced && <td>
                   <input className="tw-in" aria-label="Training required" value={p.required_training || ''}
                     placeholder="e.g. Computer training"
                     onChange={e => setRow(i, 'required_training', e.target.value)} />
-                </td>
+                </td>}
+                {advanced && <td>
+                  <Select className="tw-in" aria-label="CV wording for this post" value={p.task_role || ''}
+                    onChange={e => setRow(i, 'task_role', e.target.value)}>
+                    <option value="">{guessRole(p.title, roles) ? `Auto — ${guessRole(p.title, roles)}` : 'Auto — by the title'}</option>
+                    {roles.map(r => <option key={r} value={r}>{r}</option>)}
+                  </Select>
+                </td>}
                 <td>
                   <button type="button" className="tw-x" aria-label={`Remove ${p.title || 'post'}`} onClick={() => drop(i)}>
                     <span className="material-icons-round" style={{ fontSize: 17 }}>close</span>
@@ -235,7 +262,7 @@ function PostTable({ rows, setRow, drop, listId, titles }) {
                 </td>
               </tr>
               {open === i && (
-                <tr><td colSpan={6} style={{ paddingBottom: 10 }}>
+                <tr><td colSpan={advanced ? 7 : 4} style={{ paddingBottom: 10 }}>
                   <AcceptedEditor post={p} onChange={alts => setRow(i, 'education_options', alts)} />
                 </td></tr>
               )}

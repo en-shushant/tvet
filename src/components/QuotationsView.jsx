@@ -1,14 +1,14 @@
 /**
- * QuotationsView — sidebar screen for managing shortlisting and contracts
- * Two tabs: Shortlisting (table of all entries) + Contracts (all contracts + quotations)
+ * Contracts and quotations across every client — the "Contracts & quotations"
+ * tab of the Shortlisting screen. (This used to be a separate Quotations screen
+ * with its own copy of the shortlist table.)
  */
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import Modal from './ui/Modal.jsx';
 import { Btn, MdTextField, MdSelect, MdOption } from '../md.jsx';
 import { api } from '../utils/api.js';
-import { getSession } from '../utils/auth.js';
-import { FISCAL_YEARS, getCurrentFY } from '../constants/data.js';
-import { adToBS, bsToAD, BS_MONTHS, BS_DATA, toNpNum, BS_YEARS } from '../constants/nepali.js';
+import { FISCAL_YEARS } from '../constants/data.js';
+import { adToBS, bsToAD, BS_MONTHS, BS_DATA, BS_YEARS } from '../constants/nepali.js';
 import { fmtDate } from '../utils/format.js';
 import { toast } from './ui/Feedback.jsx';
 import Select from './ui/Select.jsx';
@@ -96,177 +96,6 @@ function AgreementUpload({ value, onChange, token }) {
 }
 
 // ── Shortlisting tab ──────────────────────────────────────────────────────────
-function ShortlistTab({ institutes, clients, isAdmin, canEdit, token }) {
-  const [rows, setRows] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState('');
-  const [filterFY, setFilterFY] = useState('');
-  const [filterOrg, setFilterOrg] = useState('');
-  const [saving, setSaving] = useState(false);
-  const [modal, setModal] = useState(null); // {type, data?}
-
-  const load = useCallback(async () => {
-    setLoading(true);
-    try { setRows(await api('GET', '/shortlists', null, token)); }
-    catch(e) { console.error(e); }
-    finally { setLoading(false); }
-  }, [token]);
-
-  useEffect(() => { load(); }, [load]);
-
-  const currentFY = getCurrentFY();
-
-  const orgs = useMemo(() => {
-    const seen = new Map();
-    rows.forEach(r => {
-      const k = r.client_id ? String(r.client_id) : (r.client_name_manual || '');
-      const lbl = r.client_name || r.client_name_manual || '';
-      if (k && !seen.has(k)) seen.set(k, lbl);
-    });
-    return [...seen.entries()].sort((a,b) => a[1].localeCompare(b[1]));
-  }, [rows]);
-
-  const filtered = useMemo(() => rows.filter(r => {
-    if (filterFY && r.fy !== filterFY) return false;
-    if (filterOrg) {
-      const k = r.client_id ? String(r.client_id) : (r.client_name_manual || '');
-      if (k !== filterOrg) return false;
-    }
-    if (search) {
-      const q = search.toLowerCase();
-      if (!r.institute_name?.toLowerCase().includes(q) && !(r.client_name||'').toLowerCase().includes(q) && !(r.institute_acronym||'').toLowerCase().includes(q)) return false;
-    }
-    return true;
-  }), [rows, filterFY, filterOrg, search]);
-
-  const handleDelete = async () => {
-    setSaving(true);
-    try {
-      await api('DELETE', `/shortlists/${modal.data.id}`, null, token);
-      await load(); setModal(null);
-    } catch(e) { toast.error(e.message); }
-    finally { setSaving(false); }
-  };
-
-  const sc = s => s === 'Active' ? {bg:'var(--success-light)',cl:'var(--success)'} : s === 'Expired' ? {bg:'var(--error-light)',cl:'var(--error)'} : {bg:'var(--warning-light)',cl:'#b45309'};
-
-  return (
-    <div>
-      {/* Toolbar */}
-      <div style={{ display:'flex', gap:10, flexWrap:'wrap', alignItems:'center', marginBottom:16 }}>
-        <div className="search-wrap" style={{ flex:1, minWidth:200 }}>
-          <span className="material-icons-round search-icon" style={{fontSize:16}}>search</span>
-          <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search firm or org…"/>
-        </div>
-        <Select value={filterFY} onChange={e=>setFilterFY(e.target.value)}
-          style={{ width:'auto', minWidth:150, height:38 }}>
-          <option value="">All FYs</option>
-          {FYS.map(fy => <option key={fy} value={fy}>{fy}</option>)}
-        </Select>
-        <Select value={filterOrg} onChange={e=>setFilterOrg(e.target.value)}
-          style={{ width:'auto', minWidth:150, maxWidth:240, height:38 }}>
-          <option value="">All Orgs</option>
-          {orgs.map(([k,lbl]) => <option key={k} value={k}>{lbl}</option>)}
-        </Select>
-        <span style={{ fontSize:12, color:'var(--text3)', whiteSpace:'nowrap' }}>{filtered.length} entries</span>
-        {canEdit && (
-          <Btn className="btn btn-primary btn-sm" onClick={() => setModal({type:'add'})}>
-            <span className="material-icons-round" style={{fontSize:16}}>add</span>Add Entry
-          </Btn>
-        )}
-      </div>
-
-      {/* Table */}
-      <div className="card" style={{ overflow:'hidden', padding:0 }}>
-        {/* Header */}
-        <div style={{ display:'flex', gap:10, padding:'9px 16px', background:'var(--bg)', borderBottom:'1px solid var(--border)' }}>
-          {['FIRM','ORGANIZATION','FY','DATE','STATUS','CONTRACT'].map((h,i) => (
-            <div key={h} style={{ fontSize:11, fontWeight:700, color:'var(--text3)', textTransform:'uppercase', letterSpacing:'.5px',
-              // Fixed columns take a flex-basis, matching the rows' widths; `flex: 0` zeroed them.
-              flex: i===0||i===1 ? 2 : i===5 ? 1.5 : `0 0 ${i===2?70:i===3?100:80}px`, minWidth:0 }}>
-              {h}
-            </div>
-          ))}
-          <div style={{ width:60, flexShrink:0 }}/>
-        </div>
-
-        {loading ? (
-          <div style={{ padding:40, textAlign:'center', color:'var(--text3)' }}>
-            <span className="spin material-icons-round" style={{fontSize:24}}>sync</span>
-          </div>
-        ) : filtered.length === 0 ? (
-          <div style={{ padding:32, textAlign:'center', color:'var(--text3)', fontSize:13 }}>No entries match the filter.</div>
-        ) : filtered.map((r,i) => {
-          const c = sc(r.status);
-          return (
-            <div key={r.id} style={{ display:'flex', gap:10, alignItems:'center', padding:'11px 16px', borderBottom:'1px solid var(--border)', background: i%2===1?'var(--bg)':'var(--surface)' }}>
-              {/* Firm */}
-              <div style={{ flex:2, minWidth:0 }}>
-                <div style={{ fontWeight:600, fontSize:13 }}>
-                  {r.institute_acronym && <span style={{ color:'var(--text3)', fontWeight:500 }}>[{r.institute_acronym}] </span>}
-                  {r.institute_name}
-                </div>
-              </div>
-              {/* Org */}
-              <div style={{ flex:2, fontSize:13, color:'var(--text2)', minWidth:0, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
-                {r.client_short && <span style={{ fontWeight:600 }}>{r.client_short} · </span>}
-                {r.client_name || r.client_name_manual || <span style={{ fontStyle:'italic', color:'var(--text3)' }}>—</span>}
-              </div>
-              {/* FY */}
-              <div style={{ width:70, flexShrink:0 }}>
-                <span style={{ fontSize:11, fontWeight:600, padding:'2px 8px', borderRadius:100, background:'var(--primary-light)', color:'var(--primary-dark)' }}>{r.fy||'—'}</span>
-              </div>
-              {/* Date */}
-              <div style={{ width:100, fontSize:12, color:'var(--text3)', flexShrink:0 }}>{fmtDate(r.shortlist_date)}</div>
-              {/* Status */}
-              <div style={{ width:80, flexShrink:0 }}>
-                <span style={{ fontSize:11, fontWeight:600, padding:'2px 8px', borderRadius:100, background:c.bg, color:c.cl }}>{r.status}</span>
-              </div>
-              {/* Contract */}
-              <div style={{ flex:1.5, fontSize:12, minWidth:0 }}>
-                {r.contract_amount === 0
-                  ? <span style={{ color:'var(--success)', fontWeight:600 }}>Free</span>
-                  : r.contract_amount != null
-                    ? <span style={{ fontWeight:600 }}>{fmtNPR(r.contract_amount)}</span>
-                    : <span style={{ color:'var(--text3)' }}>—</span>}
-                {r.shortlist_doc && <a href={safeHref(r.shortlist_doc)} target="_blank" rel="noreferrer" style={{ display:'block', fontSize:11, color:'var(--primary)', marginTop:2 }}>
-                  <span className="material-icons-round" style={{fontSize:12,verticalAlign:'middle'}}>receipt</span> Receipt
-                </a>}
-              </div>
-              {/* Actions */}
-              <div style={{ width:60, display:'flex', gap:2, justifyContent:'flex-end', flexShrink:0 }}>
-                {canEdit && <button title="Edit" onClick={() => setModal({type:'edit', data:r})}
-                  style={{ width:28,height:28,borderRadius:50,border:'none',background:'transparent',color:'var(--text3)',cursor:'pointer',display:'inline-flex',alignItems:'center',justifyContent:'center' }}
-                  onMouseEnter={e=>{e.currentTarget.style.background='var(--bg2)';e.currentTarget.style.color='var(--text)';}}
-                  onMouseLeave={e=>{e.currentTarget.style.background='transparent';e.currentTarget.style.color='var(--text3)';}}>
-                  <span className="material-icons-round" style={{fontSize:14}}>edit</span>
-                </button>}
-                {isAdmin && <button title="Delete" onClick={() => setModal({type:'delete', data:r})}
-                  style={{ width:28,height:28,borderRadius:50,border:'none',background:'transparent',color:'var(--text3)',cursor:'pointer',display:'inline-flex',alignItems:'center',justifyContent:'center' }}
-                  onMouseEnter={e=>{e.currentTarget.style.background='var(--error-light)';e.currentTarget.style.color='var(--error)';}}
-                  onMouseLeave={e=>{e.currentTarget.style.background='transparent';e.currentTarget.style.color='var(--text3)';}}>
-                  <span className="material-icons-round" style={{fontSize:14}}>delete</span>
-                </button>}
-              </div>
-            </div>
-          );
-        })}
-      </div>
-
-      {/* Modals */}
-      {modal?.type === 'delete' && (
-        <Modal title="Confirm Delete" onClose={()=>setModal(null)} compact footer={<>
-          <Btn className="btn btn-secondary" onClick={()=>setModal(null)}>Cancel</Btn>
-          <Btn className="btn btn-danger" onClick={handleDelete} disabled={saving}>{saving?'Deleting…':'Delete'}</Btn>
-        </>}>
-          <p style={{margin:0}}>Delete this shortlist entry for <strong>{modal.data.institute_name}</strong>? Cannot be undone.</p>
-        </Modal>
-      )}
-    </div>
-  );
-}
-
-// ── Contracts tab ─────────────────────────────────────────────────────────────
 function ContractsTab({ isAdmin, canEdit, token }) {
   const [contracts, setContracts] = useState([]);
   const [quotations, setQuotations] = useState({}); // keyed by contract_id
@@ -724,41 +553,5 @@ function ConfirmModal({ message, onConfirm, onClose, saving }) {
 }
 
 // ── Main QuotationsView ───────────────────────────────────────────────────────
-export default function QuotationsView({ institutes, clients, isAdmin, isEditor, isShortlistOnly }) {
-  const session = getSession();
-  const token = session?.token;
-  const canEdit = !!(isAdmin || isEditor || isShortlistOnly);
-  const [tab, setTab] = useState('shortlisting');
 
-
-  return (
-    <div className="fade-in">
-      <div className="page-header mb-6">
-        <div>
-          <h1 className="page-title">Quotations</h1>
-          <div className="page-header-sub">Manage shortlisting and contract awards</div>
-        </div>
-      </div>
-
-      {/* Tab bar — the app's standard underlined section tabs. */}
-      <div role="tablist" aria-label="Quotations views" className="hub-tabs">
-        {[['shortlisting', 'playlist_add_check', 'Shortlisting'], ['contracts', 'gavel', 'Contracts & Quotations']].map(([id, icon, label]) => (
-          <button key={id} type="button" role="tab" aria-selected={tab === id}
-            className={`hub-tab${tab === id ? ' is-active' : ''}`} onClick={() => setTab(id)}>
-            <span className="material-icons-round" aria-hidden="true">{icon}</span>{label}
-          </button>
-        ))}
-      </div>
-
-      {tab === 'shortlisting' && (
-        <ShortlistTab
-          institutes={institutes} clients={clients}
-          isAdmin={isAdmin} canEdit={canEdit} token={token}
-        />
-      )}
-      {tab === 'contracts' && (
-        <ContractsTab isAdmin={isAdmin} canEdit={canEdit} token={token}/>
-      )}
-    </div>
-  );
-}
+export { ContractsTab };

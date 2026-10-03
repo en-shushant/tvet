@@ -47,7 +47,15 @@ function TendersView({ institutes = [], clients = [], onGoToReports, canAccessPo
   const [statusFilter, setStatusFilter] = useState('');
   // A firm bids several times in a year, so the list is almost always read one
   // firm and one year at a time rather than whole.
-  const [firmFilter, setFirmFilter] = useState('');
+  /*
+   * Which firm's bids — and the firm a new tender starts with as bidder.
+   * Remembered; someone with one firm simply is that firm, with nothing to pick.
+   */
+  const firms = institutes.filter(i => !i.isShortlistingOnly);
+  const [firmPick, setFirmPick] = useState(() => { try { return localStorage.getItem('tvettrack_firm') || ''; } catch { return ''; } });
+  const setFirmFilter = (id) => { setFirmPick(id); try { localStorage.setItem('tvettrack_firm', id); } catch { /* ignore */ } };
+  const firmFilter = firms.length === 1 ? String(firms[0].id)
+    : firms.some(i => String(i.id) === String(firmPick)) ? String(firmPick) : '';
   const [fyFilter, setFyFilter] = useState('');
   const [search, setSearch] = useState('');
 
@@ -138,7 +146,7 @@ function TendersView({ institutes = [], clients = [], onGoToReports, canAccessPo
   if (open) {
     return (
       <TenderWorkspace key={open} tenderId={open === 'new' ? null : open} startAt={startAt}
-        clients={clientList} institutes={institutes} occupations={occupations} pool={pool} canAccessPool={canAccessPool} token={token}
+        clients={clientList} institutes={institutes} defaultFirmId={firmFilter} occupations={occupations} pool={pool} canAccessPool={canAccessPool} token={token}
         onBack={() => { setOpen(null); load(); }} onOpen={openAt} onListChanged={load}
         onAddClient={addClient} onPrepareReport={prepareReport} />
     );
@@ -158,11 +166,14 @@ function TendersView({ institutes = [], clients = [], onGoToReports, canAccessPo
           <input value={search} onChange={e => setSearch(e.target.value)}
             placeholder="Search by title or reference number…" />
         </div>
-        <Select className="form-input" style={{ width: 'auto', minWidth: 170 }}
-          value={firmFilter} onChange={e => setFirmFilter(e.target.value)}>
-          <option value="">Every firm</option>
-          {institutes.map(i => <option key={i.id} value={i.id}>{i.acronym || i.name}</option>)}
-        </Select>
+        {firms.length > 1 && (
+          <Select className="form-input" style={{ width: 'auto', minWidth: 190 }} aria-label="Working as"
+            title="Shows this firm’s bids; a new tender starts with it as the bidder"
+            value={firmFilter} onChange={e => setFirmFilter(e.target.value)}>
+            <option value="">All firms</option>
+            {firms.map(i => <option key={i.id} value={i.id}>Working as {i.acronym || i.name}</option>)}
+          </Select>
+        )}
         <Select className="form-input" style={{ width: 'auto', minWidth: 130 }}
           value={fyFilter} onChange={e => setFyFilter(e.target.value)}>
           <option value="">Every FY</option>
@@ -173,9 +184,9 @@ function TendersView({ institutes = [], clients = [], onGoToReports, canAccessPo
           <option value="">Every status</option>
           {STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
         </Select>
-        {(firmFilter || fyFilter || statusFilter) && (
+        {(fyFilter || statusFilter) && (
           <Btn className="btn btn-ghost btn-sm"
-            onClick={() => { setFirmFilter(''); setFyFilter(''); setStatusFilter(''); }}>Clear</Btn>
+            onClick={() => { setFyFilter(''); setStatusFilter(''); }}>Clear</Btn>
         )}
       </div>
 

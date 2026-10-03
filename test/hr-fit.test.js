@@ -325,7 +325,8 @@ describe('a notice covering more than one trade', () => {
   it('keeps the picker open while a post still has room', () => {
     // Every Assign reloads the tender. Closing the picker on reload made
     // filling "3 Main Trainers" three trips back to the button.
-    expect(view).toMatch(/useEffect\(\(\) => \{ setRows\(rowsFor\(activeBidder\)\); \}, \[tender, activeBidder\]\)/);
+    // The rows follow every reload, except while a person's panel is being typed in.
+    expect(view).toMatch(/setRows\(rowsFor\(activeBidder\)\);\n  \}, \[tender, activeBidder\]\)/);
     expect(view).toMatch(/useEffect\(\(\) => \{ setOpenSlot\(null\); setEditing\(null\); \}, \[activeBidder\]\)/);
     expect(view).toMatch(/if \(!pos \|\| filledNow >= need\(pos\)\) setOpenSlot\(null\)/);
   });

@@ -167,6 +167,7 @@ function qualificationProblem(quals) {
   return null;
 }
 
+const { eventsFor } = require('../lib/cvWording');
 const { findDuplicate, duplicateMessage, findLikelyDuplicate, likelyMessage, confirmNotDuplicates } = require('../lib/hrDuplicates');
 
 async function plugin(fastify, opts) {
@@ -443,11 +444,13 @@ async function plugin(fastify, opts) {
       const e = exps[i];
       await client.query(
         `INSERT INTO hr_experience (person_id, organisation, position, occupation_id,
-           from_date, to_date, is_current, description, sort_order, country, project_name, reference_text)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)`,
+           from_date, to_date, is_current, description, sort_order, country, project_name, reference_text, employment_type,
+           clients, events_count)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)`,
         [personId, e.organisation || null, e.position || null, e.occupation_id || null,
          e.from_date || null, e.to_date || null, !!e.is_current, e.description || null, i,
-         e.country || null, e.project_name || null, e.reference_text || null]);
+         e.country || null, e.project_name || null, e.reference_text || null, e.employment_type || null,
+         String(e.clients || '').trim() || null, eventsFor(e)]);
     }
     await client.query('DELETE FROM hr_languages WHERE person_id = $1', [personId]);
     const langs = (body.languages || []).filter(l => (l.language || '').trim());

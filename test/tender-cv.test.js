@@ -270,7 +270,7 @@ describe('several bids per firm per fiscal year', () => {
   it('offers those filters on the screen, not just in the API', () => {
     expect(view).toMatch(/p\.set\('institute_id', firmFilter\)/);
     expect(view).toMatch(/p\.set\('fy', fyFilter\)/);
-    expect(view).toMatch(/Every firm/);
+    expect(view).toMatch(/All firms/);
     expect(view).toMatch(/Every FY/);
   });
 

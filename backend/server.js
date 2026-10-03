@@ -815,6 +815,26 @@ async function runMigrations() {
     `ALTER TABLE hr_people ADD COLUMN IF NOT EXISTS verified_at TIMESTAMPTZ`,
     `ALTER TABLE hr_people ADD COLUMN IF NOT EXISTS updated_by UUID`,
     `ALTER TABLE occupations ADD COLUMN IF NOT EXISTS merged_into INT`,
+    // CV pack formats: each firm's default (a JV uses its lead's), the
+    // "Adequacy for the Assignment" wording, and a job's type of employment.
+    `ALTER TABLE institutes ADD COLUMN IF NOT EXISTS cv_format TEXT`,
+    // Which CV wording a required post takes, whatever the notice calls it.
+    `ALTER TABLE tender_positions ADD COLUMN IF NOT EXISTS task_role TEXT`,
+    // A proposed person's time with the bidding firm, and with other firms of
+    // ours, as this bid claims it — each an employment row on the CV.
+    `ALTER TABLE tender_people ADD COLUMN IF NOT EXISTS joining_date TEXT`,
+    `ALTER TABLE tender_people ADD COLUMN IF NOT EXISTS joined_institute_id INTEGER REFERENCES institutes(id) ON DELETE SET NULL`,
+    `ALTER TABLE tender_people ADD COLUMN IF NOT EXISTS firm_experience JSONB DEFAULT '[]'`,
+    // Events and clients during their time with the bidding firm: the CV's
+    // activities and the experience letter state the same figures.
+    `ALTER TABLE tender_people ADD COLUMN IF NOT EXISTS joining_clients TEXT`,
+    `ALTER TABLE tender_people ADD COLUMN IF NOT EXISTS joining_events INTEGER`,
+    `ALTER TABLE tender_people ADD COLUMN IF NOT EXISTS adequacy TEXT`,
+    `ALTER TABLE tender_people ADD COLUMN IF NOT EXISTS adequacy_variant_id INTEGER REFERENCES cv_text_variants(id) ON DELETE SET NULL`,
+    `ALTER TABLE hr_experience ADD COLUMN IF NOT EXISTS employment_type TEXT`,
+    // What the experience letters state: whose programmes, and how many events.
+    `ALTER TABLE hr_experience ADD COLUMN IF NOT EXISTS clients TEXT`,
+    `ALTER TABLE hr_experience ADD COLUMN IF NOT EXISTS events_count INTEGER`,
     // Single sign-on (Authentik). Password logins keep working alongside.
     `ALTER TABLE users ADD COLUMN IF NOT EXISTS oidc_sub TEXT`,
     `CREATE UNIQUE INDEX IF NOT EXISTS users_oidc_sub_key ON users (oidc_sub) WHERE oidc_sub IS NOT NULL`,
@@ -986,6 +1006,8 @@ runMigrations()
   // NSTB certificates saved before trades had rules get theirs now.
   .then(() => require('./lib/vocationalRules').backfillVocationalRules(pool))
   .then(n => { if (n) console.log(`Linked ${n} vocational certificate(s) to trade rules`); })
+  .then(() => require('./lib/cvWording').seedCvWording(pool))
+  .then(n => { if (n) console.log(`Added ${n} starter CV wording variation(s)`); })
   .catch(e => console.error('Migration error:', e.message))
   .finally(() => {
     fastify.listen({ port: PORT, host: '0.0.0.0' }, (err) => {

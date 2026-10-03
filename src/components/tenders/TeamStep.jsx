@@ -1,10 +1,13 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
+import { useProgress, ProgressNote } from './useProgress.jsx';
 import { Btn } from '../../md.jsx';
 import { api } from '../../utils/api.js';
 import { checkAgainstPosition, experienceYears, highestEducation, fitsTrainerLevel, criteriaChecks } from '../../utils/hrFit.js';
 import { useOccupations } from '../../utils/useMasterData.js';
-import { groupPositions, positionBar, need, teamProgress } from './common.js';
+import { groupPositions, positionBar, need, teamProgress, leadOf } from './common.js';
+import { toast } from '../ui/Feedback.jsx';
 import Select from '../ui/Select.jsx';
+import { maskBsDate, maxEvents } from '../pool/common.js';
 
 /**
  * Step 4 — each bidder's team, filled post by post.
@@ -14,10 +17,11 @@ import Select from '../ui/Select.jsx';
  * narrowed to who meets them, and nothing about the post is typed twice.
  * Anyone not filling a stated post goes under "Other staff".
  */
-export default function TeamStep({ tender, pool, canAccessPool = true, variants, token, busy,
+export default function TeamStep({ tender, pool, canAccessPool = true, variants, token, busy, institutes = [], advanced = false,
                                    activeBidder, setActiveBidder, onSaveTeam, footer }) {
   const bidders = tender.bidders || [];
   const active = bidders.find(b => b.id === activeBidder);
+  const lead = active ? leadOf(active) : null;
   const positions = tender.positions || [];
   const groups = useMemo(() => groupPositions(positions), [positions]);
   const wanted = (tender.occupations || []).map(o => o.id);
@@ -28,7 +32,14 @@ export default function TeamStep({ tender, pool, canAccessPool = true, variants,
   // bidder. Every Assign reloads the tender, so tying both to the reload would
   // shut the picker after each person — filling "3 Main Trainers" would take
   // three trips back to the button.
-  useEffect(() => { setRows(rowsFor(activeBidder)); }, [tender, activeBidder]);
+  const editingRef = useRef(null);
+  const bidderRef = useRef(activeBidder);
+  useEffect(() => {
+    // An autosave reloads the tender; do not rewrite what is being typed.
+    if (editingRef.current !== null && bidderRef.current === activeBidder) return;
+    bidderRef.current = activeBidder;
+    setRows(rowsFor(activeBidder));
+  }, [tender, activeBidder]);
   useEffect(() => { setOpenSlot(null); setEditing(null); }, [activeBidder]);
 
   // Which post's picker is open — a position id, 'other', or nothing.
@@ -38,7 +49,19 @@ export default function TeamStep({ tender, pool, canAccessPool = true, variants,
   // Whose CV wording is being set, by row index.
   const [editing, setEditing] = useState(null);
 
+  editingRef.current = editing;
   const save = (next) => { setRows(next); return onSaveTeam(activeBidder, next); };
+  // While a person's panel is open, what is typed there is kept and saved as you go.
+  const autosave = useProgress({
+    key: `team-${tender.id}-${activeBidder}`, value: rows, saved: rowsFor(activeBidder),
+    enabled: editing !== null, restore: setRows,
+    persist: async (v) => {
+      if (v.some(r => (r.firm_experience || []).some(f => !f.institute_id && !String(f.org_name || '').trim()))) {
+        throw new Error('Choose the firm (or type the company) for each other-firm row to save it — kept on this device meanwhile.');
+      }
+      if (!(await onSaveTeam(activeBidder, v))) throw new Error('Could not save — kept on this device.');
+    },
+  });
 
   /**
    * Everyone this notice has already been promised, whichever bidder promised
@@ -167,11 +190,12 @@ export default function TeamStep({ tender, pool, canAccessPool = true, variants,
             <input className="tw-in" value={r.proposed_position || ''}
               onChange={e => setField('proposed_position', e.target.value)} />
           </label>
-          {[['tasks_variant_id', 'detailed_tasks', 'Tasks assigned'],
-            ['quals_variant_id', 'key_qualifications', 'Key qualifications']].map(([key, field, label]) => (
+          {advanced && [['tasks_variant_id', 'detailed_tasks', 'Tasks assigned'],
+            ['quals_variant_id', 'key_qualifications', 'Key qualifications'],
+            ['adequacy_variant_id', 'adequacy', 'Adequacy (prior work)']].map(([key, field, label]) => (
             <label key={key} className="tw-hint">{label}
               <Select className="tw-in" value={r[key] || ''} onChange={e => setField(key, e.target.value)}>
-                <option value="">The person&apos;s own text</option>
+                <option value="">Firm&apos;s wording for this post, else the person&apos;s own</option>
                 {variantsFor(field, r.person_type).map(v => (
                   <option key={v.id} value={v.id}>{v.institute_id ? v.label : `${v.label} (shared)`}</option>
                 ))}
@@ -179,9 +203,111 @@ export default function TeamStep({ tender, pool, canAccessPool = true, variants,
             </label>
           ))}
         </div>
-        <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
+
+        <div className="tw-section-head" style={{ margin: '14px 0 6px' }}>
+          <strong style={{ fontSize: 13 }}>Employment shown on the CV</strong>
+        </div>
+        <div className="tw-grid-3">
+          <label className="tw-hint">Joined (firm)
+            <Select className="tw-in" value={String(r.joined_institute_id || '')}
+              onChange={e => setField('joined_institute_id', e.target.value ? parseInt(e.target.value, 10) : null)}>
+              <option value="">{lead ? `${lead.acronym || lead.name} (bidding firm)` : 'The bidding firm'}</option>
+              {(active?.firms || []).filter(f => f.institute_id !== lead?.institute_id).map(f => (
+                <option key={f.institute_id} value={f.institute_id}>{f.acronym || f.name}</option>
+              ))}
+            </Select>
+          </label>
+          <label className="tw-hint">Joining date (BS)
+            <input className="tw-in" value={r.joining_date || ''} placeholder="2079/04/01" inputMode="numeric" maxLength={10}
+              onChange={e => setField('joining_date', maskBsDate(e.target.value))} />
+          </label>
+          <span className="tw-hint" style={{ alignSelf: 'end' }}>
+            {r.joining_date ? 'Shown as their current post with the firm, as “Years with” the firm, and in its experience letter.' : 'Leave empty if they are not on the firm’s staff.'}
+          </span>
+        </div>
+        {r.joining_date && (() => {
+          const cap = maxEvents({ from_date: r.joining_date, is_current: true });
+          const trainerHint = r.person_type === 'Support Staff' ? '' : ' in their trade';
+          return (
+            <div className="tw-grid-3" style={{ marginTop: 6 }}>
+              <label className="tw-hint">Clients with this firm
+                <input className="tw-in" value={r.joining_clients || ''} placeholder="Empty = the assignments’ clients"
+                  onChange={e => setField('joining_clients', e.target.value)} />
+              </label>
+              <label className="tw-hint">Events conducted with this firm
+                <input className="tw-in num" inputMode="numeric" value={r.joining_events ?? ''}
+                  placeholder="Empty = one per assignment" aria-invalid={cap != null && parseInt(r.joining_events, 10) > cap}
+                  onChange={e => setField('joining_events', e.target.value.replace(/\D/g, ''))} />
+              </label>
+              <span className="tw-hint" style={{ alignSelf: 'end' }}>
+                One event per assignment: counted from the firm’s assignments during their time{trainerHint}, never more
+                than four a year. Type a smaller number to claim fewer. The CV and the letter state the same figure.
+              </span>
+            </div>
+          );
+        })()}
+        <div className="tw-hint" style={{ margin: '12px 0 4px' }}>Experience with other firms</div>
+        {(r.firm_experience || []).map((f, k) => {
+          const setFe = (patch) => setField('firm_experience', (r.firm_experience || []).map((x, j) => (j === k ? { ...x, ...patch } : x)));
+          const cap = maxEvents({ ...f, is_current: !f.to_date });
+          // A company typed by hand; after a reload only its name says so.
+          const manual = !f.institute_id && (f.manual || !!f.org_name);
+          return (
+            <div key={k} className="tw-fe-row">
+              <Select className="tw-in" aria-label="Firm" value={f.institute_id ? String(f.institute_id) : (manual ? 'manual' : '')}
+                onChange={e => setFe(e.target.value === 'manual'
+                  ? { institute_id: null, manual: true }
+                  : { institute_id: e.target.value ? parseInt(e.target.value, 10) : null, manual: false,
+                      org_name: '', org_address: '', org_signatory: '', org_designation: '' })}>
+                <option value="">Choose the firm…</option>
+                <option value="manual">Company not in the list (type it — a letter is generated)</option>
+                {institutes.map(i => <option key={i.id} value={i.id}>{i.name}</option>)}
+              </Select>
+              {manual && (<>
+                <input className="tw-in" aria-label="Company name" placeholder="Company name" value={f.org_name || ''}
+                  onChange={e => setFe({ org_name: e.target.value })} />
+                <input className="tw-in" aria-label="Company address" placeholder="Address" value={f.org_address || ''}
+                  onChange={e => setFe({ org_address: e.target.value })} />
+                <input className="tw-in" aria-label="Signatory" placeholder="Signed by (name)" value={f.org_signatory || ''}
+                  onChange={e => setFe({ org_signatory: e.target.value })} />
+                <input className="tw-in" aria-label="Signatory designation" placeholder="Designation, e.g. Managing Director"
+                  value={f.org_designation || ''} onChange={e => setFe({ org_designation: e.target.value })} />
+              </>)}
+              <input className="tw-in" aria-label="Post" placeholder={r.proposed_position || 'Post'} value={f.position || ''}
+                onChange={e => setFe({ position: e.target.value })} />
+              <input className="tw-in" aria-label="Joined (BS)" placeholder="Joined 2075/04/01" value={f.from_date || ''} maxLength={10}
+                onChange={e => setFe({ from_date: maskBsDate(e.target.value) })} />
+              <input className="tw-in" aria-label="Left (BS)" placeholder="Left (empty = still there)" value={f.to_date || ''} maxLength={10}
+                onChange={e => setFe({ to_date: maskBsDate(e.target.value) })} />
+              <input className="tw-in" aria-label="Clients" placeholder="Clients, e.g. CTEVT" value={f.clients || ''}
+                onChange={e => setFe({ clients: e.target.value })} />
+              <input className="tw-in num" aria-label="Events conducted" inputMode="numeric"
+                placeholder={manual ? (cap != null ? `≤ ${cap} events` : 'Events') : 'Empty = per assignment'} value={f.events_count ?? ''}
+                aria-invalid={cap != null && parseInt(f.events_count, 10) > cap}
+                onChange={e => setFe({ events_count: e.target.value.replace(/\D/g, '') })} />
+              <button type="button" className="tw-x" aria-label="Remove this firm"
+                onClick={() => setField('firm_experience', (r.firm_experience || []).filter((_, j) => j !== k))}>
+                <span className="material-icons-round" style={{ fontSize: 17 }}>close</span>
+              </button>
+            </div>
+          );
+        })}
+        <button type="button" className="tw-chip" style={{ marginTop: 4 }}
+          onClick={() => setField('firm_experience', [...(r.firm_experience || []), { institute_id: null, position: '', from_date: '', to_date: '' }])}>
+          + Experience with another firm</button>
+        <div className="tw-hint" style={{ marginTop: 6 }}>
+          Their jobs in the trainer pool are listed on the CV too, newest first. Experience letters are generated for the
+          bidding firm and for companies typed in; a firm already in the list has its letter on paper.
+        </div>
+
+        <div style={{ display: 'flex', gap: 8, marginTop: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+          <ProgressNote progress={autosave} canSave={false} />
           <Btn className="btn btn-primary btn-sm" disabled={busy}
-            onClick={async () => { await save(rows); setEditing(null); }}>Save</Btn>
+            onClick={async () => {
+              const bad = (r.firm_experience || []).find(f => !f.institute_id && !String(f.org_name || '').trim());
+              if (bad) { toast('Choose the firm, or type the company’s name, for each “experience with another firm” row — or remove it.'); return; }
+              await save(rows); setEditing(null);
+            }}>Save</Btn>
           <Btn className="btn btn-ghost btn-sm" onClick={() => { setRows(rowsFor(activeBidder)); setEditing(null); }}>Cancel</Btn>
         </div>
       </div>

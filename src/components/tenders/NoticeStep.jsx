@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+import { useProgress, ProgressNote } from './useProgress.jsx';
 import Modal, { ErrorBanner } from '../ui/Modal.jsx';
 import { Btn, MdTextField, MdSelect, MdOption } from '../../md.jsx';
 import { FISCAL_YEARS, CLIENT_TYPES } from '../../constants/data.js';
@@ -17,8 +18,9 @@ const MORE_FIELDS = ['project_name', 'office_address', 'funding_agency', 'method
  * not before anything else can happen, so it waits behind "More from the
  * notice" rather than making the first screen a wall of thirty fields.
  */
-export default function NoticeStep({ tender, clients, onSave, onAddClient, footer }) {
+export default function NoticeStep({ tender, clients, onSave, onSaveProgress, onAddClient, footer }) {
   const [form, setForm] = useState(() => noticeOf(tender));
+  const progress = useProgress({ key: 'notice-' + (tender.id || 'new'), value: form, restore: setForm, persist: onSaveProgress });
   const [err, setErr] = useState('');
   const [saving, setSaving] = useState(false);
   const [newClient, setNewClient] = useState(null);
@@ -207,7 +209,7 @@ export default function NoticeStep({ tender, clients, onSave, onAddClient, foote
             {saving ? 'Saving…' : isNew ? 'Create tender and continue →' : 'Save and continue →'}
           </Btn>
         ),
-        note: isNew ? 'Nothing is saved until you create the tender.' : null,
+        note: <ProgressNote progress={progress} />,
       })}
 
       {newClient !== null && (

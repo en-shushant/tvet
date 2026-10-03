@@ -12,7 +12,6 @@ import { UserManagement } from './components/LoginPage.jsx';
 // rather than on first paint. One <Suspense> around the screen switch below
 // covers all of them.
 const ShortlistDashboard = lazyChunk(() => import('./components/ShortlistDashboard.jsx'));
-const QuotationsView     = lazyChunk(() => import('./components/QuotationsView.jsx'));
 const TrainerPool        = lazyChunk(() => import('./components/TrainerPool.jsx'));
 const TendersView        = lazyChunk(() => import('./components/TendersView.jsx'));
 const InstituteList      = lazyChunk(() => import('./components/InstituteList.jsx'));
@@ -62,6 +61,8 @@ function App() {
     const h = window.location.hash.replace('#','');
     if (!h) return { screen: 'dashboard', instId: null };
     const parts = h.split('/');
+    // Old #quotations links open the Contracts & quotations tab of Shortlisting.
+    if (parts[0] === 'quotations') return { screen: 'shortlisting', instId: 'contracts' };
     return { screen: parts[0] || 'dashboard', instId: parts[1] || null };
   };
   const [screen, setScreen] = useState(() => {
@@ -356,7 +357,8 @@ function App() {
   };
 
   const handleNavigate = (rawId) => {
-    const [id, sub] = String(rawId).split('/');
+    // Quotations is now the Contracts & quotations tab of Shortlisting.
+    const [id, sub] = String(rawId) === 'quotations' ? ['shortlisting', 'contracts'] : String(rawId).split('/');
     setSubRoute(sub || null);
     if (isShortlistOnly && id !== 'shortlisting' && id !== 'quotations' && id !== 'dashboard' && id !== 'institutes' && id !== 'detail' && id !== 'documents') return;
     if (id === 'master' && !isAdmin && !isEditor) return;
@@ -381,7 +383,6 @@ function App() {
     {id:'documents', icon:'folder_shared', label:'Documents', group:'Operations'},
     {id:'clients', icon:'apartment', label:'Clients', group:'Main', shortlistHidden: true},
     {id:'shortlisting', icon:'playlist_add_check', label:'Shortlisting', group:'Operations'},
-    {id:'quotations', icon:'request_quote', label:'Quotations', group:'Operations'},
     {id:'master', icon:'category', label:'Master Data', group:'System', adminOnly: false, editorHidden: false, shortlistHidden: true},
     {id:'tenders', icon:'gavel', label:'Tenders', group:'Operations', tendersOnly: true},
     {id:'hr', icon:'co_present', label:'Trainer Pool', group:'Operations', hrOnly: true},
@@ -474,7 +475,6 @@ function App() {
     summary: 'Compliance & Analytics',
     comparison: 'Compliance & Analytics',
     shortlisting: 'Shortlisting',
-    quotations: 'Quotations',
     renewals: 'Compliance & Analytics',
     documents: 'Documents',
     clients: 'Clients',
@@ -625,7 +625,7 @@ function App() {
           }>
           {screen === 'dashboard' && !isShortlistOnly && <Dashboard institutes={institutes} isEditor={isEditor} onNavigate={(s, inst, tab)=>{ if(inst) handleSelectInstitute(inst).then(()=>{ if(tab) setJumpToTab(tab); }); else setScreen(s); }}/>}
           {screen === 'dashboard' && isShortlistOnly && <ShortlistDashboard institutes={institutes} onNavigate={(inst) => { handleSelectInstitute(inst); }}/>}
-          {screen === 'institutes' && <InstituteList institutes={isShortlistOnly ? institutes : isAdmin ? institutes : institutes.filter(i => !i.isShortlistingOnly)} onSelect={handleSelectInstitute} onAdd={(isAdmin || isShortlistOnly) ? ()=>setShowAddInstitute(true) : null} initialSearch={globalSearch} isShortlistOnly={isShortlistOnly}/>}
+          {screen === 'institutes' && <InstituteList institutes={(isShortlistOnly ? institutes : isAdmin ? institutes : institutes.filter(i => !i.isShortlistingOnly))} onSelect={handleSelectInstitute} onAdd={(isAdmin || isShortlistOnly) ? ()=>setShowAddInstitute(true) : null} initialSearch={globalSearch} isShortlistOnly={isShortlistOnly}/>}
           {screen === 'detail' && selectedInstitute && (
             <InstituteDetail
               institute={selectedInstitute}
@@ -673,8 +673,7 @@ function App() {
             <ClientsView clients={clients} token={token}
               onGoToMasterData={() => handleNavigate('master')}/>
           )}
-          {screen === 'shortlisting' && <Suspense fallback={<div style={{padding:40,textAlign:'center',color:'var(--text3)'}}>Loading…</div>}><Shortlisting institutes={institutes} clients={clients} isAdmin={isAdmin} isEditor={isEditor} isShortlistOnly={isShortlistOnly} isSuperAdmin={isSuperAdmin} token={token}/></Suspense>}
-          {screen === 'quotations' && <QuotationsView institutes={institutes} clients={clients} isAdmin={isAdmin} isEditor={isEditor} isShortlistOnly={isShortlistOnly}/>}
+          {screen === 'shortlisting' && <Suspense fallback={<div style={{padding:40,textAlign:'center',color:'var(--text3)'}}>Loading…</div>}><Shortlisting institutes={institutes} clients={clients} isAdmin={isAdmin} isEditor={isEditor} isShortlistOnly={isShortlistOnly} isSuperAdmin={isSuperAdmin} token={token} tab={subRoute === 'contracts' ? 'contracts' : 'lists'} onTab={(t) => handleNavigate(t === 'contracts' ? 'shortlisting/contracts' : 'shortlisting')}/></Suspense>}
           {screen === 'reports' && <Suspense fallback={<div style={{padding:40,textAlign:'center',color:'var(--text3)'}}>Loading reports…</div>}><ReportsView institutes={institutes} clients={clients}/></Suspense>}
           {screen === 'master' && (isAdmin || isEditor) && <MasterData initialTab={subRoute} onGoToClients={()=>handleNavigate('clients')} clients={clients} onUpdateClients={handleUpdateClients} token={token} isAdmin={isAdmin} isEditor={isEditor} isSuperAdmin={isSuperAdmin}/>}
           {screen === 'master' && !isAdmin && !isEditor && (
@@ -785,8 +784,8 @@ function App() {
           ] : []),
           { id:'a-shortlist', label:'Shortlisting', icon:'playlist_add_check', group:'Go to',
             keywords:'standing list nea letters roster', run:()=>handleNavigate('shortlisting') },
-          { id:'a-quotes', label:'Quotations', icon:'request_quote', group:'Go to',
-            keywords:'quote bid price contract', run:()=>handleNavigate('quotations') },
+          { id:'a-quotes', label:'Contracts & quotations', icon:'request_quote', group:'Go to',
+            keywords:'quote quotations bid price contract award', run:()=>handleNavigate('shortlisting/contracts') },
           ...(!isShortlistOnly ? [{ id:'a-quality', label:'Compliance & Analytics — Data quality', icon:'rule', group:'Go to',
             keywords:'missing gaps incomplete blank problems', run:()=>handleNavigate('quality') }] : []),
           ...(canAccessTenders ? [

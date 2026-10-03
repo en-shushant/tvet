@@ -8,6 +8,7 @@ import { defaultFamilyFor } from '../../reports/catalog.js';
 import { STATUSES, BLANK_TENDER, noticeOf, teamProgress } from './common.js';
 import NoticeStep from './NoticeStep.jsx';
 import RequirementsStep from './RequirementsStep.jsx';
+import ChecklistHome from './ChecklistHome.jsx';
 import BiddersStep from './BiddersStep.jsx';
 import TeamStep from './TeamStep.jsx';
 import SubmitStep from './SubmitStep.jsx';
@@ -23,10 +24,13 @@ import { openSafeDocument } from '../../utils/safeWindow.js';
  * a detour. The rail says which step is in hand and what each still needs; the
  * panel shows only that step.
  */
-export default function TenderWorkspace({ tenderId, startAt, clients, institutes, occupations, pool, canAccessPool = true, token,
+export default function TenderWorkspace({ tenderId, startAt, clients, institutes, defaultFirmId = '', occupations, pool, canAccessPool = true, token,
                                           onBack, onOpen, onListChanged, onAddClient, onPrepareReport }) {
   const [tender, setTender] = useState(tenderId ? null : { ...BLANK_TENDER });
   const [variants, setVariants] = useState([]);
+  // Simple by default: the choices a first-time user can leave alone are tucked away.
+  const [advanced, setAdvancedState] = useState(() => { try { return localStorage.getItem('tvettrack_advanced') === '1'; } catch { return false; } });
+  const setAdvanced = (v) => { setAdvancedState(v); try { localStorage.setItem('tvettrack_advanced', v ? '1' : '0'); } catch { /* ignore */ } };
   const [step, setStep] = useState(1);
   const [err, setErr] = useState('');
   const [busy, setBusy] = useState(false);
@@ -48,7 +52,8 @@ export default function TenderWorkspace({ tenderId, startAt, clients, institutes
     setTender(t);
     setActiveBidder(a => (t.bidders || []).some(b => b.id === a) ? a : (t.bidders?.[0]?.id ?? null));
     setDocFamily(f => f || defaultFamilyFor(t.stage));
-    if (chooseStep) setStep(firstOpenStep(t));
+    // An existing tender opens on its checklist; where to go next is one click.
+    if (chooseStep) setStep(0);
     return t;
   }, [token]);
 
@@ -94,10 +99,19 @@ export default function TenderWorkspace({ tenderId, startAt, clients, institutes
     finally { setBusy(false); }
   };
 
+  /** A new tender starts with the firm being worked as already bidding. */
+  const startWithFirm = async (id) => {
+    const t = await load(id);
+    if (defaultFirmId && !(t.bidders || []).length) {
+      await api('PUT', `/tenders/${id}`, { ...noticeOf(t), bidders: [{ firms: [{ institute_id: parseInt(defaultFirmId, 10), role: 'Lead' }] }] }, token);
+      await load(id);
+    }
+  };
+
   const saveNotice = async (form) => {
     if (!saved) {
       const created = await api('POST', '/tenders', { ...form, id: undefined }, token);
-      await load(created.id);
+      await startWithFirm(created.id);
       onListChanged(created.id);
       toast('Tender created. Next: what it asks for.');
     } else {
@@ -107,6 +121,23 @@ export default function TenderWorkspace({ tenderId, startAt, clients, institutes
       toast('Notice saved.');
     }
     setStep(2);
+  };
+
+  /** Autosave / Save progress: keeps the step open and demands nothing complete. */
+  const saveNoticeProgress = async (form) => {
+    if (!String(form.title || '').trim()) throw new Error('Add a title to save on the server — your changes are kept on this device.');
+    if (!saved) {
+      const created = await api('POST', '/tenders', { ...form, id: undefined }, token);
+      await startWithFirm(created.id);
+      onListChanged(created.id);
+    } else {
+      await api('PUT', `/tenders/${tender.id}`, form, token);
+      onListChanged();
+    }
+  };
+  const saveRequirementsProgress = async (body) => {
+    await api('PUT', `/tenders/${tender.id}`, { ...noticeOf(tender), ...body }, token);
+    return reload();
   };
 
   const saveRequirements = async (body) => {
@@ -145,13 +176,14 @@ export default function TenderWorkspace({ tenderId, startAt, clients, institutes
   const saveTeam = (bidderId, rows) =>
     patch({ people_bidder_id: bidderId, people: rows });
 
-  const makeCVs = async (bidder, mode) => {
+  const makeCVs = async (bidder, mode, format = '', letters = true) => {
     setBusy(true); setErr('');
     try {
-      const pack = await api('GET', `/tenders/${tender.id}/cv?bidder_id=${bidder.id}`, null, token);
+      const fmt = format ? `&format=${encodeURIComponent(format)}` : '';
+      const pack = await api('GET', `/tenders/${tender.id}/cv?bidder_id=${bidder.id}${fmt}`, null, token);
       if (!pack.cvs.length) { setErr(`Nobody is on ${bidder.display_name}’s team yet.`); return; }
-      if (mode === 'word') { await cv.downloadDOCX(pack); return; }
-      const w = openSafeDocument(cv.buildPrintHTML(pack));
+      if (mode === 'word') { await cv.downloadDOCX(pack, { letters }); return; }
+      const w = openSafeDocument(cv.buildPrintHTML(pack, { letters }));
       if (w) setTimeout(() => w.print(), 300);
     } catch (e) { setErr(e.message || 'Could not build the CVs.'); }
     finally { setBusy(false); }
@@ -203,12 +235,12 @@ export default function TenderWorkspace({ tenderId, startAt, clients, institutes
   };
 
   const steps = railSteps(tender);
-  const go = (n) => { if (steps[n - 1] && !steps[n - 1].locked) { setStep(n); window.scrollTo?.({ top: 0 }); } };
+  const go = (n) => { if (n === 0 || (steps[n - 1] && !steps[n - 1].locked)) { setStep(n); window.scrollTo?.({ top: 0 }); } };
 
   /** The bar at the foot of every step: back, a note, and the way on. */
   const footer = ({ primary, primaryDisabled, note } = {}) => (
     <div className="tw-foot">
-      {step > 1 && <Btn className="btn btn-ghost" onClick={() => go(step - 1)}>← Back</Btn>}
+      {(step > 1 || (step === 1 && saved)) && <Btn className="btn btn-ghost" onClick={() => go(step - 1)}>{step === 1 ? '← Overview' : '← Back'}</Btn>}
       <span className="tw-foot-note">{note}</span>
       {primary || (step < steps.length
         ? <Btn className="btn btn-primary" disabled={primaryDisabled} onClick={() => go(step + 1)}>
@@ -284,6 +316,11 @@ export default function TenderWorkspace({ tenderId, startAt, clients, institutes
 
       <div className="tw">
         <ol className="tw-rail" aria-label="Steps">
+          {saved && (
+            <li><button type="button" className="tw-overview" onClick={() => setStep(0)}
+              aria-current={step === 0 ? 'page' : undefined}>
+              ← Overview</button></li>
+          )}
           {steps.map((s, i) => (
             <li key={s.label}>
               <button type="button" disabled={s.locked} onClick={() => go(i + 1)}
@@ -305,13 +342,14 @@ export default function TenderWorkspace({ tenderId, startAt, clients, institutes
 
         <div className="tw-panel">
           <ErrorBanner msg={err} onDismiss={() => setErr('')} />
+          {step === 0 && saved && <ChecklistHome tender={tender} steps={steps} onOpen={go} advanced={advanced} onAdvanced={setAdvanced} />}
           {step === 1 && (
-            <NoticeStep key={tender.id || 'new'} tender={tender} clients={clients}
-              onSave={saveNotice} onAddClient={onAddClient} footer={footer} />
+            <NoticeStep key="notice" tender={tender} clients={clients}
+              onSave={saveNotice} onSaveProgress={saveNoticeProgress} onAddClient={onAddClient} footer={footer} />
           )}
           {step === 2 && saved && (
-            <RequirementsStep key={tender.id} tender={tender} occupations={occupations}
-              onSave={saveRequirements} footer={footer} />
+            <RequirementsStep key={tender.id} tender={tender} occupations={occupations} variants={variants} advanced={advanced}
+              onSave={saveRequirements} onSaveProgress={saveRequirementsProgress} footer={footer} />
           )}
           {step === 3 && saved && (
             <BiddersStep tender={tender} institutes={institutes} busy={busy}
@@ -319,11 +357,12 @@ export default function TenderWorkspace({ tenderId, startAt, clients, institutes
           )}
           {step === 4 && saved && (
             <TeamStep tender={tender} pool={pool} canAccessPool={canAccessPool} variants={variants} token={token} busy={busy}
+              institutes={institutes} advanced={advanced}
               activeBidder={activeBidder} setActiveBidder={setActiveBidder}
               onSaveTeam={saveTeam} footer={footer} />
           )}
           {step === 5 && saved && (
-            <SubmitStep tender={tender} busy={busy} variants={variants}
+            <SubmitStep tender={tender} busy={busy} variants={variants} advanced={advanced}
               docFamily={docFamily || defaultFamilyFor(tender.stage)} setDocFamily={setDocFamily}
               onPrepareReport={onPrepareReport} onMakeCVs={makeCVs} onSetBidderStatus={setBidderStatus}
               onAdvance={advance} onOpenStage={openStage} onSaveVariant={saveVariant} footer={footer} />
