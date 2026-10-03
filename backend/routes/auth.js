@@ -157,7 +157,8 @@ async function plugin(fastify, opts) {
     const nonce = c.randomNonce();
     const next = oidc.safeNext(request.query.next);
     const url = c.buildAuthorizationUrl(config, {
-      redirect_uri: s.redirectUri, scope: 'openid email profile groups',
+      // Authentik sends `groups` in the profile scope.
+      redirect_uri: s.redirectUri, scope: 'openid email profile',
       code_challenge: await c.calculatePKCECodeChallenge(verifier), code_challenge_method: 'S256',
       state, nonce,
     });
