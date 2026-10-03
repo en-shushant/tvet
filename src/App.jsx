@@ -36,6 +36,7 @@ import { lazyChunk } from './utils/lazyChunk.js';
 import { api, normInst, normClient, instToAPI, nstbToAPI } from './utils/api.js';
 import { preloadLogos } from './utils/logoCache.js';
 import { getSession, setSession as setSessionStorage, clearSession } from './utils/auth.js';
+import SsoComplete from './components/SsoComplete.jsx';
 
 // ─── APP ─────────────────────────────────────────────────────────────────────
 
@@ -300,6 +301,9 @@ function App() {
     return () => { alive = false; };
   }, [session, token]);
 
+  if (window.location.pathname === '/auth/sso-complete') {
+    return <SsoComplete onLogin={(s) => setSession(s)} />;
+  }
   if (!session) {
     return <LoginPage onLogin={(s) => setSession(s)} />;
   }
@@ -339,9 +343,14 @@ function App() {
     );
   }
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    // The server ends an SSO session's record and, if it was one, says where
+    // to send the browser so Authentik's session ends too.
+    let idpLogout = '';
+    try { idpLogout = (await api('POST', '/auth/logout', null, token))?.idp_logout_url || ''; } catch { /* still log out here */ }
     clearSession();
     setSession(null);
+    if (idpLogout.startsWith('https://')) { window.location.assign(idpLogout); return; }
     window.location.hash = '';
     setScreen('dashboard');
   };

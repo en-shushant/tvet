@@ -2,6 +2,30 @@
 const bcrypt = require('bcrypt');
 const { pool } = require('../db/pool');
 const { signToken, authenticate } = require('../middleware/auth');
+const oidc = require('../lib/oidc');
+
+const clientIp = (request) => request.headers['x-forwarded-for']?.split(',')[0].trim() || request.ip;
+
+/**
+ * The logged-in result, for a password login and an SSO login alike: the same
+ * user object and the same JWT. `extra` rides in the token (the SSO session id,
+ * so logout can also end the Authentik session).
+ */
+function issueSession(user, extra = {}) {
+  const { password: _, oidc_sub: __, ...userOut } = user;
+  // `hr` rides along so the client knows whether to show the pool in the nav.
+  // It never authorises anything: requireHRAccess re-reads the database, so
+  // revoking access takes effect at once rather than when this token expires.
+  const tokenPayload = { id: user.id, name: user.name, email: user.email, role: user.role,
+                         hr: !!user.can_access_hr, tenders: !!user.can_access_tenders, ...extra };
+  return { user: userOut, token: signToken(tokenPayload) };
+}
+
+async function recordLogin(userId, method, request) {
+  await pool.query('UPDATE users SET last_login_at = NOW() WHERE id = $1', [userId]);
+  await pool.query('INSERT INTO auth_events (user_id, event, ip) VALUES ($1, $2, $3)',
+    [userId, method === 'sso' ? 'login via SSO' : 'login via password', clientIp(request)]);
+}
 
 async function verifyTurnstileToken(token, remoteip) {
   /*
@@ -43,6 +67,11 @@ async function verifyTurnstileToken(token, remoteip) {
 }
 
 async function plugin(fastify, opts) {
+  // Signs the short-lived SSO state cookie. Only /api/auth/oidc ever sees it.
+  await fastify.register(require('@fastify/cookie'), {
+    secret: process.env.OIDC_COOKIE_SECRET || process.env.JWT_SECRET || 'tvettrack_dev_secret_change_in_production',
+  });
+
   fastify.post('/register', async (request, reply) => {
     const { name, email, password, role = 'user' } = request.body;
     if (!name || !email || !password) return reply.code(400).send({ error: 'name, email and password required' });
@@ -62,21 +91,19 @@ async function plugin(fastify, opts) {
   fastify.post('/login', { config: { rateLimit: { max: 10, timeWindow: '1 minute' } } }, async (request, reply) => {
     const { email, password } = request.body;
     if (!email || !password) return reply.code(400).send({ error: 'email and password required' });
-    const remoteip = request.headers['x-forwarded-for']?.split(',')[0].trim() || request.ip;
+    const remoteip = clientIp(request);
     const capResult = await verifyTurnstileToken(request.body['cf-turnstile-response'], remoteip);
     if (!capResult.ok) return reply.code(400).send({ error: capResult.reason });
     const { rows } = await pool.query('SELECT * FROM users WHERE email = $1', [email]);
     if (!rows.length) return reply.code(401).send({ error: 'Invalid credentials' });
     const user = rows[0];
-    const match = await bcrypt.compare(password, user.password);
+    // An SSO-only account has no bcrypt hash; no password can match it.
+    const hashed = typeof user.password === 'string' && user.password.startsWith('$2');
+    const match = hashed && await bcrypt.compare(password, user.password);
     if (!match) return reply.code(401).send({ error: 'Invalid credentials' });
-    const { password: _, ...userOut } = user;
-    // `hr` rides along so the client knows whether to show the pool in the nav.
-    // It never authorises anything: requireHRAccess re-reads the database, so
-    // revoking access takes effect at once rather than when this token expires.
-    const tokenPayload = { id: user.id, name: user.name, email: user.email, role: user.role,
-                           hr: !!user.can_access_hr, tenders: !!user.can_access_tenders };
-    return { user: userOut, token: signToken(tokenPayload) };
+    if (user.is_active === false) return reply.code(403).send({ error: 'This account is suspended. Ask an admin.' });
+    await recordLogin(user.id, 'password', request);
+    return issueSession(user);
   });
 
   fastify.post('/refresh', { preHandler: authenticate }, async (request, reply) => {
@@ -84,7 +111,7 @@ async function plugin(fastify, opts) {
       'SELECT id, name, email, role, can_access_hr AS hr, can_access_tenders AS tenders FROM users WHERE id = $1', [request.user.id]
     );
     if (!rows.length) return reply.code(401).send({ error: 'User not found' });
-    return { token: signToken(rows[0]) };
+    return { token: signToken(request.user.sso_sid ? { ...rows[0], sso_sid: request.user.sso_sid } : rows[0]) };
   });
 
   fastify.get('/me', { preHandler: authenticate }, async (request, reply) => {
@@ -106,6 +133,121 @@ async function plugin(fastify, opts) {
     const hash = await bcrypt.hash(new_password, 10);
     await pool.query('UPDATE users SET password=$1 WHERE id=$2', [hash, request.user.id]);
     return { success: true };
+  });
+
+  // ── Single sign-on (Authentik, OIDC code flow + PKCE) ─────────────────────
+  fastify.get('/config', async () => ({ sso: oidc.enabled() }));
+
+  const SSO_COOKIE = 'tt_oidc';
+  const COOKIE_PATH = '/api/auth/oidc';
+  const ssoLimit = { config: { rateLimit: { max: 30, timeWindow: '1 minute' } } };
+  const fail = (reply, code) => reply
+    .clearCookie(SSO_COOKIE, { path: COOKIE_PATH })
+    .redirect(`/login?sso_error=${encodeURIComponent(code)}`, 302);
+
+  fastify.get('/oidc/login', ssoLimit, async (request, reply) => {
+    if (!oidc.enabled()) return reply.code(404).send({ error: 'Not found' });
+    const c = await oidc.lib();
+    let config;
+    try { config = await oidc.getConfig(); }
+    catch (e) { console.error('OIDC discovery failed:', e.name, e.code || ''); return fail(reply, 'unavailable'); }
+    const s = oidc.settings();
+    const verifier = c.randomPKCECodeVerifier();
+    const state = c.randomState();
+    const nonce = c.randomNonce();
+    const next = oidc.safeNext(request.query.next);
+    const url = c.buildAuthorizationUrl(config, {
+      redirect_uri: s.redirectUri, scope: 'openid email profile groups',
+      code_challenge: await c.calculatePKCECodeChallenge(verifier), code_challenge_method: 'S256',
+      state, nonce,
+    });
+    reply.setCookie(SSO_COOKIE, JSON.stringify({ verifier, state, nonce, next }), {
+      path: COOKIE_PATH, httpOnly: true, secure: true, sameSite: 'lax', maxAge: 600, signed: true,
+    });
+    return reply.redirect(url.href, 302);
+  });
+
+  fastify.get('/oidc/callback', ssoLimit, async (request, reply) => {
+    if (!oidc.enabled()) return reply.code(404).send({ error: 'Not found' });
+    const raw = request.cookies[SSO_COOKIE];
+    const unsigned = raw ? request.unsignCookie(raw) : { valid: false };
+    let saved = null;
+    try { saved = unsigned.valid ? JSON.parse(unsigned.value) : null; } catch { saved = null; }
+    if (!saved?.state || !saved?.verifier || !saved?.nonce) return fail(reply, 'expired');
+    if (request.query.error) return fail(reply, request.query.error === 'access_denied' ? 'cancelled' : 'generic');
+
+    const c = await oidc.lib();
+    const s = oidc.settings();
+    let tokens, claims;
+    try {
+      const config = await oidc.getConfig();
+      const current = new URL(s.redirectUri);
+      current.search = request.url.includes('?') ? request.url.slice(request.url.indexOf('?')) : '';
+      tokens = await c.authorizationCodeGrant(config, current, {
+        pkceCodeVerifier: saved.verifier, expectedState: saved.state, expectedNonce: saved.nonce, idTokenExpected: true,
+      });
+      claims = { ...tokens.claims() };
+      if (!Array.isArray(claims.groups) || claims.email_verified === undefined) {
+        const info = await c.fetchUserInfo(config, tokens.access_token, claims.sub);
+        claims = { ...info, ...claims, groups: claims.groups ?? info.groups,
+                   email_verified: claims.email_verified ?? info.email_verified };
+      }
+    } catch (e) {
+      // Never the tokens or the code: the error's kind is enough to debug.
+      console.warn('SSO callback rejected:', e.name, e.code || '', e.error || '');
+      return fail(reply, 'generic');
+    }
+    if (claims.email_verified !== true) return fail(reply, 'email_unverified');
+
+    const found = await oidc.matchUser(pool, claims, s);
+    if (found.error) return fail(reply, found.error);
+    let user = found.user;
+    if (user.is_active === false) return fail(reply, 'suspended');
+
+    const { role, warning } = oidc.nextRole(user.role, claims.groups, s);
+    if (warning) console.warn(`${warning} (user ${user.id})`);
+    if (role !== user.role) {
+      ({ rows: [user] } = await pool.query('UPDATE users SET role = $1, updated_at = NOW() WHERE id = $2 RETURNING *', [role, user.id]));
+      console.log(`SSO set role of user ${user.id} to ${role} from IdP groups`);
+    }
+    await recordLogin(user.id, 'sso', request);
+    // Kept server-side for logout's id_token_hint; never sent to the browser.
+    await pool.query("DELETE FROM sso_sessions WHERE created_at < NOW() - INTERVAL '31 days'");
+    const { rows: [sess] } = await pool.query(
+      'INSERT INTO sso_sessions (user_id, id_token) VALUES ($1, $2) RETURNING id', [user.id, tokens.id_token]);
+    const code = oidc.issueHandoff({ userId: user.id, ssoSid: sess.id });
+    reply.clearCookie(SSO_COOKIE, { path: COOKIE_PATH });
+    return reply.redirect(`/auth/sso-complete?code=${encodeURIComponent(code)}&next=${encodeURIComponent(saved.next || '/')}`, 302);
+  });
+
+  fastify.post('/oidc/exchange', ssoLimit, async (request, reply) => {
+    if (!oidc.enabled()) return reply.code(404).send({ error: 'Not found' });
+    const h = oidc.redeemHandoff(request.body?.code);
+    if (!h) return reply.code(400).send({ error: 'This sign-in link has expired. Please sign in again.' });
+    const { rows: [user] } = await pool.query('SELECT * FROM users WHERE id = $1', [h.userId]);
+    if (!user) return reply.code(401).send({ error: 'User not found' });
+    if (user.is_active === false) return reply.code(403).send({ error: 'This account is suspended. Ask an admin.' });
+    return issueSession(user, { sso_sid: h.ssoSid });
+  });
+
+  // Ends the TVETtrack side (the client drops its token); for an SSO login it
+  // also hands back the IdP logout URL so the browser can end that session too.
+  fastify.post('/logout', { preHandler: authenticate }, async (request) => {
+    const sid = request.user.sso_sid;
+    if (!sid) return {};
+    const { rows: [sess] } = await pool.query(
+      'DELETE FROM sso_sessions WHERE id = $1 AND user_id = $2 RETURNING id_token', [sid, request.user.id]);
+    if (!sess || !oidc.enabled()) return {};
+    try {
+      const c = await oidc.lib();
+      const url = c.buildEndSessionUrl(await oidc.getConfig(), {
+        id_token_hint: sess.id_token, post_logout_redirect_uri: oidc.settings().postLogoutRedirectUri,
+      });
+      return { idp_logout_url: url.href };
+    } catch (e) {
+      console.warn('Could not build the IdP logout URL:', e.name);
+      return {};
+    }
   });
 }
 

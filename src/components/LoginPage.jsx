@@ -6,7 +6,7 @@ import { Btn, MdTextField, MdSelect, MdOption } from '../md.jsx';
 import SearchableSelect from './ui/SearchableSelect.jsx';
 import { api, normInst, clientToAPI, normClient } from '../utils/api.js';
 import { API_URL_KEY, getApiBase } from '../utils/api.js';
-import { getSession, setSession, clearSession, loadUsers, saveUsers } from '../utils/auth.js';
+import { getSession, setSession, clearSession, loadUsers, saveUsers, sessionFromLogin, SSO_ERRORS } from '../utils/auth.js';
 import { INSTITUTE_TYPES, OCCUPATIONS } from '../constants/data.js';
 import { confirmDialog } from './ui/Feedback.jsx';
 import { initialsFor, tintFor } from './ui/primitives.jsx';
@@ -29,6 +29,22 @@ function LoginPage({ onLogin }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [sso, setSso] = useState(false);
+  // An SSO attempt that failed comes back as /login?sso_error=… — show it once.
+  const [ssoError] = useState(() => {
+    const code = new URLSearchParams(window.location.search).get('sso_error');
+    if (code) window.history.replaceState(null, '', '/login' + window.location.hash);
+    return code ? (SSO_ERRORS[code] || SSO_ERRORS.generic) : '';
+  });
+  useEffect(() => {
+    let alive = true;
+    api('GET', '/auth/config').then(c => { if (alive) setSso(!!c?.sso); }).catch(() => {});
+    return () => { alive = false; };
+  }, []);
+  const startSso = () => {
+    const next = '/' + (window.location.hash || '');
+    window.location.assign(`${getApiBase() || ''}/api/auth/oidc/login?next=${encodeURIComponent(next)}`);
+  };
   const [loading, setLoading] = useState(false);
   const [capToken, setCapToken] = useState('');
   // Set when the widget never came up, or came up and failed. Either way there
@@ -100,18 +116,9 @@ function LoginPage({ onLogin }) {
     setLoading(true);
     try {
       const data = await api('POST', '/auth/login', { email: emailVal, password: passwordVal, 'cf-turnstile-response': capToken });
-      const session = {
-        id: data.user.id,
-        fullName: data.user.name,
-        email: data.user.email,
-        role: data.user.role,
-        // Access to the human resource pool is a per-user grant, not a role.
-        canAccessHr: !!data.user.can_access_hr,
-        canAccessTenders: !!data.user.can_access_tenders,
-        photo: data.user.photo || null,
-        token: data.token,
-      };
+      const session = sessionFromLogin(data);
       setSession(session);
+      if (window.location.pathname === '/login') window.history.replaceState(null, '', '/' + window.location.hash);
       onLogin(session);
     } catch (err) {
       setError(err.message || 'Invalid credentials.');
@@ -187,10 +194,10 @@ function LoginPage({ onLogin }) {
               <div style={{marginBottom:20}}>
                 <div ref={turnstileRef} />
               </div>
-              {error && (
-                <div style={{background:'var(--error-light)',color:'var(--error)',border:'1px solid rgba(250,137,107,0.3)',borderRadius:10,padding:'11px 15px',fontSize:13,marginBottom:20,display:'flex',alignItems:'center',gap:8}}>
+              {(error || ssoError) && (
+                <div role="alert" style={{background:'var(--error-light)',color:'var(--error)',border:'1px solid rgba(250,137,107,0.3)',borderRadius:10,padding:'11px 15px',fontSize:13,marginBottom:20,display:'flex',alignItems:'center',gap:8}}>
                   <span className="material-icons-round" style={{fontSize:16}}>error_outline</span>
-                  {error}
+                  {error || ssoError}
                 </div>
               )}
               <Btn type="submit" className="btn btn-primary" disabled={loading}
@@ -200,6 +207,12 @@ function LoginPage({ onLogin }) {
                   : <><span className="material-icons-round" style={{fontSize:16}}>login</span> Sign In</>}
               </Btn>
             </form>
+            {sso && (<>
+              <div className="login-or" role="separator"><span>or</span></div>
+              <button type="button" className="btn btn-secondary login-sso" onClick={startSso}>
+                <span className="material-icons-round" style={{fontSize:16}}>key</span> SSO
+              </button>
+            </>)}
           </div>
           <div style={{textAlign:'center',marginTop:24,fontSize:12,color:'var(--text3)'}}>
             © {new Date().getFullYear()} TVETtrack · Nepal TVET Registry

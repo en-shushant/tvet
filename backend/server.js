@@ -815,6 +815,19 @@ async function runMigrations() {
     `ALTER TABLE hr_people ADD COLUMN IF NOT EXISTS verified_at TIMESTAMPTZ`,
     `ALTER TABLE hr_people ADD COLUMN IF NOT EXISTS updated_by UUID`,
     `ALTER TABLE occupations ADD COLUMN IF NOT EXISTS merged_into INT`,
+    // Single sign-on (Authentik). Password logins keep working alongside.
+    `ALTER TABLE users ADD COLUMN IF NOT EXISTS oidc_sub TEXT`,
+    `CREATE UNIQUE INDEX IF NOT EXISTS users_oidc_sub_key ON users (oidc_sub) WHERE oidc_sub IS NOT NULL`,
+    `ALTER TABLE users ADD COLUMN IF NOT EXISTS auth_provider TEXT DEFAULT 'password'`,
+    `ALTER TABLE users ADD COLUMN IF NOT EXISTS last_login_at TIMESTAMPTZ`,
+    `CREATE TABLE IF NOT EXISTS auth_events (
+       id BIGSERIAL PRIMARY KEY,
+       user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+       event TEXT NOT NULL, ip TEXT, at TIMESTAMPTZ DEFAULT NOW())`,
+    `CREATE TABLE IF NOT EXISTS sso_sessions (
+       id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+       user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+       id_token TEXT NOT NULL, created_at TIMESTAMPTZ DEFAULT NOW())`,
     // Trades named on NSTB certificates that were never in the list (2026-10).
     `INSERT INTO occupations (name, sector, level, is_custom)
      SELECT DISTINCT t.name, 'Tailoring, Garment, Textile and Hosiery', q.level, TRUE
