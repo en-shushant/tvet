@@ -14,7 +14,7 @@ import { initialsFor, tintFor } from './ui/primitives.jsx';
 /**
  * Turnstile site key.
  *
- * The production key is registered against tvet.envisionnp.cloud, so the widget
+ * The production key is registered against tvet.shushant.app, so the widget
  * simply never renders anywhere else — and with no widget there is no token,
  * which the server rejects. That made the app impossible to sign into on a
  * local build. Overridable per build so local testing can use Cloudflare's
