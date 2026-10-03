@@ -72,22 +72,6 @@ async function plugin(fastify, opts) {
     secret: process.env.OIDC_COOKIE_SECRET || process.env.JWT_SECRET || 'tvettrack_dev_secret_change_in_production',
   });
 
-  fastify.post('/register', async (request, reply) => {
-    const { name, email, password, role = 'user' } = request.body;
-    if (!name || !email || !password) return reply.code(400).send({ error: 'name, email and password required' });
-    const hash = await bcrypt.hash(password, 10);
-    try {
-      const { rows } = await pool.query(
-        'INSERT INTO users (name, email, password, role) VALUES ($1,$2,$3,$4) RETURNING id, name, email, role',
-        [name, email, hash, role]
-      );
-      return reply.code(201).send({ user: rows[0], token: signToken(rows[0]) });
-    } catch(e) {
-      if (e.code === '23505') return reply.code(409).send({ error: 'Email already registered' });
-      throw e;
-    }
-  });
-
   fastify.post('/login', { config: { rateLimit: { max: 10, timeWindow: '1 minute' } } }, async (request, reply) => {
     const { email, password } = request.body;
     if (!email || !password) return reply.code(400).send({ error: 'email and password required' });
