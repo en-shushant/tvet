@@ -167,3 +167,21 @@ describe('review next: same trade and level', async () => {
     expect(sameReviewGroup({ qualifications: [gen('Bachelor')] }, { qualifications: [gen('Master')] })).toBe(false);
   });
 });
+
+describe('verification stats', async () => {
+  const { verificationStats, applyFilters, BLANK_FILTERS } = await import('../src/components/pool/filters.js');
+  const people = [
+    { id: 1, is_verified: true, verified_by: 'u1', verified_by_name: 'Sita', is_active: true },
+    { id: 2, is_verified: true, verified_by: 'u1', verified_by_name: 'Sita', is_active: true },
+    { id: 3, is_verified: true, verified_by: null, is_active: true },
+    { id: 4, is_verified: false, is_active: true },
+  ];
+  it('counts verified, pending and who verified', () => {
+    const v = verificationStats(people);
+    expect(v).toMatchObject({ verified: 3, pending: 1, pct: 75 });
+    expect(v.byVerifier.map(o => `${o.name}:${o.count}`)).toEqual(['Sita:2', 'Before review began:1']);
+  });
+  it('filters to one verifier\'s records', () => {
+    expect(applyFilters(people, { ...BLANK_FILTERS, verifiedBy: 'u1' }).map(p => p.id)).toEqual([1, 2]);
+  });
+});

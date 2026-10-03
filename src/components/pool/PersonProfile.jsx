@@ -8,6 +8,7 @@ import { experienceYears } from '../../utils/hrFit.js';
 import { DOC_TYPES, initials, sectionOf, topGeneral, topVocational } from './common.js';
 import Select from '../ui/Select.jsx';
 import CanTrain from './CanTrain.jsx';
+import ReviewChecklist from './ReviewChecklist.jsx';
 
 /**
  * A person in the pool, read the way a CV is read.
@@ -176,6 +177,30 @@ export default function PersonProfile({ person, token, canDelete, canVerify, onB
             Edit</Btn>
         </div>
       </header>
+
+      {pending && canVerify ? (
+        <ReviewChecklist person={person} onOpenDoc={openDoc} actions={<>
+          <Btn className="btn btn-secondary btn-sm" disabled={verifying} onClick={() => verify(false)}>
+            <span className="material-icons-round" style={{ fontSize: 15, verticalAlign: 'middle', marginRight: 4 }}>verified_user</span>
+            {verifying ? 'Verifying…' : 'Verify'}
+          </Btn>
+          {onVerifiedNext && pendingLeft > 0 && (
+            <Btn className="btn btn-primary btn-sm" disabled={verifying} onClick={() => verify(true)}>
+              <span className="material-icons-round" style={{ fontSize: 15, verticalAlign: 'middle', marginRight: 4 }}>skip_next</span>
+              Verify &amp; next · {pendingLeft}
+            </Btn>
+          )}
+          <Btn className="btn btn-secondary btn-sm" onClick={() => onEdit(person)}>
+            <span className="material-icons-round" style={{ fontSize: 15, verticalAlign: 'middle', marginRight: 4 }}>edit</span>
+            Fix something
+          </Btn>
+        </>} />
+      ) : (
+        <details className="rv-collapsed">
+          <summary>Review details{person.verified_by_name ? ` — verified by ${person.verified_by_name}` : ''}</summary>
+          <ReviewChecklist person={person} onOpenDoc={openDoc} />
+        </details>
+      )}
 
       <div className="pp-facts">
         {facts.map(f => (

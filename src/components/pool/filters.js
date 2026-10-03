@@ -12,7 +12,7 @@ import { sectionOf } from './common.js';
 
 export const BLANK_FILTERS = {
   q: '', role: '', trades: [], requireAll: false, minEducation: '', minNstb: '',
-  tot: false, minYears: '', availability: 'available', missing: '', pending: false, enteredBy: '',
+  tot: false, minYears: '', availability: 'available', missing: '', pending: false, enteredBy: '', verifiedBy: '',
 };
 
 const isAvailable = (p) => p.is_active !== false;
@@ -35,6 +35,7 @@ export function applyFilters(people = [], f = BLANK_FILTERS, nowBS) {
     if (f.availability === 'unavailable' && isAvailable(p)) return false;
     if (f.role && p.person_type !== f.role) return false;
     if (f.enteredBy && String(p.created_by || 'none') !== f.enteredBy) return false;
+    if (f.verifiedBy && (isPending(p) || verifierKey(p) !== f.verifiedBy)) return false;
     if (needle) {
       // Trades are searchable too: typing "plumb" is the quickest way to ask
       // "who can teach plumbing".
@@ -62,7 +63,7 @@ export function applyFilters(people = [], f = BLANK_FILTERS, nowBS) {
 
 /** How many filters are narrowing the list, not counting the default "available only". */
 export const activeFilterCount = (f) => [f.q?.trim(), f.role, f.trades?.length, f.minEducation, f.minNstb,
-  f.tot, f.minYears, f.availability !== 'available', f.missing, f.pending, f.enteredBy].filter(Boolean).length;
+  f.tot, f.minYears, f.availability !== 'available', f.missing, f.pending, f.enteredBy, f.verifiedBy].filter(Boolean).length;
 
 /**
  * The pool at a glance.
@@ -143,4 +144,23 @@ export function sameReviewGroup(a, b) {
   const ka = reviewKeys(a);
   for (const k of reviewKeys(b)) if (ka.has(k)) return true;
   return false;
+}
+
+// Records verified before review existed carry no reviewer.
+const verifierKey = (p) => String(p.verified_by || 'none');
+
+/** Review status of the pool: verified, pending, and who verified how many (most first). */
+export function verificationStats(people = []) {
+  const by = new Map();
+  let verified = 0, pending = 0;
+  for (const p of people) {
+    if (isPending(p)) { pending++; continue; }
+    verified++;
+    const id = verifierKey(p);
+    const o = by.get(id) || { id, name: p.verified_by ? (p.verified_by_name || 'Deleted user') : 'Before review began', count: 0 };
+    o.count++; by.set(id, o);
+  }
+  const byVerifier = [...by.values()].sort((a, b) => (a.id === 'none') - (b.id === 'none') || b.count - a.count);
+  return { verified, pending, total: verified + pending, byVerifier,
+    pct: verified + pending ? Math.round((verified / (verified + pending)) * 100) : 0 };
 }

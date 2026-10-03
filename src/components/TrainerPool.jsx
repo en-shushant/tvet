@@ -11,7 +11,7 @@ import PersonEditor from './pool/PersonEditor.jsx';
 import PersonProfile from './pool/PersonProfile.jsx';
 import CanTrain from './pool/CanTrain.jsx';
 import { experienceYears } from '../utils/hrFit.js';
-import { BLANK_FILTERS, applyFilters, activeFilterCount, poolKpis, SORTS, isPending, enteredByOptions, sameReviewGroup } from './pool/filters.js';
+import { BLANK_FILTERS, applyFilters, activeFilterCount, poolKpis, SORTS, isPending, enteredByOptions, sameReviewGroup, verificationStats } from './pool/filters.js';
 import { GENERAL_LEVELS, VOCATIONAL_LEVELS, teachableLevels, teachableByRole, labelOfGeneral, labelOfVocational } from '../constants/education.js';
 import { useOccupations } from '../utils/useMasterData.js';
 import { api } from '../utils/api.js';
@@ -644,6 +644,32 @@ function TrainerPool({ isAdmin, isSuperAdmin }) {
           </div>
         )}
 
+        {!loading && people.length > 0 && (() => {
+          const v = verificationStats(people);
+          return (
+            <div className="vs-strip" aria-label="Verification">
+              <div className="vs-main">
+                <span className="material-icons-round" aria-hidden="true">verified_user</span>
+                <div>
+                  <div className="vs-title"><strong>{v.verified}</strong> verified · <button type="button" className="vs-link"
+                    onClick={() => setFilters({ ...BLANK_FILTERS, availability: 'all', pending: true })}>{v.pending} waiting for review</button></div>
+                  <div className="vs-bar" role="img" aria-label={`${v.pct}% verified`}><span style={{ width: `${v.pct}%` }} /></div>
+                </div>
+              </div>
+              <div className="vs-by">
+                <span className="vs-by-label">Verified by</span>
+                {v.byVerifier.map(o => (
+                  <button key={o.id} type="button" className={`vs-chip${filters.verifiedBy === o.id ? ' is-on' : ''}`}
+                    title={o.id === 'none' ? 'Already in the pool when review began, so nobody signed them off' : `Show who ${o.name} verified`}
+                    onClick={() => setFilters(f => ({ ...f, availability: 'all', pending: false, verifiedBy: f.verifiedBy === o.id ? '' : o.id }))}>
+                    {o.name} <strong>{o.count}</strong>
+                  </button>
+                ))}
+              </div>
+            </div>
+          );
+        })()}
+
         <div className="kp-filters">
           <div className="search-wrap" style={{ flex: 1, minWidth: 220 }}>
             <span className="search-icon material-icons-round" style={{ fontSize: 16 }}>search</span>
@@ -703,6 +729,11 @@ function TrainerPool({ isAdmin, isSuperAdmin }) {
                 <option value="CV">No CV on file</option>
                 <option value="Citizenship">No citizenship on file</option>
                 <option value="Experience Letter">No experience letter</option>
+              </Select></label>
+            <label className="pf-field"><span className="pf-label">Verified by</span>
+              <Select className="tw-in" value={filters.verifiedBy} onChange={e => setF({ verifiedBy: e.target.value })}>
+                <option value="">Anyone</option>
+                {verificationStats(people).byVerifier.map(o => <option key={o.id} value={o.id}>{o.name} ({o.count})</option>)}
               </Select></label>
             <label className="pf-field"><span className="pf-label">Entered by</span>
               <Select className="tw-in" value={filters.enteredBy} onChange={e => setF({ enteredBy: e.target.value })}>
