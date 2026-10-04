@@ -888,11 +888,11 @@ async function plugin(fastify, opts) {
       const allJobs = [...withFirm, ...otherFirms].map(countFromAssignments).concat(forPerson(exp.rows, tp.person_id))
         .sort((a, b) => (b.is_current ? 1 : 0) - (a.is_current ? 1 : 0) || startOf(b) - startOf(a));
       const experience = allJobs.map((e, i) => {
-        // What they did there: their own words, else the firm's wording for
-        // that job's position — opened by the count the experience letter states.
-        const v = (e.description || '').trim() ? null
-          : pickFirmVariant(variants.rows, 'activities', leadInst?.id, e.role || e.position, person.person_type, i, leadInst?.cv_activities_set);
-        const did = (e.description || '').trim() || (v ? applyVars(v.body, { ...vars, position: e.position || vars.position,
+        // What they did there: always the bidding firm's chosen wording for that
+        // job's position (never typed per person), opened by the count the
+        // experience letter states.
+        const v = pickFirmVariant(variants.rows, 'activities', leadInst?.id, e.role || e.position, person.person_type, i, leadInst?.cv_activities_set);
+        const did = (v ? applyVars(v.body, { ...vars, position: e.position || vars.position,
           occupation: e.occupation_name || vars.occupation }).replace(/\{occupation\}/g, 'the trade') : '');
         return { ...e, summary: [eventsLine(e, person.person_type === 'Support Staff' ? 'Supported' : 'Conducted'), did].filter(Boolean).join('\n') };
       });

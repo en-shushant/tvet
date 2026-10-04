@@ -626,10 +626,6 @@ export default function PersonEditor({ person, rules, occupations, onSave, onCan
                     </div>
                   );
                 })()}
-                <Field label="What they did" hint="One task per line — each becomes a bullet on the CV. Leave empty to use the firm’s wording for this position.">
-                  <textarea className="tw-in pf-area" rows={2} value={e.description || ''}
-                    onChange={ev => setRow('experience', i, 'description', ev.target.value)} />
-                </Field>
                 <Field label="Reference">
                   <input className="tw-in" value={e.reference_text || ''} placeholder="Name, position and contact of someone who can vouch for this"
                     onChange={ev => setRow('experience', i, 'reference_text', ev.target.value)} />

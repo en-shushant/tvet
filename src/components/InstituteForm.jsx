@@ -223,9 +223,8 @@ function InstituteForm({institute, onSave, onClose, isSuperAdmin}) {
                   {['A','B','C','D','E'].map(l => <MdOption key={l} value={l}>Variation {l}</MdOption>)}
                 </MdSelect>
                 <div className="input-hint" style={{marginTop:6}}>
-                  Which wording of “Activities performed” this firm’s CVs use for each post (Main Trainer, Monitoring
-                  Officer, Database Officer…), when the person has none of their own. A person’s other jobs use the next
-                  variation along. Give firms that bid together different variations. The wordings themselves are edited in a tender’s Submit step, under “CV wording library”.
+                  Every job on this firm’s CVs gets its “Activities performed” from this variation, by the job’s post
+                  (Main Trainer, Monitoring Officer, Database Officer…). A person’s other jobs use the next variation along. Give firms that bid together different variations. The wordings themselves are edited in a tender’s Submit step, under “CV wording library”.
                 </div>
               </div>
             </div>
