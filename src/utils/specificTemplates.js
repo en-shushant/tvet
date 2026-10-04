@@ -122,7 +122,7 @@ export const NARRATIVE_VARIATIONS = [
 
 // ── Description of Actual Services Provided ───────────────────────────────────
 
-export const SERVICES_VARIATIONS = [
+const SERVICES_SOURCE = [
   {
     id: 's1',
     label: 'S1 — Standard CTEVT curriculum with skill test',
@@ -234,6 +234,25 @@ export const SERVICES_VARIATIONS = [
   },
 ];
 
+/**
+ * Actual services are always a bulleted list: every line starts with "• ".
+ * Each sentence gets its own bullet, so a paragraph, or a clause like
+ * {outcomeSentence} filled in after a sentence, is split up; empty lines
+ * (an unused {skillTestLine}) drop out.
+ */
+export function bulletize(text) {
+  return String(text || '').split('\n')
+    .flatMap(line => {
+      const l = line.trim().replace(/^•\s*/, '');
+      if (!l) return [];
+      if (/^\{\w+\}$/.test(l)) return [l];          // a whole-line placeholder brings its own bullet
+      return l.split(/(?<=\.)\s+(?=[A-Z0-9{])/).map(x => x.trim()).filter(Boolean).map(x => `• ${x}`);
+    })
+    .join('\n');
+}
+
+export const SERVICES_VARIATIONS = SERVICES_SOURCE.map(v => ({ ...v, preview: bulletize(v.preview) }));
+
 // ── Fill functions ───────────────────────────────────────────────────────────
 // Values and substitution live in templateValues.js, shared with the 3(A)
 // description templates so the two cannot drift apart.
@@ -245,7 +264,7 @@ export function fillNarrativeTemplate(variationId, form, institute, clients) {
 
 export function fillServicesTemplate(variationId, form, institute, clients) {
   const v = SERVICES_VARIATIONS.find(x => x.id === variationId);
-  return v ? applyTemplate(v.preview, buildTemplateValues(form, institute, clients)) : '';
+  return v ? bulletize(applyTemplate(v.preview, buildTemplateValues(form, institute, clients))) : '';
 }
 
 /**
