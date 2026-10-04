@@ -111,9 +111,10 @@ function pickFirmVariant(variants, field, instituteId, position, personType, tur
   const sorted = [...shared].sort((a, b) => a.id - b.id);
   // A firm that chose a variation of the activities starts from it; later jobs
   // take the next one along, so one CV's jobs do not all read the same.
-  if (field === 'activities' && /^[A-E]$/.test(activitySet || '')) {
+  // Tasks and prior work follow the same choice where that letter exists.
+  if (/^[A-E]$/.test(activitySet || '')) {
     const byLetter = [...shared].sort((a, b) => String(a.label).localeCompare(String(b.label)));
-    const at = byLetter.findIndex(v => new RegExp(`activities ${activitySet}$`).test(v.label || ''));
+    const at = byLetter.findIndex(v => new RegExp(`(activities|tasks|prior work) ${activitySet}$`).test(v.label || ''));
     if (at >= 0) return byLetter[(at + turn) % byLetter.length];
   }
   return sorted[(Number(instituteId) + turn) % sorted.length];
@@ -124,10 +125,13 @@ const dropUnfilled = (text) => String(text || '').split('\n')
   .filter(l => !/\{(events|clients|years)\}/.test(l)).join('\n');
 
 /** "Adequacy" with nothing written: the person's own record, as prior work. */
-function priorWorkOf(experience) {
+function priorWorkOf(experience, showEvents = true) {
   return experience.filter(e => e.organisation || e.position).map(e => {
     const when = [e.from_date, e.is_current ? 'present' : e.to_date].filter(Boolean).join(' – ');
-    return '• ' + [e.position, e.organisation].filter(Boolean).join(', ') + (when ? ' (' + when + ')' : '');
+    const n = parseInt(e.events_count, 10);
+    const ran = showEvents && n > 0
+      ? ': ' + n + ' training event' + (n === 1 ? '' : 's') + (e.clients ? ' for ' + e.clients : '') + '.' : '';
+    return '• ' + [e.position, e.organisation].filter(Boolean).join(', ') + (when ? ' (' + when + ')' : '') + ran;
   }).join('\n');
 }
 
@@ -908,7 +912,8 @@ async function plugin(fastify, opts) {
         return from != null && to != null && to > from ? n + (to - from) : n;
       }, 0);
       const years = Math.floor(months / 12);
-      Object.assign(vars, { events: events || '', clients, years: years > 0 ? years : '' });
+      // A firm that leaves the number of events off its CVs leaves it off here too.
+      Object.assign(vars, { events: leadInst?.cv_show_events === false ? '' : (events || ''), clients, years: years > 0 ? years : '' });
       const resolve = (own, variantId, fallback, field) => {
         if ((own || '').trim()) return own;
         const v = (variantId ? variantById.get(variantId) : null) || firmDefault(field);
@@ -927,7 +932,10 @@ async function plugin(fastify, opts) {
         occupation_name: tp.occupation_name || '',
         detailed_tasks: resolve(tp.detailed_tasks, tp.tasks_variant_id, '', 'detailed_tasks'),
         key_qualifications: resolve(tp.key_qualifications, tp.quals_variant_id, person.key_qualifications, 'key_qualifications'),
-        adequacy: resolve(tp.adequacy, tp.adequacy_variant_id, priorWorkOf(experience), 'adequacy'),
+        // The assignments themselves (post, employer, dates), then the firm's
+        // wording of what they show, unless text was typed for this bid.
+        adequacy: (tp.adequacy || '').trim() ? tp.adequacy
+          : [priorWorkOf(experience, leadInst?.cv_show_events !== false), resolve('', tp.adequacy_variant_id, '', 'adequacy')].filter(Boolean).join('\n'),
         education: forPerson(quals.rows, tp.person_id).filter(q => q.kind === 'Academic'),
         trainings: forPerson(quals.rows, tp.person_id).filter(q => q.kind !== 'Academic'),
         experience,

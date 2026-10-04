@@ -358,6 +358,17 @@ const employerCell = (e, style) => {
 };
 const asProse = (text) => ({ prose: text });
 
+/**
+ * PPMO RFP "Adequacy": one row per task, each beside a line of prior work, as
+ * the form lays it out. Whichever list is longer runs on with blanks opposite.
+ */
+function adequacyRows(tasks, prior) {
+  const lines = (t) => String(t || '').split('\n').map(l => l.trim()).filter(Boolean);
+  const a = lines(tasks), b = lines(prior);
+  const n = Math.max(a.length, b.length, 1);
+  return Array.from({ length: n }, (_, i) => [asProse(a[i] || ''), asProse(b[i] || '')]);
+}
+
 const SIGN_ROW = (left, right = 'Date:') => ({ left, right });
 
 function cvModel(format, cv, tender) {
@@ -381,7 +392,7 @@ function cvModel(format, cv, tender) {
           lines: cv.languages.map(l => [l.language, [l.speaking && `speaking ${l.speaking}`, l.reading && `reading ${l.reading}`, l.writing && `writing ${l.writing}`].filter(Boolean).join(', ')].filter(Boolean).join(' — ')) },
         { label: 'Adequacy for the Assignment:', table: {
           headers: ['Detailed Tasks Assigned on Consultant’s Team of Experts:', 'Reference to Prior Work/Assignments that Best Illustrates Capability to Handle the Assigned Tasks'],
-          widths: [50, 50], rows: [[asProse(cv.detailed_tasks), asProse(cv.adequacy)]] } },
+          widths: [50, 50], rows: adequacyRows(cv.detailed_tasks, cv.adequacy) } },
         { label: 'Expert’s contact information:', text: `e-mail: ${dash(p.email)}, phone: ${dash(p.phone)}` },
       ],
       certIntro: 'I, the undersigned, certify to the best of my knowledge and belief that',

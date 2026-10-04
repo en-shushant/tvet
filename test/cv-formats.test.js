@@ -35,6 +35,17 @@ describe('CV formats', () => {
     expect(h).toContain('Skill training for youths');       // certification (vi) names the project
     expect(cvModel('ppmo_rfp', cv, tender).certList).toHaveLength(7);
   });
+  it('PPMO RFP Adequacy gives each task its own row, prior work beside it', () => {
+    const m = cvModel('ppmo_rfp', { ...cv, detailed_tasks: '• Task one\n• Task two\n• Task three', adequacy: '• Instructor, KGTC (2073 – present)' }, tender);
+    const rows = m.blocks.find(b => /Adequacy/.test(b.label)).table.rows;
+    expect(rows.map(r => r[0].prose)).toEqual(['• Task one', '• Task two', '• Task three']);
+    expect(rows.map(r => r[1].prose)).toEqual(['• Instructor, KGTC (2073 – present)', '', '']);
+  });
+  it('prior work states each job’s events, unless the firm hides them', () => {
+    const jobs = [{ organisation: 'CHRA', position: 'Main Trainer', from_date: '2076', is_current: true, events_count: 12, clients: 'CTEVT' }];
+    expect(priorWorkOf(jobs)).toBe('• Main Trainer, CHRA (2076 – present): 12 training events for CTEVT.');
+    expect(priorWorkOf(jobs, false)).toBe('• Main Trainer, CHRA (2076 – present)');
+  });
   it('Helvetas asks for citizenship, permanent address and a Province/Palika location', () => {
     const h = html('helvetas');
     for (const t of ['Citizenship Number', '27-01-75/1234', 'Permanent Address', 'Location (Province/Palika)',
