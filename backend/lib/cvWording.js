@@ -53,14 +53,14 @@ function eventsLine(e, verb = 'Conducted') {
 const MT = 'Main Trainer | Lead Trainer | Senior Trainer | Instructor';
 const SEED = [
   { field: 'activities', label: 'Main Trainer — activities A', body: [
-    '• Prepared monthly, weekly and daily lesson plans and session schedules in line with CTEVT curricula and project standards.',
+    '• Prepared monthly, weekly and daily lesson plans and session schedules in line with CTEVT/FEB/NAVT curricula and project standards.',
     '• Conducted structured theory and practical classes using learner-centred teaching methods.',
     '• Supervised practical workshops and demonstrated {occupation} skills, including safe tool operation.',
     '• Enforced OSH and ESHS guidelines and the use of PPE during practical sessions.',
     '• Assessed trainee competency through routine tests, practical evaluations and feedback.',
     '• Maintained daily logbooks, attendance sheets and trainee records.'] },
   { field: 'activities', label: 'Main Trainer — activities B', body: [
-    '• Delivered theory and hands-on practical sessions as per the CTEVT curriculum.',
+    '• Delivered theory and hands-on practical sessions as per the CTEVT/FEB/NAVT curriculum.',
     '• Demonstrated {occupation} skills in the workshop and supervised trainees’ practice.',
     '• Carried out workshop risk assessments, enforced PPE use and applied emergency procedures.',
     '• Identified learning gaps and ran remedial coaching for trainees needing extra support.',
@@ -68,7 +68,7 @@ const SEED = [
     '• Prepared weekly and monthly training progress reports for the project.',
     '• Arranged training manuals, handouts and instructional materials.'] },
   { field: 'activities', label: 'Main Trainer — activities C', body: [
-    '• Planned lessons and session schedules aligned with the CTEVT curriculum.',
+    '• Planned lessons and session schedules aligned with the CTEVT/FEB/NAVT curriculum.',
     '• Taught theory and supervised practical work using learner-centred methods.',
     '• Ensured trainees followed OSH guidelines and wore PPE in the workshop.',
     '• Evaluated trainees continuously through tests and practical performance.',
@@ -81,7 +81,7 @@ const SEED = [
     '• Coordinated with training managers, monitoring officers and district coordinators as per the ToR.',
     '• Managed workshop tools, inventory and material requisitions.'] },
   { field: 'activities', label: 'Main Trainer — activities E', body: [
-    '• Prepared session plans and delivered theory and practical classes as per CTEVT standards.',
+    '• Prepared session plans and delivered theory and practical classes as per CTEVT/FEB/NAVT standards.',
     '• Supervised practical workshops and safe operation of tools and equipment.',
     '• Conducted risk assessments and enforced PPE and emergency procedures.',
     '• Ran remedial coaching sessions to close trainees’ learning gaps.',
@@ -90,7 +90,7 @@ const SEED = [
     '• Kept attendance sheets, logbooks and project documentation up to date.'] },
 
   { field: 'detailed_tasks', label: 'Main Trainer — tasks A', body: [
-    '• Prepare lesson plans and session schedules in line with the CTEVT curriculum and the ToR.',
+    '• Prepare lesson plans and session schedules in line with the CTEVT/FEB/NAVT curriculum and the ToR.',
     '• Deliver theory and practical sessions on {occupation} using learner-centred methods.',
     '• Supervise practicals and ensure OSH, ESHS and PPE compliance.',
     '• Assess trainees continuously and prepare them for NSTB skill testing.',
@@ -119,6 +119,12 @@ const SEED = [
 
 /** Add the starter wording once; edits and deletions made afterwards are left alone. */
 async function seedCvWording(pool) {
+  // Training is run to the curriculum of whichever body the project follows:
+  // CTEVT, FEB or NAVT. Wording seeded before this said only CTEVT.
+  await pool.query(
+    `UPDATE cv_text_variants
+        SET body = regexp_replace(body, 'CTEVT (curricul|standards)', 'CTEVT/FEB/NAVT \\1', 'g')
+      WHERE body ~ 'CTEVT (curricul|standards)'`);
   let added = 0;
   for (const v of SEED) {
     const { rowCount } = await pool.query(
