@@ -157,6 +157,7 @@ export function normInst(r) {
     narrativeTemplateId: r.narrative_template_id || '',
     servicesTemplateId: servicesTemplateIdOf(r.services_template_id),
     cvFormat: r.cv_format || '',
+    cvActivitiesSet: r.cv_activities_set || '',
     // Roster the "Name of Senior Staff ... Functions Performed" field is
     // auto-written from, same pattern as the three narrative templates above.
     keyStaff: Array.isArray(r.key_staff) ? r.key_staff : [],
@@ -363,6 +364,7 @@ export function instToAPI(f) {
     narrative_template_id: f.narrativeTemplateId || null,
     services_template_id: f.servicesTemplateId || null,
     cv_format: f.cvFormat || null,
+    cv_activities_set: f.cvActivitiesSet || null,
     key_staff: (f.keyStaff || []).filter(s => (s.name || '').trim()),
     google_map_link: f.googleMapLink || null,
     latitude: f.latitude ? parseFloat(f.latitude) : null,

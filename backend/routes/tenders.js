@@ -95,7 +95,7 @@ const overlaps = ([a1, a2], [b1, b2]) => a1 != null && a1 <= b2 && (a2 ?? a1) >=
  * one. A firm with none of its own gets one of the shared variations, chosen
  * by its id (and `turn`, e.g. which job) so firms and jobs read differently.
  */
-function pickFirmVariant(variants, field, instituteId, position, personType, turn = 0) {
+function pickFirmVariant(variants, field, instituteId, position, personType, turn = 0, activitySet = '') {
   if (!instituteId) return null;
   const norm = (x) => String(x || '').trim().toLowerCase();
   const tiers = (list) => [
@@ -109,6 +109,13 @@ function pickFirmVariant(variants, field, instituteId, position, personType, tur
   const shared = tiers(variants.filter(v => v.field === field && !v.institute_id)).find(t => t.length);
   if (!shared) return null;
   const sorted = [...shared].sort((a, b) => a.id - b.id);
+  // A firm that chose a variation of the activities starts from it; later jobs
+  // take the next one along, so one CV's jobs do not all read the same.
+  if (field === 'activities' && /^[A-E]$/.test(activitySet || '')) {
+    const byLetter = [...shared].sort((a, b) => String(a.label).localeCompare(String(b.label)));
+    const at = byLetter.findIndex(v => new RegExp(`activities ${activitySet}$`).test(v.label || ''));
+    if (at >= 0) return byLetter[(at + turn) % byLetter.length];
+  }
   return sorted[(Number(instituteId) + turn) % sorted.length];
 }
 
@@ -752,7 +759,7 @@ async function plugin(fastify, opts) {
      */
     const lead = shaped.firms.find(f => f.role === 'Lead') || shaped.firms[0] || {};
     const { rows: [leadInst] } = lead.institute_id
-      ? await pool.query('SELECT id, contact_person FROM institutes WHERE id = $1', [lead.institute_id])
+      ? await pool.query('SELECT id, contact_person, cv_activities_set FROM institutes WHERE id = $1', [lead.institute_id])
       : { rows: [{}] };
     // The format this stage of the notice asks for; every bidder and every JV
     // partner uses it. Firms differ only in their wording.
@@ -833,7 +840,7 @@ async function plugin(fastify, opts) {
        * speaks in the lead's words), then the person's default.
        */
       // The post's chosen wording role wins over its title, which notices word every way.
-      const firmDefault = (field) => pickFirmVariant(variants.rows, field, leadInst?.id, tp.task_role || vars.position, person.person_type);
+      const firmDefault = (field) => pickFirmVariant(variants.rows, field, leadInst?.id, tp.task_role || vars.position, person.person_type, 0, leadInst?.cv_activities_set);
       /*
        * Employment, newest first: their time with the bidding firm (from the
        * joining date set for this bid), time with other firms of ours the bid
@@ -884,7 +891,7 @@ async function plugin(fastify, opts) {
         // What they did there: their own words, else the firm's wording for
         // that job's position — opened by the count the experience letter states.
         const v = (e.description || '').trim() ? null
-          : pickFirmVariant(variants.rows, 'activities', leadInst?.id, e.role || e.position, person.person_type, i);
+          : pickFirmVariant(variants.rows, 'activities', leadInst?.id, e.role || e.position, person.person_type, i, leadInst?.cv_activities_set);
         const did = (e.description || '').trim() || (v ? applyVars(v.body, { ...vars, position: e.position || vars.position,
           occupation: e.occupation_name || vars.occupation }).replace(/\{occupation\}/g, 'the trade') : '');
         return { ...e, summary: [eventsLine(e, person.person_type === 'Support Staff' ? 'Supported' : 'Conducted'), did].filter(Boolean).join('\n') };

@@ -20,7 +20,7 @@ function InstituteForm({institute, onSave, onClose, isSuperAdmin}) {
     letterTopMargin: 15, letterLrPadding: 5, letterBottomPadding: 15,
     constitutionType:'', fax:'', contactDesignation:'', localAgent:'',
     orgProfile:'', totalStaff:'', professionalStaff:'', keyStaff:[],
-    descTemplateId:'', narrativeTemplateId:'', servicesTemplateId:'', cvFormat:'',
+    descTemplateId:'', narrativeTemplateId:'', servicesTemplateId:'', cvFormat:'', cvActivitiesSet:'',
   });
   const [showEoi, setShowEoi] = useState(false);
   const [showTpl, setShowTpl] = useState(false);
@@ -215,6 +215,18 @@ function InstituteForm({institute, onSave, onClose, isSuperAdmin}) {
               <div className="input-hint" style={{marginTop:10}}>
                 Placeholders in braces are replaced with this firm’s own assignment data when the Auto-fill button is used.
                 In a joint venture, every partner’s experience uses the lead firm’s templates.
+              </div>
+              <div style={{marginTop:16}}>
+                <MdSelect label="Activities performed — staff CVs" value={form.cvActivitiesSet || ''}
+                  onChange={e=>set('cvActivitiesSet', e.target.value)}>
+                  <MdOption value="">— Automatic (a different variation per firm) —</MdOption>
+                  {['A','B','C','D','E'].map(l => <MdOption key={l} value={l}>Variation {l}</MdOption>)}
+                </MdSelect>
+                <div className="input-hint" style={{marginTop:6}}>
+                  Which wording of “Activities performed” this firm’s CVs use for each post (Main Trainer, Monitoring
+                  Officer, Database Officer…), when the person has none of their own. A person’s other jobs use the next
+                  variation along. Give firms that bid together different variations. The wordings themselves are edited in a tender’s Submit step, under “CV wording library”.
+                </div>
               </div>
             </div>
           )}
