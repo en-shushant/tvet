@@ -206,7 +206,7 @@ function InstituteForm({institute, onSave, onClose, isSuperAdmin}) {
                         border:'1px solid var(--border)', borderRadius:'var(--radius)',
                         padding:'7px 10px', marginTop:6, fontStyle:'italic',
                         whiteSpace:'pre-wrap', lineHeight:1.5}}>
-                        {chosen.preview.length > 240 ? chosen.preview.slice(0,240) + '…' : chosen.preview}
+                        {chosen.preview}
                       </div>
                     )}
                   </div>
