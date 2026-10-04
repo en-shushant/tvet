@@ -541,6 +541,7 @@ function App() {
           })}
         </nav>
         <div className="sidebar-footer">
+          <div className="sb-brand-eco">App from <a href="https://shushant.com.np" target="_blank" rel="noopener noreferrer">Shushant&rsquo;s App Ecosystem</a></div>
           <div className="sb-user" data-tip={`${session.fullName||session.email} · ${session.role}`}>
             {session.photo
               ? <img src={session.photo} alt="" className="sb-avatar"/>

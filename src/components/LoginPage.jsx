@@ -218,7 +218,7 @@ function LoginPage({ onLogin }) {
           </div>
           <div style={{textAlign:'center',marginTop:24,fontSize:12,color:'var(--text3)'}}>
             © {new Date().getFullYear()} TVET Track · Provider Information Management &amp; Reporting Platform
-            <div style={{marginTop:4}}>App from Shushant&rsquo;s APP ecosystem</div>
+            <div style={{marginTop:4}}>App from <a href="https://shushant.com.np" target="_blank" rel="noopener noreferrer" style={{color:'inherit',fontWeight:600}}>Shushant&rsquo;s App Ecosystem</a></div>
           </div>
         </div>
       </div>
