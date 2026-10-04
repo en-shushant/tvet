@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { api } from '../utils/api.js';
 import Modal from './ui/Modal.jsx';
 import { ErrorBanner } from './ui/Modal.jsx';
 import { useUnsavedGuard } from './ui/UnsavedGuard.jsx';
@@ -20,7 +21,7 @@ function InstituteForm({institute, onSave, onClose, isSuperAdmin}) {
     letterTopMargin: 15, letterLrPadding: 5, letterBottomPadding: 15,
     constitutionType:'', fax:'', contactDesignation:'', localAgent:'',
     orgProfile:'', totalStaff:'', professionalStaff:'', keyStaff:[],
-    descTemplateId:'', narrativeTemplateId:'', servicesTemplateId:'', cvFormat:'', cvActivitiesSet:'',
+    descTemplateId:'', narrativeTemplateId:'', servicesTemplateId:'', cvFormat:'', cvActivitiesSet:'', cvShowEvents:true,
   });
   const [showEoi, setShowEoi] = useState(false);
   const [showTpl, setShowTpl] = useState(false);
@@ -29,6 +30,18 @@ function InstituteForm({institute, onSave, onClose, isSuperAdmin}) {
 
   const { handleClose, markDirty, markClean, UnsavedModal } = useUnsavedGuard(onClose);
   const set = (k, v) => { markDirty(); setForm(f => ({...f, [k]: v})); };
+
+  // The shared Main Trainer activities, to preview the chosen variation.
+  const [activityLib, setActivityLib] = useState([]);
+  useEffect(() => {
+    const token = getSession()?.token;
+    api('GET', '/tenders/cv-variants?field=activities', null, token)
+      .then(rows => setActivityLib((rows || []).filter(v => !v.institute_id && /^Main Trainer — activities [A-E]$/.test(v.label || ''))))
+      .catch(() => {});   // no tender access: no preview
+  }, []);
+  const eventsNote = form.cvShowEvents !== false ? 'with number of events' : 'without number of events';
+  const activityPreview = form.cvActivitiesSet
+    ? activityLib.find(v => v.label.endsWith(`activities ${form.cvActivitiesSet}`)) : null;
 
   // Key staff roster — what "Name of Senior Staff ... Functions Performed" on
   // every assignment's 3(B) is auto-written from, the same way the templates
@@ -219,9 +232,21 @@ function InstituteForm({institute, onSave, onClose, isSuperAdmin}) {
               <div style={{marginTop:16}}>
                 <MdSelect label="Activities performed — staff CVs" value={form.cvActivitiesSet || ''}
                   onChange={e=>set('cvActivitiesSet', e.target.value)}>
-                  <MdOption value="">— Automatic (a different variation per firm) —</MdOption>
-                  {['A','B','C','D','E'].map(l => <MdOption key={l} value={l}>Variation {l}</MdOption>)}
+                  <MdOption value="">{`— Automatic (a different variation per firm) · ${eventsNote} —`}</MdOption>
+                  {['A','B','C','D','E'].map(l => <MdOption key={l} value={l}>{`Variation ${l} · ${eventsNote}`}</MdOption>)}
                 </MdSelect>
+                <label style={{display:'flex', alignItems:'center', gap:10, marginTop:10, fontSize:13}}>
+                  <MdToggle selected={form.cvShowEvents !== false} onChange={e=>set('cvShowEvents', e.target.selected)} />
+                  Show the number of events on each job (“Conducted 12 training events for CTEVT.”)
+                </label>
+                {activityPreview && (
+                  <div style={{fontSize:11, color:'var(--text2)', background:'var(--bg2)', border:'1px solid var(--border)',
+                    borderRadius:'var(--radius)', padding:'7px 10px', marginTop:8, whiteSpace:'pre-wrap', lineHeight:1.5}}>
+                    <div style={{fontStyle:'normal', fontWeight:600, marginBottom:4}}>{activityPreview.label}</div>
+                    {form.cvShowEvents !== false && <div style={{fontStyle:'italic'}}>• Conducted {'{events}'} training events for {'{clients}'}.</div>}
+                    <div style={{fontStyle:'italic'}}>{activityPreview.body}</div>
+                  </div>
+                )}
                 <div className="input-hint" style={{marginTop:6}}>
                   Every job on this firm’s CVs gets its “Activities performed” from this variation, by the job’s post
                   (Main Trainer, Monitoring Officer, Database Officer…). A person’s other jobs use the next variation along. Give firms that bid together different variations. The wordings themselves are edited in a tender’s Submit step, under “CV wording library”.

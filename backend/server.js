@@ -821,6 +821,7 @@ async function runMigrations() {
     // The CV format belongs to the notice (each stage asks for its own), not the firm.
     `ALTER TABLE tenders ADD COLUMN IF NOT EXISTS cv_format TEXT`,
     `ALTER TABLE institutes ADD COLUMN IF NOT EXISTS cv_activities_set TEXT`,
+    `ALTER TABLE institutes ADD COLUMN IF NOT EXISTS cv_show_events BOOLEAN NOT NULL DEFAULT true`,
     // The EOI's Letter of Application asks for the client's fax.
     `ALTER TABLE clients ADD COLUMN IF NOT EXISTS fax TEXT`,
     // Which CV wording a required post takes, whatever the notice calls it.

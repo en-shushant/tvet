@@ -759,7 +759,7 @@ async function plugin(fastify, opts) {
      */
     const lead = shaped.firms.find(f => f.role === 'Lead') || shaped.firms[0] || {};
     const { rows: [leadInst] } = lead.institute_id
-      ? await pool.query('SELECT id, contact_person, cv_activities_set FROM institutes WHERE id = $1', [lead.institute_id])
+      ? await pool.query('SELECT id, contact_person, cv_activities_set, cv_show_events FROM institutes WHERE id = $1', [lead.institute_id])
       : { rows: [{}] };
     // The format this stage of the notice asks for; every bidder and every JV
     // partner uses it. Firms differ only in their wording.
@@ -894,7 +894,9 @@ async function plugin(fastify, opts) {
         const v = pickFirmVariant(variants.rows, 'activities', leadInst?.id, e.role || e.position, person.person_type, i, leadInst?.cv_activities_set);
         const did = (v ? applyVars(v.body, { ...vars, position: e.position || vars.position,
           occupation: e.occupation_name || vars.occupation }).replace(/\{occupation\}/g, 'the trade') : '');
-        return { ...e, summary: [eventsLine(e, person.person_type === 'Support Staff' ? 'Supported' : 'Conducted'), did].filter(Boolean).join('\n') };
+        // The firm decides whether its CVs state the number of events.
+        const events = leadInst?.cv_show_events === false ? '' : eventsLine(e, person.person_type === 'Support Staff' ? 'Supported' : 'Conducted');
+        return { ...e, summary: [events, did].filter(Boolean).join('\n') };
       });
       const events = experience.reduce((n, e) => n + (parseInt(e.events_count, 10) || 0), 0);
       const clients = [...new Set(experience.flatMap(e => String(e.clients || '').split(','))
