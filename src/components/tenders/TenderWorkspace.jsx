@@ -177,11 +177,10 @@ export default function TenderWorkspace({ tenderId, startAt, clients, institutes
   const saveTeam = (bidderId, rows) =>
     patch({ people_bidder_id: bidderId, people: rows });
 
-  const makeCVs = async (bidder, mode, format = '', letters = true) => {
+  const makeCVs = async (bidder, mode, letters = true) => {
     setBusy(true); setErr('');
     try {
-      const fmt = format ? `&format=${encodeURIComponent(format)}` : '';
-      const pack = await api('GET', `/tenders/${tender.id}/cv?bidder_id=${bidder.id}${fmt}`, null, token);
+      const pack = await api('GET', `/tenders/${tender.id}/cv?bidder_id=${bidder.id}`, null, token);
       if (!pack.cvs.length) { setErr(`Nobody is on ${bidder.display_name}’s team yet.`); return; }
       if (mode === 'word') { await cv.downloadDOCX(pack, { letters }); return; }
       const w = openSafeDocument(cv.buildPrintHTML(pack, { letters }));

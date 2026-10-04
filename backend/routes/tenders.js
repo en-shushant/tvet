@@ -17,6 +17,10 @@ const { authenticate, requireTenderAccess, requireWriter, requireSuperAdmin } = 
  * and reaches their citizenship numbers and CVs through them.
  */
 
+const CV_FORMATS = ['ppmo_eoi', 'ppmo_rfp', 'helvetas', 'eoi_form5'];
+/** The default when a stage has none chosen: the PPMO form for that stage. */
+const defaultCvFormat = (stage) => (stage === 'RFP' ? 'ppmo_rfp' : 'ppmo_eoi');
+
 const TENDER_FIELDS = [
   // No firm here on purpose: a notice exists before anyone decides who answers
   // it, and more than one of our firms may. See tender_firms.
@@ -27,6 +31,8 @@ const TENDER_FIELDS = [
   'project_name', 'method', 'office_address', 'funding_agency', 'submission_time',
   'document_deadline', 'submission_portal', 'client_website', 'association_allowed',
   'weight_qualification', 'weight_experience', 'weight_capacity', 'minimum_score',
+  // The CV format this stage of the notice asks for.
+  'cv_format',
 ];
 /** Blank means "the notice does not say", which is not the same as zero. */
 const numOrNull = (v) => (v === '' || v === null || v === undefined) ? null : Number(v);
@@ -38,6 +44,7 @@ const tenderValues = (b) => TENDER_FIELDS.map(f =>
     : f === 'association_allowed' ? (b.association_allowed !== false)
     : ['weight_qualification', 'weight_experience', 'weight_capacity', 'minimum_score'].includes(f)
       ? numOrNull(b[f])
+    : f === 'cv_format' ? (CV_FORMATS.includes(b.cv_format) ? b.cv_format : null)
     : (b[f] ?? null));
 
 /**
@@ -81,7 +88,6 @@ function assignmentSpan(a, nowMonth) {
 }
 const overlaps = ([a1, a2], [b1, b2]) => a1 != null && a1 <= b2 && (a2 ?? a1) >= b1;
 
-const CV_FORMATS = ['ppmo_eoi', 'ppmo_rfp', 'helvetas', 'eoi_form5'];
 
 /**
  * The wording for a CV section when none was picked by hand: the firm's own
@@ -746,12 +752,11 @@ async function plugin(fastify, opts) {
      */
     const lead = shaped.firms.find(f => f.role === 'Lead') || shaped.firms[0] || {};
     const { rows: [leadInst] } = lead.institute_id
-      ? await pool.query('SELECT id, contact_person, cv_format FROM institutes WHERE id = $1', [lead.institute_id])
+      ? await pool.query('SELECT id, contact_person FROM institutes WHERE id = $1', [lead.institute_id])
       : { rows: [{}] };
-    // The format the client asked for, else the lead firm's — a JV prepares
-    // every partner's CVs in its lead's format.
-    const format = CV_FORMATS.includes(request.query.format) ? request.query.format
-      : CV_FORMATS.includes(leadInst?.cv_format) ? leadInst.cv_format : 'ppmo_eoi';
+    // The format this stage of the notice asks for; every bidder and every JV
+    // partner uses it. Firms differ only in their wording.
+    const format = CV_FORMATS.includes(row.cv_format) ? row.cv_format : defaultCvFormat(row.stage);
     const tender = {
       ...row,
       institute_name: shaped.display_name,

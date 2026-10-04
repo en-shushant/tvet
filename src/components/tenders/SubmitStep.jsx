@@ -22,8 +22,9 @@ export default function SubmitStep({ tender, busy, variants, advanced = false, d
   const isEOI = tender.stage === 'EOI';
   const shortlisted = bidders.filter(b => b.status === 'Shortlisted');
   const [variantModal, setVariantModal] = useState(null);
-  // '' = the lead firm's own CV format (set on the firm), decided by the server.
-  const [cvFormat, setCvFormat] = useState({});
+  // One format for the whole stage, chosen on the Notice step.
+  const formatLabel = (CV_FORMATS.find(f => f.id === tender.cv_format)
+    || CV_FORMATS.find(f => f.id === (tender.stage === 'RFP' ? 'ppmo_rfp' : 'ppmo_eoi'))).label;
   // Experience letters follow each CV unless switched off for a bidder.
   const [noLetters, setNoLetters] = useState({});
   const cvCount = (b) => (tender.people || []).filter(p => p.bidder_id === b.id).length;
@@ -110,22 +111,18 @@ export default function SubmitStep({ tender, busy, variants, advanced = false, d
             <div className="tw-doc">
               <span className="tw-doc-name">CV pack</span>
               <span className="tw-doc-what">
-                {n ? `${n} CV${n === 1 ? '' : 's'} from the Team step${b.firms.length > 1 ? `, in ${lead?.acronym || lead?.name}’s format and wording` : ''}.`
+                {n ? `${n} CV${n === 1 ? '' : 's'} from the Team step${b.firms.length > 1 ? `, in ${lead?.acronym || lead?.name}’s wording` : ''}.`
                   : 'Nobody on this bidder’s team yet.'}
               </span>
-              <Select className="tw-in" style={{ width: 'auto', minWidth: 170 }} aria-label={`CV format for ${b.display_name}`}
-                value={cvFormat[b.id] || ''} onChange={e => setCvFormat(f => ({ ...f, [b.id]: e.target.value }))}>
-                <option value="">{b.firms.length > 1 ? 'Lead firm’s format' : 'Firm’s format'}</option>
-                {CV_FORMATS.map(f => <option key={f.id} value={f.id}>{f.label}</option>)}
-              </Select>
+              <span className="tw-hint" title="Set on the Notice step">{formatLabel}</span>
               <label className="tw-hint" style={{ display: 'inline-flex', alignItems: 'center', gap: 4, whiteSpace: 'nowrap' }}
                 title="Each CV followed by the experience letter of each firm of ours it lists">
                 <input type="checkbox" checked={!noLetters[b.id]} onChange={e => setNoLetters(x => ({ ...x, [b.id]: !e.target.checked }))} />
                 Experience letters
               </label>
-              <Btn className="btn btn-secondary btn-sm" disabled={busy || !n} onClick={() => onMakeCVs(b, 'print', cvFormat[b.id], !noLetters[b.id])}>
+              <Btn className="btn btn-secondary btn-sm" disabled={busy || !n} onClick={() => onMakeCVs(b, 'print', !noLetters[b.id])}>
                 Print</Btn>
-              <Btn className="btn btn-secondary btn-sm" disabled={busy || !n} onClick={() => onMakeCVs(b, 'word', cvFormat[b.id], !noLetters[b.id])}>
+              <Btn className="btn btn-secondary btn-sm" disabled={busy || !n} onClick={() => onMakeCVs(b, 'word', !noLetters[b.id])}>
                 Word</Btn>
             </div>
           </div>

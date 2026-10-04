@@ -4,6 +4,7 @@ import Modal, { ErrorBanner } from '../ui/Modal.jsx';
 import { Btn, MdTextField, MdSelect, MdOption } from '../../md.jsx';
 import { FISCAL_YEARS, CLIENT_TYPES } from '../../constants/data.js';
 import { BLANK_TENDER, METHODS, STAGES, WEIGHTS, noticeOf } from './common.js';
+import { CV_FORMATS } from '../../reports/cv.jsx';
 
 /** What sits behind "More from the notice" — counted so a fold is never silent. */
 const MORE_FIELDS = ['project_name', 'office_address', 'funding_agency', 'method', 'published_date',
@@ -124,6 +125,16 @@ export default function NoticeStep({ tender, clients, onSave, onSaveProgress, on
               ? 'Taken on from the EOI — its trades, posts and teams came with it. Add this notice’s own reference and deadline.'
               : 'Use this when the proposal was invited without an EOI round of yours.'}
         </span>
+      </div>
+
+      <div className="form-group">
+        <MdSelect label="CV format asked for" value={form.cv_format || ''} onChange={e => set('cv_format', e.target.value)}>
+          <MdOption value="">{form.stage === 'RFP' ? '— PPMO RFP (default for an RFP) —' : '— PPMO EOI Form 3 (default for an EOI) —'}</MdOption>
+          {CV_FORMATS.map(f => <MdOption key={f.id} value={f.id}>{f.label}</MdOption>)}
+        </MdSelect>
+        <div className="tw-hint" style={{ marginTop: 4 }}>
+          Every bidder’s CVs on this stage use this format. The wording comes from each bidding firm (a joint venture uses its lead’s).
+        </div>
       </div>
 
       <details className="tw-more">

@@ -30,6 +30,7 @@ export const BLANK_TENDER = {
   published_date: '', submission_date: '', submission_time: '', document_deadline: '',
   submission_portal: 'www.bolpatra.gov.np/egp', client_website: '', association_allowed: true,
   weight_qualification: '', weight_experience: '', weight_capacity: '', minimum_score: '',
+  cv_format: '',
   authorized_rep: '', notes: '',
 };
 
