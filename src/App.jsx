@@ -499,8 +499,8 @@ function App() {
         onMouseLeave={hideTip} onBlur={hideTip}>
         <div className="sb-brand">
           {sidebarCollapsed
-            ? <img src="/favicon.png" alt="TVETtrack" className="sb-brand-mark"/>
-            : <span className="sb-brand-word"><img src="/logo.png" alt="TVETtrack — TSPs Registry and Directory" className="sb-brand-logo"/></span>}
+            ? <img src="/favicon.png" alt="TVET Track" className="sb-brand-mark"/>
+            : <span className="sb-brand-word"><img src="/logo.png" alt="TVET Track — Provider Information Management & Reporting Platform" className="sb-brand-logo"/></span>}
           <button type="button" className="sb-collapse" onClick={()=>setSidebarCollapsed(c=>!c)}
             aria-label={sidebarCollapsed?'Expand sidebar':'Collapse sidebar'}
             data-tip={sidebarCollapsed?'Expand sidebar':undefined}

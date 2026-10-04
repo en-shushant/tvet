@@ -152,7 +152,9 @@ function LoginPage({ onLogin }) {
         <div style={{position:'absolute',bottom:-60,left:-60,width:240,height:240,borderRadius:'50%',background:'rgba(255,255,255,0.04)'}}/>
         <div style={{position:'relative',zIndex:1,textAlign:'center',maxWidth:340}}>
           <div style={{display:'flex',justifyContent:'center',marginBottom:28}}>
-            <img src="/logo.png" alt="TVETtrack" style={{width:'100%',maxWidth:300,filter:'brightness(0) invert(1)'}}/>
+            <div style={{background:'#fff',borderRadius:18,padding:'22px 24px',boxShadow:'0 10px 30px rgba(0,0,0,.25)'}}>
+              <img src="/logo-stacked.png" alt="TVET Track — Provider Information Management & Reporting Platform" style={{width:'100%',maxWidth:260,display:'block'}}/>
+            </div>
           </div>
           <div style={{fontSize:14,color:'rgba(255,255,255,0.45)',lineHeight:1.7,marginBottom:40}}>
             Nepal's training institute compliance and performance registry system.
@@ -177,7 +179,7 @@ function LoginPage({ onLogin }) {
         <div style={{width:'100%',maxWidth:420}}>
           <div style={{marginBottom:36}}>
             <div style={{fontSize:24,fontWeight:700,color:'var(--text)',letterSpacing:-0.5,marginBottom:8}}>Welcome back</div>
-            <div style={{fontSize:14,color:'var(--text3)'}}>Sign in to your TVETtrack account</div>
+            <div style={{fontSize:14,color:'var(--text3)'}}>Sign in to your TVET Track account</div>
           </div>
           <div style={{background:'var(--surface)',borderRadius:16,padding:'36px 40px',boxShadow:'var(--shadow-md)',border:'1px solid var(--border)'}}>
             <form onSubmit={handleSubmit}>
@@ -215,7 +217,8 @@ function LoginPage({ onLogin }) {
             </>)}
           </div>
           <div style={{textAlign:'center',marginTop:24,fontSize:12,color:'var(--text3)'}}>
-            © {new Date().getFullYear()} TVETtrack · Nepal TVET Registry
+            © {new Date().getFullYear()} TVET Track · Provider Information Management &amp; Reporting Platform
+            <div style={{marginTop:4}}>App from Shushant&rsquo;s APP ecosystem</div>
           </div>
         </div>
       </div>

@@ -58,8 +58,21 @@ async function plugin(fastify, opts) {
 
   fastify.put('/:id', { preHandler: requireAdmin }, async (request, reply) => {
     const { name, email, password, role, is_active, photo, can_access_hr, can_access_tenders } = request.body;
-    if ((role === 'admin' || role === 'superadmin') && request.user.role !== 'superadmin') {
-      return reply.code(403).send({ error: 'Only superadmin can assign admin roles' });
+    /*
+     * An admin may edit anyone below superadmin — names, access, active, an
+     * admin's own details — but only a superadmin changes who is an admin or
+     * touches a superadmin. The check is on a role *change*: refusing every
+     * save whose role was "admin" left admins unable to edit any admin,
+     * themselves included.
+     */
+    if (request.user.role !== 'superadmin') {
+      const { rows: [target] } = await pool.query('SELECT role FROM users WHERE id = $1', [request.params.id]);
+      if (!target) return reply.code(404).send({ error: 'Not found' });
+      const elevated = (r) => r === 'admin' || r === 'superadmin';
+      if (target.role === 'superadmin') return reply.code(403).send({ error: 'Only a superadmin can edit a superadmin account' });
+      if (role !== target.role && (elevated(role) || elevated(target.role))) {
+        return reply.code(403).send({ error: 'Only a superadmin can make someone an admin or change an admin’s role' });
+      }
     }
     let q, params;
     if (password) {
