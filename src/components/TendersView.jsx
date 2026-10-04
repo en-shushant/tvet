@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import { ErrorBanner } from './ui/Modal.jsx';
 import { Btn } from '../md.jsx';
 import { PageHeader, EmptyState, StatusBadge } from './ui/primitives.jsx';
-import { toast } from './ui/Feedback.jsx';
+import { toast, confirmDialog } from './ui/Feedback.jsx';
 import { FISCAL_YEARS } from '../constants/data.js';
 import { useOccupations } from '../utils/useMasterData.js';
 import { api, clientToAPI, normClient } from '../utils/api.js';
@@ -27,6 +27,7 @@ import Select from './ui/Select.jsx';
  */
 function TendersView({ institutes = [], clients = [], onGoToReports, canAccessPool = true }) {
   const token = getSession()?.token;
+  const isSuper = getSession()?.role === 'superadmin';
   const occupations = useOccupations();
   // Local copy so a client added mid-tender is selectable at once, without
   // waiting for the whole app's list to come round again.
@@ -142,6 +143,23 @@ function TendersView({ institutes = [], clients = [], onGoToReports, canAccessPo
     });
     setOpen(null);
     onGoToReports?.();
+  };
+
+  // Deletes every stage of the notice (EOI, RFP…); the people stay in the pool.
+  const removeChain = async (root, chain) => {
+    const ok = await confirmDialog({
+      title: `Delete “${root.title}”?`,
+      message: chain.length > 1
+        ? `All ${chain.length} stages (${chain.map(s => s.stage).join(', ')}) and everyone proposed on them are deleted. The people themselves stay in the pool.`
+        : 'The tender and everyone proposed on it are deleted. The people themselves stay in the pool.',
+      confirmLabel: 'Delete', danger: true,
+    });
+    if (!ok) return;
+    try {
+      for (const s of [...chain].reverse()) await api('DELETE', `/tenders/${s.id}`, null, token);
+      toast('Tender deleted.');
+    } catch (e) { setErr(e.message); }
+    load();
   };
 
   if (open) {
@@ -261,6 +279,11 @@ function TendersView({ institutes = [], clients = [], onGoToReports, canAccessPo
                     <Btn className="btn btn-ghost btn-sm" title="Start a new tender from this one"
                       onClick={() => setCopyOf(root)}>Copy</Btn>
                     <Btn className="btn btn-ghost btn-sm" onClick={() => openAt(latest.id)}>Open</Btn>
+                    {isSuper && (
+                      <Btn className="btn btn-ghost btn-sm" title="Delete this tender" aria-label={`Delete ${root.title}`}
+                        style={{ color: 'var(--danger, #c62828)' }} onClick={() => removeChain(root, chain)}>
+                        <span className="material-icons-round" style={{ fontSize: 16 }}>delete_outline</span></Btn>
+                    )}
                   </td>
                 </tr>
               ))}

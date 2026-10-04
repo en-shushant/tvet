@@ -1,6 +1,6 @@
 // routes/tenders.js — bids, the people proposed on them, and the CV pack
 const { pool } = require('../db/pool');
-const { authenticate, requireTenderAccess, requireWriter } = require('../middleware/auth');
+const { authenticate, requireTenderAccess, requireWriter, requireSuperAdmin } = require('../middleware/auth');
 
 /**
  * A tender is a bid being put together: which firm is bidding, what the notice
@@ -511,8 +511,10 @@ async function plugin(fastify, opts) {
     finally { client.release(); }
   });
 
-  fastify.delete('/:id', { preHandler: requireWriter }, async (request) => {
-    await pool.query('DELETE FROM tenders WHERE id = $1', [request.params.id]);
+  // Only a superadmin deletes a tender: it takes its bidders and proposed team with it.
+  fastify.delete('/:id', { preHandler: requireSuperAdmin }, async (request, reply) => {
+    const { rowCount } = await pool.query('DELETE FROM tenders WHERE id = $1', [request.params.id]);
+    if (!rowCount) return reply.code(404).send({ error: 'Not found' });
     return { deleted: true };
   });
 

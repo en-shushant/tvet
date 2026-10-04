@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { ErrorBanner } from '../ui/Modal.jsx';
 import { Btn } from '../../md.jsx';
 import { confirmDialog, toast } from '../ui/Feedback.jsx';
+import { getSession } from '../../utils/auth.js';
 import { api } from '../../utils/api.js';
 import cv from '../../reports/cv.jsx';
 import { defaultFamilyFor } from '../../reports/catalog.js';
@@ -301,10 +302,12 @@ export default function TenderWorkspace({ tenderId, startAt, clients, institutes
             <Btn className="btn btn-secondary btn-sm" onClick={() => setCopying(true)}>
               <span className="material-icons-round" style={{ fontSize: 15, verticalAlign: 'middle', marginRight: 4 }}>
                 content_copy</span>Copy</Btn>
-            <button type="button" className="tw-x" aria-label="Delete this tender" title="Delete this tender"
-              onClick={remove}>
-              <span className="material-icons-round" style={{ fontSize: 19 }}>delete_outline</span>
-            </button>
+            {getSession()?.role === 'superadmin' && (
+              <button type="button" className="tw-x" aria-label="Delete this tender" title="Delete this tender"
+                onClick={remove}>
+                <span className="material-icons-round" style={{ fontSize: 19 }}>delete_outline</span>
+              </button>
+            )}
           </div>
         )}
       </div>
