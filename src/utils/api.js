@@ -1,3 +1,4 @@
+import { servicesTemplateIdOf } from './specificTemplates.js';
 import { OCCUPATIONS } from '../constants/data.js';
 
 // API base URL — reads from localStorage so self-hosted users can point at their own backend.
@@ -154,7 +155,7 @@ export function normInst(r) {
     website: r.website || '',
     descTemplateId: r.desc_template_id || '',
     narrativeTemplateId: r.narrative_template_id || '',
-    servicesTemplateId: r.services_template_id || '',
+    servicesTemplateId: servicesTemplateIdOf(r.services_template_id),
     cvFormat: r.cv_format || '',
     // Roster the "Name of Senior Staff ... Functions Performed" field is
     // auto-written from, same pattern as the three narrative templates above.

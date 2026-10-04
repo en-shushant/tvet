@@ -204,31 +204,31 @@ const SERVICES_SOURCE = [
   // running one; the skill-test and placement steps only when recorded.
   {
     id: 's13',
-    label: 'S13 — Sequence, direct (first person)',
+    label: 'Variation 1 — direct, first person ("We conducted…")',
     preview:
       'We carried out social marketing and awareness programs in {districtsPhrase}, and selected motivated participants from the communities reached. We provided {occupationsWithCounts}, along with soft skills, employability skills, health and safety, and entrepreneurship, and gender sensitivity orientation was provided at every event.{ojtClauseWe}{outcomeSentence}',
   },
   {
     id: 's14',
-    label: 'S14 — Sequence, formal (third person, passive)',
+    label: 'Variation 2 — formal, third person',
     preview:
       'Social marketing and awareness campaigns were carried out across {districtsPhrase}, from which motivated participants were selected. {firm} delivered {occupationsWithCounts}, each supplemented with soft skills, employability skills, occupational health and safety, and entrepreneurship modules, together with gender sensitivity orientation.{ojtClausePassive}{outcomeSentence}',
   },
   {
     id: 's15',
-    label: 'S15 — Sequence, explicit stages',
+    label: 'Variation 3 — step by step',
     preview:
       'The assignment began with social marketing and awareness programs across {districtsPhrase}, followed by the selection of motivated participants. {firm} then delivered {occupationsWithCounts}, with soft skills, employability skills, health and safety, entrepreneurship and gender sensitivity orientation provided alongside.{ojtClauseStage}{outcomeSentence}',
   },
   {
     id: 's16',
-    label: 'S16 — Sequence, bulleted',
+    label: 'Variation 4 — short points',
     preview:
       '• Carried out social marketing and awareness programs in {districtsPhrase}.\n• Selected motivated participants from the communities reached.\n• Delivered {occupationsWithCounts}.\n• Provided soft skills, employability skills, health and safety, entrepreneurship and gender sensitivity orientation to all {totalTrainees} participants.{ojtBullet}{outcomeBullets}',
   },
   {
     id: 's17',
-    label: 'S17 — Sequence, concise',
+    label: 'Variation 5 — concise',
     preview:
       'Following social marketing and awareness programs across {districtsPhrase}, {firm} selected motivated participants and delivered {occupationsWithCounts}. All {totalTrainees} participants also received soft skills, employability skills, health and safety, entrepreneurship and gender sensitivity orientation{ojtClauseTrailing}.{outcomeSentence}',
   },
@@ -251,7 +251,16 @@ export function bulletize(text) {
     .join('\n');
 }
 
-export const SERVICES_VARIATIONS = SERVICES_SOURCE.map(v => ({ ...v, preview: bulletize(v.preview) }));
+/*
+ * Only the five wordings of the firm's own text (S13–S17) are offered. S1–S12
+ * were written for particular projects and are kept only so a firm still set
+ * to one of them is moved to Variation 1 rather than left blank.
+ */
+const OFFERED = ['s13', 's14', 's15', 's16', 's17'];
+export const servicesTemplateIdOf = (id) => (!id ? '' : OFFERED.includes(id) ? id : 's13');
+export const SERVICES_VARIATIONS = SERVICES_SOURCE
+  .filter(v => OFFERED.includes(v.id))
+  .map(v => ({ ...v, preview: bulletize(v.preview) }));
 
 // ── Fill functions ───────────────────────────────────────────────────────────
 // Values and substitution live in templateValues.js, shared with the 3(A)
@@ -263,7 +272,7 @@ export function fillNarrativeTemplate(variationId, form, institute, clients) {
 }
 
 export function fillServicesTemplate(variationId, form, institute, clients) {
-  const v = SERVICES_VARIATIONS.find(x => x.id === variationId);
+  const v = SERVICES_VARIATIONS.find(x => x.id === servicesTemplateIdOf(variationId));
   return v ? bulletize(applyTemplate(v.preview, buildTemplateValues(form, institute, clients))) : '';
 }
 
