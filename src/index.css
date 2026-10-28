@@ -3153,3 +3153,20 @@ span.pp-hr-no.tw-tag { font-family: var(--font-mono, monospace); }
 .sb-brand-eco a { font-weight: 500; color: var(--text2); text-decoration: none; }
 .sb-brand-eco a:hover, .sb-brand-eco a:focus-visible { color: var(--primary); text-decoration: underline; text-underline-offset: 2px; }
 .sidebar.collapsed .sb-brand-eco { display: none; }
+
+/* ── Clarity pass ─────────────────────────────────────────────────
+   Small, global, and additive: digits that line up in columns, a keyboard
+   focus ring wherever a control had none, disabled things that look
+   disabled, and hint text that does not strand one word on its last line. */
+td, th, .mono, input[type="number"], .stat-value, .kpi-value { font-variant-numeric: tabular-nums; }
+p, .tw-hint, .input-hint, .pf-hint, li { text-wrap: pretty; }
+a:focus-visible, select:focus-visible, textarea:focus-visible, input:focus-visible,
+[role="tab"]:focus-visible, summary:focus-visible, label:has(input:focus-visible) {
+  outline: 2px solid var(--primary); outline-offset: 2px;
+}
+.tw-in:focus-visible, .search-wrap input:focus-visible { outline: none; }
+button:disabled, .btn:disabled, .btn[disabled], [aria-disabled="true"] { cursor: not-allowed; }
+.btn:disabled, .btn[disabled] { opacity: .5; }
+td.num, th.num { text-align: right; }
+@media (prefers-reduced-motion: no-preference) { html { scroll-behavior: smooth; } }
+::selection { background: var(--primary-light); }
