@@ -3174,3 +3174,11 @@ td.num, th.num { text-align: right; }
 ::selection { background: var(--primary-light); }
 /* A bare button takes the browser's default black text, which vanishes in dark mode. */
 button:not([class]) { color: inherit; }
+
+/* ── Form sections: long forms read as a few labelled groups ───────── */
+.form-section-head { margin: 18px 0 10px; padding-top: 12px; border-top: 1px solid var(--border); font-size: 11px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--text3); }
+.form-section-head:first-child, .modal-body > .form-section-head:first-child { margin-top: 0; padding-top: 0; border-top: none; }
+.form-fold { display: flex; align-items: center; gap: 4px; width: 100%; margin: 0 0 10px; padding: 6px 0; background: none; border: none; cursor: pointer; font: inherit; font-size: 13px; font-weight: 500; color: var(--text2); text-align: left; }
+.form-fold .material-icons-round { font-size: 18px; }
+.form-fold-note { margin-left: 6px; font-size: 11px; font-weight: 400; color: var(--text3); }
+.form-fold-body { padding-left: 4px; }

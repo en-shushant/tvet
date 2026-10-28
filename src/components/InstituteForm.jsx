@@ -51,9 +51,14 @@ function InstituteForm({institute, onSave, onClose, isSuperAdmin}) {
   const updateKeyStaff = (i, k, v) => { markDirty(); setForm(f => ({...f, keyStaff:(f.keyStaff||[]).map((s, j) => j===i ? {...s,[k]:v} : s)})); };
   const removeKeyStaff = (i) => { markDirty(); setForm(f => ({...f, keyStaff:(f.keyStaff||[]).filter((_, j) => j!==i)})); };
   const [err, setErr] = useState('');
+  const [fieldErr, setFieldErr] = useState({});
+  const [showWhere, setShowWhere] = useState(!!(form.website || form.googleMapLink || form.latitude || form.longitude));
   const handleSave = () => {
-    if(!form.name.trim()) { setErr('Institute name is required.'); return; }
-    if(!form.isShortlistingOnly && !form.regNo.trim()) { setErr('Registration number is required.'); return; }
+    const e = {};
+    if(!form.name.trim()) e.name = 'Enter the institute’s full official name.';
+    if(!form.isShortlistingOnly && !form.regNo.trim()) e.regNo = 'Enter the registration number (optional only for shortlisting-only firms).';
+    setFieldErr(e);
+    if (Object.keys(e).length) { setErr(`${Object.keys(e).length === 1 ? 'One required field is' : 'Required fields are'} missing — see the marked field${Object.keys(e).length === 1 ? '' : 's'}.`); return; }
     markClean();
     onSave(form);
   };
@@ -67,6 +72,12 @@ function InstituteForm({institute, onSave, onClose, isSuperAdmin}) {
           {institute ? 'Save changes' : 'Add institute'}
         </Btn>
       </>}>
+      {!institute && (
+        <p className="tw-hint" style={{marginTop:0}}>
+          Only the name and registration number are required. Everything else can be added later from the institute’s page.
+        </p>
+      )}
+      <div className="form-section-head">Identity</div>
       {/* Logo */}
       <div className="form-group">
         <label>Institute logo</label>
@@ -89,7 +100,8 @@ function InstituteForm({institute, onSave, onClose, isSuperAdmin}) {
       <div className="form-row form-row-2">
         <div className="form-group">
           <MdTextField label="Institute name *" value={form.name}
-            onChange={e=>set('name',e.target.value)} placeholder="Full official name"/>
+            error={!!fieldErr.name} error-text={fieldErr.name || ''}
+            onChange={e=>{ set('name',e.target.value); if (fieldErr.name) setFieldErr(f=>({...f,name:''})); }} placeholder="Full official name"/>
         </div>
         <div className="form-group">
           <MdTextField label="Acronym / Short name" value={form.acronym||''}
@@ -97,15 +109,15 @@ function InstituteForm({institute, onSave, onClose, isSuperAdmin}) {
             supporting-text="Used in reports and comparison view"/>
         </div>
       </div>
-      <div className="form-row form-row-2">
+      <div className="form-row form-row-3">
         <div className="form-group">
           <MdTextField
             label={`Registration number${form.isShortlistingOnly ? ' (optional)' : ' *'}`}
-            value={form.regNo} onChange={e=>set('regNo',e.target.value)}
+            value={form.regNo}
+            error={!!fieldErr.regNo} error-text={fieldErr.regNo || ''}
+            onChange={e=>{ set('regNo',e.target.value); if (fieldErr.regNo) setFieldErr(f=>({...f,regNo:''})); }}
             placeholder="e.g. XYZ/001/2065"/>
         </div>
-      </div>
-      <div className="form-row form-row-2">
         <div className="form-group">
           <MdTextField label="Registration date" value={form.regDate}
             onChange={e=>set('regDate',e.target.value)} placeholder="YYYY/MM/DD"/>
@@ -115,11 +127,18 @@ function InstituteForm({institute, onSave, onClose, isSuperAdmin}) {
             onChange={e=>set('pan',e.target.value)} placeholder="9-digit PAN"/>
         </div>
       </div>
-      <div className="form-row form-row-3">
+      <div className="form-section-head">Contact</div>
+      <div className="form-row form-row-2">
         <div className="form-group">
           <MdTextField label="Contact person" value={form.contactPerson}
             onChange={e=>set('contactPerson',e.target.value)}/>
         </div>
+        <div className="form-group">
+          <MdTextField type="email" label="Email" value={form.email}
+            onChange={e=>set('email',e.target.value)}/>
+        </div>
+      </div>
+      <div className="form-row form-row-2">
         <div className="form-group">
           <MdTextField label="Phone" value={form.phone}
             onChange={e=>set('phone',e.target.value)}/>
@@ -128,15 +147,16 @@ function InstituteForm({institute, onSave, onClose, isSuperAdmin}) {
           <MdTextField label="Mobile" value={form.mobile||''}
             onChange={e=>set('mobile',e.target.value)}/>
         </div>
-        <div className="form-group">
-          <MdTextField type="email" label="Email" value={form.email}
-            onChange={e=>set('email',e.target.value)}/>
-        </div>
       </div>
       <div className="form-group">
         <MdTextField label="Address" value={form.address}
           onChange={e=>set('address',e.target.value)} placeholder="Full address"/>
       </div>
+      <button type="button" className="form-fold" aria-expanded={showWhere} onClick={()=>setShowWhere(v=>!v)}>
+        <span className="material-icons-round" aria-hidden="true">{showWhere ? 'expand_more' : 'chevron_right'}</span>
+        Website and map location <span className="form-fold-note">optional</span>
+      </button>
+      {showWhere && <div className="form-fold-body">
       <div className="form-group">
         <MdTextField label="Website (optional)" value={form.website||''}
           onChange={e=>set('website',e.target.value)} placeholder="https://www.example.com"/>
@@ -159,6 +179,8 @@ function InstituteForm({institute, onSave, onClose, isSuperAdmin}) {
       <div style={{fontSize:11, color:'var(--text3)', marginTop:-8, marginBottom:16}}>
         <span className="material-icons-round" style={{fontSize:14,verticalAlign:'middle',marginRight:4}}>lightbulb</span> From Google Maps: right-click your location → copy the coordinates shown at top, or copy from the URL.
       </div>
+      </div>}
+      <div className="form-section-head">Status</div>
       <div className="form-row form-row-3">
         <div className="form-group">
           <MdSelect label="Institute type" value={form.type} onChange={e=>set('type',e.target.value)}>

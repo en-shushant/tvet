@@ -329,8 +329,14 @@ function ExperienceForm({exp, clients, institute, onSave, onClose, onDuplicate, 
   const [showOverrides, setShowOverrides] = useState(false);
   const { handleClose, markDirty, markClean, UnsavedModal } = useUnsavedGuard(onClose);
 
-  // Mark dirty whenever form changes after initial render
-  useEffect(() => { markDirty(); }, [form]);
+  // Dirty once the form changes after it first appears — not on opening, which
+  // made closing an untouched form ask about unsaved changes.
+  const opened = useRef(true);
+  const [touched, setTouched] = useState(false);
+  useEffect(() => {
+    if (opened.current) { opened.current = false; return; }
+    markDirty(); setTouched(true);
+  }, [form]);
 
   const fileInputRef = useRef(null);
 
@@ -528,7 +534,8 @@ function ExperienceForm({exp, clients, institute, onSave, onClose, onDuplicate, 
 
       <nav ref={bodyRef} className="step-nav" aria-label="Assignment sections">
         {STEPS.map((st, i) => {
-          const n = (problems[st.id] || []).length;
+          // No red badges on a form nobody has touched yet.
+          const n = touched ? (problems[st.id] || []).length : 0;
           return (
             <button key={st.id} type="button" onClick={()=>setStep(i)}
               className={`step-pill${i === step ? ' step-pill-active' : ''}`}

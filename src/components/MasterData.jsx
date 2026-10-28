@@ -30,19 +30,30 @@ import NepaliInput from './ui/NepaliInput.jsx';
  */
 const ClientForm = ({client, onSave, onClose}) => {
   const [form, setForm] = useState(client || {fullName:'', shortName:'', type:'Government', address:'', remarks:'', phone:'', email:'', website:'', signatoryName:'', signatoryPosition:'', letterhead:null, nameNp:'', addressNp:'', includesOjt:false});
-  const set = (k,v) => setForm(f=>({...f,[k]:v}));
+  const set = (k,v) => { setForm(f=>({...f,[k]:v})); setFieldErr(e=>({...e,[k]:''})); };
+  const [fieldErr, setFieldErr] = useState({});
+  const submit = () => {
+    const e = {};
+    if (!String(form.fullName || '').trim()) e.fullName = 'Enter the client’s official full name.';
+    if (!String(form.shortName || '').trim()) e.shortName = 'Enter a short name, e.g. FEB. It is what lists and reports show.';
+    setFieldErr(e);
+    if (!Object.keys(e).length) onSave(form);
+  };
   return (
     <Modal title={client ? 'Edit client' : 'Add new client'} onClose={onClose}
       footer={<>
         <Btn className="btn btn-secondary" onClick={onClose}>Cancel</Btn>
-        <Btn className="btn btn-primary" onClick={()=>onSave(form)}>Save client</Btn>
+        <Btn className="btn btn-primary" onClick={submit}>Save client</Btn>
       </>}>
+      {!client && <p className="tw-hint" style={{marginTop:0}}>Only the full name and short name are required.</p>}
+      <div className="form-section-head">Identity</div>
       <div className="form-group">
-        <MdTextField label="Full name *" value={form.fullName} onChange={e=>set('fullName',e.target.value)} placeholder="Official full name"/>
+        <MdTextField label="Full name *" value={form.fullName} error={!!fieldErr.fullName} error-text={fieldErr.fullName || ''}
+          onChange={e=>set('fullName',e.target.value)} placeholder="Official full name"/>
       </div>
       <div className="form-row form-row-2">
         <div className="form-group">
-          <MdTextField label="Short name / acronym *" value={form.shortName} onChange={e=>set('shortName',e.target.value)} placeholder="e.g. PCTVET, FEB"/>
+          <MdTextField label="Short name / acronym *" value={form.shortName} error={!!fieldErr.shortName} error-text={fieldErr.shortName || ''} onChange={e=>set('shortName',e.target.value)} placeholder="e.g. PCTVET, FEB"/>
         </div>
         <div className="form-group">
           <MdSelect label="Client type" value={form.type} onChange={e=>set('type',e.target.value)}>
@@ -50,10 +61,11 @@ const ClientForm = ({client, onSave, onClose}) => {
           </MdSelect>
         </div>
       </div>
+      <div className="form-section-head">Contact</div>
       <div className="form-group">
         <MdTextField label="Address" value={form.address||''} onChange={e=>set('address',e.target.value)}/>
       </div>
-      <div className="form-row form-row-2">
+      <div className="form-row form-row-3">
         <div className="form-group">
           <MdTextField label="Phone" value={form.phone||''} onChange={e=>set('phone',e.target.value)} placeholder="Office phone number"/>
         </div>
@@ -69,10 +81,8 @@ const ClientForm = ({client, onSave, onClose}) => {
       </div>
 
       {/* Letter generation fields */}
-      <div style={{margin:'16px 0 10px', borderTop:'1px solid var(--border)', paddingTop:14}}>
-        <div style={{fontSize:13, fontWeight:600, color:'var(--text2)', marginBottom:10, letterSpacing:'0.2px'}}>
-          Letter Generation
-        </div>
+      <div className="form-section-head">Letters and reports</div>
+      <div style={{margin:'0 0 10px'}}>
         <div style={{fontSize:12, color:'var(--text3)', marginBottom:12}}>
           Used in the recipient and signature blocks when generating shortlisting letters for this organization.
         </div>
