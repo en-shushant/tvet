@@ -172,6 +172,7 @@ function App() {
     const onHashChange = () => {
       const { screen: s, instId } = parseHash();
       setScreen(s || 'dashboard');
+      setSubRoute(instId || null);
       if (s === 'detail' && instId) {
         // If we already have this institute loaded, restore it without a fetch
         setSelectedInstitute(prev => {
@@ -681,7 +682,7 @@ function App() {
           )}
           {screen === 'shortlisting' && <Suspense fallback={<div style={{padding:40,textAlign:'center',color:'var(--text3)'}}>Loading…</div>}><Shortlisting institutes={institutes} clients={clients} isAdmin={isAdmin} isEditor={isEditor} isShortlistOnly={isShortlistOnly} isSuperAdmin={isSuperAdmin} token={token} tab={subRoute === 'contracts' ? 'contracts' : 'lists'} onTab={(t) => handleNavigate(t === 'contracts' ? 'shortlisting/contracts' : 'shortlisting')}/></Suspense>}
           {screen === 'reports' && <Suspense fallback={<div style={{padding:40,textAlign:'center',color:'var(--text3)'}}>Loading reports…</div>}><ReportsView institutes={institutes} clients={clients}/></Suspense>}
-          {screen === 'master' && (isAdmin || isEditor) && <MasterData initialTab={subRoute} onGoToClients={()=>handleNavigate('clients')} clients={clients} onUpdateClients={handleUpdateClients} token={token} isAdmin={isAdmin} isEditor={isEditor} isSuperAdmin={isSuperAdmin}/>}
+          {screen === 'master' && (isAdmin || isEditor) && <MasterData initialTab={subRoute} onTabChange={(t)=>handleNavigate(t==='clients'?'master':'master/'+t)} onGoToClients={()=>handleNavigate('clients')} clients={clients} onUpdateClients={handleUpdateClients} token={token} isAdmin={isAdmin} isEditor={isEditor} isSuperAdmin={isSuperAdmin}/>}
           {screen === 'office' && (isAdmin || isEditor) && <OfficeSetup institutes={institutes} token={token} />}
           {screen === 'master' && !isAdmin && !isEditor && (
             <div style={{display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',height:'60%',gap:12,color:'var(--text3)'}}>

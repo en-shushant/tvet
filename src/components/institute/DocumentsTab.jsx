@@ -89,52 +89,47 @@ async function uploadToR2(file, token, kind = 'document') {
 
 const THUMB_SIZE = 80;
 
-function FileThumb({ src, onRemove }) {
-  const [hover, setHover] = useState(false);
+function FileThumb({ src, onRemove, onReplace, busy }) {
   const [confirming, setConfirming] = useState(false);
+  const isPdf = /\.pdf($|\?)/i.test(src);
+  const act = { background:'none', border:'none', padding:'2px 4px', cursor:'pointer', display:'inline-flex', color:'var(--text2)', borderRadius:6 };
   return (
-    <div
-      onMouseEnter={() => setHover(true)}
-      onMouseLeave={() => { setHover(false); setConfirming(false); }}
-      style={{position:'relative', flexShrink:0, width:THUMB_SIZE, height:THUMB_SIZE, borderRadius:10,
-        // white (not var(--bg)) so transparent signatures/stamps stay legible in dark mode
-        overflow:'hidden', border:'1.5px solid var(--border)', background:'#fff', cursor: onRemove ? 'pointer' : 'default',
-        boxShadow: hover ? '0 2px 8px rgba(0,0,0,.14)' : '0 1px 3px rgba(0,0,0,.07)',
-        transition:'box-shadow .15s',
-      }}
-    >
-      {/\.pdf($|\?)/i.test(src)
-        ? <a href={safeHref(src)} target="_blank" rel="noreferrer" style={{display:'flex', width:'100%', height:'100%', alignItems:'center', justifyContent:'center', flexDirection:'column', gap:2, textDecoration:'none'}}>
-            <span className="material-icons-round" style={{fontSize:32, color:'var(--error)'}}>picture_as_pdf</span>
-            <span style={{fontSize:11, fontWeight:700, color:'var(--text2)'}}>PDF</span>
-          </a>
-        : <a href={safeHref(src)} target="_blank" rel="noreferrer" style={{display:'block', width:'100%', height:'100%'}}>
-            <img src={src} alt="" style={{width:'100%', height:'100%', objectFit:'contain', display:'block'}}/>
-          </a>
-      }
-      {onRemove && hover && (
-        confirming ? (
-          <div style={{position:'absolute', inset:0, background:'rgba(229,57,53,.88)', display:'flex',
-            flexDirection:'column', alignItems:'center', justifyContent:'center', gap:4, backdropFilter:'blur(2px)'}}>
-            <span style={{color:'#fff', fontSize:11, fontWeight:600, textAlign:'center', padding:'0 4px'}}>Remove?</span>
-            <div style={{display:'flex', gap:6}}>
-              <button onClick={e=>{e.preventDefault(); e.stopPropagation(); onRemove(); setConfirming(false);}}
-                style={{background:'#fff', color:'#c0392b', border:'none', borderRadius:6, padding:'2px 8px', fontSize:11, fontWeight:700, cursor:'pointer'}}>
-                Yes
-              </button>
-              <button onClick={e=>{e.preventDefault(); e.stopPropagation(); setConfirming(false);}}
-                style={{background:'rgba(255,255,255,.25)', color:'#fff', border:'1px solid #fff', borderRadius:6, padding:'2px 8px', fontSize:11, fontWeight:600, cursor:'pointer'}}>
-                No
-              </button>
-            </div>
-          </div>
+    <div style={{flexShrink:0, width:THUMB_SIZE + 24, textAlign:'center'}}>
+      <a href={safeHref(src)} target="_blank" rel="noreferrer" title="Open in a new tab"
+        style={{display:'flex', margin:'0 auto', width:THUMB_SIZE, height:THUMB_SIZE, borderRadius:10, overflow:'hidden',
+          // white (not var(--bg)) so transparent signatures/stamps stay legible in dark mode
+          border:'1.5px solid var(--border)', background:'#fff', alignItems:'center', justifyContent:'center',
+          flexDirection:'column', textDecoration:'none', opacity: busy ? .4 : 1}}>
+        {isPdf
+          ? <><span className="material-icons-round" style={{fontSize:32, color:'var(--error)'}}>picture_as_pdf</span>
+              <span style={{fontSize:11, fontWeight:700, color:'var(--text2)'}}>PDF</span></>
+          : <img src={src} alt="" style={{width:'100%', height:'100%', objectFit:'contain', display:'block'}}/>}
+      </a>
+      <div style={{display:'flex', justifyContent:'center', gap:2, marginTop:4, minHeight:24}}>
+        {confirming ? (
+          <>
+            <span style={{fontSize:11, alignSelf:'center', color:'#c0391e', fontWeight:600}}>Remove?</span>
+            <button type="button" style={{...act, color:'#c0391e', fontWeight:700, fontSize:11}} onClick={() => { onRemove(); setConfirming(false); }}>Yes</button>
+            <button type="button" style={{...act, fontSize:11}} onClick={() => setConfirming(false)}>No</button>
+          </>
         ) : (
-          <button onClick={e=>{e.preventDefault(); setConfirming(true);}}
-            style={{position:'absolute', inset:0, width:'100%', height:'100%', background:'rgba(229,57,53,.72)',
-              color:'#fff', border:'none', cursor:'pointer', fontSize:18, display:'flex', alignItems:'center',
-              justifyContent:'center', backdropFilter:'blur(2px)'}}><span className="material-icons-round" style={{fontSize:14}}>close</span></button>
-        )
-      )}
+          <>
+            <a href={safeHref(src)} target="_blank" rel="noreferrer" title="View" aria-label="View" style={act}>
+              <span className="material-icons-round" style={{fontSize:16}}>visibility</span></a>
+            {onReplace && (
+              <label title="Replace with another file" aria-label="Replace" style={act}>
+                <input type="file" accept={ACCEPT} style={{display:'none'}} disabled={busy}
+                  onChange={e => { const f = e.target.files[0]; e.target.value = ''; if (f) onReplace(f); }}/>
+                <span className="material-icons-round" style={{fontSize:16, cursor:'pointer'}}>swap_horiz</span>
+              </label>
+            )}
+            {onRemove && (
+              <button type="button" title="Remove" aria-label="Remove" style={act} onClick={() => setConfirming(true)}>
+                <span className="material-icons-round" style={{fontSize:16}}>delete_outline</span></button>
+            )}
+          </>
+        )}
+      </div>
     </div>
   );
 }
@@ -156,13 +151,24 @@ function DocMultiUpload({ label, hint, value, onChange, disabled, token, process
     finally { setUploading(false); }
   };
   const remove = idx => onChange(filesToStore(files.filter((_, i) => i !== idx)));
+  // Swap one file for another in the same place, so the order is kept.
+  const replace = async (idx, picked) => {
+    setErr(''); setUploading(true);
+    try {
+      const f = processFile ? await processFile(picked) : picked;
+      const url = await uploadToR2(f, token, kind);
+      onChange(filesToStore(files.map((u, i) => (i === idx ? url : u))));
+    } catch (ex) { setErr(ex.message); }
+    finally { setUploading(false); }
+  };
 
   return (
     <div>
       {label && <label style={{fontSize:13, fontWeight:600, color:'var(--text2)', display:'block', marginBottom:8}}>{label}</label>}
       <div style={{display:'flex', alignItems:'center', gap:8, flexWrap:'wrap'}}>
         {files.map((src, i) => (
-          <FileThumb key={i} src={src} onRemove={!disabled ? () => remove(i) : null}/>
+          <FileThumb key={i} src={src} busy={uploading} onRemove={!disabled ? () => remove(i) : null}
+            onReplace={!disabled ? (f) => replace(i, f) : null}/>
         ))}
         {!disabled && (
           <label style={{cursor: uploading ? 'wait' : 'pointer', flexShrink:0}}>

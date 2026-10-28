@@ -282,10 +282,12 @@ const ToolForm = ({tool, onSave, onClose}) => {
 };
 
 
-function MasterData({clients, onUpdateClients, token, isAdmin, isEditor, isSuperAdmin, onGoToClients, initialTab}) {
+function MasterData({clients, onUpdateClients, token, isAdmin, isEditor, isSuperAdmin, onGoToClients, initialTab, onTabChange}) {
   // Deep-linked from the command palette (#master/tools and friends), so
   // "go to tools" lands on the tab rather than on Clients.
   const [tab, setTab] = useState(initialTab || 'clients');
+  // Follow the address (sidebar, back button, reload) as well as the pills.
+  useEffect(() => { setTab(initialTab || 'clients'); }, [initialTab]);
   const [clientModal, setClientModal] = useState(null);
   const [search, setSearch] = useState('');
   const [sectorFilter, setSectorFilter] = useState('');
@@ -669,7 +671,7 @@ function MasterData({clients, onUpdateClients, token, isAdmin, isEditor, isSuper
             { id:'locations',    label:'Locations' },
           ] : []),
         ]}
-        value={tab} onChange={setTab} ariaLabel="Master data sections"/>
+        value={tab} onChange={(t) => { setTab(t); onTabChange?.(t); }} ariaLabel="Master data sections"/>
 
       {tab==='clients' && (
         <>
