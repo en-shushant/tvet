@@ -31,8 +31,8 @@ describe('the shell', () => {
     const shell = app.slice(app.indexOf('const SHELL_TITLED = {'), app.indexOf('};', app.indexOf('const SHELL_TITLED = {')));
     expect(Object.keys(Object.fromEntries([...shell.matchAll(/^\s+(\w+):/gm)].map(m => [m[1], 1]))))
       .toEqual(['users']);
-    // Compliance & Analytics prints its own header above its tabs.
-    expect(read('src/components/InsightsHub.jsx')).toMatch(/<PageHeader title="Compliance & Analytics"/);
+    // Compliance & Reports prints its own header above its tabs.
+    expect(read('src/components/InsightsHub.jsx')).toMatch(/<PageHeader title="Compliance & Reports"/);
   });
 
   it('offers Add institute in the top bar only where the page has none', () => {
@@ -52,7 +52,7 @@ describe('icons', () => {
       expect(seen.get(n.icon), `${n.label} and ${seen.get(n.icon)} both use ${n.icon}`).toBeUndefined();
       seen.set(n.icon, n.label);
     }
-    expect(nav.length).toBeGreaterThan(10);
+    expect(nav.length).toBeGreaterThan(7);
   });
 
   it('match between the sidebar and search for the same destination', () => {

@@ -10,6 +10,7 @@ import { api, clientToAPI, normClient } from '../utils/api.js';
 import { getSession } from '../utils/auth.js';
 import { uid } from '../utils/format.js';
 import { confirmDialog, toast } from './ui/Feedback.jsx';
+import OfficeSetup from './OfficeSetup.jsx';
 import { PageHeader, PillTabs } from './ui/primitives.jsx';
 import { useOccupations } from '../utils/useMasterData.js';
 import Select from './ui/Select.jsx';
@@ -282,7 +283,7 @@ const ToolForm = ({tool, onSave, onClose}) => {
 };
 
 
-function MasterData({clients, onUpdateClients, token, isAdmin, isEditor, isSuperAdmin, onGoToClients, initialTab, onTabChange}) {
+function MasterData({institutes = [], clients, onUpdateClients, token, isAdmin, isEditor, isSuperAdmin, onGoToClients, initialTab, onTabChange}) {
   // Deep-linked from the command palette (#master/tools and friends), so
   // "go to tools" lands on the tab rather than on Clients.
   const [tab, setTab] = useState(initialTab || 'clients');
@@ -665,6 +666,7 @@ function MasterData({clients, onUpdateClients, token, isAdmin, isEditor, isSuper
           { id:'clients',        label:'Clients',            badge:clients.length },
           { id:'occupations',    label:'Occupations',        badge:occupations.length },
           { id:'tools',          label:'Tools / consumables' },
+          { id:'office',         label:'Office setup' },
           { id:'training_types', label:'Training types',     badge:trainingTypes.length },
           ...(isSuperAdmin ? [
             { id:'fiscal_years', label:'Fiscal years',       badge:fiscalYears.length },
@@ -926,6 +928,8 @@ function MasterData({clients, onUpdateClients, token, isAdmin, isEditor, isSuper
           {occModal?.type === 'edit' && <OccupationForm occ={occModal.data} onSave={saveOccupation} onClose={()=>setOccModal(null)}/>}
         </>
       )}
+
+      {tab==='office' && <OfficeSetup embedded institutes={institutes} token={token}/>}
 
       {tab==='tools' && (
         <>

@@ -135,7 +135,7 @@ function ColumnLayoutPicker({ options, selected, onToggle, locked = ['sn', 'name
   );
 }
 
-function ReportsView({ institutes, clients }) {
+function ReportsView({ institutes, clients, embedded = false }) {
   const f = loadFilters();
   const [familyId, setFamilyId]         = useState(f.familyId || REPORT_FAMILIES[0].id);
   // Deliberately not seeded from persisted filters — restoring the last
@@ -873,12 +873,14 @@ function ReportsView({ institutes, clients }) {
     <div className="fade-in reports-redesign" style={{display:'flex', flexDirection:'column', gap:18, paddingBottom:8}}>
 
       {/* ── Header ── */}
+      {!embedded && (
       <div>
         <h1 className="page-title">Reports</h1>
         <div className="shell-head-sub">
           Create, configure and generate professional reports from your procurement and training data.
         </div>
       </div>
+      )}
 
       {/* ── Report configuration ── */}
       <div className="card" style={{padding:'18px 20px'}}>

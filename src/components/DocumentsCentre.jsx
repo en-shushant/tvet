@@ -15,7 +15,7 @@ import { ViewDocumentsModal } from './shortlisting/modals.jsx';
 import { DOC_KEYS } from '../constants/data.js';
 import { api } from '../utils/api.js';
 
-export default function DocumentsCentre({ institutes = [], token, onOpenInstitute }) {
+export default function DocumentsCentre({ institutes = [], token, onOpenInstitute, embedded = false }) {
   const [presence, setPresence] = useState(null); // id -> { key: bool }
   const [failed, setFailed] = useState(false);
   const [tab, setTab] = useState('all');
@@ -69,7 +69,7 @@ export default function DocumentsCentre({ institutes = [], token, onOpenInstitut
   if (failed) {
     return (
       <>
-        <PageHeader title="Documents"/>
+        {embedded ? null : <PageHeader title="Documents"/>}
         <EmptyState icon="error_outline" title="Could not load document status"
           body="The registry is still reachable — open an institute to see its documents directly."/>
       </>
@@ -79,7 +79,7 @@ export default function DocumentsCentre({ institutes = [], token, onOpenInstitut
   if (!presence) {
     return (
       <>
-        <PageHeader title="Documents"/>
+        {embedded ? null : <PageHeader title="Documents"/>}
         <SkeletonTable rows={6} cols={5}/>
       </>
     );
@@ -87,8 +87,10 @@ export default function DocumentsCentre({ institutes = [], token, onOpenInstitut
 
   return (
     <>
-      <PageHeader title="Documents"
-        sub={`${counts.incomplete} of ${counts.all} institutes have paperwork outstanding`}/>
+      {embedded
+        ? <div className="hub-summary">{counts.incomplete} of {counts.all} institutes have paperwork outstanding</div>
+        : <PageHeader title="Documents"
+            sub={`${counts.incomplete} of ${counts.all} institutes have paperwork outstanding`}/>}
 
       <div style={{display:'flex', gap:12, alignItems:'center', flexWrap:'wrap'}}>
         <PillTabs

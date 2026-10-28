@@ -1,5 +1,5 @@
 /**
- * Compliance & Analytics — one page for the questions that used to be spread
+ * Compliance & Reports — one page for the questions that used to be spread
  * over four sidebar entries:
  *
  *   Renewals       which firms are overdue or due soon (registration, tax, NSTB,
@@ -21,10 +21,17 @@ import DataQuality from './DataQuality.jsx';
 import SummaryView from './SummaryView.jsx';
 import ComparisonView from './ComparisonView.jsx';
 import ProjectCompliance from './ProjectCompliance.jsx';
+import DocumentsCentre from './DocumentsCentre.jsx';
+import { Suspense, lazy } from 'react';
+const ReportsView = lazy(() => import('./ReportsView.jsx'));
 
 export const HUB_TABS = [
   { id: 'renewals', icon: 'event_repeat',   label: 'Renewals',      analytics: false,
     sub: 'Registration renewals, tax clearance, NSTB and affiliation, firm by firm.' },
+  { id: 'documents', icon: 'folder_shared', label: 'Documents', analytics: false,
+    sub: 'Which firms still have paperwork outstanding, and what is on file.' },
+  { id: 'reports', icon: 'description', label: 'Reports', analytics: false,
+    sub: 'Generate a firm’s profile, experience and bid reports.' },
   { id: 'quality', icon: 'rule',    label: 'Data quality',  analytics: false,
     sub: 'Records that are missing something a report or bid would need.' },
   { id: 'summary', icon: 'insights',    label: 'Summary',       analytics: true,
@@ -38,14 +45,14 @@ export const HUB_IDS = HUB_TABS.map(t => t.id);
 
 export default function InsightsHub({
   tab = 'renewals', onTab, institutes = [], checkInstitutes = institutes, clients = [],
-  showAnalytics = true, onOpenInstitute, onOpenInstituteAt,
+  showAnalytics = true, onOpenInstitute, onOpenInstituteAt, docInstitutes = institutes, token,
 }) {
   const tabs = HUB_TABS.filter(t => showAnalytics || !t.analytics);
   const current = tabs.find(t => t.id === tab) || tabs[0];
 
   return (
     <>
-      <PageHeader title="Compliance & Analytics" sub={current.sub}/>
+      <PageHeader title="Compliance & Reports" sub={current.sub}/>
       {/* Underlined, so the page's sections read above each tab's own filter pills. */}
       <div role="tablist" aria-label="Compliance and analytics views" className="hub-tabs">
         {tabs.map(t => (
@@ -58,6 +65,14 @@ export default function InsightsHub({
       <div role="tabpanel" aria-label={current.label}>
         {current.id === 'renewals' && (
           <ComplianceCentre embedded institutes={checkInstitutes} onOpenInstitute={onOpenInstitute}/>
+        )}
+        {current.id === 'documents' && (
+          <DocumentsCentre embedded institutes={docInstitutes} token={token} onOpenInstitute={onOpenInstituteAt || onOpenInstitute}/>
+        )}
+        {current.id === 'reports' && (
+          <Suspense fallback={<div style={{padding:40,textAlign:'center',color:'var(--text3)'}}>Loading reports…</div>}>
+            <ReportsView embedded institutes={institutes} clients={clients}/>
+          </Suspense>
         )}
         {current.id === 'quality' && (
           <DataQuality embedded institutes={checkInstitutes} onOpenInstitute={onOpenInstituteAt || onOpenInstitute}/>

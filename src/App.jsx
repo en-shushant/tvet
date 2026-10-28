@@ -35,7 +35,6 @@ import { lazyChunk } from './utils/lazyChunk.js';
 import { api, normInst, normClient, instToAPI, nstbToAPI } from './utils/api.js';
 import { preloadLogos } from './utils/logoCache.js';
 import { getSession, setSession as setSessionStorage, clearSession } from './utils/auth.js';
-import OfficeSetup from './components/OfficeSetup.jsx';
 import SsoComplete from './components/SsoComplete.jsx';
 
 // ─── APP ─────────────────────────────────────────────────────────────────────
@@ -64,6 +63,7 @@ function App() {
     const parts = h.split('/');
     // Old #quotations links open the Contracts & quotations tab of Shortlisting.
     if (parts[0] === 'quotations') return { screen: 'shortlisting', instId: 'contracts' };
+    if (parts[0] === 'office') return { screen: 'master', instId: 'office' };
     return { screen: parts[0] || 'dashboard', instId: parts[1] || null };
   };
   const [screen, setScreen] = useState(() => {
@@ -360,10 +360,11 @@ function App() {
 
   const handleNavigate = (rawId) => {
     // Quotations is now the Contracts & quotations tab of Shortlisting.
-    const [id, sub] = String(rawId) === 'quotations' ? ['shortlisting', 'contracts'] : String(rawId).split('/');
+    const [id, sub] = String(rawId) === 'quotations' ? ['shortlisting', 'contracts']
+      : String(rawId) === 'office' ? ['master', 'office'] : String(rawId).split('/');
     setSubRoute(sub || null);
     if (isShortlistOnly && id !== 'shortlisting' && id !== 'quotations' && id !== 'dashboard' && id !== 'institutes' && id !== 'detail' && id !== 'documents') return;
-    if ((id === 'master' || id === 'office') && !isAdmin && !isEditor) return;
+    if (id === 'master' && !isAdmin && !isEditor) return;
     if (id === 'users' && !isAdmin) return;
     if ((id === 'summary' || id === 'comparison' || id === 'compliance') && isEditor) return;
     window.location.hash = sub ? `${id}/${sub}` : id;
@@ -377,30 +378,31 @@ function App() {
   const navItems = [
     {id:'dashboard', icon:'dashboard', label:'Dashboard', group:'Main'},
     {id:'institutes', icon:'account_balance', label:'Institutes', group:'Main'},
-    // One entry for Renewals, Data quality, Summary, Comparison and Project
-    // match. The screen id stays whichever tab is open, so each keeps its hash
-    // and role rules; see InsightsHub.
-    {id:'renewals', icon:'insights', label:'Compliance & Analytics', group:'Analytics', shortlistHidden: true},
-    {id:'reports', icon:'description', label:'Reports', group:'Analytics', shortlistHidden: true},
-    {id:'documents', icon:'folder_shared', label:'Documents', group:'Operations'},
     {id:'clients', icon:'apartment', label:'Clients', group:'Main', shortlistHidden: true},
-    {id:'shortlisting', icon:'playlist_add_check', label:'Shortlisting', group:'Operations'},
+    // The work: bids, the people who go in them, and the lists that feed them.
+    {id:'tenders', icon:'gavel', label:'Tenders', group:'Work', tendersOnly: true},
+    {id:'hr', icon:'co_present', label:'Trainer Pool', group:'Work', hrOnly: true},
+    {id:'shortlisting', icon:'playlist_add_check', label:'Shortlisting', group:'Work'},
+    // Only the shortlisting role sees this on its own; everyone else finds
+    // Documents as a tab of Compliance & Reports.
+    {id:'documents', icon:'folder_shared', label:'Documents', group:'Work', shortlistOnly: true},
+    // One entry for Renewals, Documents, Data quality, Reports, Summary,
+    // Comparison and Project match. The screen id stays whichever tab is open,
+    // so each keeps its hash and role rules; see InsightsHub.
+    {id:'renewals', icon:'insights', label:'Compliance & Reports', group:'Insights', shortlistHidden: true},
+    // Master data holds the lists everything else picks from: clients,
+    // trades, tools, office setup, training types, years, locations.
     {id:'master', icon:'category', label:'Master Data', group:'System', adminOnly: false, editorHidden: false, shortlistHidden: true},
-    {id:'master/tools', icon:'construction', label:'Tools', group:'System', shortlistHidden: true, editOnly: true},
-    {id:'office', icon:'business', label:'Office Setup', group:'System', shortlistHidden: true, editOnly: true},
-    {id:'tenders', icon:'gavel', label:'Tenders', group:'Operations', tendersOnly: true},
-    {id:'hr', icon:'co_present', label:'Trainer Pool', group:'Operations', hrOnly: true},
     {id:'users', icon:'manage_accounts', label:'User Management', group:'System', adminOnly: true, shortlistHidden: true},
   ];
-  const NAV_GROUPS = ['Main', 'Analytics', 'Operations', 'System'];
+  const NAV_GROUPS = ['Main', 'Work', 'Insights', 'System'];
   // Section labels in the reference's style: what the group is for.
-  const NAV_GROUP_LABELS = { Main: 'Main navigation', Analytics: 'Analytics & insights', Operations: 'Operations', System: 'System' };
+  const NAV_GROUP_LABELS = { Main: 'Main', Work: 'Work', Insights: 'Insights', System: 'Setup' };
   // The breadcrumb's first step is shorter, as in the reference's "Overview / Dashboard".
-  const CRUMB_GROUP = { Main: 'Overview', Analytics: 'Analytics', Operations: 'Operations', System: 'System' };
-  const HUB_SCREENS = ['renewals', 'quality', 'summary', 'comparison', 'compliance'];
-  const navActive = (id) => id === 'master/tools' ? (screen === 'master' && subRoute === 'tools')
-    : (id === 'master' && screen === 'master' && subRoute === 'tools') ? false : screen === id || (screen === 'detail' && id === 'institutes')
-    || (id === 'renewals' && HUB_SCREENS.includes(screen)) || (screen === 'nstbAdd' && id === 'institutes');
+  const CRUMB_GROUP = { Main: 'Overview', Work: 'Work', Insights: 'Insights', System: 'Setup' };
+  const HUB_SCREENS = ['renewals', 'quality', 'summary', 'comparison', 'compliance', 'documents', 'reports'];
+  const navActive = (id) => screen === id || (screen === 'detail' && id === 'institutes')
+    || (id === 'renewals' && HUB_SCREENS.includes(screen) && !isShortlistOnly) || (screen === 'nstbAdd' && id === 'institutes');
   const currentNav = navItems.find(i => navActive(i.id));
   // Screens that do not print their own title get one from the shell, with
   // the line of context the old top bar used to squeeze in beside it.
@@ -408,7 +410,7 @@ function App() {
     users: 'Who can sign in, what they can do, and which institutes they see.',
   };
   const visibleNav = navItems.filter(item =>
-    (!item.editOnly || isAdmin || isEditor) && (!item.adminOnly || isAdmin) && (!item.editorHidden || !isEditor)
+    (!item.shortlistOnly || isShortlistOnly) && (!item.adminOnly || isAdmin) && (!item.editorHidden || !isEditor)
     && (!item.shortlistHidden || !isShortlistOnly) && (!item.hrOnly || canAccessHr) && (!item.tendersOnly || canAccessTenders));
 
   const handleSelectInstitute = async (inst) => {
@@ -486,7 +488,6 @@ function App() {
     quality: 'Compliance & Analytics',
     reports: 'Reports',
     master: 'Master data',
-    office: 'Office setup',
     users: 'User management',
     compliance: 'Compliance & Analytics',
     tenders: 'Tenders',
@@ -667,10 +668,11 @@ function App() {
               institutes={institutes}
               checkInstitutes={isAdmin ? institutes : institutes.filter(i => !i.isShortlistingOnly)}
               showAnalytics={!isEditor}
+              docInstitutes={isAdmin ? institutes : institutes.filter(i => !i.isShortlistingOnly)} token={token}
               onOpenInstitute={handleSelectInstitute}
               onOpenInstituteAt={(inst, t) => handleSelectInstitute(inst).then(() => { if (t) setJumpToTab(t); })}/>
           )}
-          {screen === 'documents' && (
+          {screen === 'documents' && isShortlistOnly && (
             <DocumentsCentre
               institutes={isShortlistOnly ? institutes : isAdmin ? institutes : institutes.filter(i => !i.isShortlistingOnly)}
               token={token}
@@ -681,9 +683,7 @@ function App() {
               onGoToMasterData={() => handleNavigate('master')}/>
           )}
           {screen === 'shortlisting' && <Suspense fallback={<div style={{padding:40,textAlign:'center',color:'var(--text3)'}}>Loading…</div>}><Shortlisting institutes={institutes} clients={clients} isAdmin={isAdmin} isEditor={isEditor} isShortlistOnly={isShortlistOnly} isSuperAdmin={isSuperAdmin} token={token} tab={subRoute === 'contracts' ? 'contracts' : 'lists'} onTab={(t) => handleNavigate(t === 'contracts' ? 'shortlisting/contracts' : 'shortlisting')}/></Suspense>}
-          {screen === 'reports' && <Suspense fallback={<div style={{padding:40,textAlign:'center',color:'var(--text3)'}}>Loading reports…</div>}><ReportsView institutes={institutes} clients={clients}/></Suspense>}
-          {screen === 'master' && (isAdmin || isEditor) && <MasterData initialTab={subRoute} onTabChange={(t)=>handleNavigate(t==='clients'?'master':'master/'+t)} onGoToClients={()=>handleNavigate('clients')} clients={clients} onUpdateClients={handleUpdateClients} token={token} isAdmin={isAdmin} isEditor={isEditor} isSuperAdmin={isSuperAdmin}/>}
-          {screen === 'office' && (isAdmin || isEditor) && <OfficeSetup institutes={institutes} token={token} />}
+          {screen === 'master' && (isAdmin || isEditor) && <MasterData institutes={institutes} initialTab={subRoute} onTabChange={(t)=>handleNavigate(t==='clients'?'master':'master/'+t)} onGoToClients={()=>handleNavigate('clients')} clients={clients} onUpdateClients={handleUpdateClients} token={token} isAdmin={isAdmin} isEditor={isEditor} isSuperAdmin={isSuperAdmin}/>}
           {screen === 'master' && !isAdmin && !isEditor && (
             <div style={{display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',height:'60%',gap:12,color:'var(--text3)'}}>
               <span className="material-icons-round" style={{fontSize:40, color:'var(--text3)', opacity:.5}}>lock</span>
@@ -806,8 +806,8 @@ function App() {
           ] : []),
           ...((isAdmin || isEditor) ? [{ id:'a-master', label:'Master data', icon:'category', group:'Go to',
             keywords:'lists settings setup', run:()=>handleNavigate('master') }] : []),
-          ...((isAdmin || isEditor) ? [{ id:'a-office', label:'Office setup', icon:'business', group:'Go to',
-            keywords:'premises equipment infrastructure 4b furniture', run:()=>handleNavigate('office') }] : []),
+          ...((isAdmin || isEditor) ? [{ id:'m-office', label:'Office setup', icon:'business', group:'Master data',
+            keywords:'premises equipment infrastructure 4b furniture', run:()=>handleNavigate('master/office') }] : []),
           ...(isAdmin ? [{ id:'a-users', label:'User Management', icon:'manage_accounts', group:'Go to',
             keywords:'accounts roles permissions access', run:()=>handleNavigate('users') }] : []),
 

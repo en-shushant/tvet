@@ -18,14 +18,14 @@ async function tabsFor(props) {
   return { labels, selected };
 }
 
-describe('Compliance & Analytics', () => {
+describe('Compliance & Reports', () => {
   it('keeps every old page as a tab at its old address', () => {
-    expect(HUB_TABS.map(t => t.id)).toEqual(['renewals', 'quality', 'summary', 'comparison', 'compliance']);
-    expect(app).toMatch(/const HUB_SCREENS = \['renewals', 'quality', 'summary', 'comparison', 'compliance'\]/);
+    expect(HUB_TABS.map(t => t.id)).toEqual(['renewals', 'documents', 'reports', 'quality', 'summary', 'comparison', 'compliance']);
+    expect(app).toMatch(/const HUB_SCREENS = \['renewals', 'quality', 'summary', 'comparison', 'compliance', 'documents', 'reports'\]/);
   });
 
   it('is one sidebar entry instead of four', () => {
-    expect(app).toMatch(/\{id:'renewals', icon:'insights', label:'Compliance & Analytics'/);
+    expect(app).toMatch(/\{id:'renewals', icon:'insights', label:'Compliance & Reports'/);
     expect(app).not.toMatch(/label:'Renewals & Compliance', group/);
     expect(app).not.toMatch(/label:'Data Quality', group/);
     expect(app).not.toMatch(/label:'Project Compliance', group/);
@@ -34,9 +34,9 @@ describe('Compliance & Analytics', () => {
 
   it('shows editors only the checks, as before', async () => {
     const all = await tabsFor({ tab: 'renewals' });
-    expect(all.labels).toEqual(['Renewals', 'Data quality', 'Summary', 'Comparison', 'Project match']);
+    expect(all.labels).toEqual(['Renewals', 'Documents', 'Reports', 'Data quality', 'Summary', 'Comparison', 'Project match']);
     const editor = await tabsFor({ tab: 'summary', showAnalytics: false });
-    expect(editor.labels).toEqual(['Renewals', 'Data quality']);
+    expect(editor.labels).toEqual(['Renewals', 'Documents', 'Reports', 'Data quality']);
     // An analytics address falls back to the first tab they can see.
     expect(editor.selected).toMatch(/^Renewals/);
     expect(app).toMatch(/showAnalytics=\{!isEditor\}/);
