@@ -393,6 +393,8 @@ function App() {
     // Master data holds the lists everything else picks from: clients,
     // trades, tools, office setup, training types, years, locations.
     {id:'master', icon:'category', label:'Master Data', group:'System', adminOnly: false, editorHidden: false, shortlistHidden: true},
+    {id:'master/tools', icon:'construction', label:'Tools', group:'System', shortlistHidden: true},
+    {id:'master/office', icon:'business', label:'Office Setup', group:'System', shortlistHidden: true},
     {id:'users', icon:'manage_accounts', label:'User Management', group:'System', adminOnly: true, shortlistHidden: true},
   ];
   const NAV_GROUPS = ['Main', 'Work', 'Insights', 'System'];
@@ -401,7 +403,8 @@ function App() {
   // The breadcrumb's first step is shorter, as in the reference's "Overview / Dashboard".
   const CRUMB_GROUP = { Main: 'Overview', Work: 'Work', Insights: 'Insights', System: 'Setup' };
   const HUB_SCREENS = ['renewals', 'quality', 'summary', 'comparison', 'compliance', 'documents', 'reports'];
-  const navActive = (id) => screen === id || (screen === 'detail' && id === 'institutes')
+  const navActive = (id) => id.startsWith('master/') ? (screen === 'master' && subRoute === id.slice(7))
+    : (id === 'master' && screen === 'master' && ['tools', 'office'].includes(subRoute)) ? false : screen === id || (screen === 'detail' && id === 'institutes')
     || (id === 'renewals' && HUB_SCREENS.includes(screen) && !isShortlistOnly) || (screen === 'nstbAdd' && id === 'institutes');
   const currentNav = navItems.find(i => navActive(i.id));
   // Screens that do not print their own title get one from the shell, with
