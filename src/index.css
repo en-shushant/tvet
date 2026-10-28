@@ -740,6 +740,8 @@ body {
 .badge-gray    { background: var(--bg2); color: var(--text2); border-color: var(--border); }
 .badge-green   { background: var(--success-light); color: var(--success-dark); }
 .badge-amber   { background: var(--warning-light); color: #92400e; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .badge-amber { color: var(--warning); } }
+:root[data-theme="dark"] .badge-amber { color: var(--warning); }
 .badge-red     { background: var(--error-light); color: var(--red); }
 
 /* ── Tables ─────────────────────────────────────────────────────────────
@@ -3170,3 +3172,5 @@ button:disabled, .btn:disabled, .btn[disabled], [aria-disabled="true"] { cursor:
 td.num, th.num { text-align: right; }
 @media (prefers-reduced-motion: no-preference) { html { scroll-behavior: smooth; } }
 ::selection { background: var(--primary-light); }
+/* A bare button takes the browser's default black text, which vanishes in dark mode. */
+button:not([class]) { color: inherit; }

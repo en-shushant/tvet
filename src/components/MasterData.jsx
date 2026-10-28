@@ -695,7 +695,7 @@ function MasterData({clients, onUpdateClients, token, isAdmin, isEditor, isSuper
             <div className="card" style={{padding:'12px 14px', marginBottom:16}}>
               <button type="button" onClick={()=>setShowUnlinked(v=>!v)}
                 style={{display:'flex', alignItems:'center', gap:8, width:'100%', background:'none',
-                  border:'none', padding:0, cursor:'pointer', font:'inherit', textAlign:'left'}}>
+                  border:'none', padding:0, cursor:'pointer', font:'inherit', color:'var(--text)', textAlign:'left'}}>
                 <span className="material-icons-round" style={{fontSize:18, color:'var(--text3)'}}>
                   {showUnlinked ? 'expand_more' : 'chevron_right'}</span>
                 <span style={{fontWeight:600, fontSize:13}}>
