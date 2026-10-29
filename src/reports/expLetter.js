@@ -35,9 +35,9 @@ export const letterDate = (d = new Date()) =>
 /** Pronouns that agree with their verbs; neutral when gender is not recorded. */
 function pronouns(gender) {
   const g = String(gender || '').toLowerCase();
-  if (g.startsWith('m')) return { He: 'He', he: 'he', his: 'his', His: 'His', him: 'him', has: 'has', is: 'is', was: 'was' };
-  if (g.startsWith('f')) return { He: 'She', he: 'she', his: 'her', His: 'Her', him: 'her', has: 'has', is: 'is', was: 'was' };
-  return { He: 'They', he: 'they', his: 'their', His: 'Their', him: 'them', has: 'have', is: 'are', was: 'were' };
+  if (g.startsWith('m')) return { He: 'He', he: 'he', his: 'his', His: 'His', him: 'him', has: 'has', is: 'is', was: 'was', s: 's' };
+  if (g.startsWith('f')) return { He: 'She', he: 'she', his: 'her', His: 'Her', him: 'her', has: 'has', is: 'is', was: 'was', s: 's' };
+  return { He: 'They', he: 'they', his: 'their', His: 'Their', him: 'them', has: 'have', is: 'are', was: 'were', s: '' };
 }
 
 /**
@@ -53,6 +53,7 @@ export function letterModel(letter, person) {
   const n = parseInt(letter.events_count, 10);
   const clients = String(letter.clients || '').trim();
   const occ = String(letter.occupation || '').trim();
+  const trades = [...new Set((letter.trades || []).map(t => String(t).trim()).filter(Boolean))];
 
   const p1 = [['This letter is to formally acknowledge that '], [person.full_name, true],
     [letter.is_current ? ' has been employed with ' : ` ${P.was} employed with `], [firm.name || '', true],
@@ -67,18 +68,28 @@ export function letterModel(letter, person) {
        ...(clients ? [[' under '], [clients, true], [' projects']] : []), ['.']]
     : (clients ? [[` ${P.He} ${P.has} worked on training programmes under `], [clients, true], ['.']] : []);
   const p2 = trainer
-    ? [[`During ${P.his} tenure with us, ${P.he} ${P.has} demonstrated sound skills in vocational training, effectively imparting knowledge and techniques to our trainees.`], ...events]
+    ? [[`During ${P.his} tenure with us, ${P.he} ${P.has} demonstrated sound skills in vocational training${trades.length ? ` in ${trades.length > 1 ? trades.slice(0, -1).join(', ') + ' and ' + trades[trades.length - 1] : trades[0]}` : ''}, effectively imparting knowledge and techniques to our trainees.`], ...events]
     : [[`During ${P.his} tenure with us, ${P.he} ${P.has} carried out ${P.his} responsibilities as ${letter.position || 'a staff member'} diligently.`], ...events];
 
   const p4 = trainer
-    ? [[`${P.He} ${P.is} known for ${P.his} strong communication skills, patience, and dedication to fostering a positive learning environment, and ${P.has} consistently received positive feedback from trainees and colleagues.`]]
-    : [[`${P.He} ${P.is} known for ${P.his} diligence, reliability, and close cooperation with colleagues and project partners.`]];
+    ? [[`${P.He} ${P.is} known for ${P.his} strong communication skills, patience, and dedication to fostering a positive learning environment, and ${P.has} consistently received positive feedback from trainees and colleagues. ${P.He} follow${P.s} the approved curriculum, keep${P.s} the workshop safe and orderly, and maintain${P.s} accurate attendance, assessment and training records.`]]
+    : [[`${P.He} ${P.is} known for ${P.his} diligence, reliability, and close cooperation with colleagues and project partners, and ${P.he} keep${P.s} records and reports accurate and on time.`]];
   const p5 = [[letter.is_current
     ? `We appreciate ${P.his} valuable contributions to our institute.`
-    : `We appreciate ${P.his} valuable contributions to our institute and wish ${P.him} success in ${P.his} future endeavors.`]];
+    : `We appreciate ${P.his} valuable contributions to our institute and wish ${P.him} success in ${P.his} future endeavors.`],
+    [' This letter is issued on request, for bidding and reference purposes.']];
+
+  // The firm's own programmes during their time: named, with client and fiscal year.
+  const list = (letter.programmes || []).filter(x => x && x.name);
+  const SHOW = 8;
+  const programmes = list.length ? {
+    intro: `${list.length > 1 ? 'The programmes' : 'The programme'} that ${P.he} ${P.has} been part of with us ${list.length > 1 ? 'include' : 'is'}:`,
+    items: list.slice(0, SHOW).map(x => [x.name, [x.client, x.fy && `FY ${x.fy}`].filter(Boolean).join(', ')].filter(Boolean).join(' — ')),
+    more: Math.max(0, list.length - SHOW),
+  } : null;
 
   return {
-    firm, paragraphs: [p1, p2], dutiesIntro: `${P.His} main responsibilities ${letter.is_current ? 'include' : 'included'}:`,
+    firm, paragraphs: [p1, p2], programmes, dutiesIntro: `${P.His} main responsibilities ${letter.is_current ? 'include' : 'included'}:`,
     duties: (letter.duties || []).map(d => d.replace(/^[•\-*]\s*/, '')), closing: [p4, p5],
     signatory: firm.contact_person || '', designation: firm.contact_designation || 'Managing Director',
   };
@@ -124,6 +135,7 @@ export function letterHTML(letter, person, dateStr = letterDate()) {
     <div class="xl-date">Date: ${esc(dateStr)}</div>
     <div class="xl-title">To Whom It May Concern</div>
     ${m.paragraphs.map(p => `<p>${runsHTML(p)}</p>`).join('')}
+    ${m.programmes ? `<p>${esc(m.programmes.intro)}</p><ul>${m.programmes.items.map(d => `<li>${esc(d)}</li>`).join('')}${m.programmes.more ? `<li>and ${m.programmes.more} more.</li>` : ''}</ul>` : ''}
     ${m.duties.length ? `<p>${esc(m.dutiesIntro)}</p><ul>${m.duties.map(d => `<li>${esc(d)}</li>`).join('')}</ul>` : ''}
     ${m.closing.map(p => `<p>${runsHTML(p)}</p>`).join('')}
     <div class="xl-sign">
@@ -169,6 +181,12 @@ export function letterSection(letter, person, images = {}, dateStr = letterDate(
   children.push(new Paragraph({ alignment: AlignmentType.RIGHT, spacing: { after: 360 }, children: [run(`Date: ${dateStr}`)] }));
   children.push(new Paragraph({ alignment: AlignmentType.CENTER, spacing: { after: 280 }, children: [run('To Whom It May Concern', true)] }));
   m.paragraphs.forEach(p => children.push(para(p)));
+  if (m.programmes) {
+    children.push(para([[m.programmes.intro]], { spacing: { after: 80 } }));
+    m.programmes.items.forEach(d => children.push(new Paragraph({ bullet: { level: 0 }, spacing: { after: 40 }, children: [run(d)] })));
+    if (m.programmes.more) children.push(new Paragraph({ bullet: { level: 0 }, spacing: { after: 40 }, children: [run(`and ${m.programmes.more} more.`)] }));
+    children.push(new Paragraph({ spacing: { after: 120 }, children: [] }));
+  }
   if (m.duties.length) {
     children.push(para([[m.dutiesIntro]], { spacing: { after: 80 } }));
     m.duties.forEach(d => children.push(new Paragraph({ bullet: { level: 0 }, spacing: { after: 40 }, children: [run(d)] })));

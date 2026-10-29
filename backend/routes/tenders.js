@@ -828,7 +828,7 @@ async function plugin(fastify, opts) {
      * a CV and letter claim with a firm are its assignments during their time.
      */
     const { rows: firmAssignments } = firmIds.length ? await pool.query(`
-      SELECT a.id, a.institute_id, a.start_date, a.end_date, a.fiscal_year, a.start_fy, a.end_fy, a.is_ongoing,
+      SELECT a.id, a.institute_id, a.assignment_name, a.start_date, a.end_date, a.fiscal_year, a.start_fy, a.end_fy, a.is_ongoing,
              COALESCE(NULLIF(btrim(c.short_name), ''), c.full_name, a.client_name_manual) AS client,
              COALESCE((SELECT array_agg(DISTINCT lower(btrim(o.name))) FROM assignment_occupations ao
                          JOIN occupations o ON o.id = ao.ctevt_occupation_id WHERE ao.assignment_id = a.id), '{}') AS trades
@@ -888,6 +888,10 @@ async function plugin(fastify, opts) {
         ...(tp.occupation_name ? [tp.occupation_name.trim().toLowerCase()] : []),
       ]);
       const trainerLike = person.person_type !== 'Support Staff';
+      const tradeNames = new Set([
+        ...forPerson(quals.rows, tp.person_id).filter(q => q.stream === 'Vocational' && q.occupation_name).map(q => q.occupation_name.trim()),
+        ...(tp.occupation_name ? [tp.occupation_name.trim()] : []),
+      ]);
       const countFromAssignments = (e) => {
         if (!e.institute_id) return e;
         const from = monthIndex(e.from_date);
@@ -900,7 +904,11 @@ async function plugin(fastify, opts) {
         const events = Math.min(Number.isInteger(typed) ? typed : ran.length, ran.length, Math.floor((to - from) / 3));
         const clients = String(e.clients || '').trim()
           || [...new Set(ran.map(a => a.client).filter(Boolean))].join(', ');
-        return { ...e, events_count: events > 0 ? events : null, clients };
+        // The programmes the firm ran during their time, newest first, for the experience letter.
+        const programmes = [...ran].sort((x, y) => (assignmentSpan(y, nowMonth)[0] ?? 0) - (assignmentSpan(x, nowMonth)[0] ?? 0))
+          .map(a => ({ name: String(a.assignment_name || '').trim(), client: a.client || '', fy: a.fiscal_year || a.start_fy || '' }))
+          .filter(a => a.name);
+        return { ...e, events_count: events > 0 ? events : null, clients, programmes };
       };
       const startOf = (e) => monthIndex(e.from_date) ?? -1;
       const allJobs = [...withFirm, ...otherFirms].map(countFromAssignments).concat(forPerson(exp.rows, tp.person_id))
@@ -965,7 +973,10 @@ async function plugin(fastify, opts) {
           firm: e.manualFirm || firmById.get(e.institute_id), position: e.position, occupation: vars.occupation,
           from_date: e.from_date, to_date: e.to_date, is_current: !!e.is_current,
           events_count: e.events_count ?? null, clients: e.clients || '',
-          duties: String(e.summary || '').split('\n').filter(l => l.trim() && !/training events?/.test(l)).slice(0, 4),
+          duties: String(e.summary || '').split('\n').filter(l => l.trim() && !/training events?/.test(l)).slice(0, 6),
+          // What they trained in and the firm's programmes during their time.
+          trades: [...tradeNames].filter(Boolean),
+          programmes: e.programmes || [],
         })),
         languages: forPerson(langs.rows, tp.person_id),
       };

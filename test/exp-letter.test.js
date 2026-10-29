@@ -35,4 +35,37 @@ describe('experience letter', () => {
     expect(letterHTML(letter, { full_name: 'X' })).toContain('REGD. NO. 33976/061/62');
     expect(letterHTML({ ...letter, firm: { ...firm, letterhead: 'https://x/lh.png' } }, { full_name: 'X' })).not.toContain('REGD. NO.');
   });
+
+  describe('a richer letter', () => {
+    const rich = { ...letter, trades: ['Plumber', 'Assistant Tailor'], duties: ['• a', '• b', '• c', '• d', '• e', '• f'],
+      programmes: [
+        { name: 'Skill training for returnee migrants', client: 'FEB', fy: '2080/81' },
+        { name: 'Plumbing Level 2 training', client: 'CTEVT', fy: '2079/80' },
+        ...Array.from({ length: 8 }, (_, i) => ({ name: `Programme ${i + 3}`, client: 'EVENT-II', fy: '2078/79' })),
+      ] };
+    const m = letterModel(rich, { full_name: 'Raja Ram Prajapati', gender: 'Male' });
+    it('says which trades they trained in', () => {
+      expect(text(m.paragraphs[1])).toContain('sound skills in vocational training in Plumber and Assistant Tailor, effectively imparting');
+      expect(text(letterModel(letter, { full_name: 'X', gender: 'Male' }).paragraphs[1])).toContain('vocational training, effectively imparting');
+    });
+    it('lists the firm’s programmes during their time, newest first, with client and year', () => {
+      expect(m.programmes.intro).toBe('The programmes that he has been part of with us include:');
+      expect(m.programmes.items[0]).toBe('Skill training for returnee migrants — FEB, FY 2080/81');
+      expect(m.programmes.items).toHaveLength(8);
+      expect(m.programmes.more).toBe(2);
+      expect(letterModel(letter, { full_name: 'X' }).programmes).toBeNull();
+      const html = letterHTML(rich, { full_name: 'Raja', gender: 'Male' });
+      expect(html).toContain('Skill training for returnee migrants — FEB, FY 2080/81');
+      expect(html).toContain('and 2 more.');
+    });
+    it('gives up to six duties and a fuller closing', () => {
+      expect(m.duties).toHaveLength(6);
+      expect(text(m.closing[0])).toContain('maintains accurate attendance, assessment and training records');
+      const they = letterModel(rich, { full_name: 'A', gender: '' });
+      expect(text(they.closing[0])).toContain('They follow the approved curriculum, keep the workshop safe and orderly, and maintain accurate');
+      expect(text(m.closing[1])).toContain('issued on request, for bidding and reference purposes');
+      const staff = letterModel(letter, { full_name: 'Sita', gender: 'Female', person_type: 'Support Staff' });
+      expect(text(staff.closing[0])).toContain('she keeps records and reports accurate and on time');
+    });
+  });
 });
