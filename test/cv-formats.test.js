@@ -200,3 +200,13 @@ describe('one event per assignment', () => {
     expect(assignmentSpan({ fiscal_year: '2082/83', is_ongoing: true }, 99999)[1]).toBe(99999);
   });
 });
+
+describe('the contact number on a CV', () => {
+  const { employerPhone } = require('../backend/routes/tenders.js');
+  it('falls back to the employing firm’s mobile, then its office phone', () => {
+    expect(employerPhone({ mobile: '9841000000', phone: '01-4000000' })).toBe('9841000000');
+    expect(employerPhone({ mobile: ' ', phone: '01-4000000' })).toBe('01-4000000');
+    expect(employerPhone({})).toBe('');
+    expect(employerPhone(undefined)).toBe('');
+  });
+});

@@ -120,6 +120,9 @@ function pickFirmVariant(variants, field, instituteId, position, personType, tur
   return sorted[(Number(instituteId) + turn) % sorted.length];
 }
 
+/** A firm's mobile if it has one, else its office phone. */
+const employerPhone = (firm) => String(firm?.mobile || '').trim() || String(firm?.phone || '').trim() || '';
+
 /** Lines whose placeholder had nothing to fill are dropped, not printed as {events}. */
 const dropUnfilled = (text) => String(text || '').split('\n')
   .filter(l => !/\{(events|clients|years)\}/.test(l)).join('\n');
@@ -926,7 +929,9 @@ async function plugin(fastify, opts) {
         ? `${Math.floor((nowMonth - joined) / 12)} years (since ${tp.joining_date})` : person.years_with_entity;
       return {
         tender_person_id: tp.id,
-        person: { ...person, years_with_entity: yearsWithFirm },
+        // No number of their own: the employing firm's, so a CV never goes out with the contact blank.
+        person: { ...person, years_with_entity: yearsWithFirm,
+          phone: String(person.phone || '').trim() || employerPhone(firmById.get(tp.joined_institute_id || leadInst?.id)) },
         proposed_position: vars.position,
         post_category: tp.post_category || null, task_role: tp.task_role || null,
         occupation_name: tp.occupation_name || '',
@@ -965,3 +970,4 @@ module.exports.pickFirmVariant = pickFirmVariant;
 module.exports.dropUnfilled = dropUnfilled;
 module.exports.assignmentSpan = assignmentSpan;
 module.exports.priorWorkOf = priorWorkOf;
+module.exports.employerPhone = employerPhone;

@@ -222,7 +222,7 @@ export default function TeamStep({ tender, pool, canAccessPool = true, variants,
               onChange={e => setField('joining_date', maskBsDate(e.target.value))} />
           </label>
           <span className="tw-hint" style={{ alignSelf: 'end' }}>
-            {r.joining_date ? 'Shown as their current post with the firm, as “Years with” the firm, and in its experience letter.' : 'Leave empty if they are not on the firm’s staff.'}
+            {r.joining_date ? 'Shown as their current post with the firm, as “Years with” the firm, and in its experience letter. With no phone number on their record, the CV prints the firm’s.' : 'Leave empty if they are not on the firm’s staff.'}
           </span>
         </div>
         {r.joining_date && (() => {
