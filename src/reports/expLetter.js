@@ -91,7 +91,8 @@ export function letterModel(letter, person) {
   return {
     firm, paragraphs: [p1, p2], programmes, dutiesIntro: `${P.His} main responsibilities ${letter.is_current ? 'include' : 'included'}:`,
     duties: (letter.duties || []).map(d => d.replace(/^[•\-*]\s*/, '')), closing: [p4, p5],
-    signatory: firm.contact_person || '', designation: firm.contact_designation || 'Managing Director',
+    // The firm's own title for its signatory (set on the firm's profile); never a guess.
+    signatory: firm.contact_person || '', designation: String(firm.contact_designation || '').trim(),
   };
 }
 
@@ -111,10 +112,12 @@ export const LETTER_CSS = `
   .xl-title { text-align: center; font-weight: bold; margin-bottom: 16px; }
   .xl p { text-align: justify; line-height: 1.5; margin: 0 0 12px; font-size: 12pt; }
   .xl ul { margin: -4px 0 12px 22px; padding: 0; } .xl li { font-size: 12pt; line-height: 1.45; margin: 0 0 3px; }
-  .xl-sign { margin-top: 26px; display: flex; justify-content: space-between; align-items: flex-end; }
-  .xl-sign img.sig { max-height: 16mm; display: block; margin: 4px 0; }
-  .xl-sign img.stamp { width: 28mm; height: 28mm; object-fit: contain; }
+  .xl-sign { margin-top: 26px; break-inside: avoid; }
   .xl-sign .who { line-height: 1.4; }
+  /* The signature and the stamp sit together, the stamp just overlapping the signature's edge, as on paper. */
+  .xl-marks { display: flex; align-items: center; margin: 4px 0; min-height: 16mm; }
+  .xl-marks img.sig { max-height: 16mm; display: block; position: relative; z-index: 1; }
+  .xl-marks img.stamp { width: 26mm; height: 26mm; object-fit: contain; margin-left: -6mm; opacity: .92; }
 `;
 
 export function letterHTML(letter, person, dateStr = letterDate()) {
@@ -140,9 +143,11 @@ export function letterHTML(letter, person, dateStr = letterDate()) {
     ${m.closing.map(p => `<p>${runsHTML(p)}</p>`).join('')}
     <div class="xl-sign">
       <div class="who">Sincerely,
-        ${f.sign ? `<img class="sig" src="${esc(f.sign)}" alt="Signature">` : '<div style="height:16mm"></div>'}
-        ${esc(m.signatory)}<br>${esc(m.designation)}<br>${esc(f.name || '')}</div>
-      ${f.stamp ? `<img class="stamp" src="${esc(f.stamp)}" alt="Stamp">` : ''}
+        <div class="xl-marks">
+          ${f.sign ? `<img class="sig" src="${esc(f.sign)}" alt="Signature">` : '<div style="height:16mm"></div>'}
+          ${f.stamp ? `<img class="stamp" src="${esc(f.stamp)}" alt="Stamp">` : ''}
+        </div>
+        ${[m.signatory, m.designation, f.name].filter(Boolean).map(esc).join('<br>')}</div>
     </div>
   </section>`;
 }
@@ -194,10 +199,14 @@ export function letterSection(letter, person, images = {}, dateStr = letterDate(
   }
   m.closing.forEach(p => children.push(para(p)));
   children.push(new Paragraph({ spacing: { before: 240 }, children: [run('Sincerely,')] }));
-  if (images.sign) children.push(new Paragraph({ children: [new ImageRun({ type: images.sign.type, data: images.sign.data, transformation: { width: 130, height: 55 } })] }));
+  // The signature and the stamp side by side, close together, above the name.
+  const marks = [
+    images.sign && new ImageRun({ type: images.sign.type, data: images.sign.data, transformation: { width: 130, height: 55 } }),
+    images.stamp && new ImageRun({ type: images.stamp.type, data: images.stamp.data, transformation: { width: 90, height: 90 } }),
+  ].filter(Boolean);
+  if (marks.length) children.push(new Paragraph({ children: marks, spacing: { after: 60 } }));
   else children.push(new Paragraph({ spacing: { after: 600 }, children: [] }));
   [m.signatory, m.designation, f.name].filter(Boolean).forEach(t => children.push(new Paragraph({ children: [run(t)] })));
-  if (images.stamp) children.push(new Paragraph({ alignment: AlignmentType.RIGHT, children: [new ImageRun({ type: images.stamp.type, data: images.stamp.data, transformation: { width: 100, height: 100 } })] }));
 
   const top = hasHead ? (Number(f.letter_top_margin) || 45) : 16;
   const lr = Number(f.letter_lr_padding) || 20;

@@ -68,4 +68,21 @@ describe('experience letter', () => {
       expect(text(staff.closing[0])).toContain('she keeps records and reports accurate and on time');
     });
   });
+
+  describe('the signature block', () => {
+    const person = { full_name: 'X', gender: 'Male' };
+    it('prints the firm’s own title for the signatory, and never invents one', () => {
+      expect(letterModel({ ...letter, firm: { ...firm, contact_designation: 'Chairperson' } }, person).designation).toBe('Chairperson');
+      expect(letterModel(letter, person).designation).toBe('');
+      const html = letterHTML(letter, person);
+      expect(html).toContain('Diamond Rijal');
+      expect(html).not.toContain('Managing Director');
+    });
+    it('puts the signature and the stamp together, not at opposite ends of the page', () => {
+      const html = letterHTML({ ...letter, firm: { ...firm, sign: 'data:image/png;base64,AA', stamp: 'data:image/png;base64,BB' } }, person);
+      const marks = html.match(/<div class="xl-marks">([\s\S]*?)<\/div>/)[1];
+      expect(marks).toContain('class="sig"');
+      expect(marks).toContain('class="stamp"');
+    });
+  });
 });
