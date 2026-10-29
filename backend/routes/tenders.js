@@ -95,12 +95,23 @@ const overlaps = ([a1, a2], [b1, b2]) => a1 != null && a1 <= b2 && (a2 ?? a1) >=
  * one. A firm with none of its own gets one of the shared variations, chosen
  * by its id (and `turn`, e.g. which job) so firms and jobs read differently.
  */
+/**
+ * A co-trainer does the trainer's work: the same activities, tasks and prior
+ * work, so a post with no wording of its own reads from the Main Trainer's.
+ */
+const TRAINER_TITLE = /^(co[-\s]?trainers?|co[-\s]?instructors?|assistant\s+(trainer|instructor)s?|junior\s+trainer|trainers?)$/i;
+const wordingPosts = (position) => {
+  const p = String(position || '').trim().toLowerCase();
+  return TRAINER_TITLE.test(p) ? [p, 'main trainer'] : [p];
+};
+
 function pickFirmVariant(variants, field, instituteId, position, personType, turn = 0, activitySet = '') {
   if (!instituteId) return null;
   const norm = (x) => String(x || '').trim().toLowerCase();
+  const names = wordingPosts(position);
   const tiers = (list) => [
     // A post goes by several names in notices: "Monitoring Officer | M&E Officer".
-    list.filter(v => v.position && String(v.position).split('|').some(n => norm(n) === norm(position))),
+    list.filter(v => v.position && String(v.position).split('|').some(n => names.includes(norm(n)))),
     list.filter(v => !v.position && v.person_type && v.person_type === personType),
     list.filter(v => !v.position && !v.person_type),
   ];

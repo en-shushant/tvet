@@ -66,8 +66,9 @@ describe('firm-wise CV wording', () => {
     v(4, 20, 'adequacy', 'Main Trainer'), v(5, null, 'adequacy', 'Main Trainer')];
   it('takes the firm’s wording for the post, then for the kind of person, then its general one', () => {
     expect(pickFirmVariant(lib, 'adequacy', 10, 'main trainer', 'Trainer').id).toBe(1);
-    expect(pickFirmVariant(lib, 'adequacy', 10, 'Co-Trainer', 'Trainer').id).toBe(2);
-    expect(pickFirmVariant(lib, 'adequacy', 10, 'Co-Trainer', 'Support Staff').id).toBe(3);
+    expect(pickFirmVariant(lib, 'adequacy', 10, 'Field Coordinator', 'Trainer').id).toBe(2);
+    expect(pickFirmVariant(lib, 'adequacy', 10, 'Field Coordinator', 'Support Staff').id).toBe(3);
+    expect(pickFirmVariant(lib, 'adequacy', 10, 'Co-Trainer', 'Trainer').id).toBe(1);   // a co-trainer reads the Main Trainer's
   });
   it('never another firm’s wording; a firm with none gets a shared variation', () => {
     expect(pickFirmVariant(lib, 'adequacy', 30, 'Main Trainer', 'Trainer').id).toBe(5);
@@ -208,5 +209,22 @@ describe('the contact number on a CV', () => {
     expect(employerPhone({ mobile: ' ', phone: '01-4000000' })).toBe('01-4000000');
     expect(employerPhone({})).toBe('');
     expect(employerPhone(undefined)).toBe('');
+  });
+});
+
+describe('wording for a co-trainer', () => {
+  const lib = [
+    { id: 1, field: 'activities', institute_id: null, position: 'Main Trainer | Lead Trainer | Senior Trainer | Instructor', label: 'Main Trainer — activities A', body: '• shared' },
+    { id: 2, field: 'activities', institute_id: 7, position: 'Main Trainer', label: 'own', body: '• the firm’s own' },
+    { id: 3, field: 'activities', institute_id: null, position: 'Database Officer', label: 'db', body: '• db' },
+  ];
+  it.each(['Co-Trainer', 'Co Trainer', 'co-trainers', 'Assistant Trainer', 'Assistant Instructor', 'Junior Trainer', 'Trainer'])(
+    '%s reads the Main Trainer wording', (title) => {
+      expect(pickFirmVariant(lib, 'activities', 9, title, 'Trainer').id).toBe(1);   // a firm with none of its own: the shared wording
+      expect(pickFirmVariant(lib, 'activities', 7, title, 'Trainer').id).toBe(2);   // a firm with its own Main Trainer wording: that
+    });
+  it('does not stretch to other posts', () => {
+    expect(pickFirmVariant(lib, 'activities', 9, 'Database Officer', 'Support Staff').id).toBe(3);
+    expect(pickFirmVariant(lib, 'activities', 9, 'Accountant', 'Support Staff')).toBe(null);
   });
 });

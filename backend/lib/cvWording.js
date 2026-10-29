@@ -102,13 +102,13 @@ const SEED = [
     '• Maintain attendance, logbooks and trainee records.',
     '• Coordinate with the training manager and monitoring officers.'] },
   { field: 'detailed_tasks', label: 'Main Trainer — tasks C', body: [
-    '• Plan and deliver the {occupation} training as the main trainer.',
+    '• Plan and deliver the {occupation} training as the trainer.',
     '• Enforce workplace safety and the use of PPE during practicals.',
     '• Assess competency and orient trainees on NSTB certification.',
     '• Support OJT placement and employment linkage of graduates.'] },
 
   { field: 'adequacy', label: 'Main Trainer — prior work A', body: [
-    '• Main trainer for {occupation} with {years} years of training delivery.',
+    '• Trainer for {occupation} with {years} years of training delivery.',
     '• Conducted {events} training events for {clients}.',
     '• Holds the qualifications and TOT required to deliver the assigned tasks.'] },
   { field: 'adequacy', label: 'Main Trainer — prior work B', body: [
@@ -119,6 +119,12 @@ const SEED = [
 
 /** Add the starter wording once; edits and deletions made afterwards are left alone. */
 async function seedCvWording(pool) {
+  // The wording is shared by co-trainers, so it should not call the person the main trainer.
+  await pool.query(
+    `UPDATE cv_text_variants
+        SET body = replace(replace(body, 'as the main trainer.', 'as the trainer.'), '• Main trainer for {occupation}', '• Trainer for {occupation}')
+      WHERE institute_id IS NULL AND label LIKE 'Main Trainer — %'
+        AND (body LIKE '%as the main trainer.%' OR body LIKE '%• Main trainer for {occupation}%')`);
   // Training is run to the curriculum of whichever body the project follows:
   // CTEVT, FEB or NAVT. Wording seeded before this said only CTEVT.
   await pool.query(
