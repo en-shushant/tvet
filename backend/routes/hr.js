@@ -121,6 +121,17 @@ const ELIGIBILITY_CTE = `
                          AND o2.level = ANY(ro.main_levels)
      WHERE r.grant_scope = 'occupations'
   ),
+  -- Trades whose levels a rule has spelled out. Where one has, it is exact:
+  -- no main-trainer levels listed means no main trainer for that trade.
+  level_ruled AS (
+    SELECT q.person_id, o2.id AS occupation_id
+      FROM hr_qualifications q
+      JOIN hr_qualification_rules r ON r.id = q.rule_id AND r.is_active
+      JOIN hr_rule_occupations ro ON ro.rule_id = r.id AND cardinality(ro.levels) > 0
+      JOIN occupations o1 ON o1.id = ro.occupation_id
+      JOIN occupations o2 ON o2.is_active AND lower(trim(o2.name)) = lower(trim(o1.name))
+     WHERE r.grant_scope = 'occupations'
+  ),
   eligible AS (
     SELECT w.person_id, w.occupation_id
       FROM with_adds w
@@ -315,6 +326,9 @@ async function plugin(fastify, opts) {
         -- Occupations a rule explicitly lets them lead as main trainer.
         COALESCE((SELECT json_agg(DISTINCT m.occupation_id) FROM main_granted m
                    WHERE m.person_id = p.id), '[]') AS main_occupations,
+        -- Trades a rule has spelled the levels out for; their main trainers are exactly main_occupations.
+        COALESCE((SELECT json_agg(DISTINCT l.occupation_id) FROM level_ruled l
+                   WHERE l.person_id = p.id), '[]') AS level_ruled_occupations,
         (SELECT COUNT(*)::int FROM hr_qualifications x WHERE x.person_id = p.id) AS qualification_count,
         -- Enough of each qualification to check someone against a tender's
         -- stated minimums without a second request per candidate.
@@ -362,7 +376,8 @@ async function plugin(fastify, opts) {
                     FROM hr_documents WHERE person_id = $1 ORDER BY uploaded_at DESC`, [id]),
       pool.query(`WITH ${ELIGIBILITY_CTE}
                   SELECT o.id, o.name, o.sector, o.level,
-                         EXISTS (SELECT 1 FROM main_granted m WHERE m.person_id = $1 AND m.occupation_id = o.id) AS main_rule
+                         EXISTS (SELECT 1 FROM main_granted m WHERE m.person_id = $1 AND m.occupation_id = o.id) AS main_rule,
+                         EXISTS (SELECT 1 FROM level_ruled l WHERE l.person_id = $1 AND l.occupation_id = o.id) AS level_ruled
                     FROM eligible e JOIN occupations o ON o.id = e.occupation_id AND o.is_active
                    WHERE e.person_id = $1 ORDER BY o.name`, [id]),
       pool.query('SELECT * FROM hr_languages WHERE person_id = $1 ORDER BY sort_order, id', [id]),
@@ -380,6 +395,7 @@ async function plugin(fastify, opts) {
       languages: languages.rows,
       eligible_occupations: elig.rows.map(({ main_rule, ...o }) => o),
       main_occupations: elig.rows.filter(o => o.main_rule).map(o => o.id),
+      level_ruled_occupations: elig.rows.filter(o => o.level_ruled).map(o => o.id),
       occupation_overrides: overrides.rows,
     };
   });

@@ -222,12 +222,14 @@ export function rankNeededFor(occupation, allOccupations = [], main = false) {
 
 /** Ids a rule marks as main-trainer for this occupation's trade, or null if none does. */
 function ruledMainIds(person, occupation, allOccupations = []) {
-  const ids = (person?.main_occupations || []).map(String);
-  if (!ids.length) return null;
   const known = [...(person?.eligible_occupations || []), ...allOccupations];
   const key = tradeKey(occupation.name);
-  const mine = ids.filter(id => known.some(o => String(o.id) === id && tradeKey(o.name) === key));
-  return mine.length ? new Set(mine) : null;
+  const ofTrade = (list) => (list || []).map(String)
+    .filter(id => known.some(o => String(o.id) === id && tradeKey(o.name) === key));
+  const mine = ofTrade(person?.main_occupations);
+  if (mine.length) return new Set(mine);
+  // A rule that spells out this trade's levels is exact: listing none for main means no main trainer.
+  return ofTrade(person?.level_ruled_occupations).length ? new Set() : null;
 }
 
 /** Whether a person can take a trainer post for this class. */

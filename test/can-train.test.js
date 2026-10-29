@@ -33,3 +33,19 @@ describe('a rule naming main-trainer levels wins over the fallback', () => {
     expect(canTrainByTrade(p, tailor)[0].main).toEqual(['Level 1', 'Level 2']);
   });
 });
+
+describe('a rule that spells out a trade’s levels is exact', () => {
+  const beautician = [{ id: 21, name: 'Assistant Beautician', level: 'Level 1' }];
+  it('Co: Level 1 with no main levels means co-trainer only, not main', () => {
+    const p = { eligible_occupations: beautician, main_occupations: [], level_ruled_occupations: [21] };
+    expect(canTrainByTrade(p, beautician)[0]).toMatchObject({ main: [], co: ['Level 1'] });
+  });
+  it('the same rule with Main: Level 1 ticked makes them main trainer too', () => {
+    const p = { eligible_occupations: beautician, main_occupations: [21], level_ruled_occupations: [21] };
+    expect(canTrainByTrade(p, beautician)[0]).toMatchObject({ main: ['Level 1'], co: ['Level 1'] });
+  });
+  it('a trade no rule spelled out still gets the automatic main trainer', () => {
+    const p = { eligible_occupations: beautician, main_occupations: [], level_ruled_occupations: [] };
+    expect(canTrainByTrade(p, beautician)[0]).toMatchObject({ main: ['Level 1'], co: ['Level 1'] });
+  });
+});
