@@ -6,7 +6,7 @@ import { ErrorBanner } from './ui/Modal.jsx';
 import { Btn, MdTextField, MdSelect, MdOption } from '../md.jsx';
 import LocationsEditor from './LocationsEditor.jsx';
 import { CLIENT_TYPES, TRAINING_TYPES, TRAINING_TYPES_DEFAULT, SECTORS, NSTB_LEVELS, INSTITUTE_TYPES, INSTITUTE_STATUSES, AFFILIATION_TYPES, LOCAL_LEVEL_TYPES, FISCAL_YEARS, OCCUPATIONS, getTrainingTypes, saveTrainingTypes, setTrainingTypesVar, getFiscalYears, saveFiscalYears, setFiscalYearsVar, getCurrentFY, saveCurrentFY, notifyMasterData } from '../constants/data.js';
-import { api, clientToAPI, normClient } from '../utils/api.js';
+import { api, clientToAPI, normClient, GON_LOGO, clientLogoOf } from '../utils/api.js';
 import { getSession } from '../utils/auth.js';
 import { uid } from '../utils/format.js';
 import { confirmDialog, toast } from './ui/Feedback.jsx';
@@ -29,7 +29,7 @@ import NepaliInput from './ui/NepaliInput.jsx';
  * They close over nothing but imported constants, so hoisting is enough.
  */
 const ClientForm = ({client, onSave, onClose}) => {
-  const [form, setForm] = useState(client || {fullName:'', shortName:'', type:'Government', address:'', remarks:'', phone:'', email:'', website:'', signatoryName:'', signatoryPosition:'', letterhead:null, nameNp:'', addressNp:'', includesOjt:false});
+  const [form, setForm] = useState(client || {fullName:'', shortName:'', type:'Government', address:'', remarks:'', phone:'', email:'', website:'', signatoryName:'', signatoryPosition:'', letterhead:null, logo:null, useGonLogo:false, nameNp:'', addressNp:'', includesOjt:false});
   const set = (k,v) => { setForm(f=>({...f,[k]:v})); setFieldErr(e=>({...e,[k]:''})); };
   const [fieldErr, setFieldErr] = useState({});
   const submit = () => {
@@ -120,21 +120,33 @@ const ClientForm = ({client, onSave, onClose}) => {
           </span>
         </label>
         <div className="form-group">
-          <label>Letterhead Image <span style={{fontWeight:400,color:'var(--text3)'}}>(optional — shown at top of generated letters)</span></label>
-          <div style={{display:'flex', alignItems:'center', gap:12}}>
-            {form.letterhead && <img src={form.letterhead} alt="letterhead" style={{height:48, maxWidth:220, objectFit:'contain', border:'1px solid var(--border)', borderRadius:6, background:'#fff', padding:4}}/>}
-            <label style={{cursor:'pointer'}}>
-              <input type="file" accept="image/*" style={{display:'none'}} onChange={e=>{
-                const file=e.target.files[0]; if(!file) return;
-                const reader=new FileReader();
-                reader.onload=ev=>set('letterhead',ev.target.result);
-                reader.readAsDataURL(file);
-              }}/>
-              <span className="btn btn-secondary btn-sm">{form.letterhead ? <><span className="material-icons-round" style={{fontSize:14,verticalAlign:'middle',marginRight:4}}>sync</span>Change</> : <><span className="material-icons-round" style={{fontSize:14,verticalAlign:'middle',marginRight:4}}>photo_camera</span>Upload letterhead</>}</span>
-            </label>
-            {form.letterhead && <span className="btn btn-ghost btn-sm" style={{cursor:'pointer'}} onClick={()=>set('letterhead',null)}><span className="material-icons-round" style={{fontSize:14,verticalAlign:'middle',marginRight:4}}>close</span>Remove</span>}
-          </div>
-          <div className="input-hint">PNG or JPG — recommended width 600–800px, height 80–120px. Max ~500 KB.</div>
+          <label>Client logo <span style={{fontWeight:400,color:'var(--text3)'}}>(optional — shown beside the client’s name)</span></label>
+          <label style={{display:'flex', alignItems:'center', gap:10, margin:'6px 0 10px', cursor:'pointer', fontSize:13}}>
+            <input type="checkbox" checked={!!form.useGonLogo} onChange={e=>set('useGonLogo', e.target.checked)}/>
+            <span><strong>Use the Government of Nepal logo (GoN)</strong>
+              <span style={{display:'block', fontSize:12, color:'var(--text3)'}}>For ministries, boards and offices of the government. Assigned automatically; no upload needed.</span></span>
+          </label>
+          {form.useGonLogo ? (
+            <div style={{display:'flex', alignItems:'center', gap:10}}>
+              <img src={GON_LOGO} alt="Government of Nepal emblem" style={{height:48, width:48, objectFit:'contain'}} onError={e=>{ e.currentTarget.style.display='none'; }}/>
+              <span style={{fontSize:12, color:'var(--text3)'}}>Government of Nepal emblem</span>
+            </div>
+          ) : (
+            <div style={{display:'flex', alignItems:'center', gap:12}}>
+              {form.logo && <img src={form.logo} alt="client logo" style={{height:48, maxWidth:120, objectFit:'contain', border:'1px solid var(--border)', borderRadius:6, background:'#fff', padding:4}}/>}
+              <label style={{cursor:'pointer'}}>
+                <input type="file" accept="image/*" style={{display:'none'}} onChange={e=>{
+                  const file=e.target.files[0]; e.target.value=''; if(!file) return;
+                  const reader=new FileReader();
+                  reader.onload=ev=>set('logo',ev.target.result);
+                  reader.readAsDataURL(file);
+                }}/>
+                <span className="btn btn-secondary btn-sm">{form.logo ? <><span className="material-icons-round" style={{fontSize:14,verticalAlign:'middle',marginRight:4}}>sync</span>Change logo</> : <><span className="material-icons-round" style={{fontSize:14,verticalAlign:'middle',marginRight:4}}>photo_camera</span>Upload logo</>}</span>
+              </label>
+              {form.logo && <span className="btn btn-ghost btn-sm" style={{cursor:'pointer'}} onClick={()=>set('logo',null)}><span className="material-icons-round" style={{fontSize:14,verticalAlign:'middle',marginRight:4}}>close</span>Remove</span>}
+            </div>
+          )}
+          <div className="input-hint">Square or wide PNG/JPG with a clear background works best. Max ~500 KB.</div>
         </div>
       </div>
 
@@ -786,7 +798,12 @@ function MasterData({institutes = [], clients, onUpdateClients, token, isAdmin, 
                           aria-label={`Select ${c.shortName} for merging`}/>
                       </td>
                     )}
-                    <td><strong className="mono">{c.shortName}</strong></td>
+                    <td>
+                      <span style={{display:'inline-flex', alignItems:'center', gap:8}}>
+                        {clientLogoOf(c) && <img src={clientLogoOf(c)} alt="" style={{height:22, width:22, objectFit:'contain'}} onError={e=>{ e.currentTarget.style.display='none'; }}/>}
+                        <strong className="mono">{c.shortName}</strong>
+                      </span>
+                    </td>
                     <td style={{fontSize:12}}>{c.fullName}</td>
                     <td><span className="badge badge-info">{c.type}</span></td>
                     <td style={{fontSize:12, color:'var(--text3)'}}>{c.address}</td>

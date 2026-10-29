@@ -332,6 +332,8 @@ export function normClient(r) {
     signatoryPosition: r.signatory_position || '',
     includesOjt: !!r.includes_ojt,
     letterhead: r.letterhead || null,
+    logo: r.logo || null,
+    useGonLogo: !!r.use_gon_logo,
     nameNp: r.name_np || '',
     addressNp: r.address_np || '',
   };
@@ -511,8 +513,15 @@ export function clientToAPI(f) {
     signatory_name: f.signatoryName || null,
     signatory_position: f.signatoryPosition || null,
     letterhead: f.letterhead || null,
+    logo: f.logo || null,
+    use_gon_logo: !!f.useGonLogo,
     name_np: f.nameNp || null,
     address_np: f.addressNp || null,
     includes_ojt: !!f.includesOjt,
   };
 }
+
+/** The Government of Nepal emblem, used when a client is set to "Government of Nepal logo". */
+export const GON_LOGO = '/gon-logo.png';
+/** The logo to show for a client: the national emblem if chosen, else its own upload, else none. */
+export const clientLogoOf = (c) => (c?.useGonLogo ? GON_LOGO : c?.logo || null);

@@ -684,6 +684,9 @@ async function runMigrations() {
     `ALTER TABLE clients ADD COLUMN IF NOT EXISTS signatory_name TEXT`,
     `ALTER TABLE clients ADD COLUMN IF NOT EXISTS signatory_position TEXT`,
     `ALTER TABLE clients ADD COLUMN IF NOT EXISTS letterhead TEXT`,
+    // A client shows a logo, not a letterhead; a government body can use the national emblem instead of its own.
+    `ALTER TABLE clients ADD COLUMN IF NOT EXISTS logo TEXT`,
+    `ALTER TABLE clients ADD COLUMN IF NOT EXISTS use_gon_logo BOOLEAN NOT NULL DEFAULT FALSE`,
     `ALTER TABLE clients ADD COLUMN IF NOT EXISTS name_np TEXT`,
     `ALTER TABLE clients ADD COLUMN IF NOT EXISTS address_np TEXT`,
     `ALTER TABLE institutes ADD COLUMN IF NOT EXISTS letterhead TEXT`,
