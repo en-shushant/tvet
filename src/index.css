@@ -2690,7 +2690,7 @@ md-select-option {
   --brand-strong: #2450b8;
   --brand-soft:   #edf2fd;
   --brand-softer: #f5f8fe;
-  --brand-ring:   rgba(47, 95, 208, .22);
+  --brand-ring:   rgba(15, 83, 145, .22);
   --brand-gradient: linear-gradient(180deg, #4a78e3 0%, #2f5fd0 70%);
 
   --bg:     #f5f6fa;
@@ -2771,7 +2771,7 @@ md-text-button { --md-text-button-hover-label-text-color: var(--brand-strong); -
 .seg > button[aria-selected="true"], .seg > button[aria-pressed="true"],
 .tw-seg button[aria-pressed="true"] {
   background: var(--brand-gradient); color: #fff; border-color: var(--brand-strong);
-  box-shadow: 0 2px 8px rgba(47, 95, 208, .22);
+  box-shadow: 0 2px 8px rgba(15, 83, 145, .22);
 }
 .seg > button:not([aria-selected="true"]):not([aria-pressed="true"]):hover,
 .tw-seg button:not([aria-pressed="true"]):hover { background: var(--brand-softer); color: var(--brand-strong); }
@@ -3211,3 +3211,89 @@ button:not([class]) { color: inherit; }
 .pf-grid .tw-seg button { flex: 1 1 auto; white-space: nowrap; padding: 0 8px; }
 .tw-tot-all { display: flex; align-items: flex-start; gap: 10px; margin: 0 0 12px; padding: 10px 12px; border: 1px solid var(--border); border-radius: var(--radius); cursor: pointer; font-size: 13px; }
 .tw-tot-all input { margin-top: 3px; }
+
+/* ══════════════════════════════════════════════════════════════════════
+   Brand pass — the logo's own colours.
+   Navy leads (actions, the active page, links); teal marks progress and
+   good news; the logo's orange is kept for warnings. Neutrals take a faint
+   navy tint so greys read as part of the same family. Everything above that
+   used the old royal blue reads --brand, so this block is the one place the
+   palette lives.
+   ══════════════════════════════════════════════════════════════════════ */
+:root {
+  --brand:        #0f5391;
+  --brand-strong: #0a3f72;
+  --brand-soft:   #e6eff8;
+  --brand-softer: #f2f7fb;
+  --brand-ring:   rgba(15, 83, 145, .22);
+  --brand-gradient: linear-gradient(180deg, #1b66a8 0%, #0f5391 72%);
+  --teal-brand:      #0b9a90;
+  --teal-brand-soft: #e1f4f2;
+
+  --bg:     #f4f7fa;
+  --bg2:    #ecf1f6;
+  --muted:  #eff3f8;
+  --border: #dfe6ee;
+  --border2:#c9d3df;
+  --lift: 0 8px 22px rgba(15, 40, 72, .09), 0 2px 5px rgba(15, 40, 72, .05);
+
+  --t-blue: #0f5391; --t-blue-soft: #e6eff8;
+  --t-teal: #0b9a90; --t-teal-soft: #e1f4f2;
+  --t-sky:  #1b86c4; --t-sky-soft:  #e3f1fa;
+
+  --md-sys-color-primary: #0f5391;
+  --md-sys-color-on-primary: #ffffff;
+  --md-sys-color-primary-container: #e6eff8;
+  --md-sys-color-on-primary-container: #0a3f72;
+  --md-sys-color-secondary-container: #e6eff8;
+  --md-sys-color-on-secondary-container: #0a3f72;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --brand: #6bb4ec; --brand-strong: #96ccf3; --brand-soft: #112a3d; --brand-softer: #0e1d2b;
+    --brand-ring: rgba(107, 180, 236, .28);
+    --brand-gradient: linear-gradient(180deg, #2478b8 0%, #1a6aa6 72%);
+    --teal-brand: #2fc7bb; --teal-brand-soft: #0f2a29;
+
+    --bg: #0d1218; --bg2: #161f2a; --muted: #161f2a; --border: #222c38; --border2: #324052;
+    --surface: #131a22;
+    --lift: 0 10px 26px rgba(0, 0, 0, .45);
+
+    --t-blue: #6bb4ec; --t-blue-soft: #112a3d;
+    --t-teal: #2fc7bb; --t-teal-soft: #0f2a29;
+    --t-sky:  #5cc2f2; --t-sky-soft:  #10283a;
+
+    --md-sys-color-primary: #6bb4ec;
+    --md-sys-color-on-primary: #08202f;
+    --md-sys-color-primary-container: #112a3d;
+    --md-sys-color-on-primary-container: #96ccf3;
+    --md-sys-color-secondary-container: #112a3d;
+    --md-sys-color-on-secondary-container: #96ccf3;
+  }
+  md-filled-button { --md-filled-button-container-color: #1a6aa6; }
+  .nav-tip { background: #16374f; }
+}
+.btn-primary:hover:not(:disabled) { box-shadow: 0 6px 16px rgba(15, 83, 145, .28); }
+.fy-bar.is-on { box-shadow: 0 4px 14px rgba(15, 83, 145, .25); }
+
+/* ── Depth and polish (subtle) ───────────────────────────────────────
+   Cards sit a little higher off the page on navy-tinted shadows, numbers are
+   easier to read at a glance, and the one place the app speaks to you by
+   name takes the brand colour. */
+:root {
+  --shadow-card: 0 1px 2px rgba(15, 40, 72, .05), 0 2px 8px rgba(15, 40, 72, .04);
+}
+@media (prefers-color-scheme: dark) { :root { --shadow-card: 0 1px 2px rgba(0, 0, 0, .35); } }
+.frame, .card { border-radius: 14px; box-shadow: var(--shadow-card); }
+.kpi-value { font-size: 30px; font-weight: 600; letter-spacing: -.02em; }
+.kpi-card .frame-body::after { height: 3px; opacity: .8; }
+.page-title strong, .page-title em { color: var(--brand); font-weight: 600; font-style: normal; }
+.vs-bar > span, .rv-progress .vs-bar > span { background: var(--teal-brand); }
+.empty-state-icon, .empty-state .material-icons-round { color: var(--brand); opacity: .35; }
+.shell-head-sub { color: var(--text3); }
+thead th { letter-spacing: .01em; }
+.badge-info { background: var(--brand-soft); color: var(--brand-strong); }
+.tw-tag.green, .badge-success { background: var(--teal-brand-soft); color: var(--teal-brand); }
+@media (prefers-reduced-motion: no-preference) {
+  .frame, .card { transition: box-shadow .22s var(--ease-out), border-color .22s; }
+}

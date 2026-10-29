@@ -178,13 +178,13 @@ function Dashboard({ institutes, isEditor, onNavigate }) {
 
       {/* ── Registry figures ── */}
       <div style={{display:'grid', gap:14, marginBottom:14,
-        gridTemplateColumns:'repeat(auto-fit, minmax(170px, 1fr))'}}>
+        gridTemplateColumns:'repeat(auto-fit, minmax(150px, 1fr))'}}>
         <KpiCard label="Institutes" value={alertable.length} icon="account_balance" tone="periwinkle"
           footer={`${s.active} active · ${s.pending} pending · ${s.expired} expired`}
           onClick={() => onNavigate('institutes')}/>
         <KpiCard label="Trainees" value={fmt(s.trainees)} icon="groups" tone="mint"
           footer="Across all institutes and fiscal years"/>
-        <KpiCard label="Skill test appeared" value={fmt(s.stAppeared)} icon="workspace_premium" tone="blue"
+        <KpiCard label="Skill tests" value={fmt(s.stAppeared)} icon="workspace_premium" tone="blue"
           footer="Total candidates appeared"/>
         {/* Only rendered once real totals arrive — never a placeholder zero. */}
         {totals ? (
