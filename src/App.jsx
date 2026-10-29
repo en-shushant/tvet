@@ -711,7 +711,7 @@ function App() {
               </div>
             </div>
           )}
-          {screen === 'hr' && canAccessHr && <TrainerPool isAdmin={isAdmin} isSuperAdmin={isSuperAdmin}/>}
+          {screen === 'hr' && canAccessHr && <TrainerPool isAdmin={isAdmin} isSuperAdmin={isSuperAdmin} initialView={subRoute}/>}
           {screen === 'hr' && !canAccessHr && (
             <div className="empty-state">
               <div className="empty-state-icon">
@@ -806,6 +806,10 @@ function App() {
           ...(canAccessHr ? [
             { id:'a-pool', label:'Trainer pool', icon:'co_present', group:'Go to',
               keywords:'trainers staff people cv nstb tot hr human resources', run:()=>handleNavigate('hr') },
+            // Reviewing is an admin job; the queue is the pool filtered to people waiting.
+            ...(isAdmin ? [{ id:'a-pool-verify', label:'Verify trainers', icon:'verified_user', group:'Go to',
+              keywords:'verify review trainees trainers staff pending waiting approve confirm check sign off queue',
+              run:()=>handleNavigate('hr/review') }] : []),
           ] : []),
           ...((isAdmin || isEditor) ? [{ id:'a-master', label:'Master data', icon:'category', group:'Go to',
             keywords:'lists settings setup', run:()=>handleNavigate('master') }] : []),

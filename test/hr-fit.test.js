@@ -560,7 +560,7 @@ describe('deleting a qualification rule or a person is superadmin-only', () => {
   it('the delete buttons themselves are behind isSuperAdmin', () => {
     expect(pool).toMatch(/\{isSuperAdmin && \(\s*<Btn className="btn btn-danger btn-sm" onClick=\{\(\) => remove\(r\)\}/);
     expect(pool).toMatch(/<PersonProfile person=\{profile\} token=\{token\} canDelete=\{isSuperAdmin\}/);
-    expect(read('src/App.jsx')).toMatch(/<TrainerPool isAdmin=\{isAdmin\} isSuperAdmin=\{isSuperAdmin\}\/>/);
+    expect(read('src/App.jsx')).toMatch(/<TrainerPool isAdmin=\{isAdmin\} isSuperAdmin=\{isSuperAdmin\}[^>]*\/>/);
   });
 });
 

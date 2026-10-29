@@ -56,7 +56,7 @@ describe('icons', () => {
   });
 
   it('match between the sidebar and search for the same destination', () => {
-    const palette = [...app.matchAll(/label:'([^']+)', icon:'(\w+)', group:'Go to'[\s\S]*?handleNavigate\('(\w+)'\)/g)]
+    const palette = [...app.matchAll(/label:'([^']+)', icon:'(\w+)', group:'Go to'[^}]*?handleNavigate\('(\w+)'\)/g)]
       .map(m => ({ label: m[1], icon: m[2], to: m[3] }));
     for (const p of palette) {
       const n = nav.find(x => x.id === p.to);

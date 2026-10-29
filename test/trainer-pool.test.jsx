@@ -366,3 +366,12 @@ describe('the pool at a glance and its filters', () => {
     }
   });
 });
+
+describe('Verify trainers, from search', () => {
+  it('opens the pool on the people waiting for review, and only for admins', () => {
+    const app = readFileSync(path.resolve(import.meta.dirname, '..', 'src/App.jsx'), 'utf8');
+    expect(app).toMatch(/\.\.\.\(isAdmin \? \[\{ id:'a-pool-verify', label:'Verify trainers'/);
+    expect(app).toMatch(/handleNavigate\('hr\/review'\)/);
+    expect(app).toMatch(/initialView=\{subRoute\}/);
+  });
+});

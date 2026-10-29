@@ -460,7 +460,7 @@ function Kpi({ label, value, note, tone, title, onClick }) {
  * and typed at length, and a dialog over the roster made both feel like a
  * detour you were meant to leave quickly.
  */
-function TrainerPool({ isAdmin, isSuperAdmin }) {
+function TrainerPool({ isAdmin, isSuperAdmin, initialView }) {
   const token = getSession()?.token;
   const occupations = useOccupations();
 
@@ -471,7 +471,10 @@ function TrainerPool({ isAdmin, isSuperAdmin }) {
   const [err, setErr] = useState('');
 
   // Every filter in one object, so "clear all" and the KPI shortcuts are one assignment.
-  const [filters, setFilters] = useState(BLANK_FILTERS);
+  // #hr/review (the palette's "Verify trainers") opens straight on the people waiting for review.
+  const reviewView = { ...BLANK_FILTERS, availability: 'all', pending: true };
+  const [filters, setFilters] = useState(initialView === 'review' ? reviewView : BLANK_FILTERS);
+  useEffect(() => { if (initialView === 'review') { setFilters(reviewView); setTab('people'); } }, [initialView]);
   const setF = (patch) => setFilters(f => ({ ...f, ...patch }));
   const [sort, setSort] = useState('name');
   const [showMatch, setShowMatch] = useState(false);
