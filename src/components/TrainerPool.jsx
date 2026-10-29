@@ -93,6 +93,9 @@ function OccupationPicker({ occupations, selected, onToggle, height = 240 }) {
 
 /* ── Qualification rules ────────────────────────────────────────────────── */
 
+/** A training (TOT or other) is not a trade: it grants nothing to teach, a tender may simply require it. */
+const isTrainingKind = (kind) => kind === 'TOT' || kind === 'Training';
+
 function RuleForm({ rule, occupations, onSave, onClose }) {
   const [form, setForm] = useState(() => ({
     name: '', kind: 'Academic', grant_scope: 'occupations', sector: '', max_level: '', notes: '', qual_level: '',
@@ -118,8 +121,8 @@ function RuleForm({ rule, occupations, onSave, onClose }) {
 
   const save = async () => {
     if (!form.name.trim()) return setErr('Give the qualification a name.');
-    if (form.grant_scope === 'sector' && !form.sector) return setErr('Choose the sector this qualification covers.');
-    if (form.grant_scope === 'occupations' && !form.occupation_ids.length) {
+    if (!isTrainingKind(form.kind) && form.grant_scope === 'sector' && !form.sector) return setErr('Choose the sector this qualification covers.');
+    if (!isTrainingKind(form.kind) && form.grant_scope === 'occupations' && !form.occupation_ids.length) {
       return setErr('Choose at least one occupation, or switch to a whole sector.');
     }
     try { await onSave(form); } catch (e) { setErr(e.message || 'Could not save'); }
@@ -162,6 +165,12 @@ function RuleForm({ rule, occupations, onSave, onClose }) {
         </div>
       )}
 
+      {isTrainingKind(form.kind) ? (
+        <div className="form-group" style={{ fontSize: 13, color: 'var(--text2)', background: 'var(--bg2)', borderRadius: 'var(--radius)', padding: '10px 12px' }}>
+          <strong>A training, not a trade.</strong> Holding it does not qualify anyone to teach a trade; it is recorded on the person
+          (for example, TOT) so it can be checked or required where a project asks for it.
+        </div>
+      ) : (<>
       <div className="form-group">
         <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text3)', marginBottom: 8 }}>
           HOLDING THIS QUALIFICATION QUALIFIES SOMEONE TO TRAIN
@@ -256,6 +265,7 @@ function RuleForm({ rule, occupations, onSave, onClose }) {
         </div>
       )}
 
+      </>)}
       <div className="form-group">
         <MdTextField label="Notes" value={form.notes || ''} onChange={e => set('notes', e.target.value)} />
       </div>
@@ -315,6 +325,7 @@ function RulesTab({ rules, occupations, isAdmin, isSuperAdmin, onReload, token, 
   // rather than packed into one run of text — a trade with several levels on
   // both roles was unreadable ("Plumber (co Level 2, Level 3, Level 4, Level 1)").
   const renderQualifies = (r) => {
+    if (isTrainingKind(r.kind)) return <span style={{ color: 'var(--text3)' }}>A training, not a trade — grants no trades</span>;
     if (r.grant_scope === 'sector') return describe(r);
     if (r.grant_scope === 'certificate_occupation') return describe(r);
     if (!(r.occupations || []).length) return 'No occupations chosen yet';
@@ -338,7 +349,7 @@ function RulesTab({ rules, occupations, isAdmin, isSuperAdmin, onReload, token, 
     );
   };
 
-  const needsTrades = (r) => r.grant_scope === 'occupations' && !(r.occupations || []).length;
+  const needsTrades = (r) => !isTrainingKind(r.kind) && r.grant_scope === 'occupations' && !(r.occupations || []).length;
   const needCount = rules.filter(needsTrades).length;
   const shown = rules.filter(r => (kindF === 'all' || (kindF === 'needs' ? needsTrades(r) : r.kind === kindF))
     && (!levelF || r.qual_level === levelF));
