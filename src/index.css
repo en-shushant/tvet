@@ -3297,3 +3297,27 @@ thead th { letter-spacing: .01em; }
 @media (prefers-reduced-motion: no-preference) {
   .frame, .card { transition: box-shadow .22s var(--ease-out), border-color .22s; }
 }
+
+/* ── One look for chip filters and segmented choices ───────────────────
+   Every "pick one of a few" control — the status filters on Institutes, the
+   pill tabs on Clients, Master Data and the pool, the choices inside forms —
+   uses the Institutes filter's design: soft grey chips, the picked one dark,
+   a small quiet count. No framing track, no gradient. */
+.seg, .tw-seg {
+  display: inline-flex; flex-wrap: wrap; gap: 6px; padding: 0; background: none; border: none; border-radius: 0; box-shadow: none;
+}
+.seg > button, .tw-seg button {
+  flex: 0 0 auto; height: auto !important; padding: 7px 14px !important; border: none; border-radius: var(--radius-pill);
+  background: var(--bg2); color: var(--text2); box-shadow: none; transform: none;
+  font: 500 var(--fs-body, 13px) var(--font); cursor: pointer; white-space: nowrap;
+}
+.seg > button[aria-selected="true"], .seg > button[aria-pressed="true"], .tw-seg button[aria-pressed="true"] {
+  background: var(--ink); color: var(--on-ink); font-weight: 700; border: none; box-shadow: none;
+}
+.seg > button:not([aria-selected="true"]):not([aria-pressed="true"]):hover,
+.tw-seg button:not([aria-pressed="true"]):hover { background: var(--bg3); color: var(--text); }
+.tw-seg button[aria-pressed="true"] .tw-seg-n, .seg > button[aria-selected="true"] span { color: inherit; }
+.tw-seg-n { opacity: .6; }
+@media (prefers-color-scheme: dark) {
+  .seg > button[aria-selected="true"], .seg > button[aria-pressed="true"], .tw-seg button[aria-pressed="true"] { color: var(--on-ink); }
+}
