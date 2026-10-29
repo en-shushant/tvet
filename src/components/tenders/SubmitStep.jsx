@@ -119,6 +119,14 @@ export default function SubmitStep({ tender, busy, variants, advanced = false, d
                 {n ? `${n} CV${n === 1 ? '' : 's'} from the Team step${b.firms.length > 1 ? `, in ${lead?.acronym || lead?.name}’s wording` : ''}.`
                   : 'Nobody on this bidder’s team yet.'}
               </span>
+              <Btn className="btn btn-secondary btn-sm" disabled={busy || !n} onClick={() => onMakeCVs(b, 'print', !noLetters[b.id], { date: dateOf(b), style: cvDateStyle })}>
+                Print</Btn>
+              <Btn className="btn btn-secondary btn-sm" disabled={busy || !n} onClick={() => onMakeCVs(b, 'word', !noLetters[b.id], { date: dateOf(b), style: cvDateStyle })}>
+                Word</Btn>
+            </div>
+            <details className="tw-opts">
+              <summary>CV options <span className="tw-hint">· {formatLabel} · dated {formatCvDate(dateOf(b), cvDateStyle) || 'blank'}{noLetters[b.id] ? ' · no letters' : ' · with letters'}</span></summary>
+              <div className="tw-opts-body">
               <span className="tw-hint" title="Set on the Notice step">{formatLabel}</span>
               <label className="tw-hint" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, whiteSpace: 'nowrap' }}
                 title="Printed on the signature line of every CV in the pack. Clear it to leave the line blank.">
@@ -137,11 +145,8 @@ export default function SubmitStep({ tender, busy, variants, advanced = false, d
                 <input type="checkbox" checked={!noLetters[b.id]} onChange={e => setNoLetters(x => ({ ...x, [b.id]: !e.target.checked }))} />
                 Experience letters
               </label>
-              <Btn className="btn btn-secondary btn-sm" disabled={busy || !n} onClick={() => onMakeCVs(b, 'print', !noLetters[b.id], { date: dateOf(b), style: cvDateStyle })}>
-                Print</Btn>
-              <Btn className="btn btn-secondary btn-sm" disabled={busy || !n} onClick={() => onMakeCVs(b, 'word', !noLetters[b.id], { date: dateOf(b), style: cvDateStyle })}>
-                Word</Btn>
-            </div>
+              </div>
+            </details>
           </div>
         );
       })}

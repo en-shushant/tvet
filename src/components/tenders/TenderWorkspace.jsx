@@ -265,13 +265,14 @@ export default function TenderWorkspace({ tenderId, startAt, clients, institutes
         <div style={{ minWidth: 0, flex: 1 }}>
           <button type="button" className="tw-back" onClick={onBack}>← All tenders</button>
           <h1 className="tw-title">{saved ? tender.title : 'New tender'}</h1>
-          {saved && (
-            <div className="tw-meta">
-              {[client, tender.reference_no,
-                tender.submission_date && `due ${tender.submission_date}${tender.submission_time ? ` at ${tender.submission_time}` : ''}`,
-                tender.fy && `FY ${tender.fy}`].filter(Boolean).join(' · ') || 'No details yet'}
-            </div>
-          )}
+          {saved && (() => {
+            const meta = [client, tender.reference_no,
+              tender.submission_date && `due ${tender.submission_date}${tender.submission_time ? ` at ${tender.submission_time}` : ''}`,
+              tender.fy && `FY ${tender.fy}`].filter(Boolean).join(' · ');
+            return meta
+              ? <div className="tw-meta">{meta}</div>
+              : <div className="tw-meta"><button type="button" className="tw-link" onClick={() => go(1)}>Add the reference number and deadline</button></div>;
+          })()}
           {/* The scoring stays in view on every step: it says where the effort
               belongs, which is the question every later step is answering. */}
           {saved && scoring(tender) && (
@@ -322,9 +323,12 @@ export default function TenderWorkspace({ tenderId, startAt, clients, institutes
       <div className="tw">
         <ol className="tw-rail" aria-label="Steps">
           {saved && (
-            <li><button type="button" className="tw-overview" onClick={() => setStep(0)}
+            <li><button type="button" className={`tw-step tw-step-home${step === 0 ? ' is-current' : ''}`} onClick={() => setStep(0)}
               aria-current={step === 0 ? 'page' : undefined}>
-              ← Overview</button></li>
+              <span className="tw-step-n"><span className="material-icons-round" style={{ fontSize: 15 }}>home</span></span>
+              <span className="tw-step-label">Overview</span>
+              <span className="tw-step-sum">What to do next</span>
+            </button></li>
           )}
           {steps.map((s, i) => (
             <li key={s.label}>
@@ -332,7 +336,7 @@ export default function TenderWorkspace({ tenderId, startAt, clients, institutes
                 className={`tw-step${step === i + 1 ? ' is-current' : ''}${s.done && step !== i + 1 ? ' is-done' : ''}`}
                 aria-current={step === i + 1 ? 'step' : undefined}
                 aria-label={`Step ${i + 1}, ${s.label}${s.done ? ', done' : ''}: ${s.locked ? s.lockedWhy : s.summary}`}
-                title={s.locked ? s.lockedWhy : undefined}>
+                title={s.locked ? s.lockedWhy : `${s.label}: ${s.summary}`}>
                 <span className="tw-step-n">
                   {s.done && step !== i + 1
                     ? <span className="material-icons-round" style={{ fontSize: 15 }}>check</span>

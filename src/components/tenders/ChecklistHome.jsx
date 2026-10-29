@@ -33,39 +33,43 @@ const PLAIN = { Notice: 'The notice', Requirements: 'What it asks for', Bidders:
 
 export default function ChecklistHome({ tender, steps, onOpen, advanced, onAdvanced }) {
   const todos = todosFor(tender, steps);
+  // The first step that is open to work on and still has something to do.
   const nextIdx = steps.findIndex((s, i) => !s.locked && (!s.done || todos[i].length));
+  const left = steps.map((s, i) => ({ s, i, items: s.locked ? [] : todos[i] })).filter(x => x.items.length);
+  const next = nextIdx >= 0 ? steps[nextIdx] : null;
   return (
     <>
-      <h2 className="tw-panel-title">Where this tender stands</h2>
+      <h2 className="tw-panel-title">{next ? `Next: ${PLAIN[next.label] || next.label}` : 'Everything is in place'}</h2>
       <p className="tw-panel-lede">
-        Five jobs, in any order you like. Everything you type is saved as you go, so you can leave and come back.
+        {next
+          ? 'Pick up where you left off. Everything you type is saved as you go.'
+          : 'Every step is done. Review any of them from the bar above, or go to Submit for the documents.'}
       </p>
-      <ol className="tw-check">
-        {steps.map((s, i) => {
-          const open = !s.locked && todos[i].length > 0;
-          const state = s.locked ? 'locked' : open ? 'todo' : s.done ? 'done' : 'todo';
-          return (
-            <li key={s.label} className={`tw-check-row is-${state}`}>
-              <span className="tw-check-mark" aria-hidden="true">
-                <span className="material-icons-round">{state === 'done' ? 'check_circle' : state === 'locked' ? 'lock' : 'radio_button_unchecked'}</span>
-              </span>
-              <div className="tw-check-main">
-                <div className="tw-check-title">{PLAIN[s.label] || s.label}<span className="tw-check-sum"> — {s.locked ? s.lockedWhy : s.summary}</span></div>
-                {!s.locked && todos[i].length > 0 && (
-                  <ul className="tw-check-todos">{todos[i].slice(0, 4).map(x => <li key={x}>{x}</li>)}
-                    {todos[i].length > 4 && <li>…and {todos[i].length - 4} more</li>}</ul>
-                )}
-              </div>
-              <Btn className={`btn btn-sm ${i === nextIdx ? 'btn-primary' : 'btn-secondary'}`} disabled={s.locked}
-                onClick={() => onOpen(i + 1)}>{state === 'done' ? 'Review' : i === nextIdx ? 'Continue' : 'Open'}</Btn>
-            </li>
-          );
-        })}
-      </ol>
-      <label className="tw-hint" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, marginTop: 14 }}>
-        <input type="checkbox" checked={!!advanced} onChange={e => onAdvanced(e.target.checked)} />
-        Show all options (qualification rules, CV wording, per-person settings)
-      </label>
+
+      {left.length > 0 && (
+        <div className="tw-todo">
+          {left.map(({ s, i, items }) => (
+            <div key={s.label} className="tw-todo-group">
+              <button type="button" className="tw-link tw-todo-step" onClick={() => onOpen(i + 1)}>{PLAIN[s.label] || s.label}</button>
+              <ul className="tw-check-todos">
+                {items.slice(0, 3).map(x => <li key={x}>{x}</li>)}
+                {items.length > 3 && <li>…and {items.length - 3} more</li>}
+              </ul>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <div className="tw-home-actions">
+        {next
+          ? <Btn className="btn btn-primary" onClick={() => onOpen(nextIdx + 1)}>Continue — {(PLAIN[next.label] || next.label).toLowerCase()} →</Btn>
+          : <Btn className="btn btn-primary" onClick={() => onOpen(steps.length)}>Go to Submit →</Btn>}
+        <label className="tw-hint tw-adv">
+          <input type="checkbox" checked={!!advanced} onChange={e => onAdvanced(e.target.checked)} />
+          Show all options
+          <span className="tw-hint"> — qualification rules, CV wording, per-person settings</span>
+        </label>
+      </div>
     </>
   );
 }

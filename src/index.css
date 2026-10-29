@@ -3321,3 +3321,31 @@ thead th { letter-spacing: .01em; }
 @media (prefers-color-scheme: dark) {
   .seg > button[aria-selected="true"], .seg > button[aria-pressed="true"], .tw-seg button[aria-pressed="true"] { color: var(--on-ink); }
 }
+
+/* ══ Tender workspace: one step bar, full-width forms ═════════════════
+   The five steps sit in a bar across the top instead of a rail down the left,
+   so each step's form has the whole width and the same list is not printed
+   again on the overview. Each step shows its state at a glance and one short line. */
+.tw { display: block; }
+.tw-rail { position: static; flex-direction: row; flex-wrap: nowrap; gap: 6px; overflow-x: auto; margin: 0 0 14px; padding: 2px; scrollbar-width: thin; }
+.tw-rail > li { flex: 1 1 150px; min-width: 132px; }
+.tw-rail .tw-step { display: grid; grid-template-columns: auto 1fr; grid-template-areas: "n label" "n sum"; column-gap: 10px; row-gap: 0; align-items: center; width: 100%; padding: 8px 12px; text-align: left; }
+.tw-rail .tw-step-n { grid-area: n; }
+.tw-rail .tw-step-label { grid-area: label; line-height: 1.25; }
+.tw-rail .tw-step-sum { grid-area: sum; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+.tw-step-home { flex: 0 0 auto; }
+.tw-rail > li:first-child.tw-home { flex: 0 1 120px; }
+.tw-link { background: none; border: none; padding: 0; font: inherit; font-size: 13px; color: var(--brand); cursor: pointer; text-align: left; }
+.tw-link:hover { text-decoration: underline; color: var(--brand-strong); }
+.tw-todo { display: flex; flex-direction: column; gap: 12px; margin: 0 0 18px; }
+.tw-todo-step { font-weight: 600; font-size: 14px; }
+.tw-todo-group .tw-check-todos { margin: 4px 0 0 2px; }
+.tw-home-actions { display: flex; align-items: center; gap: 18px; flex-wrap: wrap; padding-bottom: 22px; }
+.tw-adv { display: inline-flex; align-items: center; gap: 6px; }
+.tw-panel .tw-grid-2, .tw-panel .tw-grid-3 { min-width: 0; }
+.tw-panel .tw-grid-2 > *, .tw-panel .tw-grid-3 > * { min-width: 0; }
+.tw-panel .tw-in, .tw-panel md-outlined-text-field, .tw-panel md-outlined-select { max-width: 100%; }
+.tw-opts { margin: -2px 0 10px 0; padding: 0 12px; }
+.tw-opts > summary { cursor: pointer; font-size: 12.5px; font-weight: 500; color: var(--text2); padding: 4px 0; list-style-position: inside; }
+.tw-opts > summary .tw-hint { font-weight: 400; }
+.tw-opts-body { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; padding: 8px 0 6px; }
