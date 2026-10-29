@@ -38,7 +38,7 @@ describe('picker criteria', () => {
       { kind: 'Training', title: 'Basic Computer Application' }] };
     const pos = { title: 'Database Officer', min_education: '+2/HSEB', min_experience_years: 3, required_training: 'Computer training' };
     const c = criteriaChecks(person, pos, [], 2083);
-    expect(c.map(x => [x.key, x.ok])).toEqual([['edu', true], ['yrs', true], ['trn', true]]);
+    expect(c.map(x => [x.key, x.ok])).toEqual([['edu', true], ['yrs', true], ['trn-Computer training', true]]);
     const none = criteriaChecks({}, pos, [], 2083);
     expect(none.every(x => !x.ok)).toBe(true);
   });
@@ -60,5 +60,29 @@ describe('main trainer and co-trainer levels', () => {
     // Holding only Level 2 would not make them main trainer for Level 2; the rule does.
     expect(fitsTrainerLevel(person, occ[1], occ, 'Main Trainer')).toBe(true);
     expect(fitsTrainerLevel({ ...person, main_occupations: [] }, occ[1], occ, 'Main Trainer')).toBe(false);
+  });
+});
+
+import { checkAgainstPosition, requiredTrainings, requiresTot } from '../src/utils/hrFit.js';
+describe('a TOT required by a post', () => {
+  const post = { title: 'Main Trainer', required_training: 'TOT' };
+  const withTot = { qualifications: [{ kind: 'TOT', title: 'Training of Trainers' }] };
+  const lookalike = { qualifications: [{ kind: 'Training', title: 'Total Station Survey' }] };
+
+  it('is a TOT record, not any title that happens to contain "tot"', () => {
+    expect(checkAgainstPosition(withTot, post).ok).toBe(true);
+    const r = checkAgainstPosition(lookalike, post);
+    expect(r.ok).toBe(false);
+    expect(r.reasons).toContain('no TOT on record');
+    expect(checkAgainstPosition({ qualifications: [] }, post).reasons).toContain('no TOT on record');
+  });
+  it('sits beside other required trainings, separated by commas', () => {
+    const both = { title: 'Database Officer', required_training: 'TOT, Computer training' };
+    expect(requiredTrainings(both)).toEqual(['TOT', 'Computer training']);
+    expect(requiresTot(both)).toBe(true);
+    const person = { qualifications: [{ kind: 'TOT' }, { kind: 'Training', title: 'Basic Computer Application' }] };
+    expect(checkAgainstPosition(person, both).ok).toBe(true);
+    expect(checkAgainstPosition(withTot, both).reasons).toEqual(['no Computer training on record']);
+    expect(requiresTot({ required_training: 'Computer training' })).toBe(false);
   });
 });

@@ -3209,3 +3209,5 @@ button:not([class]) { color: inherit; }
 /* A choice inside a form column: options share one row as equal halves, instead of wrapping into a stack. */
 .pf-grid .tw-seg { display: flex; flex-wrap: nowrap; width: 100%; }
 .pf-grid .tw-seg button { flex: 1 1 auto; white-space: nowrap; padding: 0 8px; }
+.tw-tot-all { display: flex; align-items: flex-start; gap: 10px; margin: 0 0 12px; padding: 10px 12px; border: 1px solid var(--border); border-radius: var(--radius); cursor: pointer; font-size: 13px; }
+.tw-tot-all input { margin-top: 3px; }

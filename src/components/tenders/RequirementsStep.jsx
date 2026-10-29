@@ -3,7 +3,7 @@ import { ErrorBanner } from '../ui/Modal.jsx';
 import { Btn } from '../../md.jsx';
 import { OccupationPicker } from '../TrainerPool.jsx';
 import { GENERAL_LEVELS, VOCATIONAL_LEVELS, labelOfGeneral, labelOfVocational } from '../../constants/education.js';
-import { acceptedOf, describeAccepted } from '../../utils/hrFit.js';
+import { acceptedOf, describeAccepted, requiredTrainings, requiresTot } from '../../utils/hrFit.js';
 import { useProgress, ProgressNote } from './useProgress.jsx';
 import { COMMON_POSITIONS, CV_ROLES, emptyPosition, guessRole, isTrainer, totalNeeded } from './common.js';
 import Select from '../ui/Select.jsx';
@@ -30,6 +30,14 @@ export default function RequirementsStep({ tender, occupations, variants = [], a
 
   const setRow = (i, k, v) => setPositions(ps => ps.map((p, n) => n === i ? { ...p, [k]: v } : p));
   const drop = (i) => setPositions(ps => ps.filter((_, n) => n !== i));
+  /** Add or remove "TOT" among a post's compulsory trainings, leaving any others alone. */
+  const withTot = (p, on) => {
+    const rest = requiredTrainings(p).filter(t => !/^tot$/i.test(t));
+    return (on ? ['TOT', ...rest] : rest).join(', ');
+  };
+  const setTot = (i, on) => setPositions(ps => ps.map((p, n) => n === i ? { ...p, required_training: withTot(p, on) } : p));
+  const allTrainersTot = trainersOf(positions).length > 0 && trainersOf(positions).every(requiresTot);
+  const setAllTrainersTot = (on) => setPositions(ps => ps.map(p => isTrainer(p) ? { ...p, required_training: withTot(p, on) } : p));
   const add = (category, extra) => setPositions(ps => [...ps, emptyPosition(category, extra)]);
   // The wording posts: the standard list, plus any other post a firm wrote wording for.
   const libraryPosts = [...new Set(variants.map(v => String(v.position || '').split('|')[0].trim()).filter(Boolean))]
@@ -39,6 +47,7 @@ export default function RequirementsStep({ tender, occupations, variants = [], a
   const addToEveryTrade = (title) => setPositions(ps => [...ps,
     ...selectedOccupations.map(o => ({ ...emptyPosition('Trainer'), occupation_id: o.id, title }))]);
 
+  function trainersOf(ps) { return ps.filter(isTrainer); }
   const indexed = positions.map((p, i) => ({ p, i }));
   const experts = indexed.filter(({ p }) => !isTrainer(p));
   const trainers = indexed.filter(({ p }) => isTrainer(p));
@@ -122,7 +131,7 @@ export default function RequirementsStep({ tender, occupations, variants = [], a
           {experts.length > 0 && <span className="tw-count">{totalNeeded(experts.map(x => x.p))} needed</span>}
           <span className="tw-hint">Named once for the whole bid, whatever trades it covers.</span>
         </div>
-        <PostTable roles={roleNames} advanced={advanced} rows={experts} setRow={setRow} drop={drop} listId="pos-experts"
+        <PostTable roles={roleNames} advanced={advanced} rows={experts} setRow={setRow} setTot={setTot} drop={drop} listId="pos-experts"
           titles={COMMON_POSITIONS['Key expert']} />
         <div className="tw-chips" style={{ marginTop: 8 }}>
           {COMMON_POSITIONS['Key expert']
@@ -145,6 +154,14 @@ export default function RequirementsStep({ tender, occupations, variants = [], a
               : 'How many of each the notice asks for.'}
           </span>
         </div>
+
+        {trainers.length > 0 && (
+          <label className="tw-tot-all">
+            <input type="checkbox" checked={allTrainersTot} onChange={e => setAllTrainersTot(e.target.checked)} />
+            <span><strong>Every trainer must hold a TOT</strong>
+              <span className="tw-hint"> — ticks the TOT box on all trainer posts; untick a post below to make an exception.</span></span>
+          </label>
+        )}
 
         {selectedOccupations.length === 0 ? (
           <div className="tw-empty">
@@ -173,7 +190,7 @@ export default function RequirementsStep({ tender, occupations, variants = [], a
                 is lost — remove them, or add the trade back.
               </div>
             )}
-            <PostTable roles={roleNames} advanced={advanced} rows={g.rows} setRow={setRow} drop={drop} listId={`pos-trade-${g.key}`}
+            <PostTable roles={roleNames} advanced={advanced} rows={g.rows} setRow={setRow} setTot={setTot} drop={drop} listId={`pos-trade-${g.key}`}
               titles={COMMON_POSITIONS.Trainer} />
             {!g.orphan && g.occupation_id !== '' && (
               <div className="tw-chips" style={{ marginTop: 6 }}>
@@ -203,7 +220,7 @@ export default function RequirementsStep({ tender, occupations, variants = [], a
 }
 
 /** Posts as one line each. Empty when there are none, so the chips below speak. */
-function PostTable({ rows, setRow, drop, listId, titles, roles = [], advanced = false }) {
+function PostTable({ rows, setRow, setTot, drop, listId, titles, roles = [], advanced = false }) {
   // Which post's accepted-qualifications editor is open, by its row index.
   const [open, setOpen] = useState(null);
   if (!rows.length) return null;
@@ -214,8 +231,9 @@ function PostTable({ rows, setRow, drop, listId, titles, roles = [], advanced = 
           <th style={{ minWidth: 120 }}>Post</th>
           <th style={{ width: 62 }}>How many</th>
           <th style={{ minWidth: 180 }}>Accepted qualifications</th>
+          <th style={{ width: 54 }} title="A trainer proposed for this post must hold a TOT">TOT</th>
           {advanced && <th style={{ width: 70 }}>Min. years</th>}
-          {advanced && <th style={{ minWidth: 110 }}>Training required</th>}
+          {advanced && <th style={{ minWidth: 130 }}>Trainings required</th>}
           {advanced && <th style={{ minWidth: 150 }} title="Which post’s CV wording (tasks, adequacy) this post uses">CV wording</th>}
           <th style={{ width: 32 }} />
         </tr></thead>
@@ -237,6 +255,10 @@ function PostTable({ rows, setRow, drop, listId, titles, roles = [], advanced = 
                     {describeAccepted(p) || <span className="tw-hint">Not stated — set it</span>}
                   </button>
                 </td>
+                <td style={{ textAlign: 'center' }}>
+                  <input type="checkbox" aria-label={`TOT required for ${p.title || 'this post'}`}
+                    checked={requiresTot(p)} onChange={e => setTot(i, e.target.checked)} />
+                </td>
                 {advanced && <td>
                   <input className="tw-in num" type="number" min="0" aria-label="Minimum years of experience"
                     value={String(p.min_experience_years ?? '')} placeholder="—"
@@ -245,7 +267,7 @@ function PostTable({ rows, setRow, drop, listId, titles, roles = [], advanced = 
                 </td>}
                 {advanced && <td>
                   <input className="tw-in" aria-label="Training required" value={p.required_training || ''}
-                    placeholder="e.g. Computer training"
+                    placeholder="e.g. TOT, Computer training" title="Separate several with commas"
                     onChange={e => setRow(i, 'required_training', e.target.value)} />
                 </td>}
                 {advanced && <td>
@@ -262,7 +284,7 @@ function PostTable({ rows, setRow, drop, listId, titles, roles = [], advanced = 
                 </td>
               </tr>
               {open === i && (
-                <tr><td colSpan={advanced ? 7 : 4} style={{ paddingBottom: 10 }}>
+                <tr><td colSpan={advanced ? 8 : 5} style={{ paddingBottom: 10 }}>
                   <AcceptedEditor post={p} onChange={alts => setRow(i, 'education_options', alts)} />
                 </td></tr>
               )}

@@ -127,6 +127,26 @@ function checkAlternative(person, alt, position, nowBS) {
 }
 
 /**
+ * The trainings a post makes compulsory, one per comma-separated term:
+ * "TOT, Computer training". TOT is a kind of record in its own right.
+ */
+export const requiredTrainings = (position) =>
+  String(position?.required_training || '').split(',').map(t => t.trim()).filter(Boolean);
+export const requiresTot = (position) => requiredTrainings(position).some(t => /^tot$/i.test(t));
+
+/** Does this person hold the training? A TOT must be a TOT record; anything else is matched by the words of its title. */
+export function holdsTraining(person, term) {
+  const quals = person?.qualifications || person?.academics || [];
+  if (/^tot$/i.test(term)) return quals.some(q => q.kind === 'TOT');
+  const hay = quals.map(q => `${q.title || ''} ${q.kind || ''}`.toLowerCase()).join(' | ');
+  // Match on any word of substance so "Computer training" finds "Basic
+  // Computer Application", which is how the certificates are actually titled.
+  const words = term.toLowerCase().split(/[^a-z0-9+]+/i)
+    .filter(w => w.length > 2 && !['and', 'the', 'training', 'certificate'].includes(w));
+  return words.length ? words.some(w => hay.includes(w)) : hay.includes(term.toLowerCase());
+}
+
+/**
  * Check a person against one position's stated minimums.
  *
  * Returns every reason they fall short rather than a bare boolean, because the
@@ -169,16 +189,8 @@ export function checkAgainstPosition(person, position, nowBS = currentBSYear()) 
     }
   }
 
-  const wantTraining = String(position.required_training || '').trim();
-  if (wantTraining) {
-    const hay = (person?.qualifications || person?.academics || [])
-      .map(q => `${q.title || ''} ${q.kind || ''}`.toLowerCase()).join(' | ');
-    // Match on any word of substance so "Computer training" finds "Basic
-    // Computer Application", which is how the certificates are actually titled.
-    const words = wantTraining.toLowerCase().split(/[^a-z0-9+]+/i)
-      .filter(w => w.length > 2 && !['and', 'the', 'training', 'certificate'].includes(w));
-    const found = words.length ? words.some(w => hay.includes(w)) : hay.includes(wantTraining.toLowerCase());
-    if (!found) reasons.push(`no ${wantTraining} on record`);
+  for (const term of requiredTrainings(position)) {
+    if (!holdsTraining(person, term)) reasons.push(`no ${term} on record`);
   }
 
   return { ok: reasons.length === 0, reasons, years, held };
@@ -266,10 +278,8 @@ export function criteriaChecks(person, position, allOccupations = [], nowBS = cu
     const y = experienceYears(person, '', nowBS);
     out.push({ key: 'yrs', label: `${want} yrs`, ok: y != null && y >= want, detail: y == null ? 'no passed year' : `${y} yrs` });
   }
-  const wantTraining = String(position.required_training || '').trim();
-  if (wantTraining) {
-    out.push({ key: 'trn', label: wantTraining,
-      ok: !fit.reasons.includes(`no ${wantTraining} on record`), detail: '' });
+  for (const term of requiredTrainings(position)) {
+    out.push({ key: `trn-${term}`, label: term, ok: !fit.reasons.includes(`no ${term} on record`), detail: '' });
   }
   if (position.occupation_id) {
     const occ = allOccupations.find(o => o.id === position.occupation_id) || { id: position.occupation_id };
