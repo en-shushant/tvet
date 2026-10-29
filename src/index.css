@@ -3182,3 +3182,26 @@ button:not([class]) { color: inherit; }
 .form-fold .material-icons-round { font-size: 18px; }
 .form-fold-note { margin-left: 6px; font-size: 11px; font-weight: 400; color: var(--text3); }
 .form-fold-body { padding-left: 4px; }
+
+/* ── Review as one compact page ──────────────────────────────────── */
+.rv { padding: 12px 14px; }
+.rv-grid { grid-template-columns: repeat(auto-fill, minmax(min(100%, 250px), 1fr)); gap: 8px; }
+.rv-sec { padding: 8px 10px; }
+.rv-sec-head { flex-wrap: wrap; gap: 4px 8px; margin-bottom: 4px; }
+.rv-sec-title { flex: 1 1 auto; font-size: 13px; }
+.rv-rows > div { padding: 3px 0; grid-template-columns: minmax(84px, 38%) minmax(0, 1fr); gap: 8px; }
+.rv-rows dt { font-size: 11.5px; }
+.rv-rows dd { font-size: 13px; }
+.rv-docs { margin-top: 6px; }
+.rv-verify { display: inline-flex; align-items: center; gap: 4px; padding: 3px 9px 3px 6px; border: 1px solid var(--border2, var(--border)); border-radius: 999px; background: var(--surface); color: var(--text2); font: inherit; font-size: 12px; font-weight: 600; cursor: pointer; }
+.rv-verify .material-icons-round { font-size: 17px; }
+.rv-verify:hover:not(:disabled) { border-color: var(--success, #16a34a); color: var(--success, #16a34a); }
+.rv-verify.is-on { border-color: color-mix(in srgb, var(--success, #16a34a) 55%, transparent); background: color-mix(in srgb, var(--success, #16a34a) 12%, transparent); color: var(--success, #16a34a); }
+.rv-verify:disabled { cursor: wait; opacity: .6; }
+.rv-status { font-size: 12px; font-weight: 700; padding: 2px 9px; border-radius: 999px; }
+.rv-status.is-verified { background: color-mix(in srgb, var(--success, #16a34a) 14%, transparent); color: var(--success, #16a34a); }
+.rv-status.is-partial { background: color-mix(in srgb, var(--warning, #f59e0b) 16%, transparent); color: var(--warning, #b45309); }
+.rv-status.is-none { background: var(--bg2); color: var(--text3); }
+.rv-more { margin: 14px 0 0; }
+.rv-more > summary { cursor: pointer; font-size: 13px; font-weight: 600; color: var(--text2); padding: 6px 0; }
+.rv-more[open] > summary { margin-bottom: 10px; }

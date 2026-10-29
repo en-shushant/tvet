@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { ErrorBanner } from '../ui/Modal.jsx';
 import { Btn } from '../../md.jsx';
 import { confirmDialog, toast } from '../ui/Feedback.jsx';
@@ -31,6 +31,11 @@ export default function PersonProfile({ person, token, canDelete, canVerify, onB
   // confirm the record before it counts as verified. Records saved before
   // this existed, or last touched by an admin/superadmin, are verified.
   const pending = person.is_verified === false;
+  // Reviewers get a single focused page: the checklist, with the rest of the profile folded away.
+  const reviewing = pending && canVerify;
+  const [live, setLive] = useState(null);   // section checks as just saved, before the next reload
+  useEffect(() => { setLive(null); }, [person.id, person.is_verified]);
+  const checkedCount = (live || person.checked_sections || []).length;
   const verify = async (andNext = false) => {
     setVerifying(true); setErr('');
     try {
@@ -130,7 +135,9 @@ export default function PersonProfile({ person, token, canDelete, canVerify, onB
             <span className="tw-tag gray">{person.person_type}</span>
             {person.is_active === false && <span className="tw-tag amber">No longer available</span>}
             {pending
-              ? <span className="tw-tag amber" title="Added or edited by an editor, waiting on an admin or superadmin to confirm it">Pending review</span>
+              ? (checkedCount > 0
+                ? <span className="tw-tag amber" title="Some sections are checked; the rest are waiting on an admin or superadmin">Partially verified</span>
+                : <span className="tw-tag amber" title="Added or edited by an editor, waiting on an admin or superadmin to confirm it">Pending review</span>)
               : <span className="tw-tag green" title="Confirmed by an admin or superadmin">Verified</span>}
           </div>
           <div className="pp-audit">
@@ -179,7 +186,8 @@ export default function PersonProfile({ person, token, canDelete, canVerify, onB
       </header>
 
       {pending && canVerify ? (
-        <ReviewChecklist person={person} onOpenDoc={openDoc} actions={<>
+        <ReviewChecklist person={person} token={token} canCheck onOpenDoc={openDoc}
+          onChanged={(r) => { setLive(r.checked_sections); if (r.is_verified !== !pending) onReload(); }} actions={<>
           <Btn className="btn btn-secondary btn-sm" disabled={verifying} onClick={() => verify(false)}>
             <span className="material-icons-round" style={{ fontSize: 15, verticalAlign: 'middle', marginRight: 4 }}>verified_user</span>
             {verifying ? 'Verifying…' : 'Verify'}
@@ -202,6 +210,10 @@ export default function PersonProfile({ person, token, canDelete, canVerify, onB
         </details>
       )}
 
+      {reviewing ? (
+        <details className="rv-more">
+          <summary>Full profile, trades and documents</summary>
+          <div className="rv-more-body">
       <div className="pp-facts">
         {facts.map(f => (
           <div key={f.label} className="pp-fact">
@@ -371,6 +383,181 @@ export default function PersonProfile({ person, token, canDelete, canVerify, onB
           </section>
         </aside>
       </div>
+          </div>
+        </details>
+      ) : (
+        <>
+      <div className="pp-facts">
+        {facts.map(f => (
+          <div key={f.label} className="pp-fact">
+            <span className="pp-fact-label">{f.label}</span>
+            <span className="pp-fact-value">{f.value}</span>
+            {f.note && <span className="pp-fact-note">{f.note}</span>}
+          </div>
+        ))}
+      </div>
+
+      <div className="pp-body">
+        <main className="pp-main">
+          <section className="pp-card">
+            <h2 className="pp-h">Can train</h2>
+            {person.eligible_occupations?.length ? (
+              <CanTrain person={person}/>
+            ) : (
+              <p className="tw-empty">Nothing yet. A vocational certificate names its trade; a degree needs a qualification rule to grant trades.</p>
+            )}
+            {person.occupation_overrides?.length > 0 && (
+              <p className="tw-hint" style={{ marginBottom: 0 }}>
+                Set by hand: {person.occupation_overrides.map(o =>
+                  `${o.occupation_name} (${o.mode === 'add' ? 'always' : 'never'})`).join(', ')}
+              </p>
+            )}
+          </section>
+
+          <section className="pp-card">
+            <h2 className="pp-h">Education</h2>
+            <h3 className="pp-sub">General</h3>
+            {general.length ? (
+              <table className="pp-table"><thead><tr>
+                <th>Level</th><th>Course</th><th>College / board</th><th className="num">Passed</th><th>Division</th>
+              </tr></thead><tbody>
+                {general.map(q => (
+                  <tr key={q.id}>
+                    <td><strong>{labelOfGeneral(levelOfQualification(q)) || '—'}</strong></td>
+                    <td>{q.title || '—'}{q.rule_name && <div className="pp-cell-sub">grants: {q.rule_name}</div>}</td>
+                    <td>{q.institution || '—'}{q.board && <div className="pp-cell-sub">{q.board}</div>}</td>
+                    <td className="num">{q.passed_year || '—'}</td>
+                    <td>{q.division || '—'}</td>
+                  </tr>
+                ))}
+              </tbody></table>
+            ) : <p className="tw-empty">None recorded.</p>}
+
+            <h3 className="pp-sub">Vocational</h3>
+            {vocational.length ? (
+              <table className="pp-table"><thead><tr>
+                <th>Level</th><th>Trade</th><th>Tested by</th><th>Certificate</th><th className="num">Passed</th>
+              </tr></thead><tbody>
+                {vocational.map(q => (
+                  <tr key={q.id}>
+                    <td><strong>{labelOfVocational(q.level) || '—'}</strong></td>
+                    <td>{q.occupation_name || '—'}</td>
+                    <td>{q.board || 'NSTB'}{q.institution && <div className="pp-cell-sub">{q.institution}</div>}</td>
+                    <td className="mono">{q.certificate_no || '—'}</td>
+                    <td className="num">{q.passed_year || '—'}</td>
+                  </tr>
+                ))}
+              </tbody></table>
+            ) : <p className="tw-empty">None recorded.</p>}
+          </section>
+
+          <section className="pp-card">
+            <h2 className="pp-h">Training &amp; TOT</h2>
+            {trainings.length ? (
+              <table className="pp-table"><thead><tr>
+                <th>Title</th><th>Given by</th><th>Duration</th><th className="num">Year</th>
+              </tr></thead><tbody>
+                {trainings.map(q => (
+                  <tr key={q.id}>
+                    <td>{q.kind === 'TOT' && <span className="tw-tag gray">TOT</span>} {q.title || '—'}</td>
+                    <td>{q.institution || '—'}</td>
+                    <td>{q.duration_text || (q.duration_hours ? `${q.duration_hours} hours` : '—')}</td>
+                    <td className="num">{q.passed_year || '—'}</td>
+                  </tr>
+                ))}
+              </tbody></table>
+            ) : <p className="tw-empty">None recorded.</p>}
+          </section>
+
+          <section className="pp-card">
+            <h2 className="pp-h">Work experience</h2>
+            {person.experience?.length ? (
+              <ol className="pp-timeline">
+                {person.experience.map(e => (
+                  <li key={e.id}>
+                    <div className="pp-when">{e.from_date || '?'} – {e.is_current ? 'present' : (e.to_date || '?')}</div>
+                    <div className="pp-what"><strong>{e.position || 'Position not recorded'}</strong>
+                      <span className="pp-org"> · {e.organisation || 'organisation not recorded'}</span></div>
+                    {(e.country || e.project_name) && (
+                      <div className="pp-cell-sub">{[e.project_name, e.country].filter(Boolean).join(' · ')}</div>
+                    )}
+                    {e.description && (
+                      <ul className="pp-bullets">
+                        {String(e.description).split('\n').map(s => s.replace(/^[•\-\s]+/, '').trim()).filter(Boolean)
+                          .map((s, i) => <li key={i}>{s}</li>)}
+                      </ul>
+                    )}
+                  </li>
+                ))}
+              </ol>
+            ) : <p className="tw-empty">None recorded.</p>}
+          </section>
+        </main>
+
+        <aside className="pp-side">
+          <section className="pp-card">
+            <h2 className="pp-h">Personal details</h2>
+            <dl className="pp-dl">
+              {[
+                ["Father's name", person.father_name],
+                ["Grandfather's name", person.grandfather_name],
+                ['Citizenship no.', person.citizenship_no && `${person.citizenship_no}${person.citizenship_district ? ` · ${person.citizenship_district}` : ''}`],
+                ['Date of birth', person.date_of_birth],
+                ['Gender', person.gender],
+                ['Temporary address', person.temporary_address],
+                ['Nationality', person.nationality],
+                ['Profession', person.profession],
+                ['Remarks', person.remarks],
+              ].filter(([, v]) => v).map(([k, v]) => (
+                <div key={k}><dt>{k}</dt><dd>{v}</dd></div>
+              ))}
+            </dl>
+          </section>
+
+          {person.languages?.length > 0 && (
+            <section className="pp-card">
+              <h2 className="pp-h">Languages</h2>
+              <dl className="pp-dl">
+                {person.languages.map((l, i) => (
+                  <div key={i}><dt>{l.language}</dt>
+                    <dd>{[l.speaking && `speaks ${l.speaking.toLowerCase()}`, l.reading && `reads ${l.reading.toLowerCase()}`,
+                      l.writing && `writes ${l.writing.toLowerCase()}`].filter(Boolean).join(' · ') || '—'}</dd></div>
+                ))}
+              </dl>
+            </section>
+          )}
+
+          <section className="pp-card">
+            <h2 className="pp-h">Documents</h2>
+            {docsByType.length ? docsByType.map(g => (
+              <div key={g.type} className="pp-docs">
+                <div className="pp-sub" style={{ margin: '0 0 4px' }}>{g.type}</div>
+                {g.docs.map(d => (
+                  <div key={d.id} className="pp-doc">
+                    <span className="material-icons-round" aria-hidden="true">description</span>
+                    <button type="button" className="pp-doc-name" onClick={() => openDoc(d)} title="Open">{d.file_name}</button>
+                    <button type="button" className="tw-x" aria-label={`Remove ${d.file_name}`} onClick={() => removeDoc(d)}>
+                      <span className="material-icons-round" style={{ fontSize: 16 }}>close</span>
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )) : <p className="tw-empty">Nothing attached yet.</p>}
+            <div className="pp-attach">
+              <Select className="tw-in" aria-label="Kind of document" value={docType} onChange={e => setDocType(e.target.value)}>
+                {DOC_TYPES.map(t => <option key={t}>{t}</option>)}
+              </Select>
+              <label className="btn btn-secondary btn-sm" style={{ cursor: 'pointer', margin: 0, whiteSpace: 'nowrap' }}>
+                {uploading ? 'Uploading…' : 'Attach file'}
+                <input type="file" style={{ display: 'none' }} disabled={uploading}
+                  onChange={e => { upload(e.target.files?.[0]); e.target.value = ''; }} />
+              </label>
+            </div>
+          </section>
+        </aside>
+      </div>
+        </>
+      )}
     </div>
   );
 }

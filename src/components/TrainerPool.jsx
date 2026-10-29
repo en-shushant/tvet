@@ -822,13 +822,13 @@ function TrainerPool({ isAdmin, isSuperAdmin }) {
                         <td>
                           <button type="button" className="pp-person" onClick={() => openPerson(p.id)}>
                             <span className={`pp-avatar pp-avatar-sm ${isPending(p) ? 'is-pending' : 'is-verified'}`} aria-hidden="true"
-                              title={isPending(p) ? 'Waiting for review' : 'Verified'}>{initials(p.full_name)}</span>
+                              title={isPending(p) ? (p.checked_count > 0 ? 'Partially verified' : 'Waiting for review') : 'Verified'}>{initials(p.full_name)}</span>
                             <span>
                               <span className="pp-person-name">{p.full_name}</span>
                               {isPending(p) && (
                                 <span className="badge badge-amber pp-pending-badge"
                                   title="Added or edited by an editor, waiting on an admin or superadmin to confirm it">
-                                  Pending review</span>
+                                  {p.checked_count > 0 ? 'Partially verified' : 'Pending review'}</span>
                               )}
                               <span className="pp-person-sub">
                                 {p.hr_no && <span className="pp-hr-no">{p.hr_no} · </span>}

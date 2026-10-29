@@ -275,6 +275,16 @@ async function runMigrations() {
     `CREATE INDEX IF NOT EXISTS idx_hr_qual_person ON hr_qualifications(person_id)`,
     `CREATE INDEX IF NOT EXISTS idx_hr_exp_person ON hr_experience(person_id)`,
     `CREATE INDEX IF NOT EXISTS idx_hr_docs_person ON hr_documents(person_id)`,
+    // A reviewer checks a record one section at a time (identity, each
+    // certificate, each job). Section ids belong to one saved version of the
+    // record, so any save clears them.
+    `CREATE TABLE IF NOT EXISTS hr_section_checks (
+      person_id  INTEGER NOT NULL REFERENCES hr_people(id) ON DELETE CASCADE,
+      section_id TEXT NOT NULL,
+      checked_by UUID,
+      checked_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      PRIMARY KEY (person_id, section_id)
+    )`,
 
     // Fields the Standard EOI "Form 5 — Curriculum Vitae" asks for that a
     // person's basic record does not already hold. Kept on the person because

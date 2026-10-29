@@ -6,22 +6,29 @@
  * Missing values are flagged rather than hidden. Ticks are the reviewer's own
  * progress and are not saved.
  */
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { api } from '../../utils/api.js';
+import { toast } from '../ui/Feedback.jsx';
 import { labelOfGeneral, labelOfVocational, levelOfQualification } from '../../constants/education.js';
 import { sectionOf, totProviderOf } from './common.js';
 
 const blank = (v) => v === null || v === undefined || String(v).trim() === '';
 
-function Section({ id, title, rows, docs, onOpen, checked, onCheck }) {
+function Section({ id, title, rows, docs, onOpen, checked, onToggle, busy, canCheck }) {
   const missing = rows.filter(r => r.need && blank(r.value)).length;
   return (
     <section className={`rv-sec${checked ? ' is-checked' : ''}`} aria-labelledby={`rv-${id}`}>
       <header className="rv-sec-head">
-        <label className="rv-tick">
-          <input type="checkbox" checked={checked} onChange={e => onCheck(e.target.checked)} />
-          <span id={`rv-${id}`} className="rv-sec-title">{title}</span>
-        </label>
+        <span id={`rv-${id}`} className="rv-sec-title">{title}</span>
         {missing > 0 && <span className="rv-miss-count">{missing} missing</span>}
+        {canCheck && (
+          <button type="button" className={`rv-verify${checked ? ' is-on' : ''}`} disabled={busy}
+            aria-pressed={checked} onClick={() => onToggle(!checked)}
+            title={checked ? 'Verified — click to undo' : 'Mark this section as checked against its document'}>
+            <span className="material-icons-round" aria-hidden="true">{checked ? 'check_circle' : 'radio_button_unchecked'}</span>
+            {checked ? 'Verified' : 'Verify'}
+          </button>
+        )}
       </header>
       <dl className="rv-rows">
         {rows.filter(r => r.need || !blank(r.value)).map(r => (
@@ -42,7 +49,7 @@ function Section({ id, title, rows, docs, onOpen, checked, onCheck }) {
   );
 }
 
-export default function ReviewChecklist({ person, onOpenDoc, actions }) {
+export default function ReviewChecklist({ person, token, canCheck = false, onOpenDoc, onChanged, actions }) {
   const docs = person.documents || [];
   const quals = person.qualifications || [];
   const exp = person.experience || [];
@@ -111,9 +118,27 @@ export default function ReviewChecklist({ person, onOpenDoc, actions }) {
       ] })),
   ];
 
-  const [ticked, setTicked] = useState({});
-  const done = sections.filter(s => ticked[s.id]).length;
-  const missing = sections.reduce((n, s) => n + s.rows.filter(r => r.need && blank(r.value)).length, 0);
+  // Saved on the server. A verified person has every section checked.
+  const allIds = sections.map(x => x.id);
+  const fromServer = () => new Set(person.is_verified === false ? (person.checked_sections || []) : allIds);
+  const [checked, setChecked] = useState(fromServer);
+  const [busy, setBusy] = useState(false);
+  useEffect(() => { setChecked(fromServer()); }, [person.id, person.is_verified, (person.checked_sections || []).join(',')]);
+  const done = sections.filter(x => checked.has(x.id)).length;
+  const missing = sections.reduce((n, x) => n + x.rows.filter(r => r.need && blank(r.value)).length, 0);
+  const status = done === sections.length && sections.length ? 'verified' : done > 0 ? 'partial' : 'none';
+
+  const toggle = async (id, on) => {
+    setBusy(true);
+    const before = checked;
+    setChecked(c => { const n = new Set(c); on ? n.add(id) : n.delete(id); return n; });
+    try {
+      const r = await api('POST', `/hr/people/${person.id}/section-checks`, { section_id: id, checked: on, all: allIds }, token);
+      if (r.is_verified && person.is_verified === false) toast(`Every section is verified — ${person.full_name} is now verified.`);
+      onChanged?.(r);
+    } catch (e) { setChecked(before); toast(e.message || 'Could not save that check.'); }
+    finally { setBusy(false); }
+  };
 
   return (
     <section className="rv" aria-label="Review checklist">
@@ -121,18 +146,21 @@ export default function ReviewChecklist({ person, onOpenDoc, actions }) {
         <div>
           <h2 className="pp-h" style={{ margin: 0 }}>Check before verifying</h2>
           <p className="tw-hint" style={{ margin: '2px 0 0' }}>
-            Compare each section with its document (opens in a new tab — put it beside this window), then tick it.
+            Compare each section with its document (opens in a new tab), then press Verify on it. When every section is verified the person is verified.
           </p>
         </div>
         <div className="rv-progress">
-          <span><strong>{done}</strong> of {sections.length} checked</span>
+          <span className={`rv-status is-${status}`}>
+            {status === 'verified' ? 'Verified' : status === 'partial' ? 'Partially verified' : 'Not verified'}
+          </span>
+          <span><strong>{done}</strong> of {sections.length} sections verified</span>
           {missing > 0 && <span className="rv-miss-count">{missing} missing value{missing === 1 ? '' : 's'}</span>}
         </div>
       </header>
       <div className="rv-grid">
         {sections.map(s => (
-          <Section key={s.id} {...s} onOpen={onOpenDoc} checked={!!ticked[s.id]}
-            onCheck={v => setTicked(t => ({ ...t, [s.id]: v }))} />
+          <Section key={s.id} {...s} onOpen={onOpenDoc} checked={checked.has(s.id)} busy={busy} canCheck={canCheck}
+            onToggle={v => toggle(s.id, v)} />
         ))}
       </div>
       {actions && <footer className="rv-foot">{actions}</footer>}

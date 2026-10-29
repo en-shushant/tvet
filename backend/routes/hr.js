@@ -331,7 +331,8 @@ async function plugin(fastify, opts) {
         (SELECT u.name FROM users u WHERE u.id = p.created_by) AS created_by_name,
         (SELECT u.name FROM users u WHERE u.id = p.updated_by) AS updated_by_name,
         (SELECT u.name FROM users u WHERE u.id = p.verified_by) AS verified_by_name,
-        COALESCE((SELECT array_agg(DISTINCT d.doc_type) FROM hr_documents d WHERE d.person_id = p.id), '{}') AS doc_types
+        COALESCE((SELECT array_agg(DISTINCT d.doc_type) FROM hr_documents d WHERE d.person_id = p.id), '{}') AS doc_types,
+        (SELECT COUNT(*)::int FROM hr_section_checks c WHERE c.person_id = p.id) AS checked_count
         FROM hr_people p
         ${where}
        ORDER BY p.person_type, p.full_name`, params);
@@ -344,7 +345,8 @@ async function plugin(fastify, opts) {
       pool.query(`SELECT p.*,
         (SELECT u.name FROM users u WHERE u.id = p.created_by) AS created_by_name,
         (SELECT u.name FROM users u WHERE u.id = p.updated_by) AS updated_by_name,
-        (SELECT u.name FROM users u WHERE u.id = p.verified_by) AS verified_by_name
+        (SELECT u.name FROM users u WHERE u.id = p.verified_by) AS verified_by_name,
+        COALESCE((SELECT array_agg(c.section_id) FROM hr_section_checks c WHERE c.person_id = p.id), '{}') AS checked_sections
         FROM hr_people p WHERE p.id = $1`, [id]),
       pool.query(`SELECT q.*, o.name AS occupation_name, o.sector AS occupation_sector,
                          r.name AS rule_name, r.grant_scope, r.sector AS rule_sector
@@ -543,9 +545,62 @@ async function plugin(fastify, opts) {
          verified ? new Date() : null, request.params.id, request.user.id]);
       if (!rows.length) { await client.query('ROLLBACK'); return reply.code(404).send({ error: 'Not found' }); }
       await saveChildren(client, request.params.id, request.body);
+      await client.query('DELETE FROM hr_section_checks WHERE person_id = $1', [request.params.id]);
       if (request.body.not_duplicate) await confirmNotDuplicates(client, request.params.id, request.body, request.user.id);
       await client.query('COMMIT');
       return rows[0];
+    } catch (e) { await client.query('ROLLBACK'); throw e; }
+    finally { client.release(); }
+  });
+
+  /**
+   * Check or uncheck one section of a record. `all` is every section id the
+   * reviewer can see; once each of them is checked the person is verified, and
+   * unchecking one of a verified person's sections puts them back for review.
+   */
+  fastify.post('/people/:id/section-checks', { preHandler: requireAdmin }, async (request, reply) => {
+    const { section_id, checked, all } = request.body || {};
+    const ok = (s) => typeof s === 'string' && /^[\w-]{1,64}$/.test(s);
+    if (!ok(section_id) || !Array.isArray(all) || !all.every(ok) || !all.includes(section_id)) {
+      return reply.code(400).send({ error: 'A section and the full list of sections are required.' });
+    }
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+      const { rows: [person] } = await client.query('SELECT id, is_verified FROM hr_people WHERE id = $1 FOR UPDATE', [request.params.id]);
+      if (!person) { await client.query('ROLLBACK'); return reply.code(404).send({ error: 'Not found' }); }
+      if (checked) {
+        await client.query(
+          `INSERT INTO hr_section_checks (person_id, section_id, checked_by) VALUES ($1, $2, $3)
+           ON CONFLICT (person_id, section_id) DO UPDATE SET checked_by = $3, checked_at = NOW()`,
+          [person.id, section_id, request.user.id]);
+      } else {
+        await client.query('DELETE FROM hr_section_checks WHERE person_id = $1 AND section_id = $2', [person.id, section_id]);
+      }
+      // A person verified before sections existed has no rows: treat every section as checked.
+      let done = (await client.query('SELECT section_id FROM hr_section_checks WHERE person_id = $1 AND section_id = ANY($2)',
+        [person.id, all])).rows.map(r => r.section_id);
+      if (person.is_verified !== false && !checked) {
+        // First uncheck on an already-verified record: everything else stays checked.
+        const others = all.filter(s => s !== section_id);
+        for (const s of others.filter(s => !done.includes(s))) {
+          await client.query(`INSERT INTO hr_section_checks (person_id, section_id, checked_by) VALUES ($1, $2, $3) ON CONFLICT DO NOTHING`,
+            [person.id, s, request.user.id]);
+        }
+        done = others;
+      }
+      const complete = all.every(s => done.includes(s) || (checked && s === section_id));
+      let verified = person.is_verified !== false;
+      if (complete && !verified) {
+        await client.query('UPDATE hr_people SET is_verified = TRUE, verified_by = $1, verified_at = NOW() WHERE id = $2', [request.user.id, person.id]);
+        verified = true;
+      } else if (!complete && verified) {
+        await client.query('UPDATE hr_people SET is_verified = FALSE, verified_by = NULL, verified_at = NULL WHERE id = $1', [person.id]);
+        verified = false;
+      }
+      const { rows } = await client.query('SELECT section_id FROM hr_section_checks WHERE person_id = $1', [person.id]);
+      await client.query('COMMIT');
+      return { checked_sections: rows.map(r => r.section_id), is_verified: verified };
     } catch (e) { await client.query('ROLLBACK'); throw e; }
     finally { client.release(); }
   });
