@@ -39,7 +39,8 @@ describe('CV formats', () => {
     const m = cvModel('ppmo_rfp', { ...cv, detailed_tasks: '• Task one\n• Task two\n• Task three', adequacy: '• Instructor, KGTC (2073 – present)' }, tender);
     const rows = m.blocks.find(b => /Adequacy/.test(b.label)).table.rows;
     expect(rows.map(r => r[0].prose)).toEqual(['• Task one', '• Task two', '• Task three']);
-    expect(rows.map(r => r[1].prose)).toEqual(['• Instructor, KGTC (2073 – present)', '', '']);
+    expect(rows.every(r => r[1].prose.trim().length > 2)).toBe(true);              // never an empty reference
+    expect(rows[0][1].prose).toBe('• Instructor, KGTC (2073 – present)');            // what was written leads
   });
   it('prior work states each job’s events, unless the firm hides them', () => {
     const jobs = [{ organisation: 'CHRA', position: 'Main Trainer', from_date: '2076', is_current: true, events_count: 12, clients: 'CTEVT' }];
@@ -226,5 +227,35 @@ describe('wording for a co-trainer', () => {
   it('does not stretch to other posts', () => {
     expect(pickFirmVariant(lib, 'activities', 9, 'Database Officer', 'Support Staff').id).toBe(3);
     expect(pickFirmVariant(lib, 'activities', 9, 'Accountant', 'Support Staff')).toBe(null);
+  });
+});
+
+import { formatCvDate, signDateText } from '../src/reports/cvDate.js';
+describe('the CV pack’s signing date', () => {
+  it('writes the picked date as BS or AD, and nothing for no date', () => {
+    expect(formatCvDate('2026-04-14', 'bs')).toBe('2083/01/01');
+    expect(formatCvDate('2026-10-29', 'ad')).toBe('29 October 2026');
+    expect(formatCvDate('', 'bs')).toBe('');
+    expect(formatCvDate('nonsense', 'bs')).toBe('');
+    expect(signDateText('')).toBe('______________');
+  });
+  it('fills the Date: line of every format, else leaves the blank', () => {
+    for (const format of ['ppmo_eoi', 'ppmo_rfp', 'helvetas', 'eoi_form5']) {
+      const dated = buildPrintHTML({ tender: { ...tender, cv_date: '2083/07/12' }, format, cvs: [cv] });
+      expect(dated, format).toContain('Date: 2083/07/12');
+      expect(dated, format).not.toMatch(/Date: _{4}/);
+      expect(buildPrintHTML({ tender, format, cvs: [cv] }), format).toMatch(/Date:[^<]*_{6}|Date: \[Day/);
+    }
+  });
+});
+
+describe('the firm named on a CV', () => {
+  const { fullFirmName } = require('../backend/routes/tenders.js');
+  it('is the full official name, joined as a JV when there are several', () => {
+    expect(fullFirmName([{ name: 'World Link Technical Training Institute Pvt. Ltd.', acronym: 'WLTTI' }]))
+      .toBe('World Link Technical Training Institute Pvt. Ltd.');
+    expect(fullFirmName([{ name: 'World Link Technical Training Institute Pvt. Ltd.', acronym: 'WLTTI' }, { name: 'IC Institute', acronym: 'IC' }]))
+      .toBe('World Link Technical Training Institute Pvt. Ltd. + IC Institute (JV)');
+    expect(fullFirmName([])).toBe('');
   });
 });

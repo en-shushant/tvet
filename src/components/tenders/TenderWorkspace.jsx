@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { ErrorBanner } from '../ui/Modal.jsx';
 import { Btn } from '../../md.jsx';
 import { confirmDialog, toast } from '../ui/Feedback.jsx';
+import { formatCvDate } from '../../reports/cvDate.js';
 import { getSession } from '../../utils/auth.js';
 import { api } from '../../utils/api.js';
 import cv from '../../reports/cv.jsx';
@@ -177,11 +178,13 @@ export default function TenderWorkspace({ tenderId, startAt, clients, institutes
   const saveTeam = (bidderId, rows) =>
     patch({ people_bidder_id: bidderId, people: rows });
 
-  const makeCVs = async (bidder, mode, letters = true) => {
+  const makeCVs = async (bidder, mode, letters = true, signing = {}) => {
     setBusy(true); setErr('');
     try {
       const pack = await api('GET', `/tenders/${tender.id}/cv?bidder_id=${bidder.id}`, null, token);
       if (!pack.cvs.length) { setErr(`Nobody is on ${bidder.display_name}’s team yet.`); return; }
+      // The signing date, picked in the Submit step, goes on every CV's "Date:" line.
+      pack.tender = { ...pack.tender, cv_date: formatCvDate(signing.date, signing.style) };
       if (mode === 'word') { await cv.downloadDOCX(pack, { letters }); return; }
       const w = openSafeDocument(cv.buildPrintHTML(pack, { letters }));
       if (w) setTimeout(() => w.print(), 300);

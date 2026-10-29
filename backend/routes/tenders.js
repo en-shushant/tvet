@@ -191,6 +191,13 @@ const derivedLabel = (firms = []) => {
   return names.length === 1 ? names[0] : `${names.join(' + ')} (JV)`;
 };
 
+/** Official names, lead first, joined as a JV when there is more than one. */
+const fullFirmName = (firms = []) => {
+  const names = firms.map(f => String(f.name || '').trim()).filter(Boolean);
+  if (!names.length) return '';
+  return names.length === 1 ? names[0] : `${names.join(' + ')} (JV)`;
+};
+
 const shapeBidder = (row) => ({
   ...row,
   firms: row.firms || [],
@@ -784,7 +791,10 @@ async function plugin(fastify, opts) {
     const format = CV_FORMATS.includes(row.cv_format) ? row.cv_format : defaultCvFormat(row.stage);
     const tender = {
       ...row,
-      institute_name: shaped.display_name,
+      // A CV names the firm in full — "World Link Technical Training Institute Pvt. Ltd. + …
+      // (JV)" — not by the acronym the app uses on screen. That label stays available.
+      institute_name: fullFirmName(shaped.firms) || shaped.display_name,
+      bidder_label: shaped.display_name,
       institute_contact: leadInst?.contact_person || null,
       bidder: shaped,
       cv_format: format,
@@ -958,6 +968,9 @@ async function plugin(fastify, opts) {
         key_qualifications: resolve(tp.key_qualifications, tp.quals_variant_id, person.key_qualifications, 'key_qualifications'),
         // The assignments themselves (post, employer, dates), then the firm's
         // wording of what they show, unless text was typed for this bid.
+        adequacy_typed: !!(tp.adequacy || '').trim(),
+        // The firm's own prior-work wording, apart from the jobs: it leads the reference column.
+        adequacy_wording: (tp.adequacy || '').trim() ? '' : resolve('', tp.adequacy_variant_id, '', 'adequacy'),
         adequacy: (tp.adequacy || '').trim() ? tp.adequacy
           : [priorWorkOf(experience, leadInst?.cv_show_events !== false), resolve('', tp.adequacy_variant_id, '', 'adequacy')].filter(Boolean).join('\n'),
         education: forPerson(quals.rows, tp.person_id).filter(q => q.kind === 'Academic'),
@@ -993,3 +1006,4 @@ module.exports.dropUnfilled = dropUnfilled;
 module.exports.assignmentSpan = assignmentSpan;
 module.exports.priorWorkOf = priorWorkOf;
 module.exports.employerPhone = employerPhone;
+module.exports.fullFirmName = fullFirmName;

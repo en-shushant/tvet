@@ -1,3 +1,5 @@
+import { adequacyPairs } from './adequacy.js';
+import { signDateText } from './cvDate.js';
 import {
   Document, Packer, Table, TableRow, TableCell, Paragraph, TextRun,
   WidthType, VerticalAlign, BorderStyle, AlignmentType, ShadingType,
@@ -80,6 +82,7 @@ const htmlProse = (text) => {
 
 function cvHTML(cv, tender, index) {
   const p = cv.person;
+  const dateText = tender.cv_date || '';
   const section = (n, title, body) =>
     `<h3><span class="num">${n}.</span> ${esc(title)}</h3>${body}`;
 
@@ -131,7 +134,7 @@ function cvHTML(cv, tender, index) {
       <div class="sign">
         <div class="sign-line"></div>
         <div class="sign-line"></div>
-        <div class="sign-date">Date: ______________</div>
+        <div class="sign-date">Date: ${esc(signDateText(dateText))}</div>
       </div>
       <p class="sign-note">[Signature of staff member and authorised representative of the consultant]
         &nbsp;&nbsp;[Day/Month/Year]</p>
@@ -226,6 +229,7 @@ const prose = (text) => lines(text).length
 
 function cvChildren(cv, tender, index) {
   const p = cv.person;
+  const dateText = tender.cv_date || '';
   const out = [];
   if (index > 0) out.push(new Paragraph({ children: [], pageBreakBefore: true }));
   out.push(new Paragraph({
@@ -276,7 +280,7 @@ function cvChildren(cv, tender, index) {
   out.push(heading('VII', LABELS.certification));
   out.push(new Paragraph({ children: [new TextRun({ text: CERTIFY, size: 19 })], spacing: { after: 400 } }));
   out.push(new Paragraph({
-    children: [new TextRun({ text: '_______________________          _______________________          Date: ______________', size: 19 })],
+    children: [new TextRun({ text: `_______________________          _______________________          Date: ${signDateText(dateText)}`, size: 19 })],
   }));
   out.push(new Paragraph({
     children: [new TextRun({
@@ -358,20 +362,17 @@ const employerCell = (e, style) => {
 };
 const asProse = (text) => ({ prose: text });
 
-/**
- * PPMO RFP "Adequacy": one row per task, each beside a line of prior work, as
- * the form lays it out. Whichever list is longer runs on with blanks opposite.
- */
-function adequacyRows(tasks, prior) {
-  const lines = (t) => String(t || '').split('\n').map(l => l.trim()).filter(Boolean);
-  const a = lines(tasks), b = lines(prior);
-  const n = Math.max(a.length, b.length, 1);
-  return Array.from({ length: n }, (_, i) => [asProse(a[i] || ''), asProse(b[i] || '')]);
-}
+/** PPMO RFP "Adequacy": each task beside a reference to prior work that shows it — never an empty cell. */
+const adequacyRows = (cv) => adequacyPairs(cv).map(({ task, ref }) => [asProse(task ? `• ${task.replace(/^[•\-*]\s*/, '')}` : ''), asProse(`• ${ref}`)]);
 
 const SIGN_ROW = (left, right = 'Date:') => ({ left, right });
 
+/** The model of one CV in a format, with the pack's signing date (if one was picked) on it. */
 function cvModel(format, cv, tender) {
+  return { ...cvModelCore(format, cv, tender), dateText: tender.cv_date || '' };
+}
+
+function cvModelCore(format, cv, tender) {
   const p = cv.person;
   const firm = tender.institute_name || '—';
   const rep = tender.authorized_rep || tender.institute_contact || '';
@@ -392,7 +393,7 @@ function cvModel(format, cv, tender) {
           lines: cv.languages.map(l => [l.language, [l.speaking && `speaking ${l.speaking}`, l.reading && `reading ${l.reading}`, l.writing && `writing ${l.writing}`].filter(Boolean).join(', ')].filter(Boolean).join(' — ')) },
         { label: 'Adequacy for the Assignment:', table: {
           headers: ['Detailed Tasks Assigned on Consultant’s Team of Experts:', 'Reference to Prior Work/Assignments that Best Illustrates Capability to Handle the Assigned Tasks'],
-          widths: [50, 50], rows: adequacyRows(cv.detailed_tasks, cv.adequacy) } },
+          widths: [50, 50], rows: adequacyRows(cv) } },
         { label: 'Expert’s contact information:', text: `e-mail: ${dash(p.email)}, phone: ${dash(p.phone)}` },
       ],
       certIntro: 'I, the undersigned, certify to the best of my knowledge and belief that',
@@ -478,7 +479,7 @@ function modelHTML(m, index) {
     <p>${esc(m.certIntro)}</p>
     ${m.certList ? `<ol class="cert" type="i">${m.certList.map(c => `<li>${esc(c)}</li>`).join('')}</ol>` : ''}
     ${m.certOutro ? `<p>${esc(m.certOutro)}</p>` : ''}
-    ${m.sign.map(r => `<div class="sign"><div class="sign-line"></div><div class="sign-date">${esc(r.right)} ______________</div></div>
+    ${m.sign.map(r => `<div class="sign"><div class="sign-line"></div><div class="sign-date">${esc(m.dateText ? 'Date:' : r.right)} ${esc(signDateText(m.dateText))}</div></div>
       <p class="sign-note">${esc(r.left)}</p>`).join('')}
     <div class="tail">${m.tail.map(([k, v]) => `<p>${esc(k)}: <strong>${esc(v) || '______________________'}</strong></p>`).join('')}</div>
   </section>`;
@@ -521,7 +522,7 @@ function modelChildren(m, index) {
     children: [run(`(${['i', 'ii', 'iii', 'iv', 'v', 'vi', 'vii', 'viii'][i]}) ${c}`)], indent: { left: 360 }, spacing: { after: 40 } })));
   if (m.certOutro) out.push(new Paragraph({ children: [run(m.certOutro)], spacing: { before: 80 } }));
   for (const r of m.sign) {
-    out.push(new Paragraph({ children: [run(`__________________________________          ${r.right} ______________`)], spacing: { before: 400 } }));
+    out.push(new Paragraph({ children: [run(`__________________________________          ${m.dateText ? 'Date:' : r.right} ${signDateText(m.dateText)}`)], spacing: { before: 400 } }));
     out.push(new Paragraph({ children: [run(r.left, { italics: true, size: 16, color: '333333' })] }));
   }
   m.tail.forEach(([k, v]) => out.push(new Paragraph({ children: [run(`${k}: ${v || '______________________'}`)], spacing: { before: 120 } })));

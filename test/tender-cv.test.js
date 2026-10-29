@@ -605,7 +605,7 @@ describe('documents are one bidder’s submission', () => {
 
   it('names the joint venture as Name of Consultant, not just the lead', () => {
     // Naming only the lead would misdescribe who is being proposed to.
-    expect(cvRoute).toMatch(/institute_name: shaped\.display_name/);
+    expect(cvRoute).toMatch(/institute_name: fullFirmName\(shaped\.firms\) \|\| shaped\.display_name/);   // every firm, in full
     // but a JV signs through its lead
     expect(cvRoute).toMatch(/institute_contact: leadInst\?\.contact_person/);
   });

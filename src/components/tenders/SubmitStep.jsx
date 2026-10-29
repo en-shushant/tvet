@@ -5,6 +5,7 @@ import REPORT_CATALOG from '../../reports/catalog.js';
 import { BIDDER_STATUSES, leadOf } from './common.js';
 import Select from '../ui/Select.jsx';
 import { CV_FORMATS } from '../../reports/cv.jsx';
+import { todayISO, formatCvDate } from '../../reports/cvDate.js';
 
 const FIELD_TAG = { detailed_tasks: 'Tasks', key_qualifications: 'Qualifications', adequacy: 'Adequacy', activities: 'Activities' };
 
@@ -25,6 +26,10 @@ export default function SubmitStep({ tender, busy, variants, advanced = false, d
   // One format for the whole stage, chosen on the Notice step.
   const formatLabel = (CV_FORMATS.find(f => f.id === tender.cv_format)
     || CV_FORMATS.find(f => f.id === (tender.stage === 'RFP' ? 'ppmo_rfp' : 'ppmo_eoi'))).label;
+  // The date printed on every CV's signature line: picked per bidder, today until changed.
+  const [cvDate, setCvDate] = useState({});
+  const [cvDateStyle, setCvDateStyle] = useState('bs');
+  const dateOf = (b) => cvDate[b.id] === undefined ? todayISO() : cvDate[b.id];
   // Experience letters follow each CV unless switched off for a bidder.
   const [noLetters, setNoLetters] = useState({});
   const cvCount = (b) => (tender.people || []).filter(p => p.bidder_id === b.id).length;
@@ -115,14 +120,26 @@ export default function SubmitStep({ tender, busy, variants, advanced = false, d
                   : 'Nobody on this bidder’s team yet.'}
               </span>
               <span className="tw-hint" title="Set on the Notice step">{formatLabel}</span>
+              <label className="tw-hint" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, whiteSpace: 'nowrap' }}
+                title="Printed on the signature line of every CV in the pack. Clear it to leave the line blank.">
+                CV date
+                <input type="date" className="tw-in" style={{ width: 'auto' }} aria-label={`CV date for ${b.display_name}`}
+                  value={dateOf(b)} onChange={e => setCvDate(d => ({ ...d, [b.id]: e.target.value }))} />
+                <Select className="tw-in" style={{ width: 'auto' }} aria-label="How the CV date is written"
+                  value={cvDateStyle} onChange={e => setCvDateStyle(e.target.value)}>
+                  <option value="bs">BS</option>
+                  <option value="ad">AD</option>
+                </Select>
+                {dateOf(b) && <span style={{ color: 'var(--text3)' }}>→ {formatCvDate(dateOf(b), cvDateStyle)}</span>}
+              </label>
               <label className="tw-hint" style={{ display: 'inline-flex', alignItems: 'center', gap: 4, whiteSpace: 'nowrap' }}
                 title="Each CV followed by the experience letter of each firm of ours it lists">
                 <input type="checkbox" checked={!noLetters[b.id]} onChange={e => setNoLetters(x => ({ ...x, [b.id]: !e.target.checked }))} />
                 Experience letters
               </label>
-              <Btn className="btn btn-secondary btn-sm" disabled={busy || !n} onClick={() => onMakeCVs(b, 'print', !noLetters[b.id])}>
+              <Btn className="btn btn-secondary btn-sm" disabled={busy || !n} onClick={() => onMakeCVs(b, 'print', !noLetters[b.id], { date: dateOf(b), style: cvDateStyle })}>
                 Print</Btn>
-              <Btn className="btn btn-secondary btn-sm" disabled={busy || !n} onClick={() => onMakeCVs(b, 'word', !noLetters[b.id])}>
+              <Btn className="btn btn-secondary btn-sm" disabled={busy || !n} onClick={() => onMakeCVs(b, 'word', !noLetters[b.id], { date: dateOf(b), style: cvDateStyle })}>
                 Word</Btn>
             </div>
           </div>
