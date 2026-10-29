@@ -358,6 +358,13 @@ function App() {
     setScreen('dashboard');
   };
 
+  /** A one-shot address (#hr/new, #tenders/new…) is spent once its screen has acted on it, so the same search action works again. */
+  const viewHandled = () => {
+    setSubRoute(null);
+    const base = window.location.hash.replace('#', '').split('/')[0];
+    window.history.replaceState(null, '', `#${base}`);
+  };
+
   const handleNavigate = (rawId) => {
     // Quotations is now the Contracts & quotations tab of Shortlisting.
     const [id, sub] = String(rawId) === 'quotations' ? ['shortlisting', 'contracts']
@@ -686,7 +693,7 @@ function App() {
               onGoToMasterData={() => handleNavigate('master')}/>
           )}
           {screen === 'shortlisting' && <Suspense fallback={<div style={{padding:40,textAlign:'center',color:'var(--text3)'}}>Loading…</div>}><Shortlisting institutes={institutes} clients={clients} isAdmin={isAdmin} isEditor={isEditor} isShortlistOnly={isShortlistOnly} isSuperAdmin={isSuperAdmin} token={token} tab={subRoute === 'contracts' ? 'contracts' : 'lists'} onTab={(t) => handleNavigate(t === 'contracts' ? 'shortlisting/contracts' : 'shortlisting')}/></Suspense>}
-          {screen === 'master' && (isAdmin || isEditor) && <MasterData institutes={institutes} initialTab={subRoute} onTabChange={(t)=>handleNavigate(t==='clients'?'master':'master/'+t)} onGoToClients={()=>handleNavigate('clients')} clients={clients} onUpdateClients={handleUpdateClients} token={token} isAdmin={isAdmin} isEditor={isEditor} isSuperAdmin={isSuperAdmin}/>}
+          {screen === 'master' && (isAdmin || isEditor) && <MasterData institutes={institutes} initialTab={subRoute} onViewHandled={viewHandled} onTabChange={(t)=>handleNavigate(t==='clients'?'master':'master/'+t)} onGoToClients={()=>handleNavigate('clients')} clients={clients} onUpdateClients={handleUpdateClients} token={token} isAdmin={isAdmin} isEditor={isEditor} isSuperAdmin={isSuperAdmin}/>}
           {screen === 'master' && !isAdmin && !isEditor && (
             <div style={{display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',height:'60%',gap:12,color:'var(--text3)'}}>
               <span className="material-icons-round" style={{fontSize:40, color:'var(--text3)', opacity:.5}}>lock</span>
@@ -696,7 +703,7 @@ function App() {
           )}
           {screen === 'styleguide' && <Suspense fallback={<div style={{padding:40}}/>}><StyleGuide/></Suspense>}
           {screen === 'tenders' && canAccessTenders && (
-            <TendersView institutes={institutes} clients={clients} canAccessPool={canAccessHr}
+            <TendersView institutes={institutes} clients={clients} canAccessPool={canAccessHr} initialView={subRoute} onViewHandled={viewHandled}
               onGoToReports={() => handleNavigate('reports')}/>
           )}
           {screen === 'tenders' && !canAccessTenders && (
@@ -711,7 +718,7 @@ function App() {
               </div>
             </div>
           )}
-          {screen === 'hr' && canAccessHr && <TrainerPool isAdmin={isAdmin} isSuperAdmin={isSuperAdmin} initialView={subRoute}/>}
+          {screen === 'hr' && canAccessHr && <TrainerPool isAdmin={isAdmin} isSuperAdmin={isSuperAdmin} initialView={subRoute} onViewHandled={viewHandled}/>}
           {screen === 'hr' && !canAccessHr && (
             <div className="empty-state">
               <div className="empty-state-icon">
@@ -761,6 +768,15 @@ function App() {
           ...((isAdmin || isShortlistOnly) ? [{ id:'a-inst', label:'Add institute', icon:'add_business',
             group:'Create', keywords:'new firm add register',
             run:()=>setShowAddInstitute(true) }] : []),
+          ...((isAdmin || isEditor) ? [{ id:'a-newclient', label:'Add client', icon:'person_add',
+            group:'Create', keywords:'new client employer organisation ministry board add register',
+            run:()=>handleNavigate('master/newclient') }] : []),
+          ...((canAccessTenders && !isShortlistOnly) ? [{ id:'a-newtender', label:'New tender', icon:'post_add',
+            group:'Create', keywords:'new bid eoi rfp notice proposal start create',
+            run:()=>handleNavigate('tenders/new') }] : []),
+          ...(canAccessHr && (isAdmin || isEditor) ? [{ id:'a-newperson', label:'Add trainer or staff', icon:'person_add_alt',
+            group:'Create', keywords:'new person trainer staff support cv hr pool add register enter',
+            run:()=>handleNavigate('hr/new') }] : []),
 
           { id:'a-dash',  label:'Dashboard',  icon:'dashboard',       group:'Go to',
             keywords:'home overview start', run:()=>handleNavigate('dashboard') },
@@ -772,16 +788,16 @@ function App() {
               run:()=>handleNavigate('clients') },
           ] : []),
           ...(!isEditor && !isShortlistOnly ? [
-            { id:'a-summary', label:'Compliance & Analytics — Summary', icon:'insights', group:'Go to',
+            { id:'a-summary', label:'Compliance & Reports — Summary', icon:'insights', group:'Go to',
               keywords:'statistics totals figures trainees', run:()=>handleNavigate('summary') },
-            { id:'a-compare', label:'Compliance & Analytics — Comparison', icon:'compare_arrows', group:'Go to',
+            { id:'a-compare', label:'Compliance & Reports — Comparison', icon:'compare_arrows', group:'Go to',
               keywords:'compare side by side jv joint venture', run:()=>handleNavigate('comparison') },
           ] : []),
           ...(!isShortlistOnly ? [
             { id:'a-reports', label:'Reports', icon:'description', group:'Go to',
               keywords:'eoi bolpatra docx export generate helvetas enssure tools consumables',
               run:()=>handleNavigate('reports') },
-            { id:'a-renewals', label:'Compliance & Analytics — Renewals', icon:'insights', group:'Go to',
+            { id:'a-renewals', label:'Compliance & Reports — Renewals', icon:'insights', group:'Go to',
               keywords:'renewal expiry overdue tax clearance nstb affiliation lapsed',
               run:()=>handleNavigate('renewals') },
           ] : []),
@@ -789,7 +805,7 @@ function App() {
             keywords:'ocr vat ctevt registration paperwork files uploads',
             run:()=>handleNavigate('documents') },
           ...(!isEditor && !isShortlistOnly ? [
-            { id:'a-projcomp', label:'Compliance & Analytics — Project match', icon:'fact_check', group:'Go to',
+            { id:'a-projcomp', label:'Compliance & Reports — Project match', icon:'fact_check', group:'Go to',
               keywords:'project compliance match firms criteria eligibility bid shortlist jv',
               run:()=>handleNavigate('compliance') },
           ] : []),
@@ -797,7 +813,7 @@ function App() {
             keywords:'standing list nea letters roster', run:()=>handleNavigate('shortlisting') },
           { id:'a-quotes', label:'Contracts & quotations', icon:'request_quote', group:'Go to',
             keywords:'quote quotations bid price contract award', run:()=>handleNavigate('shortlisting/contracts') },
-          ...(!isShortlistOnly ? [{ id:'a-quality', label:'Compliance & Analytics — Data quality', icon:'rule', group:'Go to',
+          ...(!isShortlistOnly ? [{ id:'a-quality', label:'Compliance & Reports — Data quality', icon:'rule', group:'Go to',
             keywords:'missing gaps incomplete blank problems', run:()=>handleNavigate('quality') }] : []),
           ...(canAccessTenders ? [
             { id:'a-tenders', label:'Tenders', icon:'gavel', group:'Go to',
@@ -806,6 +822,8 @@ function App() {
           ...(canAccessHr ? [
             { id:'a-pool', label:'Trainer pool', icon:'co_present', group:'Go to',
               keywords:'trainers staff people cv nstb tot hr human resources', run:()=>handleNavigate('hr') },
+            { id:'a-pool-rules', label:'Qualification rules', icon:'rule_folder', group:'Go to',
+              keywords:'rules degree diploma grants trades qualify nstb tot level who can train', run:()=>handleNavigate('hr/rules') },
             // Reviewing is an admin job; the queue is the pool filtered to people waiting.
             ...(isAdmin ? [{ id:'a-pool-verify', label:'Verify trainers', icon:'verified_user', group:'Go to',
               keywords:'verify review trainees trainers staff pending waiting approve confirm check sign off queue',
@@ -836,6 +854,10 @@ function App() {
                 run:()=>handleNavigate('master/locations') },
             ] : []),
           ] : []),
+          { id:'u-pwd', label:'Change password', icon:'lock', group:'Account',
+            keywords:'password security sign in change reset', run:()=>setShowChangePwd(true) },
+          { id:'u-out', label:'Sign out', icon:'logout', group:'Account',
+            keywords:'log out logout exit leave', run:()=>handleLogout() },
         ]}
       />
     </div>

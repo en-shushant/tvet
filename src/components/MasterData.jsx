@@ -327,13 +327,16 @@ const ToolForm = ({tool, onSave, onClose}) => {
 };
 
 
-function MasterData({institutes = [], clients, onUpdateClients, token, isAdmin, isEditor, isSuperAdmin, onGoToClients, initialTab, onTabChange}) {
+function MasterData({institutes = [], clients, onUpdateClients, token, isAdmin, isEditor, isSuperAdmin, onGoToClients, initialTab, onTabChange, onViewHandled}) {
   // Deep-linked from the command palette (#master/tools and friends), so
   // "go to tools" lands on the tab rather than on Clients.
-  const [tab, setTab] = useState(initialTab || 'clients');
+  // 'newclient' (from search) is the Clients tab with the add form already open.
+  const routeTab = initialTab === 'newclient' ? 'clients' : initialTab;
+  const [tab, setTab] = useState(routeTab || 'clients');
   // Follow the address (sidebar, back button, reload) as well as the pills.
-  useEffect(() => { setTab(initialTab || 'clients'); }, [initialTab]);
+  useEffect(() => { setTab(routeTab || 'clients'); }, [routeTab]);
   const [clientModal, setClientModal] = useState(null);
+  useEffect(() => { if (initialTab === 'newclient') { setClientModal({ type: 'add' }); onViewHandled?.(); } }, [initialTab]);
   const [search, setSearch] = useState('');
   const [sectorFilter, setSectorFilter] = useState('');
   const [occModal, setOccModal] = useState(null);

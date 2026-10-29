@@ -92,3 +92,21 @@ describe('dark panels', () => {
     expect(read('src/index.css')).toMatch(/--panel-dark: #1f2937;/);
   });
 });
+
+describe('search (Cmd K) reaches the actions as well as the screens', () => {
+  const palette = app.slice(app.indexOf('<CommandPalette'));
+  it('offers the create actions, the review queue, the rules tab and the account actions', () => {
+    for (const id of ['a-inst', 'a-newclient', 'a-newtender', 'a-newperson', 'a-pool-verify', 'a-pool-rules', 'u-pwd', 'u-out']) {
+      expect(palette, id).toContain(`id:'${id}'`);
+    }
+  });
+  it('names Compliance & Reports the way the sidebar does', () => {
+    expect(palette).not.toMatch(/Compliance & Analytics/);
+  });
+  it('spends a one-shot address once its screen has acted on it, so the action works again', () => {
+    expect(app).toMatch(/const viewHandled = \(\) =>/);
+    for (const f of ['TrainerPool', 'TendersView', 'MasterData']) {
+      expect(read(`src/components/${f}.jsx`), f).toMatch(/onViewHandled\?\.\(\)/);
+    }
+  });
+});

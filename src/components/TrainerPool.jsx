@@ -460,7 +460,7 @@ function Kpi({ label, value, note, tone, title, onClick }) {
  * and typed at length, and a dialog over the roster made both feel like a
  * detour you were meant to leave quickly.
  */
-function TrainerPool({ isAdmin, isSuperAdmin, initialView }) {
+function TrainerPool({ isAdmin, isSuperAdmin, initialView, onViewHandled }) {
   const token = getSession()?.token;
   const occupations = useOccupations();
 
@@ -474,7 +474,12 @@ function TrainerPool({ isAdmin, isSuperAdmin, initialView }) {
   // #hr/review (the palette's "Verify trainers") opens straight on the people waiting for review.
   const reviewView = { ...BLANK_FILTERS, availability: 'all', pending: true };
   const [filters, setFilters] = useState(initialView === 'review' ? reviewView : BLANK_FILTERS);
-  useEffect(() => { if (initialView === 'review') { setFilters(reviewView); setTab('people'); } }, [initialView]);
+  useEffect(() => {
+    if (initialView === 'review') { setFilters(reviewView); setTab('people'); }
+    else if (initialView === 'rules') setTab('rules');
+    else if (initialView === 'new') { setTab('people'); setEditing({ ...BLANK_PERSON }); }
+    if (['review', 'rules', 'new'].includes(initialView)) onViewHandled?.();
+  }, [initialView]);
   const setF = (patch) => setFilters(f => ({ ...f, ...patch }));
   const [sort, setSort] = useState('name');
   const [showMatch, setShowMatch] = useState(false);

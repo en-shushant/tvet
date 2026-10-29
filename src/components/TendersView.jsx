@@ -25,7 +25,7 @@ import Select from './ui/Select.jsx';
  * The CV pack is the one document a tender produces itself, because it is the
  * only one written about people rather than about the firm.
  */
-function TendersView({ institutes = [], clients = [], onGoToReports, canAccessPool = true }) {
+function TendersView({ institutes = [], clients = [], onGoToReports, canAccessPool = true, initialView, onViewHandled }) {
   const token = getSession()?.token;
   const isSuper = getSession()?.role === 'superadmin';
   const occupations = useOccupations();
@@ -41,6 +41,8 @@ function TendersView({ institutes = [], clients = [], onGoToReports, canAccessPo
   // Which step to open on, when not wherever the work stands.
   const [startAt, setStartAt] = useState(null);
   const openAt = (id, step = null) => { setStartAt(step); setOpen(id); };
+  // #tenders/new (from search) goes straight to a blank tender.
+  useEffect(() => { if (initialView === 'new') { openAt('new'); onViewHandled?.(); } }, [initialView]);
   // The tender being copied from the list, if any.
   const [copyOf, setCopyOf] = useState(null);
   const [loading, setLoading] = useState(true);
