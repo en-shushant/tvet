@@ -395,7 +395,7 @@ describe('a bid moves through stages', () => {
 
   it('shows a bid as one row, with its stages, rather than two look-alike rows', () => {
     // An EOI and the RFP that followed are the same bid at two moments.
-    const list = view.slice(view.indexOf('const rows = useMemo'), view.indexOf('}, [tenders]);'));
+    const list = view.slice(view.indexOf('function groupBids'), view.indexOf('function TendersView'));
     expect(list).toMatch(/!t\.parent_tender_id \|\| !here\.has\(t\.parent_tender_id\)/);
     expect(list).toMatch(/childrenOf/);
     expect(view).toMatch(/chain\.map\(\(s, i\) =>/);

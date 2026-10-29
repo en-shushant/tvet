@@ -1,7 +1,8 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { ErrorBanner } from './ui/Modal.jsx';
 import { Btn } from '../md.jsx';
-import { PageHeader, EmptyState, StatusBadge } from './ui/primitives.jsx';
+import { PageHeader, EmptyState, StatusBadge, KpiCard } from './ui/primitives.jsx';
+import { tenderKpis, todayUtcDay } from './tenders/kpis.js';
 import { toast, confirmDialog } from './ui/Feedback.jsx';
 import { FISCAL_YEARS } from '../constants/data.js';
 import { useOccupations } from '../utils/useMasterData.js';
@@ -25,6 +26,19 @@ import Select from './ui/Select.jsx';
  * The CV pack is the one document a tender produces itself, because it is the
  * only one written about people rather than about the firm.
  */
+/** One row per bid, with the stages it went through (see the note on `rows` below). */
+function groupBids(tenders) {
+    const here = new Set(tenders.map(t => t.id));
+    const childrenOf = (id) => tenders.filter(c => c.parent_tender_id === id);
+    return tenders
+      .filter(t => !t.parent_tender_id || !here.has(t.parent_tender_id))
+      .map(t => {
+        const chain = [t];
+        for (let i = 0; i < chain.length; i++) chain.push(...childrenOf(chain[i].id));
+        return { root: t, chain, latest: chain[chain.length - 1] };
+      });
+}
+
 function TendersView({ institutes = [], clients = [], onGoToReports, canAccessPool = true, initialView, onViewHandled }) {
   const token = getSession()?.token;
   const isSuper = getSession()?.role === 'superadmin';
@@ -35,6 +49,8 @@ function TendersView({ institutes = [], clients = [], onGoToReports, canAccessPo
   useEffect(() => { setClientList(clients); }, [clients]);
 
   const [tenders, setTenders] = useState([]);
+  // Every bid for the chosen firm and year, whatever the status filter or search says: the figures above the list.
+  const [allBids, setAllBids] = useState([]);
   const [pool, setPool] = useState([]);
   // The tender open as a page: its id, 'new', or nothing (the list).
   const [open, setOpen] = useState(null);
@@ -76,6 +92,13 @@ function TendersView({ institutes = [], clients = [], onGoToReports, canAccessPo
         canAccessPool ? api('GET', '/hr/people', null, token).catch(() => []) : Promise.resolve([]),
       ]);
       setTenders(ts || []); setPool(ps || []); setErr('');
+      if (!statusFilter && !search.trim()) setAllBids(ts || []);
+      else {
+        const q = new URLSearchParams();
+        if (firmFilter) q.set('institute_id', firmFilter);
+        if (fyFilter) q.set('fy', fyFilter);
+        api('GET', `/tenders?${q}`, null, token).then(x => setAllBids(x || [])).catch(() => {});
+      }
     } catch (e) { setErr(e.message || 'Could not load tenders'); }
     finally { setLoading(false); }
   }, [token, statusFilter, firmFilter, fyFilter, search, canAccessPool]);
@@ -90,17 +113,7 @@ function TendersView({ institutes = [], clients = [], onGoToReports, canAccessPo
    * is folded under the one it came from whenever both are on screen; if a
    * filter shows only the later stage, it stands on its own.
    */
-  const rows = useMemo(() => {
-    const here = new Set(tenders.map(t => t.id));
-    const childrenOf = (id) => tenders.filter(c => c.parent_tender_id === id);
-    return tenders
-      .filter(t => !t.parent_tender_id || !here.has(t.parent_tender_id))
-      .map(t => {
-        const chain = [t];
-        for (let i = 0; i < chain.length; i++) chain.push(...childrenOf(chain[i].id));
-        return { root: t, chain, latest: chain[chain.length - 1] };
-      });
-  }, [tenders]);
+  const rows = useMemo(() => groupBids(tenders), [tenders]);
 
   /**
    * Create the employer in master data and hand it back for selection.
@@ -174,12 +187,31 @@ function TendersView({ institutes = [], clients = [], onGoToReports, canAccessPo
   }
 
   const filtered = !!(search || statusFilter || firmFilter || fyFilter);
+  const kpi = useMemo(() => tenderKpis(groupBids(allBids), todayUtcDay()), [allBids]);
+  const pick = (status) => setStatusFilter(f => f === status ? '' : status);
 
   return (
     <div className="fade-in">
       {err && <ErrorBanner msg={err} onDismiss={() => setErr('')} />}
       <PageHeader title="Tenders" sub="Bids you are putting together — notice, team and documents, step by step"
         actions={<Btn className="btn btn-primary btn-sm" onClick={() => openAt('new')}><span className="material-icons-round">add</span>New tender</Btn>} />
+
+      {!loading && kpi.total > 0 && (
+        <div className="tw-kpis" role="group" aria-label="Tender figures">
+          <KpiCard label="Being prepared" value={kpi.preparing} icon="edit_note" tone="periwinkle"
+            footer={kpi.withoutDeadline > 0 ? `${kpi.withoutDeadline} with no deadline yet` : 'All have a deadline'}
+            onClick={() => pick('Preparing')}/>
+          <KpiCard label="Due in 14 days" value={kpi.soon} icon="schedule" tone={kpi.overdue > 0 ? 'error' : 'cream'}
+            footer={kpi.overdue > 0 ? `${kpi.overdue} overdue`
+              : kpi.next ? `Next: ${kpi.next.title.length > 26 ? kpi.next.title.slice(0, 25) + '…' : kpi.next.title} · ${kpi.next.days === 0 ? 'today' : `${kpi.next.days} day${kpi.next.days === 1 ? '' : 's'}`}`
+              : 'Nothing due soon'}/>
+          <KpiCard label="Waiting for a result" value={kpi.awaiting} icon="hourglass_top" tone="lilac"
+            footer="Submitted or shortlisted" onClick={() => pick('Submitted')}/>
+          <KpiCard label="Awarded" value={kpi.awarded} icon="emoji_events" tone="mint"
+            footer={kpi.winRate == null ? 'No results yet' : `${kpi.winRate}% of decided bids · ${kpi.lost} lost`}
+            onClick={() => pick('Awarded')}/>
+        </div>
+      )}
 
       <div style={{ display: 'flex', gap: 10, marginBottom: 14, flexWrap: 'wrap' }}>
         <div className="search-wrap" style={{ flex: 1, minWidth: 220 }}>
