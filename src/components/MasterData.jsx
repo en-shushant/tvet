@@ -32,6 +32,18 @@ const ClientForm = ({client, onSave, onClose}) => {
   const [form, setForm] = useState(client || {fullName:'', shortName:'', type:'Government', address:'', remarks:'', phone:'', email:'', website:'', signatoryName:'', signatoryPosition:'', letterhead:null, logo:null, useGonLogo:false, nameNp:'', addressNp:'', includesOjt:false});
   const set = (k,v) => { setForm(f=>({...f,[k]:v})); setFieldErr(e=>({...e,[k]:''})); };
   const [fieldErr, setFieldErr] = useState({});
+  const [logoUrl, setLogoUrl] = useState('');
+  const [fetchingLogo, setFetchingLogo] = useState(false);
+  const [logoErr, setLogoErr] = useState('');
+  const fetchLogo = async () => {
+    if (!logoUrl.trim()) return;
+    setFetchingLogo(true); setLogoErr('');
+    try {
+      const r = await api('POST', '/clients/logo-from-url', { url: logoUrl.trim() }, getSession()?.token);
+      set('logo', r.logo); setLogoUrl('');
+    } catch (e) { setLogoErr(e.message || 'Could not fetch that image.'); }
+    finally { setFetchingLogo(false); }
+  };
   const submit = () => {
     const e = {};
     if (!String(form.fullName || '').trim()) e.fullName = 'Enter the client’s official full name.';
@@ -146,6 +158,16 @@ const ClientForm = ({client, onSave, onClose}) => {
               {form.logo && <span className="btn btn-ghost btn-sm" style={{cursor:'pointer'}} onClick={()=>set('logo',null)}><span className="material-icons-round" style={{fontSize:14,verticalAlign:'middle',marginRight:4}}>close</span>Remove</span>}
             </div>
           )}
+          {!form.useGonLogo && (
+            <div style={{display:'flex', gap:8, alignItems:'center', marginTop:10}}>
+              <input className="tw-in" style={{flex:1}} value={logoUrl} placeholder="…or paste the logo’s web address, e.g. https://example.gov.np/logo.png"
+                aria-label="Logo web address" onChange={e=>{ setLogoUrl(e.target.value); setLogoErr(''); }}
+                onKeyDown={e=>{ if (e.key === 'Enter') { e.preventDefault(); fetchLogo(); } }}/>
+              <Btn className="btn btn-secondary btn-sm" disabled={!logoUrl.trim() || fetchingLogo} onClick={fetchLogo}>
+                {fetchingLogo ? 'Fetching…' : 'Fetch from address'}</Btn>
+            </div>
+          )}
+          {logoErr && <div role="alert" style={{fontSize:12, color:'#c0391e', marginTop:4}}>{logoErr}</div>}
           <div className="input-hint">Square or wide PNG/JPG with a clear background works best. Max ~500 KB.</div>
         </div>
       </div>

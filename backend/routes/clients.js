@@ -1,6 +1,7 @@
 // routes/clients.js
 const { pool } = require('../db/pool');
 const { authenticate, requireAdmin, requireWriter } = require('../middleware/auth');
+const { fetchImageAsDataUrl } = require('../lib/fetchImage');
 
 /**
  * Every table that points at a client, and how.
@@ -55,6 +56,12 @@ async function existingRefs() {
 
 async function plugin(fastify, opts) {
   fastify.addHook('preHandler', authenticate);
+
+  // Download a logo from a web address so it can be stored with the client.
+  fastify.post('/logo-from-url', { preHandler: requireWriter }, async (request, reply) => {
+    try { return { logo: await fetchImageAsDataUrl(request.body?.url) }; }
+    catch (e) { return reply.code(400).send({ error: e.message || 'Could not fetch that image.' }); }
+  });
 
   fastify.get('/', async (request, reply) => {
     return (await pool.query('SELECT * FROM clients WHERE is_active=TRUE ORDER BY short_name')).rows;
