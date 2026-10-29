@@ -3205,3 +3205,7 @@ button:not([class]) { color: inherit; }
 .rv-more { margin: 14px 0 0; }
 .rv-more > summary { cursor: pointer; font-size: 13px; font-weight: 600; color: var(--text2); padding: 6px 0; }
 .rv-more[open] > summary { margin-bottom: 10px; }
+
+/* A choice inside a form column: options share one row as equal halves, instead of wrapping into a stack. */
+.pf-grid .tw-seg { display: flex; flex-wrap: nowrap; width: 100%; }
+.pf-grid .tw-seg button { flex: 1 1 auto; white-space: nowrap; padding: 0 8px; }
