@@ -3,7 +3,7 @@ import {
   WidthType, AlignmentType, VerticalAlign, BorderStyle, VerticalMergeType,
 } from 'docx';
 import { saveAs } from 'file-saver';
-import { getClient, esc, fyInRange, occMasterName, occLetterName } from './helpers.js';
+import { getClient, esc, fyInRange, occMasterName, occLetterName, deliver } from './helpers.js';
 
 // ─── Bagmati Province RFP Format ─────────────────────────────────────────────
 // Mirrors the Bagmati Province RFP's "B - Consultant's Experience" annex:
@@ -493,7 +493,7 @@ async function downloadDOCX(fullInst, activeExps, reportId, opts = {}) {
 
   const blob = await Packer.toBlob(doc);
   const safe = (s) => String(s).replace(/[^a-z0-9]+/gi, '_').replace(/^_|_$/g, '');
-  saveAs(blob, `Bagmati_RFP_${safe(fullInst?.acronym || fullInst?.name || 'firm')}.docx`);
+  deliver(blob, `Bagmati_RFP_${safe(fullInst?.acronym || fullInst?.name || 'firm')}.docx`, opts, saveAs);
 }
 
 const bagmati = {

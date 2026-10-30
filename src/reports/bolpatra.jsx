@@ -1,5 +1,5 @@
 import React from 'react';
-import { getClient, monthsBetween, districtsOf, esc, fyInRange } from './helpers.js';
+import { getClient, monthsBetween, districtsOf, esc, fyInRange, deliver } from './helpers.js';
 import { loadDocx, loadFileSaver } from './docxLazy.js';
 import { BS_MONTHS_EN } from '../constants/nepali.js';
 import { fillDescriptionTemplate } from '../utils/descriptionTemplates.js';
@@ -1508,7 +1508,7 @@ async function downloadMultiDOCX(firms, clients, reportId, opts = {}) {
     ? (firms[0].inst?.acronym || firms[0].inst?.name || 'firm')
     : `${firms.length}_firms`;
   const safe = (s) => String(s).replace(/[^a-z0-9]+/gi, '_').replace(/^_|_$/g, '');
-  saveAs(blob, `Bolpatra_${safe(label)}_${safe(who)}.docx`);
+  deliver(blob, `Bolpatra_${safe(label)}_${safe(who)}.docx`, opts, saveAs);
 }
 
 // Single-institute entry point, kept so the family also works if a report is

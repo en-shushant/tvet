@@ -58,7 +58,12 @@ function TendersView({ institutes = [], clients = [], onGoToReports, canAccessPo
   const [startAt, setStartAt] = useState(null);
   const openAt = (id, step = null) => { setStartAt(step); setOpen(id); };
   // #tenders/new (from search) goes straight to a blank tender.
-  useEffect(() => { if (initialView === 'new') { openAt('new'); onViewHandled?.(); } }, [initialView]);
+  useEffect(() => {
+    if (initialView === 'new') { openAt('new'); onViewHandled?.(); return; }
+    // #tenders/open-12-5: back to tender 12, on its Submit step (after saving a built EOI from Reports).
+    const m = String(initialView || '').match(/^open-(\d+)(?:-(\d))?$/);
+    if (m) { openAt(Number(m[1]), m[2] ? Number(m[2]) : null); onViewHandled?.(); }
+  }, [initialView]);
   // The tender being copied from the list, if any.
   const [copyOf, setCopyOf] = useState(null);
   const [loading, setLoading] = useState(true);

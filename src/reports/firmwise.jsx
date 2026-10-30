@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { esc, fyYear, fyInRange } from './helpers.js';
+import { esc, fyYear, fyInRange, deliver } from './helpers.js';
 import { buildFirmWiseData } from './helvetasData.js';
 import {
   Document, Packer, Table, TableRow, TableCell, Paragraph, TextRun,
@@ -370,7 +370,7 @@ async function downloadNSTBDOCX(fullInst, activeExps, opts = {}) {
     ]}],
   });
   const blob = await Packer.toBlob(doc);
-  saveAs(blob, `${firmName.replace(/[^\w\s]/g, '').trim().replace(/\s+/g, '_')}_NSTB_SkillTest.docx`);
+  deliver(blob, `${firmName.replace(/[^\w\s]/g, '').trim().replace(/\s+/g, '_')}_NSTB_SkillTest.docx`, opts, saveAs);
 }
 
 async function downloadDOCX(fullInst, activeExps, reportId, opts = {}) {
@@ -447,7 +447,7 @@ async function downloadDOCX(fullInst, activeExps, reportId, opts = {}) {
 
   const blob = await Packer.toBlob(doc);
   const fname = `${firmName.replace(/[^\w\s]/g, '').trim().replace(/\s+/g, '_')}_FirmWise_Summary.docx`;
-  saveAs(blob, fname);
+  deliver(blob, fname, opts, saveAs);
 }
 
 function buildCSVRow() { return {}; }

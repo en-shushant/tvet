@@ -3,6 +3,7 @@ import { getSession } from '../utils/auth.js';
 import { api, normInst } from '../utils/api.js';
 import { exportToCSV } from '../utils/export.js';
 import { Btn } from '../md.jsx';
+import { toast } from './ui/Feedback.jsx';
 import { fyInRange, fyYear, completedOnly } from '../reports/helpers.js';
 import { takeTenderContext } from '../utils/tenderContext.js';
 import { FISCAL_YEARS } from '../constants/data.js';
@@ -193,6 +194,11 @@ function ReportsView({ institutes, clients, embedded = false }) {
   const [includeRestricted, setIncludeRestricted] = useState(true);
   // Set when Tenders sent us here, so the builder can say why it is pre-filled.
   const [fromTender, setFromTender] = useState(null);
+  // Where "Save to tender" files the document. Kept apart from fromTender, which the banner's
+  // dismiss button clears: closing the banner must not lose the way back to the bid.
+  const [saveTarget, setSaveTarget] = useState(null);
+  const [savingToTender, setSavingToTender] = useState(false);
+  const [savedToTender, setSavedToTender] = useState(false);
   // The tender's client, title and key experts, for the EOI's Forms 1 and 5.
   const [tenderReport, setTenderReport] = useState(null);
 
@@ -250,6 +256,7 @@ function ReportsView({ institutes, clients, embedded = false }) {
       setEoiSpecificOccs(ctx.occupationNames);
     }
     setFromTender(ctx);
+    if (ctx.tenderId && ctx.bidderId) setSaveTarget({ tenderId: ctx.tenderId, bidderId: ctx.bidderId, kind: ctx.kind, title: ctx.title });
     if (ctx.tenderId && ctx.bidderId) {
       api('GET', `/tenders/${ctx.tenderId}/cv?bidder_id=${ctx.bidderId}`, null, getSession()?.token)
         .then(pack => {
@@ -718,6 +725,7 @@ function ReportsView({ institutes, clients, embedded = false }) {
   // A different report or firm set invalidates what is on screen rather than
   // silently leaving the previous document up.
   useEffect(() => { setRenderedSig(null); }, [reportId, familyId]);
+  useEffect(() => { setSavedToTender(false); }, [renderedSig]);
 
   const handlePrint = () => {
     const w = openSafeDocument(family.buildPrintHTML(reportInst, activeExps, clients, report.id, fyRangeLabel, opts));
@@ -733,9 +741,41 @@ function ReportsView({ institutes, clients, embedded = false }) {
 
   const handleWord = () => family.downloadDOCX(reportInst, activeExps, report.id, opts);
 
+  /**
+   * File the built document on the tender it was prepared for, as a Word file, so the tender's
+   * Submit step shows it. It is built the same way "Export Word" builds it; the file is handed
+   * over (opts.capture) instead of downloaded.
+   */
+  const canSaveToTender = !!saveTarget && (isMultiInst ? !!family.downloadMultiDOCX : (isAggregate && !!family.downloadDOCX));
+  const handleSaveToTender = async () => {
+    setSavingToTender(true);
+    try {
+      let built = null;
+      const o = { ...opts, capture: (blob, name) => { built = { blob, name }; } };
+      if (isMultiInst) await family.downloadMultiDOCX(fwSelectedFirms(), clients, report.id, o);
+      else await family.downloadDOCX(reportInst, activeExps, report.id, o);
+      if (!built) throw new Error('This report could not be built as a Word file.');
+      const data = await new Promise((res, rej) => {
+        const r = new FileReader();
+        r.onload = () => res(String(r.result).split(',')[1]);
+        r.onerror = () => rej(new Error('Could not read the built file.'));
+        r.readAsDataURL(built.blob);
+      });
+      await api('POST', `/tenders/${saveTarget.tenderId}/documents`,
+        { bidder_id: saveTarget.bidderId, kind: saveTarget.kind, file_name: built.name, file_data: data }, getSession()?.token);
+      setSavedToTender(true);
+      toast(`Saved to the tender. It is on the Submit step now.`);
+    } catch (e) { toast(e.message || 'Could not save it to the tender.'); }
+    finally { setSavingToTender(false); }
+  };
+  const backToTender = () => { window.location.hash = `#tenders/open-${saveTarget.tenderId}-5`; };
+
   const canPrint = noInstitute
     ? (toolsOccIds.length > 0 && !!toolsLevel)
     : isAggregate ? !!fullInst : activeExps.length > 0;
+  // A report that combines firms is built from the ticked firms, not from one chosen firm: gating
+  // its PDF on `fullInst` left Export PDF greyed out whenever the report was opened from a tender.
+  const canExport = isMultiInst && !noInstitute ? fwInstIds.length > 0 : canPrint;
 
   // Whether the "Preview Report" action is available at all — same gate as
   // canPrint for single-firm/no-firm reports, plus a firm-count gate for
@@ -1816,6 +1856,13 @@ function ReportsView({ institutes, clients, embedded = false }) {
               {!isAggregate && (
                 <Btn className="btn btn-secondary" onClick={handleCSV} disabled={!activeExps.length}>Export CSV</Btn>
               )}
+              {canSaveToTender && (savedToTender
+                ? <Btn className="btn btn-secondary" onClick={backToTender}>
+                    <span className="material-icons-round" style={{fontSize:16, verticalAlign:'middle', marginRight:4}}>check_circle</span>
+                    Saved — back to the tender</Btn>
+                : <Btn className="btn btn-primary" onClick={handleSaveToTender} disabled={!canExport || isStale || savingToTender}
+                    title={isStale ? 'Rebuild first — settings have changed since this was built' : `Keep this ${saveTarget.kind} on ${saveTarget.title}`}>
+                    {savingToTender ? 'Saving…' : `Save ${saveTarget.kind} to tender`}</Btn>)}
               {isAggregate && !isMultiInst && family.downloadDOCX && (
                 <Btn className="btn btn-secondary" onClick={handleWord} disabled={!canPrint || isStale}
                   title={isStale ? 'Rebuild first — settings have changed since this was built' : undefined}>Export Word</Btn>
@@ -1848,7 +1895,7 @@ function ReportsView({ institutes, clients, embedded = false }) {
                 }
                 const w = openSafeDocument(combined);
                 if (w) setTimeout(() => w.print(), 300);
-              }} disabled={!canPrint || isStale}
+              }} disabled={!canExport || isStale}
                 title={isStale ? 'Rebuild first — settings have changed since this was built' : undefined}>Export PDF</Btn>
             </div>
           </>

@@ -10,6 +10,7 @@ import { defaultFamilyFor } from '../../reports/catalog.js';
 import { STATUSES, BLANK_TENDER, noticeOf, teamProgress } from './common.js';
 import NoticeStep from './NoticeStep.jsx';
 import RequirementsStep from './RequirementsStep.jsx';
+import TenderSummary from './TenderSummary.jsx';
 import ChecklistHome from './ChecklistHome.jsx';
 import BiddersStep from './BiddersStep.jsx';
 import TeamStep from './TeamStep.jsx';
@@ -40,6 +41,11 @@ export default function TenderWorkspace({ tenderId, startAt, clients, institutes
   // One format per notice: every bidder answers it in the format the client set.
   const [docFamily, setDocFamily] = useState(null);
   const [copying, setCopying] = useState(false);
+  // The EOIs and RFPs built for this tender and saved to it.
+  const [docs, setDocs] = useState([]);
+  const loadDocs = useCallback(async (id) => {
+    try { setDocs(await api('GET', `/tenders/${id}/documents`, null, token) || []); } catch { setDocs([]); }
+  }, [token]);
 
   const load = useCallback(async (id, { chooseStep = false } = {}) => {
     const t = await api('GET', `/tenders/${id}`, null, token);
@@ -52,12 +58,13 @@ export default function TenderWorkspace({ tenderId, startAt, clients, institutes
     for (const list of packs) for (const v of (list || [])) seen.set(v.id, v);
     setVariants([...seen.values()]);
     setTender(t);
+    loadDocs(id);
     setActiveBidder(a => (t.bidders || []).some(b => b.id === a) ? a : (t.bidders?.[0]?.id ?? null));
     setDocFamily(f => f || defaultFamilyFor(t.stage));
     // An existing tender opens on its checklist; where to go next is one click.
     if (chooseStep) setStep(0);
     return t;
-  }, [token]);
+  }, [token, loadDocs]);
 
   useEffect(() => {
     if (!tenderId) { setTender({ ...BLANK_TENDER }); setStep(1); return; }
@@ -237,6 +244,21 @@ export default function TenderWorkspace({ tenderId, startAt, clients, institutes
     catch (e) { setErr(e.message); }
   };
 
+  const downloadDoc = async (d) => {
+    try {
+      const res = await fetch(`/api/tenders/${tender.id}/documents/${d.id}/download`, { headers: { Authorization: `Bearer ${token}` } });
+      if (!res.ok) throw new Error('Could not download that file.');
+      const { saveAs } = await import('file-saver');
+      saveAs(await res.blob(), d.file_name);
+    } catch (e) { setErr(e.message); }
+  };
+  const removeDoc = async (d) => {
+    const ok = await confirmDialog({ title: 'Remove this saved file?', message: `${d.file_name} is removed from this tender. The firm's records are not touched.`, confirmLabel: 'Remove', danger: true });
+    if (!ok) return;
+    try { await api('DELETE', `/tenders/${tender.id}/documents/${d.id}`, null, token); await loadDocs(tender.id); toast('Removed.'); }
+    catch (e) { setErr(e.message); }
+  };
+
   const steps = railSteps(tender);
   const go = (n) => { if (n === 0 || (steps[n - 1] && !steps[n - 1].locked)) { setStep(n); window.scrollTo?.({ top: 0 }); } };
 
@@ -265,22 +287,6 @@ export default function TenderWorkspace({ tenderId, startAt, clients, institutes
         <div style={{ minWidth: 0, flex: 1 }}>
           <button type="button" className="tw-back" onClick={onBack}>← All tenders</button>
           <h1 className="tw-title">{saved ? tender.title : 'New tender'}</h1>
-          {saved && (() => {
-            const meta = [client, tender.reference_no,
-              tender.submission_date && `due ${tender.submission_date}${tender.submission_time ? ` at ${tender.submission_time}` : ''}`,
-              tender.fy && `FY ${tender.fy}`].filter(Boolean).join(' · ');
-            return meta
-              ? <div className="tw-meta">{meta}</div>
-              : <div className="tw-meta"><button type="button" className="tw-link" onClick={() => go(1)}>Add the reference number and deadline</button></div>;
-          })()}
-          {/* The scoring stays in view on every step: it says where the effort
-              belongs, which is the question every later step is answering. */}
-          {saved && scoring(tender) && (
-            <div className="tw-meta">
-              Scored on {scoring(tender)}
-              {tender.association_allowed === false && <span className="tw-warn"> · no joint ventures</span>}
-            </div>
-          )}
           {saved && stageChain.length > 1 && (
             <div className="tw-chain" aria-label="Stages of this bid">
               {stageChain.map((s, i) => (
@@ -314,6 +320,8 @@ export default function TenderWorkspace({ tenderId, startAt, clients, institutes
           </div>
         )}
       </div>
+
+      {saved && <TenderSummary tender={tender} docs={docs} onGo={go} />}
 
       {copying && (
         <CopyTender tender={tender} token={token} onClose={() => setCopying(false)}
@@ -371,7 +379,7 @@ export default function TenderWorkspace({ tenderId, startAt, clients, institutes
               onSaveTeam={saveTeam} footer={footer} />
           )}
           {step === 5 && saved && (
-            <SubmitStep tender={tender} busy={busy} variants={variants} advanced={advanced}
+            <SubmitStep tender={tender} busy={busy} variants={variants} advanced={advanced} docs={docs} onDownloadDoc={downloadDoc} onRemoveDoc={removeDoc}
               docFamily={docFamily || defaultFamilyFor(tender.stage)} setDocFamily={setDocFamily}
               onPrepareReport={onPrepareReport} onMakeCVs={makeCVs} onSetBidderStatus={setBidderStatus}
               onAdvance={advance} onOpenStage={openStage} onSaveVariant={saveVariant} footer={footer} />
@@ -382,16 +390,6 @@ export default function TenderWorkspace({ tenderId, startAt, clients, institutes
   );
 }
 
-/** The notice's weights and pass mark as one line, or nothing if it states none. */
-function scoring(t) {
-  const parts = [
-    t.weight_qualification != null && `qualification ${t.weight_qualification}%`,
-    t.weight_experience != null && `experience ${t.weight_experience}%`,
-    t.weight_capacity != null && `capacity ${t.weight_capacity}%`,
-  ].filter(Boolean);
-  if (t.minimum_score != null) parts.push(`pass mark ${t.minimum_score}`);
-  return parts.join(' · ');
-}
 
 /**
  * What the rail says about each step.

@@ -467,10 +467,12 @@ describe('what a tender notice actually states', () => {
 
   it('keeps the scoring in view on every step, not only in the notice form', () => {
     // The weights say where the effort belongs — the question every later step
-    // is answering — so they sit in the header rather than behind a disclosure.
-    expect(view).toMatch(/Scored on \{scoring\(tender\)\}/);
-    expect(view).toMatch(/pass mark \$\{t\.minimum_score\}/);
-    expect(view).toMatch(/no joint ventures/);
+    // is answering — so they sit in the summary above the steps, not behind a disclosure.
+    const summary = read('src/components/tenders/TenderSummary.jsx');
+    expect(view).toMatch(/<TenderSummary tender=\{tender\}/);
+    expect(summary).toMatch(/pass mark \$\{t\.minimum_score\}/);
+    expect(summary).toMatch(/\['Scored on', s\.scoring\]/);
+    expect(summary).toMatch(/Not allowed by this notice/);
   });
 
   it('carries the opportunity to the RFP but not that notice’s own terms', () => {

@@ -1,4 +1,4 @@
-import { esc, fyYear, occLetterName } from './helpers.js';
+import { esc, fyYear, occLetterName, deliver } from './helpers.js';
 import {
   Document, Packer, Table, TableRow, TableCell, Paragraph, TextRun,
   WidthType, AlignmentType, VerticalAlign, HeadingLevel, BorderStyle,
@@ -905,7 +905,7 @@ async function downloadDetailedDOCX(fullInst, activeExps, reportId, opts = {}) {
 
   const blob = await Packer.toBlob(doc);
   const fname = `DetailedExperience_${(fullInst?.acronym || firmName).replace(/\s+/g,'_')}${fyLabel ? `_${fyLabel.replace(/[^\w]+/g,'_')}` : ''}.docx`;
-  saveAs(blob, fname);
+  deliver(blob, fname, opts, saveAs);
 }
 
 // ── Report family ─────────────────────────────────────────────────────────────

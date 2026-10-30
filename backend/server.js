@@ -487,6 +487,21 @@ async function runMigrations() {
       remarks    TEXT,
       sort_order INTEGER DEFAULT 0
     )`,
+    // The EOI or RFP built for a bidder and saved to the tender, kept as the file itself (base64, as
+    // the trainer pool's documents are) so the Submit step can offer it again.
+    `CREATE TABLE IF NOT EXISTS tender_documents (
+      id           SERIAL PRIMARY KEY,
+      tender_id    INTEGER NOT NULL REFERENCES tenders(id) ON DELETE CASCADE,
+      bidder_id    INTEGER REFERENCES tender_bidders(id) ON DELETE CASCADE,
+      kind         TEXT NOT NULL,
+      file_name    TEXT NOT NULL,
+      content_type TEXT,
+      file_size    INTEGER,
+      file_data    TEXT NOT NULL,
+      created_by   UUID,
+      created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )`,
+    `CREATE INDEX IF NOT EXISTS idx_tender_docs_tender ON tender_documents(tender_id)`,
     `CREATE TABLE IF NOT EXISTS tender_bidder_firms (
       bidder_id    INTEGER NOT NULL REFERENCES tender_bidders(id) ON DELETE CASCADE,
       institute_id INTEGER NOT NULL REFERENCES institutes(id) ON DELETE CASCADE,

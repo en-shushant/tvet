@@ -86,3 +86,10 @@ export const occLetterName = (occ, occupations) => {
  */
 export const isOngoingAssignment = (exp) => !!exp?.isOngoing;
 export const completedOnly = (exps) => (exps || []).filter(e => !isOngoingAssignment(e));
+
+/**
+ * Hand a built Word file to whoever asked: save it to the user's computer, or —
+ * when the caller passes `opts.capture` (saving it to a tender) — give it to them.
+ */
+export const deliver = (blob, filename, opts, saveAs) =>
+  (typeof opts?.capture === 'function' ? opts.capture(blob, filename) : saveAs(blob, filename));

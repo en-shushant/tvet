@@ -16,8 +16,37 @@ const FIELD_TAG = { detailed_tasks: 'Tasks', key_qualifications: 'Qualifications
  * because it is what decides the next document: an EOI bidder marked
  * Shortlisted is the one invited to propose.
  */
+/** The files already built and saved for one bidder, newest first. */
+function SavedDocs({ docs, bidderId, kind, onDownload, onRemove }) {
+  const mine = docs.filter(d => d.bidder_id === bidderId && d.kind === kind);
+  const [all, setAll] = useState(false);
+  if (!mine.length) return null;
+  const shown = all ? mine : mine.slice(0, 2);
+  const when = (t) => new Date(t).toLocaleString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+  const size = (n) => n > 1048576 ? `${(n / 1048576).toFixed(1)} MB` : `${Math.max(1, Math.round((n || 0) / 1024))} KB`;
+  return (
+    <ul className="tw-saved" aria-label={`Saved ${kind} files`}>
+      {shown.map((d, i) => (
+        <li key={d.id}>
+          <span className="material-icons-round" aria-hidden="true">description</span>
+          <span className="tw-saved-name">{d.file_name}</span>
+          <span className="tw-hint">{i === 0 && !all ? 'Latest · ' : ''}saved {when(d.created_at)}{d.created_by_name ? ` by ${d.created_by_name}` : ''} · {size(d.file_size)}</span>
+          <span className="tw-saved-actions">
+            <button type="button" className="tw-link" onClick={() => onDownload(d)}>Download</button>
+            <button type="button" className="tw-link tw-link-danger" onClick={() => onRemove(d)}>Remove</button>
+          </span>
+        </li>
+      ))}
+      {mine.length > 2 && (
+        <li><button type="button" className="tw-link" onClick={() => setAll(a => !a)}>
+          {all ? 'Show fewer' : `${mine.length - 2} earlier version${mine.length - 2 === 1 ? '' : 's'}`}</button></li>
+      )}
+    </ul>
+  );
+}
+
 export default function SubmitStep({ tender, busy, variants, advanced = false, docFamily, setDocFamily,
-                                     onPrepareReport, onMakeCVs, onSetBidderStatus,
+                                     onPrepareReport, onMakeCVs, onSetBidderStatus, docs = [], onDownloadDoc, onRemoveDoc,
                                      onAdvance, onOpenStage, onSaveVariant, footer }) {
   const bidders = tender.bidders || [];
   const isEOI = tender.stage === 'EOI';
@@ -96,10 +125,12 @@ export default function SubmitStep({ tender, busy, variants, advanced = false, d
                     ? 'Built from every partner’s experience, lead first.'
                     : `Built from ${lead?.acronym || lead?.name || 'the firm'}’s experience.`}
                 </span>
-                <Btn className="btn btn-primary btn-sm" onClick={() => onPrepareReport(tender, 'EOI', b, docFamily)}>
-                  Build the EOI →</Btn>
+                <Btn className={`btn btn-sm ${docs.some(d => d.bidder_id === b.id && d.kind === 'EOI') ? 'btn-secondary' : 'btn-primary'}`}
+                  onClick={() => onPrepareReport(tender, 'EOI', b, docFamily)}>
+                  {docs.some(d => d.bidder_id === b.id && d.kind === 'EOI') ? 'Build it again →' : 'Build the EOI →'}</Btn>
               </div>
             )}
+            {isEOI && <SavedDocs docs={docs} bidderId={b.id} kind="EOI" onDownload={onDownloadDoc} onRemove={onRemoveDoc} />}
 
             <div className={`tw-doc${rfpOpen(b) ? '' : ' is-locked'}`}>
               <span className="tw-doc-name">RFP</span>
@@ -110,8 +141,10 @@ export default function SubmitStep({ tender, busy, variants, advanced = false, d
                   : 'Opens once this bidder is marked Shortlisted — a proposal is only invited from a bidder that got through the EOI.'}
               </span>
               <Btn className={`btn btn-sm ${isEOI ? 'btn-secondary' : 'btn-primary'}`} disabled={!rfpOpen(b)}
-                onClick={() => onPrepareReport(tender, 'RFP', b, docFamily)}>Build the RFP →</Btn>
+                onClick={() => onPrepareReport(tender, 'RFP', b, docFamily)}>
+                {docs.some(d => d.bidder_id === b.id && d.kind === 'RFP') ? 'Build it again →' : 'Build the RFP →'}</Btn>
             </div>
+            <SavedDocs docs={docs} bidderId={b.id} kind="RFP" onDownload={onDownloadDoc} onRemove={onRemoveDoc} />
 
             <div className="tw-doc">
               <span className="tw-doc-name">CV pack</span>

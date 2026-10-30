@@ -27,6 +27,7 @@ const list = [
   stage({ id: 3, title: 'Lost one', status: 'Lost' }),
   stage({ id: 4, title: 'Submitted one', status: 'Submitted' }),
 ];
+let savedDocs = [];
 const detail = (id) => ({
   ...list.find(t => t.id === id), occupations: [], positions: [], people: [], led_to: [], came_from: null,
   bidders: list.find(t => t.id === id).bidders.map(b => ({ ...b, status: 'Preparing' })),
@@ -45,6 +46,8 @@ beforeEach(() => {
     const json = (b) => Promise.resolve(new Response(JSON.stringify(b), { status: 200, headers: { 'Content-Type': 'application/json' } }));
     const one = u.match(/\/tenders\/(\d+)(?:\?|$)/);
     if (one) return json(detail(Number(one[1])));
+    const docs = u.match(/\/tenders\/(\d+)\/documents(\?|$)/);
+    if (docs) return json(savedDocs);
     if (u.includes('/tenders/cv-variants')) return json([]);
     if (/\/tenders(\?|$)/.test(u)) return json(list);
     return inner(url, opts);
@@ -71,6 +74,8 @@ async function mount() {
 }
 const click = async (el) => { await act(async () => { el.click(); }); await flush(); await flush(); };
 const buttons = (text) => [...container.querySelectorAll('button, [role=button], [data-md]')].filter(b => b.textContent.trim() === text);
+
+beforeEach(() => { savedDocs = []; });
 
 describe('the list and its figures', () => {
   it('shows the four figures from every bid', async () => {
@@ -106,5 +111,45 @@ describe('opening a tender', () => {
     await click([...container.querySelectorAll('button')].find(b => /All tenders/.test(b.textContent)));
     expect(container.querySelector('.tw-kpis')).not.toBeNull();
     assertNoConsoleErrors();
+  });
+});
+
+describe('the summary above every step, and the saved EOI', () => {
+  it('shows the bid at a glance on each step', async () => {
+    await mount();
+    await click(buttons('Open')[0]);
+    const summary = container.querySelector('.tw-summary');
+    expect(summary).not.toBeNull();
+    // each label is its icon's name followed by its words
+    expect([...summary.querySelectorAll('.tw-tile-label')].map(e => e.textContent.replace(/^[a-z_0-9]+(?=[A-Z])/, '')))
+      .toEqual(['Deadline', 'What it asks for', 'Bidders', 'Team', 'EOI document']);
+    for (const step of [...container.querySelectorAll('.tw-rail .tw-step')]) { if (!step.disabled) await click(step); expect(container.querySelector('.tw-summary')).not.toBeNull(); }
+    assertNoConsoleErrors();
+  });
+
+  it('lists a saved EOI under its bidder on the Submit step, newest first, and offers the file', async () => {
+    savedDocs = [
+      { id: 2, bidder_id: 5, kind: 'EOI', file_name: 'Bolpatra_EOI_v2.docx', file_size: 20480, created_at: '2026-10-30T07:34:00Z', created_by_name: 'Sushant' },
+      { id: 1, bidder_id: 5, kind: 'EOI', file_name: 'Bolpatra_EOI_v1.docx', file_size: 18000, created_at: '2026-10-29T07:00:00Z', created_by_name: 'Sushant' },
+    ];
+    await mount();
+    await click(buttons('Open')[0]);
+    await click([...container.querySelectorAll('.tw-rail .tw-step')].find(b => /Submit/.test(b.textContent)));
+    const rows = [...container.querySelectorAll('.tw-saved li')].map(l => l.textContent);
+    expect(rows[0]).toContain('Bolpatra_EOI_v2.docx');
+    expect(rows[0]).toContain('Latest');
+    expect(rows[1]).toContain('Bolpatra_EOI_v1.docx');
+    expect(container.textContent).toContain('Build it again');
+    expect(container.querySelector('.tw-summary').textContent).toContain('1 of 1 saved');
+    assertNoConsoleErrors();
+  });
+
+  it('keeps Build the EOI as the main action while nothing is saved', async () => {
+    await mount();
+    await click(buttons('Open')[0]);
+    await click([...container.querySelectorAll('.tw-rail .tw-step')].find(b => /Submit/.test(b.textContent)));
+    expect(container.querySelector('.tw-saved')).toBeNull();
+    expect(container.textContent).toContain('Build the EOI');
+    expect(container.querySelector('.tw-summary').textContent).toContain('0 of 1 saved');
   });
 });

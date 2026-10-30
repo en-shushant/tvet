@@ -550,6 +550,63 @@ async function plugin(fastify, opts) {
   });
 
   // Only a superadmin deletes a tender: it takes its bidders and proposed team with it.
+  // ─── Saved documents: the EOI or RFP built for a bidder ───────────────────
+
+  const DOC_KINDS = ['EOI', 'RFP'];
+  const DOC_TYPES = {
+    docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    pdf: 'application/pdf',
+  };
+  const MAX_DOC_BYTES = 12 * 1024 * 1024;
+
+  /** What is saved on this tender, newest first — never the file data itself. */
+  fastify.get('/:id/documents', async (request) => {
+    const { rows } = await pool.query(
+      `SELECT d.id, d.tender_id, d.bidder_id, d.kind, d.file_name, d.content_type, d.file_size, d.created_at,
+              (SELECT u.name FROM users u WHERE u.id = d.created_by) AS created_by_name
+         FROM tender_documents d WHERE d.tender_id = $1 ORDER BY d.created_at DESC, d.id DESC`, [request.params.id]);
+    return rows;
+  });
+
+  fastify.post('/:id/documents', { preHandler: requireWriter }, async (request, reply) => {
+    const { bidder_id, kind, file_name, file_data } = request.body || {};
+    if (!DOC_KINDS.includes(kind)) return reply.code(400).send({ error: 'kind must be EOI or RFP' });
+    const name = String(file_name || '').trim().replace(/[\\/]/g, '_').slice(0, 200);
+    const ext = (name.split('.').pop() || '').toLowerCase();
+    if (!name || !DOC_TYPES[ext]) return reply.code(400).send({ error: 'Only Word (.docx) or PDF files can be saved here.' });
+    const b64 = String(file_data || '');
+    if (!b64 || !/^[A-Za-z0-9+/]+=*$/.test(b64)) return reply.code(400).send({ error: 'file_data must be the file, base64 encoded' });
+    const bytes = Buffer.from(b64, 'base64').length;
+    if (bytes > MAX_DOC_BYTES) return reply.code(413).send({ error: 'That file is larger than 12 MB.' });
+    const { rows: [bidder] } = bidder_id
+      ? await pool.query('SELECT id FROM tender_bidders WHERE id = $1 AND tender_id = $2', [bidder_id, request.params.id])
+      : { rows: [] };
+    if (!bidder) return reply.code(400).send({ error: 'That bidder is not on this tender' });
+    const { rows } = await pool.query(
+      `INSERT INTO tender_documents (tender_id, bidder_id, kind, file_name, content_type, file_size, file_data, created_by)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
+       RETURNING id, tender_id, bidder_id, kind, file_name, content_type, file_size, created_at`,
+      [request.params.id, bidder.id, kind, name, DOC_TYPES[ext], bytes, b64, request.user.id]);
+    return reply.code(201).send(rows[0]);
+  });
+
+  fastify.get('/:id/documents/:docId/download', async (request, reply) => {
+    const { rows: [d] } = await pool.query(
+      'SELECT file_name, content_type, file_data FROM tender_documents WHERE id = $1 AND tender_id = $2',
+      [request.params.docId, request.params.id]);
+    if (!d) return reply.code(404).send({ error: 'Not found' });
+    return reply.header('Content-Type', d.content_type || 'application/octet-stream')
+      .header('Content-Disposition', `attachment; filename="${d.file_name.replace(/"/g, '')}"`)
+      .send(Buffer.from(d.file_data, 'base64'));
+  });
+
+  fastify.delete('/:id/documents/:docId', { preHandler: requireWriter }, async (request, reply) => {
+    const { rowCount } = await pool.query('DELETE FROM tender_documents WHERE id = $1 AND tender_id = $2',
+      [request.params.docId, request.params.id]);
+    if (!rowCount) return reply.code(404).send({ error: 'Not found' });
+    return { deleted: true };
+  });
+
   fastify.delete('/:id', { preHandler: requireSuperAdmin }, async (request, reply) => {
     const { rowCount } = await pool.query('DELETE FROM tenders WHERE id = $1', [request.params.id]);
     if (!rowCount) return reply.code(404).send({ error: 'Not found' });
