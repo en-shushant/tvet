@@ -1,102 +1,120 @@
 /**
- * PPMO RFP "Adequacy for the Assignment": each task beside the prior work that
- * shows the expert can do it.
+ * PPMO RFP "Adequacy for the Assignment", in the compact form firms usually submit it.
  *
- * The form has a task column and a reference column, one row to a task, and a
- * blank reference reads as "no evidence". So every task is given one, written
- * only from facts already on the CV — their jobs and events, TOT, NSTB
- * certificate, degree — and chosen to fit the task: a safety task points at
- * workshop experience, an assessment task at the NSTB certificate, a delivery
- * task at the job itself. Where nothing fits a task, the next unused fact is
- * used, and failing even that a plain pointer to the CV, so no row is empty.
+ * One row. The left cell is the tasks, under "As a Main Trainer, she will". The
+ * right cell is a short paragraph on why the person can do them — what they hold,
+ * their ToT, the work they have done and for whom — followed by a few lines on what
+ * they are capable of. Written only from facts on the CV (qualifications, ToT, jobs,
+ * events, clients), so it reads the same way for anyone and says nothing untrue.
+ *
+ * Text written for this bid, or the firm's own prior-work wording, is used as
+ * written; the paragraph is what is generated when there is neither. Either way the
+ * cell is never empty.
  */
 
 const clean = (l) => String(l || '').replace(/^[•\-*]\s*/, '').trim();
 const lines = (t) => String(t || '').split('\n').map(clean).filter(Boolean);
-const norm = (s) => String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
 
-/** "2078/05/11" → "2078" is enough for a reference; the CV's own row carries the full dates. */
+/** "2078/05/11" → "2078": the CV's own employment table carries the full dates. */
 const year = (d) => String(d || '').match(/^\d{4}/)?.[0] || '';
+const listAnd = (xs) => xs.length <= 1 ? (xs[0] || '') : `${xs.slice(0, -1).join(', ')} and ${xs[xs.length - 1]}`;
+const aOrAn = (w) => (/^[aeiou]/i.test(String(w).trim()) ? 'an' : 'a');
+const plural = (n, one, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
 
-function period(e) {
-  const from = year(e.from_date);
-  const to = e.is_current ? 'present' : year(e.to_date);
-  return from || to ? ` (${[from, to].filter(Boolean).join(' – ')})` : '';
+/** Pronouns that agree with their verbs; neutral (they) when gender is not recorded. */
+function pronouns(gender) {
+  const g = String(gender || '').toLowerCase();
+  if (g.startsWith('m')) return { title: 'Mr', He: 'He', he: 'he', has: 'has', is: 'is', s: 's' };
+  if (g.startsWith('f')) return { title: 'Ms', He: 'She', he: 'she', has: 'has', is: 'is', s: 's' };
+  return { title: '', He: 'They', he: 'they', has: 'have', is: 'are', s: '' };
 }
 
-const clientsOf = (xs) => [...new Set(xs.flatMap(e => String(e.clients || '').split(',')).map(c => c.trim()).filter(Boolean))];
-const listAnd = (xs) => xs.length <= 1 ? (xs[0] || '') : `${xs.slice(0, -1).join(', ')} and ${xs[xs.length - 1]}`;
-
-/** The facts a reference can be built from. */
+/** What the CV records, ready to put in a sentence. */
 function factsOf(cv) {
-  const staff = cv.person?.person_type === 'Support Staff';
   const jobs = (cv.experience || []).filter(e => e.organisation || e.position);
-  const main = jobs[0] || null;
   const events = jobs.reduce((n, e) => n + (parseInt(e.events_count, 10) || 0), 0);
-  const clients = clientsOf(jobs);
+  const clients = [...new Set(jobs.flatMap(e => String(e.clients || '').split(',')).map(c => c.trim()).filter(Boolean))];
   const tot = (cv.trainings || []).find(t => t.kind === 'TOT');
   const nstb = (cv.education || []).find(q => q.stream === 'Vocational');
   const degree = (cv.education || []).find(q => q.stream !== 'Vocational' && q.title);
-  const forClients = clients.length ? ` for ${listAnd(clients)}` : '';
-  return {
-    staff, jobs, main, events, clients, forClients,
-    jobLine: (e) => {
-      const n = parseInt(e.events_count, 10) || 0;
-      const ev = n > 0 ? `: ${staff ? 'supported' : 'conducted'} ${n} training event${n === 1 ? '' : 's'}${e.clients ? ` for ${e.clients}` : ''}` : '';
-      return `${e.position || (staff ? 'Staff member' : 'Trainer')}, ${e.organisation || 'the employer'}${period(e)}${ev}`;
-    },
-    totLine: tot ? `Holds a Training of Trainers (TOT)${tot.institution ? ` from ${tot.institution}` : ''}${year(tot.end_date_ad || tot.end_date || tot.passed_year) ? `, ${year(tot.end_date_ad || tot.end_date || tot.passed_year)}` : ''}` : null,
-    nstbLine: nstb ? `Holds the NSTB skill certificate ${nstb.title || [nstb.level, nstb.occupation_name].filter(Boolean).join(' ')}${nstb.passed_year ? ` (${nstb.passed_year})` : ''}` : null,
-    degreeLine: degree ? `${degree.title}${degree.institution ? `, ${degree.institution}` : ''}${degree.passed_year ? ` (${degree.passed_year})` : ''}` : null,
-  };
+  return { jobs, main: jobs[0] || null, earlier: jobs.slice(1, 3), events, clients, tot, nstb, degree };
 }
 
-/** What each kind of task is best evidenced by. First match wins. */
-const KINDS = [
-  { re: /safety|\bppe\b|\bosh\b|eshs|risk|emergency|hazard/i,
-    ref: (f) => f.events > 0 ? `Applied OSH/ESHS and PPE practice in the workshop across ${f.events} training event${f.events === 1 ? '' : 's'}${f.forClients}`
-      : f.main ? `Applied workshop safety and PPE practice as ${f.main.position || 'trainer'} at ${f.main.organisation}` : null },
-  { re: /assess|evaluat|nstb|skill test|certif|competenc|feedback|remedial|coaching/i,
-    ref: (f) => f.nstbLine ? `${f.nstbLine}, and prepares trainees for NSTB skill testing`
-      : f.events > 0 ? `Assessed trainee competency through practical tests across ${f.events} training event${f.events === 1 ? '' : 's'}${f.forClients}` : null },
-  { re: /\bojt\b|on.the.job|placement|employment|linkage|career|graduate|job/i,
-    ref: (f) => f.main ? `Supported OJT, job placement and employment linkage of graduates${f.forClients || ` as ${f.main.position || 'staff'} at ${f.main.organisation}`}` : null },
-  { re: /report|record|logbook|attendance|document|database|data\b|progress/i,
-    ref: (f) => f.main ? `Maintained attendance sheets, logbooks and progress records at ${f.main.organisation}${f.events > 0 ? `, across ${f.events} training event${f.events === 1 ? '' : 's'}` : ''}` : null },
-  { re: /coordinat|liais|monitor|stakeholder|manager|communicat|orient|support/i,
-    ref: (f) => f.main ? `Worked with training managers and monitoring officers as ${f.main.position || 'staff'} at ${f.main.organisation}${f.forClients}` : null },
-  { re: /\btot\b|trainer.s training|training of trainers/i, ref: (f) => f.totLine },
-  { re: /plan|prepar|lesson|deliver|conduct|teach|train|demonstrat|supervis|practical|class|session|curricul|material|resource/i,
-    ref: (f) => f.main ? f.jobLine(f.main) : f.degreeLine },
-];
+const withYear = (text, y) => (y ? `${text} (${y})` : text);
+
+/** The paragraph that says why this person can do the tasks. */
+function paragraph(cv, P) {
+  const f = factsOf(cv);
+  const staff = cv.person?.person_type === 'Support Staff';
+  const position = String(cv.proposed_position || '').trim() || (staff ? 'staff member' : 'trainer');
+  const who = [P.title, cv.person?.full_name].filter(Boolean).join(' ');
+  const showEvents = cv.show_events !== false;
+  const out = [];
+
+  // What they hold.
+  const held = [
+    f.degree && withYear(f.degree.title, f.degree.passed_year),
+    f.nstb && withYear(`the NSTB skill certificate ${f.nstb.title || [f.nstb.level, f.nstb.occupation_name].filter(Boolean).join(' ')}`.trim(), f.nstb.passed_year),
+  ].filter(Boolean);
+  if (held.length) out.push(`${who} holds ${listAnd(held)}.`);
+
+  if (f.tot) {
+    const when = year(f.tot.end_date_ad || f.tot.end_date || f.tot.passed_year);
+    const lead = held.length ? `Also, ${P.he} ${P.has}` : `${who} has`;
+    out.push(`${lead} received Training of Trainers (ToT)${f.tot.institution ? ` from ${f.tot.institution}` : ''}${when ? ` in ${when}` : ''}.`);
+  }
+
+  // What they have done.
+  if (f.main) {
+    const since = f.main.is_current ? (year(f.main.from_date) ? ` since ${year(f.main.from_date)}` : '')
+      : (year(f.main.from_date) || year(f.main.to_date) ? ` from ${[year(f.main.from_date), year(f.main.to_date)].filter(Boolean).join(' to ')}` : '');
+    const n = f.events;
+    const did = showEvents && n > 0
+      ? `, ${staff ? 'supporting' : 'conducting'} ${plural(n, 'training event')}${f.clients.length ? ` for ${listAnd(f.clients.slice(0, 6))}${f.clients.length > 6 ? ' and others' : ''}` : ''}`
+      : (f.clients.length ? `, on programmes of ${listAnd(f.clients.slice(0, 6))}${f.clients.length > 6 ? ' and others' : ''}` : '');
+    out.push(`${P.He} ${P.has} worked as ${aOrAn(f.main.position || position)} ${f.main.position || position}${f.main.organisation ? ` with ${f.main.organisation}` : ''}${since}${did}.`);
+  }
+  if (f.earlier.length) {
+    out.push(`Earlier, ${P.he} worked as ${listAnd(f.earlier.map(e => `${e.position || 'staff'}${e.organisation ? ` at ${e.organisation}` : ''}${year(e.from_date) ? ` (${[year(e.from_date), e.is_current ? 'present' : year(e.to_date)].filter(Boolean).join(' – ')})` : ''}`))}.`);
+  }
+
+  if (!out.length) return `${who} is proposed as ${aOrAn(position)} ${position} for this assignment; qualifications and experience are set out in this CV.`;
+  out.push(`${who} is a qualified and experienced ${position}.`);
+  return out.join(' ');
+}
+
+/** The general "capable of" lines, when the firm has not written its own. */
+function capabilities(cv) {
+  const staff = cv.person?.person_type === 'Support Staff';
+  return staff
+    ? ['Capable of carrying out the assigned tasks in line with the requirements of the ToR.',
+       'Able to coordinate with the project team, trainers and other staff for successful completion of the assignment.',
+       'Able to prepare and submit reports in the prescribed formats to the client.']
+    : ['Capable of delivering quality skill development training in line with the requirements of the ToR.',
+       'Able to coordinate with training managers, trainers and support staff for successful completion of the training.',
+       'Able to prepare reports in the prescribed formats and submit them to the client.'];
+}
 
 /**
- * [{ task, ref }] — one pair per task, every ref filled.
- * the lines written for this bid (or the firm's own wording) go to the first rows as written.
+ * { left, right } — the two cells of the Adequacy row, as bulleted text.
+ * `cv.adequacy_typed === false` marks wording the firm chose (`cv.adequacy_wording`);
+ * anything else in `cv.adequacy` was written for this bid.
  */
-export function adequacyPairs(cv) {
+export function adequacyBlock(cv) {
+  const P = pronouns(cv.person?.gender);
+  const position = String(cv.proposed_position || '').trim() || 'expert';
   const tasks = lines(cv.detailed_tasks);
-  const f = factsOf(cv);
-  // Text written for this bid, else the firm's own prior-work wording, leads in the order written;
-  // the facts then fill whatever rows are left. (A pack that does not say which it is, is typed.)
-  const typed = cv.adequacy_typed === false ? lines(cv.adequacy_wording) : lines(cv.adequacy);
 
-  // Facts to fall back on, most telling first; each is used once before any repeats.
-  const pool = [...f.jobs.map(f.jobLine), f.totLine, f.nstbLine, f.degreeLine].filter(Boolean);
-  const used = new Set();
-  const take = (text) => { used.add(norm(text)); return text; };
-  const nextUnused = () => pool.find(t => !used.has(norm(t)));
+  const left = [
+    `As ${aOrAn(position)} ${position}, ${P.he} will${tasks.length ? '' : ' carry out the duties set out in the Terms of Reference for the post.'}`,
+    ...tasks.map(t => `• ${t}`),
+  ].join('\n');
 
-  const n = Math.max(tasks.length, typed.length, 1);
-  return Array.from({ length: n }, (_, i) => {
-    const task = tasks[i] || '';
-    if (typed[i]) return { task, ref: take(typed[i]) };
-    const kind = KINDS.find(k => k.re.test(task));
-    const fit = kind?.ref(f);
-    if (fit && !used.has(norm(fit))) return { task, ref: take(fit) };
-    const alt = nextUnused();
-    if (alt) return { task, ref: take(alt) };
-    if (fit) return { task, ref: fit };            // nothing new to say, but never blank
-    return { task, ref: pool[0] || 'Prior work and qualifications as set out in this CV.' };
-  });
+  const written = cv.adequacy_typed === false ? [] : lines(cv.adequacy);
+  if (written.length) return { left, right: written.map(l => `• ${l}`).join('\n') };
+
+  const wording = cv.adequacy_typed === false ? lines(cv.adequacy_wording) : [];
+  const caps = wording.length ? wording : capabilities(cv);
+  const right = [paragraph(cv, P), `As ${aOrAn(position)} ${position}, ${P.he} ${P.is}:`, ...caps.map(l => `• ${l}`)].join('\n');
+  return { left, right };
 }

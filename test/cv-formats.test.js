@@ -35,12 +35,12 @@ describe('CV formats', () => {
     expect(h).toContain('Skill training for youths');       // certification (vi) names the project
     expect(cvModel('ppmo_rfp', cv, tender).certList).toHaveLength(7);
   });
-  it('PPMO RFP Adequacy gives each task its own row, prior work beside it', () => {
+  it('PPMO RFP Adequacy is one compact row: the tasks on the left, why the person can do them on the right', () => {
     const m = cvModel('ppmo_rfp', { ...cv, detailed_tasks: '• Task one\n• Task two\n• Task three', adequacy: '• Instructor, KGTC (2073 – present)' }, tender);
     const rows = m.blocks.find(b => /Adequacy/.test(b.label)).table.rows;
-    expect(rows.map(r => r[0].prose)).toEqual(['• Task one', '• Task two', '• Task three']);
-    expect(rows.every(r => r[1].prose.trim().length > 2)).toBe(true);              // never an empty reference
-    expect(rows[0][1].prose).toBe('• Instructor, KGTC (2073 – present)');            // what was written leads
+    expect(rows).toHaveLength(1);
+    expect(rows[0][0].prose.split('\n')).toEqual(['As a Main Trainer, they will', '• Task one', '• Task two', '• Task three']);
+    expect(rows[0][1].prose).toBe('• Instructor, KGTC (2073 – present)');          // what was written for the bid is kept as written
   });
   it('prior work states each job’s events, unless the firm hides them', () => {
     const jobs = [{ organisation: 'CHRA', position: 'Main Trainer', from_date: '2076', is_current: true, events_count: 12, clients: 'CTEVT' }];

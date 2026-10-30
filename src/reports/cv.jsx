@@ -1,4 +1,4 @@
-import { adequacyPairs } from './adequacy.js';
+import { adequacyBlock } from './adequacy.js';
 import { signDateText } from './cvDate.js';
 import {
   Document, Packer, Table, TableRow, TableCell, Paragraph, TextRun,
@@ -72,12 +72,15 @@ const htmlTable = (headers, rows) => `
 const htmlProse = (text) => {
   const ls = lines(text);
   if (!ls.length) return '<p class="muted">Not recorded.</p>';
-  // A line already written as a bullet stays one; a paragraph stays a paragraph.
-  const bulleted = ls.filter(l => /^[•\-*]/.test(l));
-  if (bulleted.length >= ls.length / 2) {
-    return `<ul>${ls.map(l => `<li>${esc(l.replace(/^[•\-*]\s*/, ''))}</li>`).join('')}</ul>`;
+  // Lines written as bullets stay bullets, in runs; anything else stays a paragraph — in the order written.
+  let html = '', open = false;
+  for (const l of ls) {
+    const bullet = /^[•\-*]/.test(l);
+    if (bullet && !open) { html += '<ul>'; open = true; }
+    if (!bullet && open) { html += '</ul>'; open = false; }
+    html += bullet ? `<li>${esc(l.replace(/^[•\-*]\s*/, ''))}</li>` : `<p>${esc(l)}</p>`;
   }
-  return ls.map(l => `<p>${esc(l)}</p>`).join('');
+  return html + (open ? '</ul>' : '');
 };
 
 function cvHTML(cv, tender, index) {
@@ -362,8 +365,8 @@ const employerCell = (e, style) => {
 };
 const asProse = (text) => ({ prose: text });
 
-/** PPMO RFP "Adequacy": each task beside a reference to prior work that shows it — never an empty cell. */
-const adequacyRows = (cv) => adequacyPairs(cv).map(({ task, ref }) => [asProse(task ? `• ${task.replace(/^[•\-*]\s*/, '')}` : ''), asProse(`• ${ref}`)]);
+/** PPMO RFP "Adequacy": the tasks on the left, one short paragraph and a few capability lines on the right. */
+const adequacyRows = (cv) => { const { left, right } = adequacyBlock(cv); return [[asProse(left), asProse(right)]]; };
 
 const SIGN_ROW = (left, right = 'Date:') => ({ left, right });
 

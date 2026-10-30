@@ -1025,6 +1025,8 @@ async function plugin(fastify, opts) {
         key_qualifications: resolve(tp.key_qualifications, tp.quals_variant_id, person.key_qualifications, 'key_qualifications'),
         // The assignments themselves (post, employer, dates), then the firm's
         // wording of what they show, unless text was typed for this bid.
+        // Whether this firm's CVs state event counts; the Adequacy paragraph follows it.
+        show_events: leadInst?.cv_show_events !== false,
         adequacy_typed: !!(tp.adequacy || '').trim(),
         // The firm's own prior-work wording, apart from the jobs: it leads the reference column.
         adequacy_wording: (tp.adequacy || '').trim() ? '' : resolve('', tp.adequacy_variant_id, '', 'adequacy'),
