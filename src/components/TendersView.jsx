@@ -114,6 +114,9 @@ function TendersView({ institutes = [], clients = [], onGoToReports, canAccessPo
    * filter shows only the later stage, it stands on its own.
    */
   const rows = useMemo(() => groupBids(tenders), [tenders]);
+  // Hooks all sit above the early return that shows an opened tender: below it, they would be skipped
+  // on that render and React would crash with "fewer hooks than expected".
+  const kpi = useMemo(() => tenderKpis(groupBids(allBids), todayUtcDay()), [allBids]);
 
   /**
    * Create the employer in master data and hand it back for selection.
@@ -187,7 +190,6 @@ function TendersView({ institutes = [], clients = [], onGoToReports, canAccessPo
   }
 
   const filtered = !!(search || statusFilter || firmFilter || fyFilter);
-  const kpi = useMemo(() => tenderKpis(groupBids(allBids), todayUtcDay()), [allBids]);
   const pick = (status) => setStatusFilter(f => f === status ? '' : status);
 
   return (
