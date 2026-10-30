@@ -1,3 +1,4 @@
+import { Fragment } from 'react';
 import { esc, fyYear, occLetterName, deliver } from './helpers.js';
 import {
   Document, Packer, Table, TableRow, TableCell, Paragraph, TextRun,
@@ -13,8 +14,40 @@ const fmtDate = (d) => d ? new Date(d).toLocaleDateString('en-GB', { day:'2-digi
 function getClientName(exp, clients) {
   if (exp.manualClient) return exp.clientName || '—';
   const c = (clients || []).find(c => String(c.id) === String(exp.clientId));
-  return c?.shortName || c?.fullName || exp.clientName || '—';
+  // A report names the client in full; the short name is only a fallback for a record that has none.
+  return c?.fullName || c?.shortName || exp.clientName || '—';
 }
+
+/**
+ * The assignments in the order the report prints them: as given (by fiscal year), or by client —
+ * every assignment of one client together under its name, clients A–Z, so a client with work in
+ * several years reads as one block. `headingFor(exp)` is the group's details on the first
+ * assignment of each group, and nothing on the rest.
+ */
+export function arrangeExps(exps, clients, groupBy) {
+  if (groupBy !== 'client') return { list: exps, headingFor: () => null };
+  const groups = new Map();
+  for (const e of exps) {
+    const name = getClientName(e, clients);
+    const key = String(name).trim().toLowerCase();
+    if (!groups.has(key)) groups.set(key, { name, type: getClientType(e, clients), exps: [] });
+    groups.get(key).exps.push(e);
+  }
+  const ordered = [...groups.values()].sort((a, b) => a.name.localeCompare(b.name));
+  const info = new Map();
+  for (const g of ordered) {
+    const fys = g.exps.map(e => e.fy).filter(Boolean).sort();
+    g.fyLabel = fys.length ? (fys[0] === fys[fys.length - 1] ? `FY ${fys[0]}` : `FY ${fys[0]} – ${fys[fys.length - 1]}`) : '';
+    g.trainees = g.exps.reduce((n, e) => n + (e.occupations || []).reduce((m, o) => m + (parseInt(o.trainees) || 0), 0), 0);
+    info.set(g.exps[0], g);
+  }
+  return { list: ordered.flatMap(g => g.exps), headingFor: (e) => info.get(e) || null };
+}
+/** "Funding type · 3 assignments · FY 2078/79 – 2080/81 · 240 trainees" */
+export const clientGroupLine = (g) => [
+  g.type && g.type !== '—' ? g.type : '', `${g.exps.length} assignment${g.exps.length === 1 ? '' : 's'}`,
+  g.fyLabel, g.trainees ? `${g.trainees} trainees` : '',
+].filter(Boolean).join(' · ');
 function getClientType(exp, clients) {
   if (exp.manualClient) return '—';
   const c = (clients || []).find(c => String(c.id) === String(exp.clientId));
@@ -331,7 +364,7 @@ function AffiliatedOccsSection({ byLevel }) {
   );
 }
 
-function DetailedReport({ fullInst, activeExps, clients, occupations }) {
+function DetailedReport({ fullInst, activeExps, clients, occupations, groupBy }) {
   if (!activeExps.length) return (
     <div style={{ padding:24, color:'var(--text3)', fontSize:13, textAlign:'center' }}>
       No assignments found for the selected FY range.
@@ -341,14 +374,16 @@ function DetailedReport({ fullInst, activeExps, clients, occupations }) {
   const nstbLookup = buildNSTBLookup(fullInst);
   const summary = buildSummary(activeExps, clients, occupations);
   const affiliatedByLevel = buildAffiliatedOccs(fullInst);
+  const arranged = arrangeExps(activeExps, clients, groupBy);
 
   return (
     <div>
       <SummarySection summary={summary} expCount={activeExps.length} />
       <AffiliatedOccsSection byLevel={affiliatedByLevel} />
-      {activeExps.map((exp, idx) => {
+      {arranged.list.map((exp, idx) => {
         const clientName = getClientName(exp, clients);
         const clientType = getClientType(exp, clients);
+        const head = arranged.headingFor(exp);
         const startLabel = exp.startDate ? fmtDate(exp.startDate) : (exp.startFY ? `FY ${exp.startFY}` : '—');
         const endLabel   = exp.endDate   ? fmtDate(exp.endDate)   : (exp.endFY   ? `FY ${exp.endFY}`   : '—');
 
@@ -380,7 +415,14 @@ function DetailedReport({ fullInst, activeExps, clients, occupations }) {
         ].filter(([, v]) => v && v !== '—');
 
         return (
-          <div key={exp.id} style={CARD}>
+          <Fragment key={exp.id}>
+          {head && (
+            <div style={{ margin: idx === 0 ? '4px 0 8px' : '22px 0 8px', padding: '9px 14px', background: '#1a4a7a', color: '#fff', borderRadius: 6 }}>
+              <div style={{ fontWeight: 700, fontSize: 14 }}>{head.name}</div>
+              <div style={{ fontSize: 11, opacity: .85, marginTop: 2 }}>{clientGroupLine(head)}</div>
+            </div>
+          )}
+          <div style={CARD}>
             {/* Assignment header */}
             <div style={CARD_HDR}>
               <span style={{ fontWeight:700, fontSize:13 }}>#{idx + 1} &nbsp;{exp.assignmentName || '(Unnamed Assignment)'}</span>
@@ -494,6 +536,7 @@ function DetailedReport({ fullInst, activeExps, clients, occupations }) {
               </div>
             )}
           </div>
+          </Fragment>
         );
       })}
     </div>
@@ -560,7 +603,10 @@ ${kpis.map(([l,v]) => `<div class="kpi"><div class="kl">${esc(l)}</div><div clas
 
   // ── Assignments ────────────────────────────────────────────────────────────
   let body = '';
-  activeExps.forEach((exp, idx) => {
+  const arranged = arrangeExps(activeExps, clients, opts.groupBy);
+  arranged.list.forEach((exp, idx) => {
+    const head = arranged.headingFor(exp);
+    if (head) body += `<div class="client-head"><div class="ch-name">${esc(head.name)}</div><div class="ch-line">${esc(clientGroupLine(head))}</div></div>`;
     const clientName = getClientName(exp, clients);
     const clientType = getClientType(exp, clients);
     const tags = [exp.trainingType, exp.isGesi ? 'GESI' : '', exp.isResidential ? 'Residential' : '', exp.isJV ? `JV (${exp.jvRole})` : ''].filter(Boolean).join(' | ');
@@ -630,6 +676,8 @@ ${tags ? `<p class="tags">${esc(tags)}</p>` : ''}
   h3{font-size:12px;margin:0 0 4px;font-weight:700}
   p{margin:2px 0 6px}
   .tags{color:#555;font-size:10px}
+  .client-head{background:#1a4a7a;color:#fff;padding:7px 12px;margin:18px 0 8px;border-radius:4px;page-break-after:avoid;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  .ch-name{font-size:13px;font-weight:700} .ch-line{font-size:10px;opacity:.9;margin-top:2px}
   .assignment{border:1px solid #aaa;border-radius:4px;margin-bottom:14px;padding:10px;page-break-inside:avoid}
   table{border-collapse:collapse;width:100%;margin:6px 0 8px;font-size:10.5px}
   th,td{border:1px solid #999;padding:4px 6px}
@@ -787,9 +835,19 @@ async function downloadDetailedDOCX(fullInst, activeExps, reportId, opts = {}) {
   children.push(new Paragraph({ spacing: { before: 200 }, children: [] }));
 
   // ── Per-assignment sections ────────────────────────────────────────────────
-  activeExps.forEach((exp, idx) => {
+  const arranged = arrangeExps(activeExps, opts.clients || [], opts.groupBy);
+  arranged.list.forEach((exp, idx) => {
     const clientName = getClientName(exp, clients);
     const clientType = getClientType(exp, clients);
+    const head = arranged.headingFor(exp);
+    if (head) {
+      children.push(new Paragraph({
+        heading: HeadingLevel.HEADING_1, pageBreakBefore: idx > 0, spacing: { before: 200, after: 40 },
+        shading: { type: 'clear', fill: '1A4A7A', color: 'auto' },
+        children: [new TextRun({ text: ` ${head.name}`, bold: true, size: 28, color: 'FFFFFF' })],
+      }));
+      children.push(new Paragraph({ spacing: { after: 120 }, children: [new TextRun({ text: clientGroupLine(head), italics: true, size: 20, color: '444444' })] }));
+    }
     const startLabel = exp.startDate ? fmtDate(exp.startDate) : (exp.startFY ? `FY ${exp.startFY}` : '—');
     const endLabel   = exp.endDate   ? fmtDate(exp.endDate)   : (exp.endFY   ? `FY ${exp.endFY}`   : '—');
 
@@ -922,7 +980,7 @@ export const REPORTS = [
 ];
 
 export function renderAggregateTable(fullInst, activeExps, clients, reportId, opts = {}) {
-  return <DetailedReport fullInst={fullInst} activeExps={activeExps} clients={clients} occupations={opts.occupations || []} />;
+  return <DetailedReport fullInst={fullInst} activeExps={activeExps} clients={clients} occupations={opts.occupations || []} groupBy={opts.groupBy} />;
 }
 
 export function renderRowCells() { return null; }

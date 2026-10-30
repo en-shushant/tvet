@@ -179,6 +179,8 @@ function ReportsView({ institutes, clients, embedded = false }) {
   const [eoiSingleTable, setEoiSingleTable] = useState(f.eoiSingleTable ?? false);
   const [occupations, setOccupations]   = useState([]);
   const [sortBy, setSortBy]             = useState('default'); // for Table 2 occupation sort
+  // How the Detailed Experience report lays out its assignments: as listed (by year), or client by client.
+  const [arrangeBy, setArrangeBy]         = useState('fy');
   const [filterTrainingTypes, setFilterTrainingTypes] = useState([]); // Helvetas training type filter
   const [filterDuration, setFilterDuration] = useState(f.filterDuration || ''); // Helvetas duration filter
   const [filterDonorTypes, setFilterDonorTypes] = useState([]); // Donor/client type filter
@@ -667,7 +669,7 @@ function ReportsView({ institutes, clients, embedded = false }) {
     specificOccs: eoiSpecificOccs, eoiCombineTools, eoiSingleTable, occupations, sortBy,
     toolsOccIds, toolsLevel, toolsTypeFilter, toolsColumns, toolsLayout, toolsData, numGroups,
     enssureOccs, enssureOccIds, enssureToolsData, enssureToolsOccId, enssureToolsLevel, enssureEvents,
-    filterDuration, clients, tender: tenderReport || undefined };
+    filterDuration, clients, groupBy: arrangeBy, tender: tenderReport || undefined };
 
   // Assignments for one firm in multi-institute mode, with the sidebar filters
   // applied. Shared by the per-firm render, the print path and the Word export so
@@ -710,7 +712,7 @@ function ReportsView({ institutes, clients, embedded = false }) {
   const filterSig = JSON.stringify([
     reportId, familyId, selectedInst, fwInstIds, fwLeadId,
     fromFY, toFY, turnFromFY, turnToFY, portfolioFromFY, portfolioToFY,
-    selectedOccs, eoiSpecificOccs, filterDuration, filterDonorTypes, filterTrainingTypes, sortBy,
+    selectedOccs, eoiSpecificOccs, filterDuration, filterDonorTypes, filterTrainingTypes, sortBy, arrangeBy,
     // Without this, flipping it would silently leave a stale preview on screen
     // that still contained the assignments it was meant to drop.
     includeRestricted,
@@ -1564,6 +1566,22 @@ function ReportsView({ institutes, clients, embedded = false }) {
                         <span>{t}</span>
                       </label>
                     ))}
+                  </div>
+                </div>
+              )}
+
+              {!isMultiInst && fullInst && report.id === 'det1' && (
+                <div>
+                  <div style={{fontSize:11, fontWeight:600, color:'var(--text3)', marginBottom:8}}>ARRANGE ASSIGNMENTS</div>
+                  <div className="tw-seg" role="group" aria-label="Arrange assignments">
+                    {[['fy', 'By fiscal year'], ['client', 'By client']].map(([id, label]) => (
+                      <button key={id} type="button" aria-pressed={arrangeBy === id} onClick={() => setArrangeBy(id)}>{label}</button>
+                    ))}
+                  </div>
+                  <div className="input-hint" style={{marginTop:6}}>
+                    {arrangeBy === 'client'
+                      ? 'Each client’s assignments sit together under its full name, across every year, then the next client.'
+                      : 'Assignments in the order they are recorded, with each one naming its client.'}
                   </div>
                 </div>
               )}
