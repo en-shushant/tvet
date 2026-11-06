@@ -291,8 +291,9 @@ export async function composeLetter(row, opts = {}) {
   let detected = { top: null, bottom: null };
   if (firmLetterhead && includeLh) {
     detected = await detectLetterheadMargins(firmLetterhead);
-    if (detected.top    && detected.top    > pageTopMargin)     pageTopMargin     = detected.top;
-    if (detected.bottom && detected.bottom > pageBottomPadding) pageBottomPadding = detected.bottom;
+    // The letterhead's artwork only sets a margin the firm has not saved; a saved margin is the firm's own choice.
+    if (cfgTop == null && detected.top) pageTopMargin = detected.top;
+    if (cfgBottom == null && detected.bottom) pageBottomPadding = detected.bottom;
   }
   // Margins chosen in the preview win outright; they are the person's decision.
   if (margins && margins.top != null) pageTopMargin = Number(margins.top);

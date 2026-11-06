@@ -260,9 +260,9 @@ export function DocumentsTab({ institute, token, canEdit, onUpdate, isShortlistO
     institute_pan: institute.pan, institute_contact: institute.contactPerson,
     institute_name_np: fields.nameNp, institute_address_np: fields.addressNp, institute_contact_np: fields.contactPersonNp,
     institute_logo: institute.logo, institute_letterhead: fields.letterhead, institute_sign: fields.sign, institute_stamp: fields.stamp,
-    institute_letter_top_margin: fields.letterTopMargin, institute_letter_lr_padding: fields.letterLrPadding,
-    institute_letter_bottom_padding: fields.letterBottomPadding,
-    institute_letter_stamp_scale: fields.letterStampScale, institute_letter_sign_scale: fields.letterSignScale,
+    institute_letter_top_margin: institute.letterTopMargin, institute_letter_lr_padding: institute.letterLrPadding,
+    institute_letter_bottom_padding: institute.letterBottomPadding,
+    institute_letter_stamp_scale: institute.letterStampScale, institute_letter_sign_scale: institute.letterSignScale,
     institute_service_type: fields.serviceType,
     client_name_manual: 'नमूना कार्यालय', client_address_manual: 'काठमाडौं', list_addressee: 'कार्यालय प्रमुख',
     standing_list_name: 'Standing List', fy: getCurrentFY(), list_date: new Date().toISOString().slice(0, 10),
@@ -288,8 +288,12 @@ export function DocumentsTab({ institute, token, canEdit, onUpdate, isShortlistO
   const handleSave = async () => {
     setSaving(true); setErr('');
     try {
-      await api('PUT', `/institutes/${institute.id}`, instToAPI({ ...institute, ...fields }), token);
-      if (onUpdate) onUpdate({ ...institute, ...fields });
+      // The letter design is saved from its own editor, so it is always taken from the firm as it stands now:
+      // this page's copy of it can be older, and saving that would put an earlier design back.
+      const layout = { letterTopMargin: institute.letterTopMargin, letterBottomPadding: institute.letterBottomPadding, letterLrPadding: institute.letterLrPadding,
+                       letterStampScale: institute.letterStampScale, letterSignScale: institute.letterSignScale };
+      await api('PUT', `/institutes/${institute.id}`, instToAPI({ ...institute, ...fields, ...layout }), token);
+      if (onUpdate) onUpdate({ ...institute, ...fields, ...layout });
       setSaved(true); setDirty(false);
     } catch(e) { setErr(e.message); }
     finally { setSaving(false); }
@@ -365,10 +369,10 @@ export function DocumentsTab({ institute, token, canEdit, onUpdate, isShortlistO
             <div className="dt-design-summary">
               <div style={{fontWeight:600, fontSize:13}}>Letter design</div>
               <div style={{fontSize:12.5, color:'var(--text2)', lineHeight:1.6}}>
-                {fields.letterTopMargin == null && fields.letterBottomPadding == null && fields.letterStampScale == null && fields.letterSignScale == null
+                {institute.letterTopMargin == null && institute.letterBottomPadding == null && institute.letterStampScale == null && institute.letterSignScale == null
                   ? 'Not set yet: letters use the standard layout.'
-                  : <>Top {fields.letterTopMargin ?? 'standard'} mm · Bottom {fields.letterBottomPadding ?? 'standard'} mm · Sides {fields.letterLrPadding ?? 'standard'} mm
-                    {' · '}Stamp {Math.round((fields.letterStampScale ?? 1) * 100)}% · Signature {Math.round((fields.letterSignScale ?? 1) * 100)}%</>}
+                  : <>Top {institute.letterTopMargin ?? 'standard'} mm · Bottom {institute.letterBottomPadding ?? 'standard'} mm · Sides {institute.letterLrPadding ?? 'standard'} mm
+                    {' · '}Stamp {Math.round((institute.letterStampScale ?? 1) * 100)}% · Signature {Math.round((institute.letterSignScale ?? 1) * 100)}%</>}
               </div>
               <div style={{fontSize:12, color:'var(--text3)'}}>
                 Saved once, used by every letter this firm sends: shortlisting, experience and the letter builder. Shortlisting letters are scaled to fit one page between the margins.
@@ -391,7 +395,6 @@ export function DocumentsTab({ institute, token, canEdit, onUpdate, isShortlistO
               onPdf={({ url }) => { window.open(url, '_blank', 'noopener'); }}
               onSaved={(l) => {
                 const next = { letterTopMargin: l.top, letterBottomPadding: l.bottom, letterLrPadding: l.lr, letterStampScale: l.stamp, letterSignScale: l.sign };
-                setFields(f => ({ ...f, ...next }));
                 if (onUpdate) onUpdate({ ...institute, ...next });
               }} />
           )}

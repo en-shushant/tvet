@@ -43,7 +43,7 @@ async function plugin(fastify, opts) {
         i.contact_person, i.phone, i.mobile, i.email, i.address, i.type, i.status,
         i.renewal_due, i.remarks, i.website, i.google_map_link, i.latitude, i.longitude,
         i.is_shortlisting_only, i.name_np, i.address_np, i.contact_person_np,
-        i.letter_top_margin, i.letter_lr_padding, i.letter_bottom_padding,
+        i.letter_top_margin, i.letter_lr_padding, i.letter_bottom_padding, i.letter_stamp_scale, i.letter_sign_scale,
         i.service_type, i.created_by, i.created_at,
         i.desc_template_id, i.narrative_template_id, i.services_template_id, i.cv_format, i.cv_activities_set, i.cv_show_events,
         COALESCE(json_agg(DISTINCT jsonb_build_object('fy', t.fiscal_year, 'turnover', t.turnover)) FILTER (WHERE t.id IS NOT NULL), '[]') AS "taxClearance",

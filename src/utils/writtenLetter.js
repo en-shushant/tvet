@@ -39,8 +39,8 @@ export async function loadFirmAssets(row) {
   let detected = { top: null, bottom: null };
   if (letterhead) {
     detected = await detectLetterheadMargins(letterhead);
-    if (detected.top && detected.top > top) top = detected.top;
-    if (detected.bottom && detected.bottom > bottom) bottom = detected.bottom;
+    if (cfgTop == null && detected.top) top = detected.top;           // a saved margin is the firm's choice; the artwork only fills a gap
+    if (cfgBottom == null && detected.bottom) bottom = detected.bottom;
   }
   const scale = (v) => (Number(v) > 0 ? Number(v) : 1);
   return {
