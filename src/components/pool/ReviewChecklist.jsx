@@ -14,13 +14,21 @@ import { sectionOf, totProviderOf } from './common.js';
 
 const blank = (v) => v === null || v === undefined || String(v).trim() === '';
 
-function Section({ id, title, rows, docs, onOpen, checked, onToggle, busy, canCheck }) {
+function Section({ id, title, rows, docs, onOpen, checked, onToggle, busy, canCheck, showAll }) {
   const missing = rows.filter(r => r.need && blank(r.value)).length;
+  // A verified section folds to its title: what is left to check stays in view. Click the title to unfold it.
+  const [open, setOpen] = useState(!checked);
+  useEffect(() => { if (checked) setOpen(false); }, [checked]);
+  const shown = open || showAll;
   return (
-    <section className={`rv-sec${checked ? ' is-checked' : ''}`} aria-labelledby={`rv-${id}`}>
+    <section className={`rv-sec${checked ? ' is-checked' : ''}${shown ? '' : ' is-folded'}`} aria-labelledby={`rv-${id}`} data-rv={id}>
       <header className="rv-sec-head">
-        <span id={`rv-${id}`} className="rv-sec-title">{title}</span>
+        <button type="button" className="rv-fold" aria-expanded={shown} onClick={() => setOpen(o => !(o || showAll))}>
+          <span className="material-icons-round" aria-hidden="true">{shown ? 'expand_more' : 'chevron_right'}</span>
+          <span id={`rv-${id}`} className="rv-sec-title">{title}</span>
+        </button>
         {missing > 0 && <span className="rv-miss-count">{missing} missing</span>}
+        {!docs.length && <span className="material-icons-round rv-nofile" title="No document attached" aria-label="No document attached">attach_file</span>}
         {canCheck && (
           <button type="button" className={`rv-verify${checked ? ' is-on' : ''}`} disabled={busy}
             aria-pressed={checked} onClick={() => onToggle(!checked)}
@@ -30,21 +38,27 @@ function Section({ id, title, rows, docs, onOpen, checked, onToggle, busy, canCh
           </button>
         )}
       </header>
-      <dl className="rv-rows">
-        {rows.filter(r => r.need || !blank(r.value)).map(r => (
-          <div key={r.label} className={blank(r.value) ? 'is-missing' : undefined}>
-            <dt>{r.label}</dt>
-            <dd>{blank(r.value) ? 'Missing' : r.value}</dd>
-          </div>
-        ))}
-      </dl>
-      <div className="rv-docs">
-        {docs.length ? docs.map(d => (
-          <button key={d.id} type="button" className="rv-doc" onClick={() => onOpen(d)} title={`Open ${d.file_name} in a new tab`}>
-            <span className="material-icons-round" aria-hidden="true">open_in_new</span>{d.doc_type}: {d.file_name}
-          </button>
-        )) : <span className="rv-nodoc">No document attached for this</span>}
-      </div>
+      {shown && (
+        <>
+          <dl className="rv-rows">
+            {rows.filter(r => r.need || !blank(r.value)).map(r => (
+              <div key={r.label} className={blank(r.value) ? 'is-missing' : undefined}>
+                <dt>{r.label}</dt>
+                <dd>{blank(r.value) ? 'Missing' : r.value}</dd>
+              </div>
+            ))}
+          </dl>
+          {docs.length > 0 && (
+            <div className="rv-docs">
+              {docs.map(d => (
+                <button key={d.id} type="button" className="rv-doc" onClick={() => onOpen(d)} title={`Open ${d.file_name} in a new tab`}>
+                  <span className="material-icons-round" aria-hidden="true">open_in_new</span>{d.doc_type}: {d.file_name}
+                </button>
+              ))}
+            </div>
+          )}
+        </>
+      )}
     </section>
   );
 }
@@ -136,30 +150,44 @@ export default function ReviewChecklist({ person, token, canCheck = false, onOpe
       const r = await api('POST', `/hr/people/${person.id}/section-checks`, { section_id: id, checked: on, all: allIds }, token);
       if (r.is_verified && person.is_verified === false) toast(`Every section is verified — ${person.full_name} is now verified.`);
       onChanged?.(r);
+      // Verified one? Go straight to the next that is not, so a run of Enter presses checks them all in turn.
+      if (on) {
+        const i = allIds.indexOf(id);
+        const next = [...allIds.slice(i + 1), ...allIds.slice(0, i)].find(x => !before.has(x) && x !== id);
+        if (next) setTimeout(() => {
+          const btn = document.querySelector(`[data-rv="${next}"] .rv-verify`);
+          btn?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+          btn?.focus({ preventScroll: true });
+        }, 60);
+      }
     } catch (e) { setChecked(before); toast(e.message || 'Could not save that check.'); }
     finally { setBusy(false); }
   };
 
+  const [showAll, setShowAll] = useState(false);
+  const anyDocs = sections.some(x => x.docs.length > 0);
+  const anyFolded = sections.some(x => checked.has(x.id));
+
   return (
     <section className="rv" aria-label="Review checklist">
       <header className="rv-head">
-        <div>
+        <div className="rv-head-main">
           <h2 className="pp-h" style={{ margin: 0 }}>Check before verifying</h2>
-          <p className="tw-hint" style={{ margin: '2px 0 0' }}>
-            Compare each section with its document (opens in a new tab), then press Verify on it. When every section is verified the person is verified.
-          </p>
-        </div>
-        <div className="rv-progress">
           <span className={`rv-status is-${status}`}>
             {status === 'verified' ? 'Verified' : status === 'partial' ? 'Partially verified' : 'Not verified'}
           </span>
-          <span><strong>{done}</strong> of {sections.length} sections verified</span>
+          <span className="rv-count"><strong>{done}</strong> of {sections.length}</span>
           {missing > 0 && <span className="rv-miss-count">{missing} missing value{missing === 1 ? '' : 's'}</span>}
+          {anyFolded && <button type="button" className="tw-link" onClick={() => setShowAll(v => !v)}>{showAll ? 'Fold verified' : 'Show all details'}</button>}
         </div>
+        <div className="rv-bar" role="progressbar" aria-valuemin={0} aria-valuemax={sections.length} aria-valuenow={done} aria-label="Sections verified">
+          <span style={{ width: `${sections.length ? (done / sections.length) * 100 : 0}%` }} />
+        </div>
+        {!anyDocs && <p className="rv-note">No documents are attached to this person yet, so there is nothing to compare against.</p>}
       </header>
       <div className="rv-grid">
         {sections.map(s => (
-          <Section key={s.id} {...s} onOpen={onOpenDoc} checked={checked.has(s.id)} busy={busy} canCheck={canCheck}
+          <Section key={s.id} {...s} onOpen={onOpenDoc} checked={checked.has(s.id)} busy={busy} canCheck={canCheck} showAll={showAll}
             onToggle={v => toggle(s.id, v)} />
         ))}
       </div>
