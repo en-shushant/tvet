@@ -1160,7 +1160,7 @@ function MasterData({institutes = [], clients, onUpdateClients, token, isAdmin, 
                     <thead>
                       <tr>
                         {canManageOccs && <th style={{width:30}}><input type="checkbox" checked={toolsList.length>0 && toolsSelected.length===toolsList.length} onChange={toggleAllTools}/></th>}
-                        <th style={{width:40}}>S.N.</th>
+                        <th style={{width:40, textAlign:'center'}}>S.N.</th>
                         <th>Name</th>
                         <th>Description</th>
                         <th>Unit</th>

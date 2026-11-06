@@ -4,6 +4,7 @@ const { pool } = require('../db/pool');
 const ACTIVITY_SETS = ['A', 'B', 'C', 'D', 'E'];
 const { authenticate, requireAdmin, requireWriter } = require('../middleware/auth');
 const { assignmentScope } = require('../middleware/visibility');
+const { canWriteInstitutes } = require('../lib/instituteAccess');
 
 async function plugin(fastify, opts) {
   fastify.addHook('preHandler', authenticate);
@@ -120,6 +121,90 @@ async function plugin(fastify, opts) {
     for (const a of assignments.rows) byInst.get(a.institute_id)?.experience.push(a);
     for (const t of tax.rows) byInst.get(t.institute_id)?.taxClearance.push(t);
     return [...byInst.values()];
+  });
+
+  /**
+   * What each firm has and has not filled in, for the tender forms.
+   *
+   * The list strips the signature, stamp and certificates, and carries no
+   * assignments, key staff or infrastructure, so a check on it would call
+   * every firm empty. This answers it in the database instead and sends back
+   * only yes/no and counts, no blobs. Same visibility as the list.
+   */
+  fastify.get('/data-check', async (request) => {
+    const has = (col) => `(btrim(coalesce(i.${col}::text,'')) <> '')`;
+    const params = [];
+    let scope = '';
+    if (request.user.role === 'editor') {
+      params.push(request.user.id);
+      scope += ` AND i.id IN (SELECT institute_id FROM user_institutes WHERE user_id=$${params.length})`;
+    }
+    if (request.user.role === 'shortlist') {
+      params.push(request.user.id);
+      scope += ` AND (i.created_by=$${params.length} OR i.id IN (SELECT institute_id FROM user_institutes WHERE user_id=$${params.length}))`;
+    }
+    if (request.user.role !== 'admin' && request.user.role !== 'superadmin') {
+      params.push(request.user.id);
+      scope += ` AND (i.is_shortlisting_only IS NULL OR i.is_shortlisting_only = false
+        OR i.id IN (SELECT institute_id FROM user_institutes WHERE user_id=$${params.length}))`;
+    }
+    const { rows } = await pool.query(`
+      SELECT i.id, i.name, i.acronym,
+        ${has('name')} AS name_ok, ${has('address')} AS address, ${has('contact_person')} AS contact_person,
+        ${has('contact_designation')} AS contact_designation, ${has('email')} AS email,
+        (${has('phone')} OR ${has('mobile')}) AS phone,
+        ${has('reg_no')} AS reg_no, ${has('reg_date')} AS reg_date,
+        (${has('pan')} OR ${has('permanent_account_no')}) AS pan,
+        ${has('constitution_type')} AS constitution_type, ${has('org_profile')} AS org_profile,
+        ${has('total_staff')} AS total_staff, ${has('professional_staff')} AS professional_staff,
+        ${has('sign')} AS sign, ${has('stamp')} AS stamp,
+        ${has('ocr_registration')} AS ocr_registration, ${has('vat_registration')} AS vat_registration,
+        CASE WHEN jsonb_typeof(i.key_staff) = 'array' THEN jsonb_array_length(i.key_staff) ELSE 0 END AS key_staff,
+        (SELECT COUNT(*) FROM institute_infrastructure x WHERE x.institute_id = i.id)::int AS infrastructure,
+        (SELECT COUNT(*) FROM tax_clearances t WHERE t.institute_id = i.id)::int AS tax_clearance,
+        (SELECT COUNT(*) FROM tax_clearances t WHERE t.institute_id = i.id AND btrim(coalesce(t.turnover::text,'')) <> '')::int AS turnover,
+        (SELECT COUNT(*) FROM assignments a WHERE a.institute_id = i.id)::int AS assignments,
+        (SELECT COUNT(*) FROM assignments a WHERE a.institute_id = i.id AND (
+            btrim(coalesce(a.assignment_name,'')) = ''
+            OR (a.client_id IS NULL AND btrim(coalesce(a.client_name_manual,'')) = '')
+            OR (a.contract_value IS NULL AND a.contract_amount IS NULL)
+            OR btrim(coalesce(a.start_date,'')) = '' OR btrim(coalesce(a.end_date,'')) = ''
+            OR a.total_person_months IS NULL))::int AS assignments_incomplete
+      FROM institutes i WHERE COALESCE(i.is_shortlisting_only, false) = false${scope}
+      ORDER BY i.name`, params);
+    return rows;
+  });
+
+  /**
+   * Save how this firm's shortlisting letter is laid out: the top, bottom and side
+   * margins and the stamp and signature sizes. Only these are touched, so the live
+   * preview can save without sending the whole firm record back.
+   */
+  fastify.put('/:id/letter-layout', { preHandler: requireWriter }, async (request, reply) => {
+    const b = request.body || {};
+    const num = (v, lo, hi) => {
+      if (v === undefined) return undefined;
+      if (v === null || v === '') return null;
+      const n = Number(v);
+      return Number.isFinite(n) ? Math.min(hi, Math.max(lo, n)) : undefined;
+    };
+    const f = {
+      letter_top_margin: num(b.letter_top_margin, 0, 150),
+      letter_bottom_padding: num(b.letter_bottom_padding, 0, 150),
+      letter_lr_padding: num(b.letter_lr_padding, 0, 60),
+      letter_stamp_scale: num(b.letter_stamp_scale, 0.3, 3),
+      letter_sign_scale: num(b.letter_sign_scale, 0.3, 3),
+    };
+    const sets = [], vals = [];
+    for (const [k, v] of Object.entries(f)) if (v !== undefined) { vals.push(v); sets.push(`${k}=$${vals.length}`); }
+    if (!sets.length) return reply.code(400).send({ error: 'Nothing to save' });
+    if (!(await canWriteInstitutes(request.user, [request.params.id]))) return reply.code(403).send({ error: 'You are not assigned to this firm.' });
+    vals.push(request.params.id);
+    const { rows } = await pool.query(
+      `UPDATE institutes SET ${sets.join(', ')} WHERE id=$${vals.length}
+       RETURNING id, letter_top_margin, letter_bottom_padding, letter_lr_padding, letter_stamp_scale, letter_sign_scale`, vals);
+    if (!rows.length) return reply.code(404).send({ error: 'Not found' });
+    return rows[0];
   });
 
   /**

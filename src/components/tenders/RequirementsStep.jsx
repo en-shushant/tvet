@@ -15,7 +15,7 @@ import Select from '../ui/Select.jsx';
  * Each post is one line — title, how many, and the bar — so a notice with a
  * dozen posts still fits on a screen and reads the way the notice lists them.
  */
-export default function RequirementsStep({ tender, occupations, variants = [], advanced = false, onSave, onSaveProgress, footer }) {
+export default function RequirementsStep({ tender, occupations, variants = [], advanced = false, onSave, onSaveProgress, footer, checklist }) {
   const [occIds, setOccIds] = useState(() => (tender.occupations || []).map(o => o.id));
   const [positions, setPositions] = useState(() => (tender.positions || []).map(p => ({ ...p,
     // A post saved with one general minimum opens as one alternative, so it is
@@ -208,6 +208,8 @@ export default function RequirementsStep({ tender, occupations, variants = [], a
         ))}
       </section>
 
+      {checklist}
+
       {footer({
         primary: (
           <Btn className="btn btn-primary" disabled={saving} onClick={save}>
@@ -231,7 +233,7 @@ function PostTable({ rows, setRow, setTot, drop, listId, titles, roles = [], adv
           <th style={{ minWidth: 120 }}>Post</th>
           <th style={{ width: 62 }}>How many</th>
           <th style={{ minWidth: 180 }}>Accepted qualifications</th>
-          <th style={{ width: 54 }} title="A trainer proposed for this post must hold a TOT">TOT</th>
+          <th style={{ width: 54, textAlign: 'center' }} title="A trainer proposed for this post must hold a TOT">TOT</th>
           {advanced && <th style={{ width: 70 }}>Min. years</th>}
           {advanced && <th style={{ minWidth: 130 }}>Trainings required</th>}
           {advanced && <th style={{ minWidth: 150 }} title="Which post’s CV wording (tasks, adequacy) this post uses">CV wording</th>}

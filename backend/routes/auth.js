@@ -1,8 +1,9 @@
 // routes/auth.js
 const bcrypt = require('bcrypt');
 const { pool } = require('../db/pool');
-const { signToken, authenticate } = require('../middleware/auth');
+const { signToken, authenticate, markActive } = require('../middleware/auth');
 const oidc = require('../lib/oidc');
+const maintenance = require('../lib/maintenance');
 
 const clientIp = (request) => request.headers['x-forwarded-for']?.split(',')[0].trim() || request.ip;
 
@@ -13,6 +14,7 @@ const clientIp = (request) => request.headers['x-forwarded-for']?.split(',')[0].
  */
 function issueSession(user, extra = {}) {
   const { password: _, oidc_sub: __, ...userOut } = user;
+  markActive(user.id);
   // `hr` rides along so the client knows whether to show the pool in the nav.
   // It never authorises anything: requireHRAccess re-reads the database, so
   // revoking access takes effect at once rather than when this token expires.
@@ -86,9 +88,14 @@ async function plugin(fastify, opts) {
     const match = hashed && await bcrypt.compare(password, user.password);
     if (!match) return reply.code(401).send({ error: 'Invalid credentials' });
     if (user.is_active === false) return reply.code(403).send({ error: 'This account is suspended. Ask an admin.' });
+    const held = await maintenance.loginBlock(user, request);
+    if (held) return reply.code(503).send({ error: 'maintenance', message: held });
     await recordLogin(user.id, 'password', request);
     return issueSession(user);
   });
+
+  // The page's heartbeat while someone is working: it counts as activity (authenticate records it) and does nothing else.
+  fastify.post('/ping', { preHandler: authenticate }, async () => ({ ok: true }));
 
   fastify.post('/refresh', { preHandler: authenticate }, async (request, reply) => {
     const { rows } = await pool.query(
@@ -212,6 +219,8 @@ async function plugin(fastify, opts) {
     const { rows: [user] } = await pool.query('SELECT * FROM users WHERE id = $1', [h.userId]);
     if (!user) return reply.code(401).send({ error: 'User not found' });
     if (user.is_active === false) return reply.code(403).send({ error: 'This account is suspended. Ask an admin.' });
+    const held = await maintenance.loginBlock(user, request);
+    if (held) return reply.code(503).send({ error: 'maintenance', message: held });
     return issueSession(user, { sso_sid: h.ssoSid });
   });
 

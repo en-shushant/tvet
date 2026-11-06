@@ -1,6 +1,26 @@
 const jwt = require('jsonwebtoken');
 const JWT_SECRET = process.env.JWT_SECRET || 'tvettrack_dev_secret_change_in_production';
 
+/**
+ * Signed out after inactivity.
+ *
+ * A token lasts 30 days, so on its own it would let anyone holding a forgotten browser or a copied
+ * token in for a month. The page signs itself out after 15 idle minutes; this is the server's side
+ * of that, so a token that has gone idle is refused even if the page is not there to say so.
+ *
+ * "Active" means the user's last request. The page sends a small heartbeat while someone is working
+ * without hitting the server (writing a letter, say), so activity there keeps them in. A little grace
+ * is allowed so the page's own timer, which is the one that speaks, always fires first. The record is
+ * kept in memory: a restart forgets it, which only ever lets a request through, never wrongly blocks one.
+ * Set IDLE_TIMEOUT_MINUTES=0 to turn it off.
+ */
+const IDLE_MIN = Number(process.env.IDLE_TIMEOUT_MINUTES ?? 15);
+const IDLE_GRACE_MIN = 2;
+const lastSeen = new Map();
+
+/** A fresh sign-in is activity: it clears an earlier idle expiry for this user. */
+function markActive(userId) { if (userId) lastSeen.set(userId, Date.now()); }
+
 async function authenticate(request, reply) {
   const header = request.headers.authorization;
   if (!header || !header.startsWith('Bearer ')) {
@@ -10,6 +30,15 @@ async function authenticate(request, reply) {
     request.user = jwt.verify(header.slice(7), JWT_SECRET);
   } catch {
     return reply.code(401).send({ error: 'Invalid or expired token' });
+  }
+  if (IDLE_MIN > 0 && request.user?.id) {
+    const now = Date.now();
+    const prev = lastSeen.get(request.user.id);
+    if (prev && now - prev > (IDLE_MIN + IDLE_GRACE_MIN) * 60000) {
+      // Left as it is: the stale record keeps this token out until the user signs in again.
+      return reply.code(401).send({ error: 'Signed out after inactivity. Please sign in again.', code: 'idle' });
+    }
+    lastSeen.set(request.user.id, now);
   }
 }
 
@@ -75,4 +104,4 @@ function signToken(payload) {
   return jwt.sign(clean, JWT_SECRET, { expiresIn: '30d' });
 }
 
-module.exports = { authenticate, requireAdmin, requireSuperAdmin, requireWriter, requireHRAccess, requireTenderAccess, signToken };
+module.exports = { markActive, authenticate, requireAdmin, requireSuperAdmin, requireWriter, requireHRAccess, requireTenderAccess, signToken };

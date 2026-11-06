@@ -7,12 +7,15 @@ import { getCurrentFY } from '../constants/data.js';
 
 import { toast } from './ui/Feedback.jsx';
 import { NepaliDatePicker, ConfirmModal, LetterBuilderWrapper, FYS, ACCEPT, uploadToR2 } from './shortlisting/common.jsx';
-import { StandingListModal, AssignFirmsModal, LetterOptsModal, BillModal, LETTER_TYPES } from './shortlisting/modals.jsx';
+import { StandingListModal, AssignFirmsModal, CopyListModal, LetterOptsModal, BillModal, LETTER_TYPES } from './shortlisting/modals.jsx';
 import { ShortlistRow, GroupHeader, TableHead, printShortlistReport } from './shortlisting/table.jsx';
 import { ContractsPanel } from './shortlisting/ContractsPanel.jsx';
 import { ContractsTab } from './QuotationsView.jsx';
 import { bsDateLabel } from '../utils/neaLetter.js';
 import Select from './ui/Select.jsx';
+import GuidedTour from './ui/GuidedTour.jsx';
+import LetterWriter from './letters/LetterWriter.jsx';
+import { copyTourSteps, tourSeen, markTourSeen } from './shortlisting/copyTour.js';
 import { safeHref } from '../utils/safeWindow.js';
 
 function ShortlistDocUpload({ value, onChange, token }) {
@@ -422,6 +425,17 @@ export default function Shortlisting({ institutes, clients, isAdmin, isEditor, i
   const [rows, setRows] = useState([]);
   const [standingLists, setStandingLists] = useState([]);
   const [listModal, setListModal] = useState(null);   // {type:'new'|'edit'|'assign', data?}
+  // The guided tour of copying a shortlist: shown as a banner to each user who can copy, until they take or dismiss it.
+  const [tourOn, setTourOn] = useState(false);
+  const [writing, setWriting] = useState(false);
+  const [tourSeenNow, setTourSeenNow] = useState(() => tourSeen(getSession()));
+  const closeTour = (finished) => {
+    setTourOn(false);
+    setListModal(m => (m?.type === 'copy' ? null : m));
+    markTourSeen(getSession());
+    setTourSeenNow(true);
+    if (finished) toast.success('That is the tour. The copy icon is on every shortlist.');
+  };
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [modal, setModal] = useState(null); // {type:'add'|'edit'|'delete', data?}
@@ -566,6 +580,18 @@ export default function Shortlisting({ institutes, clients, isAdmin, isEditor, i
       setListModal(null);
       await load();
     } finally { setSaving(false); }
+  };
+
+  // Copy a list, with its firms, to another organization.
+  const handleListCopy = async (data) => {
+    setSaving(true);
+    try {
+      const r = await api('POST', `/standing-lists/${listModal.data.id}/copy`, data, token);
+      setListModal(null);
+      await load();
+      toast.success(`Copied to ${r.list.client_name_manual} with ${r.added} firm${r.added === 1 ? '' : 's'}${r.skipped ? ` (${r.skipped} skipped: not assigned to you)` : ''}.`);
+    } catch (e) { toast.error(e.message || 'Copy failed'); }
+    finally { setSaving(false); }
   };
 
   const handleAssignFirms = async (toAdd, toRemove) => {
@@ -788,11 +814,23 @@ export default function Shortlisting({ institutes, clients, isAdmin, isEditor, i
             Track firms shortlisted for standing lists across organizations
           </div>
         </div>
-        <div style={{display:'flex', gap:8, alignItems:'center'}}>
+        <div style={{display:'flex', gap:8, alignItems:'center', flexWrap:'wrap'}}>
           {isSuperAdmin && (
             <Btn className="btn btn-secondary" onClick={() => setShowPageBuilder(true)}>
               <span className="material-icons-round">design_services</span>
               Letter Builder
+            </Btn>
+          )}
+          {canEdit && (
+            <Btn className="btn btn-secondary" onClick={() => setWriting(true)}>
+              <span className="material-icons-round">edit_note</span>
+              Write a letter
+            </Btn>
+          )}
+          {canEdit && visibleStandingLists.length > 0 && (
+            <Btn className="btn btn-secondary" onClick={() => setTourOn(true)}>
+              <span className="material-icons-round">help_outline</span>
+              How to copy a shortlist
             </Btn>
           )}
           {canEdit && (
@@ -806,6 +844,25 @@ export default function Shortlisting({ institutes, clients, isAdmin, isEditor, i
 
       {tabBar}
 
+      {canEdit && !tourSeenNow && !loading && visibleStandingLists.length > 0 && (
+        <div className="gt-banner" role="note">
+          <span className="material-icons-round" aria-hidden="true" style={{ color: 'var(--brand)' }}>content_copy</span>
+          <span><strong>New:</strong> copy a shortlist, with its firms, to another organization instead of building it again.</span>
+          <span className="gt-actions">
+            <button type="button" className="gt-btn gt-primary" onClick={() => setTourOn(true)}>Take the tour</button>
+            <button type="button" className="gt-skip" onClick={() => { markTourSeen(getSession()); setTourSeenNow(true); }}>Dismiss</button>
+          </span>
+        </div>
+      )}
+
+      {writing && <LetterWriter institutes={sortedInstitutes} onClose={() => setWriting(false)} />}
+
+      <GuidedTour label="Copy a shortlist" open={tourOn} onClose={closeTour}
+        steps={copyTourSteps({
+          openCopy: () => { const l = visibleStandingLists[0]; if (l) setListModal({ type: 'copy', data: l }); },
+          closeCopy: () => setListModal(m => (m?.type === 'copy' ? null : m)),
+        })} />
+
       {/* ── Standing lists: create the list, then assign firms to it ── */}
       {!loading && visibleStandingLists.length > 0 && (
         <div style={{display:'flex', flexDirection:'column', gap:10, marginBottom:16}}>
@@ -814,12 +871,12 @@ export default function Shortlisting({ institutes, clients, isAdmin, isEditor, i
             const open  = expanded[`sl:${list.id}`] === true;
             return (
               <div key={list.id} style={{background:'var(--surface)', borderRadius:16, boxShadow:'var(--shadow)', overflow:'hidden'}}>
-                <div style={{display:'flex', alignItems:'center', gap:10, padding:'12px 18px'}}>
+                <div style={{display:'flex', alignItems:'center', gap:10, padding:'12px 18px', flexWrap:'wrap'}}>
                   <button onClick={() => toggle(`sl:${list.id}`)}
                     style={{background:'none', border:'none', cursor:'pointer', color:'var(--text3)', display:'flex', padding:0}}>
                     <span className="material-icons-round">{open ? 'expand_more' : 'chevron_right'}</span>
                   </button>
-                  <div style={{flex:1, minWidth:0, cursor:'pointer'}} onClick={() => toggle(`sl:${list.id}`)}>
+                  <div style={{flex:'1 1 200px', minWidth:0, cursor:'pointer'}} onClick={() => toggle(`sl:${list.id}`)}>
                     <div style={{fontSize:14, fontWeight:600, color:'var(--text)'}}>
                       {list.client_name_manual || 'Untitled organization'}
                     </div>
@@ -839,6 +896,10 @@ export default function Shortlisting({ institutes, clients, isAdmin, isEditor, i
                         <span className="material-icons-round" style={{fontSize:15}}>group_add</span>
                         Assign firms
                       </Btn>
+                      <button title="Copy to another organization" aria-label="Copy shortlist to another organization" onClick={() => setListModal({ type:'copy', data:list })}
+                        style={{width:30, height:30, borderRadius:50, border:'none', background:'transparent', color:'var(--text3)', cursor:'pointer'}}>
+                        <span className="material-icons-round" style={{fontSize:17}}>content_copy</span>
+                      </button>
                       <button title="Edit shortlist" aria-label="Edit shortlist" onClick={() => setListModal({ type:'edit', data:list })}
                         style={{width:30, height:30, borderRadius:50, border:'none', background:'transparent', color:'var(--text3)', cursor:'pointer'}}>
                         <span className="material-icons-round" style={{fontSize:17}}>edit</span>
@@ -883,6 +944,11 @@ export default function Shortlisting({ institutes, clients, isAdmin, isEditor, i
         </div>
       )}
 
+      {listModal?.type === 'copy' && (
+        <CopyListModal list={listModal.data} firms={allFirmsByList.get(String(listModal.data.id)) || []}
+          onSave={handleListCopy} onClose={() => setListModal(null)} saving={saving} />
+      )}
+
       {listModal?.type === 'delete' ? (() => {
         const n = (allFirmsByList.get(String(listModal.data.id)) || []).length;
         return (
@@ -913,7 +979,7 @@ export default function Shortlisting({ institutes, clients, isAdmin, isEditor, i
           onClose={() => setListModal(null)}
           saving={saving}
         />
-      ) : listModal ? (
+      ) : listModal && listModal.type !== 'copy' ? (
         <StandingListModal
           list={listModal.type === 'edit' ? listModal.data : null}
           onSave={handleListSave}

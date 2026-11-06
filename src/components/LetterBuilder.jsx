@@ -85,7 +85,7 @@ async function detectLetterheadMargins(dataUrl) {
 }
 
 // ─── Shared NEA letter builder ────────────────────────────────────────────────
-function buildNeaHtml({ fields, imgs, topMm, bottomMm, lrMm, inclSign, inclStamp, todayBSStr, kalimatiCss = '' }) {
+function buildNeaHtml({ fields, imgs, topMm, bottomMm, lrMm, inclSign, inclStamp, todayBSStr, kalimatiCss = '', stampScale = 1, signScale = 1 }) {
   const { firmLetterhead, firmSign, firmStamp, firmName } = imgs;
   const useLhBg = !!firmLetterhead;
   const date    = fields.date    || todayBSStr;
@@ -149,12 +149,12 @@ function buildNeaHtml({ fields, imgs, topMm, bottomMm, lrMm, inclSign, inclStamp
   <div class="sig-row">
     <div class="sig-stamp">
       ${inclStamp && firmStamp
-        ? `<img src="${firmStamp}" style="width:26mm;height:26mm;object-fit:contain;display:block;margin:0 auto;">`
+        ? `<img src="${firmStamp}" style="width:calc(26mm * ${stampScale});height:calc(26mm * ${stampScale});object-fit:contain;display:block;margin:0 auto;">`
         : ''}
     </div>
     <div class="sig-block">
       ${inclSign && firmSign
-        ? `<img src="${firmSign}" style="display:block;margin:0 auto;max-height:14mm;max-width:100%;object-fit:contain;margin-bottom:4px;">`
+        ? `<img src="${firmSign}" style="display:block;margin:0 auto;max-height:calc(14mm * ${signScale});max-width:100%;object-fit:contain;margin-bottom:4px;">`
         : ''}
       <div class="sig-line">${sigName}<br>${firmNp}</div>
     </div>
@@ -282,7 +282,7 @@ const TEMPLATES = {
 };
 
 // ─── HTML builder ─────────────────────────────────────────────────────────────
-function buildLetterHtml({ fields, row, imgs, topMm, bottomMm, lrMm, inclSign, inclStamp, todayBSStr, kalimatiCss = '' }) {
+function buildLetterHtml({ fields, row, imgs, topMm, bottomMm, lrMm, inclSign, inclStamp, todayBSStr, kalimatiCss = '', stampScale = 1, signScale = 1 }) {
   const { firmLogo, firmLetterhead, firmSign, firmStamp,
           firmRegNo, firmPan, firmMeta, firmName } = imgs;
   const useLhBg = !!firmLetterhead;
@@ -349,7 +349,7 @@ function buildLetterHtml({ fields, row, imgs, topMm, bottomMm, lrMm, inclSign, i
   .hdr { font-weight:600;padding:5px 8px; }
   .half { width:50%; }
   .w22 { width:22%; }
-  .tall { min-height:36px; }
+  .tall { min-height:36px; width:28%; }
 </style></head><body>
 <div class="page">
   <div class="page-inner">
@@ -410,13 +410,13 @@ function buildLetterHtml({ fields, row, imgs, topMm, bottomMm, lrMm, inclSign, i
         </div>
         <div style="flex:0 0 32%;border-right:1px solid #666;text-align:center;padding:6px 4px;">
           ${inclStamp && firmStamp
-            ? `<div style="font-size:9pt;margin-bottom:3px;">${stampLabel}</div><img src="${firmStamp}" style="display:block;margin:0 auto;width:30mm;height:30mm;object-fit:contain;background:#fff;">`
+            ? `<div style="font-size:9pt;margin-bottom:3px;">${stampLabel}</div><img src="${firmStamp}" style="display:block;margin:0 auto;width:calc(30mm * ${stampScale});height:calc(30mm * ${stampScale});object-fit:contain;background:#fff;">`
             : ''}
         </div>
         <div style="flex:1;padding:8px 10px;font-size:10pt;line-height:2;">
           <div>${applicantLabel} ${applicantName}</div>
           ${inclSign && firmSign
-            ? `<div style="margin-top:4px;">${signLabel} <img src="${firmSign}" style="display:inline-block;vertical-align:middle;margin-left:4px;max-height:20mm;max-width:100%;width:auto;height:auto;object-fit:contain;"></div>`
+            ? `<div style="margin-top:4px;">${signLabel} <img src="${firmSign}" style="display:inline-block;vertical-align:middle;margin-left:4px;max-height:calc(20mm * ${signScale});max-width:100%;width:auto;height:auto;object-fit:contain;"></div>`
             : ''}
         </div>
       </div>
@@ -545,6 +545,8 @@ export default function LetterBuilder({ row: initialRow, token, onClose, allRows
     return tpl.buildHtml({
       fields, row: rowData, imgs, topMm, bottomMm, lrMm,
       inclSign, inclStamp, todayBSStr: todayBS(), kalimatiCss,
+      stampScale: Number(row?.institute_letter_stamp_scale) > 0 ? Number(row.institute_letter_stamp_scale) : 1,
+      signScale: Number(row?.institute_letter_sign_scale) > 0 ? Number(row.institute_letter_sign_scale) : 1,
     });
   }, [fields, imgs, margins, inclSign, inclStamp, row, tpl, kalimatiCss]);
 

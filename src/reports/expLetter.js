@@ -100,6 +100,11 @@ export function letterModel(letter, person) {
 
 const runsHTML = (runs) => runs.map(([t, b]) => (b ? `<strong>${esc(t)}</strong>` : esc(t))).join('');
 
+/** A saved number, or the fallback when none was saved. A saved 0 is kept. */
+const saved = (v, fallback) => { const n = parseFloat(v); return Number.isFinite(n) ? n : fallback; };
+/** The firm's stamp and signature sizes, as a multiple of the standard (1 = standard). */
+const scaleOf = (v) => { const n = parseFloat(v); return Number.isFinite(n) && n > 0 ? n : 1; };
+
 export const LETTER_CSS = `
   .xl { width: 210mm; min-height: 297mm; position: relative; break-before: page; box-sizing: border-box;
         font-family: 'Times New Roman', Times, serif; font-size: 12pt; color: #000; background-size: 210mm 297mm;
@@ -116,16 +121,16 @@ export const LETTER_CSS = `
   .xl-sign .who { line-height: 1.4; }
   /* The signature and the stamp sit together, the stamp just overlapping the signature's edge, as on paper. */
   .xl-marks { display: flex; align-items: center; margin: 4px 0; min-height: 16mm; }
-  .xl-marks img.sig { max-height: 16mm; display: block; position: relative; z-index: 1; }
-  .xl-marks img.stamp { width: 26mm; height: 26mm; object-fit: contain; margin-left: -6mm; opacity: .92; }
+  .xl-marks img.sig { max-height: calc(16mm * var(--sign, 1)); display: block; position: relative; z-index: 1; }
+  .xl-marks img.stamp { width: calc(26mm * var(--stamp, 1)); height: calc(26mm * var(--stamp, 1)); object-fit: contain; margin-left: -6mm; opacity: .92; }
 `;
 
 export function letterHTML(letter, person, dateStr = letterDate()) {
   const m = letterModel(letter, person);
   const f = m.firm;
-  const top = f.letterhead ? (Number(f.letter_top_margin) || 45) : 16;
-  const lr = Number(f.letter_lr_padding) || 20;
-  const bottom = f.letterhead ? (Number(f.letter_bottom_padding) || 30) : 16;
+  const top = f.letterhead ? saved(f.letter_top_margin, 45) : 16;
+  const lr = saved(f.letter_lr_padding, 20);
+  const bottom = f.letterhead ? saved(f.letter_bottom_padding, 30) : 16;
   const head = f.letterhead ? '' : `
     <div class="xl-head">
       <div class="xl-ids"><span>${f.reg_no ? `REGD. NO. ${esc(f.reg_no)}` : ''}</span><span>${f.pan ? `PAN NO. ${esc(f.pan)}` : ''}</span></div>
@@ -133,7 +138,7 @@ export function letterHTML(letter, person, dateStr = letterDate()) {
       <div class="xl-contact">${esc([f.address, f.phone || f.mobile, f.email].filter(Boolean).join('  ·  '))}</div>
     </div>`;
   return `
-  <section class="xl" style="padding:${top}mm ${lr}mm ${bottom}mm;${f.letterhead ? `background-image:url('${esc(f.letterhead)}');` : ''}">
+  <section class="xl" style="--stamp:${scaleOf(f.letter_stamp_scale)};--sign:${scaleOf(f.letter_sign_scale)};padding:${top}mm ${lr}mm ${bottom}mm;${f.letterhead ? `background-image:url('${esc(f.letterhead)}');` : ''}">
     ${head}
     <div class="xl-date">Date: ${esc(dateStr)}</div>
     <div class="xl-title">To Whom It May Concern</div>
@@ -201,16 +206,16 @@ export function letterSection(letter, person, images = {}, dateStr = letterDate(
   children.push(new Paragraph({ spacing: { before: 240 }, children: [run('Sincerely,')] }));
   // The signature and the stamp side by side, close together, above the name.
   const marks = [
-    images.sign && new ImageRun({ type: images.sign.type, data: images.sign.data, transformation: { width: 130, height: 55 } }),
-    images.stamp && new ImageRun({ type: images.stamp.type, data: images.stamp.data, transformation: { width: 90, height: 90 } }),
+    images.sign && new ImageRun({ type: images.sign.type, data: images.sign.data, transformation: { width: Math.round(130 * scaleOf(f.letter_sign_scale)), height: Math.round(55 * scaleOf(f.letter_sign_scale)) } }),
+    images.stamp && new ImageRun({ type: images.stamp.type, data: images.stamp.data, transformation: { width: Math.round(90 * scaleOf(f.letter_stamp_scale)), height: Math.round(90 * scaleOf(f.letter_stamp_scale)) } }),
   ].filter(Boolean);
   if (marks.length) children.push(new Paragraph({ children: marks, spacing: { after: 60 } }));
   else children.push(new Paragraph({ spacing: { after: 600 }, children: [] }));
   [m.signatory, m.designation, f.name].filter(Boolean).forEach(t => children.push(new Paragraph({ children: [run(t)] })));
 
-  const top = hasHead ? (Number(f.letter_top_margin) || 45) : 16;
-  const lr = Number(f.letter_lr_padding) || 20;
-  const bottom = hasHead ? (Number(f.letter_bottom_padding) || 30) : 16;
+  const top = hasHead ? saved(f.letter_top_margin, 45) : 16;
+  const lr = saved(f.letter_lr_padding, 20);
+  const bottom = hasHead ? saved(f.letter_bottom_padding, 30) : 16;
   return {
     properties: { page: { size: { width: 11906, height: 16838 },
       margin: { top: Math.round(top * MM), bottom: Math.round(bottom * MM), left: Math.round(lr * MM), right: Math.round(lr * MM), header: 0 } } },

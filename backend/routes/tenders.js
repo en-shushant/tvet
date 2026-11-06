@@ -587,6 +587,7 @@ async function plugin(fastify, opts) {
        VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
        RETURNING id, tender_id, bidder_id, kind, file_name, content_type, file_size, created_at`,
       [request.params.id, bidder.id, kind, name, DOC_TYPES[ext], bytes, b64, request.user.id]);
+    await logEvent(request.params.id, request.user.id, `${kind} saved for ${name}`);
     return reply.code(201).send(rows[0]);
   });
 
@@ -603,6 +604,182 @@ async function plugin(fastify, opts) {
   fastify.delete('/:id/documents/:docId', { preHandler: requireWriter }, async (request, reply) => {
     const { rowCount } = await pool.query('DELETE FROM tender_documents WHERE id = $1 AND tender_id = $2',
       [request.params.docId, request.params.id]);
+    if (!rowCount) return reply.code(404).send({ error: 'Not found' });
+    return { deleted: true };
+  });
+
+  // ── Forms pack and requirements checklist ───────────────────────────────
+  // The Bolpatra standard EOI set. A notice may drop or add forms, so each is
+  // switchable per tender; the RFP stage carries the team's CVs and evidence only.
+  const FORM_SET = {
+    EOI: ['letter', 'applicant', 'experience', 'capacity', 'experts'],
+    RFP: ['experts', 'evidence'],
+  };
+  const FORM_STATUSES = ['Not started', 'Draft', 'Approved'];
+
+  /** One line of history on a tender. Never lets a logging failure break the action it describes. */
+  const logEvent = async (tenderId, userId, text) => {
+    try { await pool.query('INSERT INTO tender_events (tender_id, text, user_id) VALUES ($1,$2,$3)', [tenderId, String(text).slice(0, 300), userId || null]); }
+    catch { /* history is a convenience */ }
+  };
+  const FORM_NAMES = { letter: 'Form 1', applicant: 'Form 2', experience: 'Form 3', capacity: 'Form 4', experts: 'Form 5', evidence: 'Supporting evidence' };
+
+  fastify.get('/:id/events', async (request) => {
+    const { rows } = await pool.query(
+      `SELECT e.id, e.text, e.created_at, (SELECT u.name FROM users u WHERE u.id = e.user_id) AS user_name
+         FROM tender_events e WHERE e.tender_id = $1 ORDER BY e.id DESC LIMIT 60`, [request.params.id]);
+    return rows;
+  });
+
+  fastify.post('/:id/events', { preHandler: requireWriter }, async (request, reply) => {
+    const text = String(request.body?.text || '').trim();
+    if (!text) return reply.code(400).send({ error: 'text is required' });
+    const { rows: [t] } = await pool.query('SELECT id FROM tenders WHERE id = $1', [request.params.id]);
+    if (!t) return reply.code(404).send({ error: 'Not found' });
+    await logEvent(t.id, request.user.id, text);
+    return reply.code(201).send({ ok: true });
+  });
+
+  // Templates: the checklist and the forms switched on, kept to start the next notice from.
+  fastify.get('/templates', async () => {
+    const { rows } = await pool.query(
+      'SELECT id, name, forms, requirements, created_at FROM tender_templates ORDER BY name');
+    return rows;
+  });
+
+  fastify.post('/:id/save-as-template', { preHandler: requireWriter }, async (request, reply) => {
+    const name = String(request.body?.name || '').trim().slice(0, 80);
+    if (!name) return reply.code(400).send({ error: 'Give the template a name' });
+    const { rows: [t] } = await pool.query('SELECT id, stage FROM tenders WHERE id = $1', [request.params.id]);
+    if (!t) return reply.code(404).send({ error: 'Not found' });
+    const [{ rows: forms }, { rows: reqs }] = await Promise.all([
+      pool.query('SELECT form_key, enabled FROM tender_forms WHERE tender_id = $1', [t.id]),
+      pool.query('SELECT label, mandatory, answered_by FROM tender_requirements WHERE tender_id = $1 ORDER BY sort_order, id', [t.id]),
+    ]);
+    if (!reqs.length && !forms.length) return reply.code(400).send({ error: 'There is no checklist or form choice on this tender to save yet.' });
+    const { rows: [row] } = await pool.query(
+      `INSERT INTO tender_templates (name, forms, requirements, created_by) VALUES ($1,$2,$3,$4)
+       RETURNING id, name, forms, requirements, created_at`,
+      [name, JSON.stringify(Object.fromEntries(forms.map(f => [f.form_key, f.enabled]))), JSON.stringify(reqs), request.user.id]);
+    await logEvent(t.id, request.user.id, `Saved the checklist as template “${name}”`);
+    return reply.code(201).send(row);
+  });
+
+  fastify.post('/:id/apply-template', { preHandler: requireWriter }, async (request, reply) => {
+    const { rows: [tpl] } = await pool.query('SELECT id, name, forms, requirements FROM tender_templates WHERE id = $1', [request.body?.template_id]);
+    if (!tpl) return reply.code(404).send({ error: 'Template not found' });
+    const { rows: [t] } = await pool.query('SELECT id FROM tenders WHERE id = $1', [request.params.id]);
+    if (!t) return reply.code(404).send({ error: 'Not found' });
+    for (const [key, enabled] of Object.entries(tpl.forms || {})) {
+      await pool.query(
+        `INSERT INTO tender_forms (tender_id, form_key, enabled) VALUES ($1,$2,$3)
+         ON CONFLICT (tender_id, form_key) DO UPDATE SET enabled = EXCLUDED.enabled`, [t.id, key, !!enabled]);
+    }
+    const { rows: have } = await pool.query('SELECT lower(label) AS l FROM tender_requirements WHERE tender_id = $1', [t.id]);
+    const seen = new Set(have.map(r => r.l));
+    const { rows: [m] } = await pool.query('SELECT COALESCE(MAX(sort_order),0) AS m FROM tender_requirements WHERE tender_id = $1', [t.id]);
+    let order = m.m, added = 0;
+    for (const r of (tpl.requirements || [])) {
+      if (!r.label || seen.has(String(r.label).toLowerCase())) continue;
+      await pool.query(
+        'INSERT INTO tender_requirements (tender_id, label, mandatory, answered_by, sort_order) VALUES ($1,$2,$3,$4,$5)',
+        [t.id, String(r.label).slice(0, 300), r.mandatory !== false, r.answered_by || null, ++order]);
+      added++;
+    }
+    await logEvent(t.id, request.user.id, `Started from template “${tpl.name}” (${added} checklist item${added === 1 ? '' : 's'} added)`);
+    return { added };
+  });
+
+  fastify.delete('/templates/:tid', { preHandler: requireWriter }, async (request, reply) => {
+    const { rowCount } = await pool.query('DELETE FROM tender_templates WHERE id = $1', [request.params.tid]);
+    if (!rowCount) return reply.code(404).send({ error: 'Not found' });
+    return { deleted: true };
+  });
+
+  fastify.get('/:id/forms', async (request, reply) => {
+    const { rows: [t] } = await pool.query('SELECT stage FROM tenders WHERE id = $1', [request.params.id]);
+    if (!t) return reply.code(404).send({ error: 'Not found' });
+    const { rows } = await pool.query(
+      `SELECT f.form_key, f.enabled, f.status, f.approved_at, f.note,
+              (SELECT u.name FROM users u WHERE u.id = f.approved_by) AS approved_by_name
+         FROM tender_forms f WHERE f.tender_id = $1`, [request.params.id]);
+    const by = Object.fromEntries(rows.map(r => [r.form_key, r]));
+    const keys = [...new Set([...(FORM_SET[t.stage] || FORM_SET.EOI), ...rows.map(r => r.form_key)])];
+    return keys.map(k => by[k] || { form_key: k, enabled: true, status: 'Not started', approved_at: null, note: null, approved_by_name: null });
+  });
+
+  fastify.put('/:id/forms/:key', { preHandler: requireWriter }, async (request, reply) => {
+    const { enabled, status, note } = request.body || {};
+    const key = String(request.params.key || '').replace(/[^a-z0-9_]/g, '').slice(0, 40);
+    if (!key) return reply.code(400).send({ error: 'Unknown form' });
+    if (status !== undefined && !FORM_STATUSES.includes(status)) return reply.code(400).send({ error: 'status must be one of: ' + FORM_STATUSES.join(', ') });
+    const { rows: [t] } = await pool.query('SELECT id FROM tenders WHERE id = $1', [request.params.id]);
+    if (!t) return reply.code(404).send({ error: 'Not found' });
+    const approving = status === 'Approved';
+    const { rows: [row] } = await pool.query(
+      `INSERT INTO tender_forms (tender_id, form_key, enabled, status, approved_by, approved_at, note)
+       VALUES ($1,$2,COALESCE($3,TRUE),COALESCE($4,'Not started'),$5,$6,$7)
+       ON CONFLICT (tender_id, form_key) DO UPDATE SET
+         enabled = COALESCE($3, tender_forms.enabled),
+         status = COALESCE($4, tender_forms.status),
+         approved_by = CASE WHEN $4 IS NULL THEN tender_forms.approved_by WHEN $4 = 'Approved' THEN $5 ELSE NULL END,
+         approved_at = CASE WHEN $4 IS NULL THEN tender_forms.approved_at WHEN $4 = 'Approved' THEN $6 ELSE NULL END,
+         note = COALESCE($7, tender_forms.note)
+       RETURNING form_key, enabled, status, approved_at, note`,
+      [request.params.id, key, enabled ?? null, status ?? null, approving ? request.user.id : null,
+       approving ? new Date() : null, note === undefined ? null : String(note).slice(0, 500)]);
+    const nm = FORM_NAMES[key] || key;
+    if (status !== undefined) await logEvent(t.id, request.user.id, `${nm}: ${status}`);
+    if (enabled === false) await logEvent(t.id, request.user.id, `${nm} switched off for this notice`);
+    if (enabled === true) await logEvent(t.id, request.user.id, `${nm} switched on`);
+    return row;
+  });
+
+  fastify.get('/:id/requirements', async (request) => {
+    const { rows } = await pool.query(
+      'SELECT id, label, mandatory, answered_by, met, sort_order FROM tender_requirements WHERE tender_id = $1 ORDER BY sort_order, id',
+      [request.params.id]);
+    return rows;
+  });
+
+  fastify.post('/:id/requirements', { preHandler: requireWriter }, async (request, reply) => {
+    const body = request.body || {};
+    const items = (Array.isArray(body.items) ? body.items : [body]).map(x => ({
+      label: String(x.label || '').trim().slice(0, 300), mandatory: x.mandatory !== false,
+      answered_by: x.answered_by ? String(x.answered_by).slice(0, 60) : null })).filter(x => x.label);
+    if (!items.length) return reply.code(400).send({ error: 'A requirement needs a label' });
+    const { rows: [t] } = await pool.query('SELECT id FROM tenders WHERE id = $1', [request.params.id]);
+    if (!t) return reply.code(404).send({ error: 'Not found' });
+    const { rows: [m] } = await pool.query('SELECT COALESCE(MAX(sort_order),0) AS m FROM tender_requirements WHERE tender_id = $1', [t.id]);
+    let order = m.m;
+    const made = [];
+    for (const x of items) {
+      const { rows: [r] } = await pool.query(
+        `INSERT INTO tender_requirements (tender_id, label, mandatory, answered_by, sort_order)
+         VALUES ($1,$2,$3,$4,$5) RETURNING id, label, mandatory, answered_by, met, sort_order`,
+        [t.id, x.label, x.mandatory, x.answered_by, ++order]);
+      made.push(r);
+    }
+    return reply.code(201).send(made);
+  });
+
+  fastify.put('/:id/requirements/:rid', { preHandler: requireWriter }, async (request, reply) => {
+    const { label, mandatory, answered_by, met } = request.body || {};
+    const { rows: [r] } = await pool.query(
+      `UPDATE tender_requirements SET
+         label = COALESCE($3, label), mandatory = COALESCE($4, mandatory),
+         answered_by = CASE WHEN $5::boolean THEN $6 ELSE answered_by END, met = COALESCE($7, met)
+       WHERE id = $1 AND tender_id = $2
+       RETURNING id, label, mandatory, answered_by, met, sort_order`,
+      [request.params.rid, request.params.id, label === undefined ? null : String(label).trim().slice(0, 300) || null,
+       mandatory ?? null, answered_by !== undefined, answered_by ? String(answered_by).slice(0, 60) : null, met ?? null]);
+    if (!r) return reply.code(404).send({ error: 'Not found' });
+    return r;
+  });
+
+  fastify.delete('/:id/requirements/:rid', { preHandler: requireWriter }, async (request, reply) => {
+    const { rowCount } = await pool.query('DELETE FROM tender_requirements WHERE id = $1 AND tender_id = $2',
+      [request.params.rid, request.params.id]);
     if (!rowCount) return reply.code(404).send({ error: 'Not found' });
     return { deleted: true };
   });
@@ -886,7 +1063,7 @@ async function plugin(fastify, opts) {
     const { rows: firmRowsDb } = firmIds.length
       ? await pool.query(`SELECT id, name, acronym, reg_no, pan, address, phone, mobile, email, contact_person,
                                  contact_designation, letterhead, sign, stamp, letter_top_margin,
-                                 letter_lr_padding, letter_bottom_padding
+                                 letter_lr_padding, letter_bottom_padding, letter_stamp_scale, letter_sign_scale
                             FROM institutes WHERE id = ANY($1::int[])`, [firmIds]) : { rows: [] };
     const firmById = new Map(firmRowsDb.map(f => [f.id, f]));
     /*

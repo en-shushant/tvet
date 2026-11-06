@@ -47,7 +47,7 @@ function SavedDocs({ docs, bidderId, kind, onDownload, onRemove }) {
 
 export default function SubmitStep({ tender, busy, variants, advanced = false, docFamily, setDocFamily,
                                      onPrepareReport, onMakeCVs, onSetBidderStatus, docs = [], onDownloadDoc, onRemoveDoc,
-                                     onAdvance, onOpenStage, onSaveVariant, footer }) {
+                                     onAdvance, onOpenStage, onSaveVariant, footer, formsPack, history, onDownloadPack }) {
   const bidders = tender.bidders || [];
   const isEOI = tender.stage === 'EOI';
   const shortlisted = bidders.filter(b => b.status === 'Shortlisted');
@@ -85,6 +85,8 @@ export default function SubmitStep({ tender, busy, variants, advanced = false, d
         that bidder — its firms, the fiscal year and this notice&apos;s trades. Record the result here once
         it is known.
       </p>
+
+      {formsPack}
 
       <div className="tw-section-head" style={{ marginBottom: 14 }}>
         <label htmlFor="tender-doc-format" className="tw-section-title" style={{ fontWeight: 600 }}>
@@ -156,6 +158,17 @@ export default function SubmitStep({ tender, busy, variants, advanced = false, d
                 Print</Btn>
               <Btn className="btn btn-secondary btn-sm" disabled={busy || !n} onClick={() => onMakeCVs(b, 'word', !noLetters[b.id], { date: dateOf(b), style: cvDateStyle })}>
                 Word</Btn>
+            </div>
+            <div className="tw-doc">
+              <span className="tw-doc-name">Pack</span>
+              <span className="tw-doc-what">The CV pack and the saved {tender.stage}, with a note of where each form stands, as one zip.</span>
+              <Btn className="btn btn-primary btn-sm" disabled={busy} onClick={() => onDownloadPack(b)}>Download pack (zip)</Btn>
+            </div>
+            <div className="tw-doc">
+              <span className="tw-doc-name">Reports</span>
+              <span className="tw-doc-what">Open another report for this bidder, set up from this notice.</span>
+              <Btn className="btn btn-secondary btn-sm" onClick={() => onPrepareReport(tender, tender.stage, b, 'detailed')}>Detailed experience</Btn>
+              <Btn className="btn btn-secondary btn-sm" onClick={() => onPrepareReport(tender, tender.stage, b, 'firmwise')}>Firm-wise summary</Btn>
             </div>
             <details className="tw-opts">
               <summary>CV options <span className="tw-hint">· {formatLabel} · dated {formatCvDate(dateOf(b), cvDateStyle) || 'blank'}{noLetters[b.id] ? ' · no letters' : ' · with letters'}</span></summary>
@@ -241,6 +254,8 @@ export default function SubmitStep({ tender, busy, variants, advanced = false, d
         <Btn className="btn btn-secondary btn-sm" style={{ marginTop: 8 }}
           onClick={() => setVariantModal({ data: null })}><span className="material-icons-round">add</span>Add wording</Btn>
       </details>}
+
+      {history}
 
       {footer({})}
 

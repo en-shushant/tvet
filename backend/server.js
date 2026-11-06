@@ -502,6 +502,54 @@ async function runMigrations() {
       created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW()
     )`,
     `CREATE INDEX IF NOT EXISTS idx_tender_docs_tender ON tender_documents(tender_id)`,
+    // The forms a notice asks for, and where each stands: one row per form that has been touched.
+    // A form with no row is on and not started.
+    `CREATE TABLE IF NOT EXISTS tender_forms (
+      tender_id   INTEGER NOT NULL REFERENCES tenders(id) ON DELETE CASCADE,
+      form_key    TEXT NOT NULL,
+      enabled     BOOLEAN NOT NULL DEFAULT TRUE,
+      status      TEXT NOT NULL DEFAULT 'Not started',
+      approved_by UUID,
+      approved_at TIMESTAMPTZ,
+      note        TEXT,
+      PRIMARY KEY (tender_id, form_key)
+    )`,
+    // What the notice requires, one line each, and what answers it.
+    `CREATE TABLE IF NOT EXISTS tender_requirements (
+      id          SERIAL PRIMARY KEY,
+      tender_id   INTEGER NOT NULL REFERENCES tenders(id) ON DELETE CASCADE,
+      label       TEXT NOT NULL,
+      mandatory   BOOLEAN NOT NULL DEFAULT TRUE,
+      answered_by TEXT,
+      met         BOOLEAN NOT NULL DEFAULT FALSE,
+      sort_order  INTEGER NOT NULL DEFAULT 0
+    )`,
+    `CREATE INDEX IF NOT EXISTS idx_tender_reqs_tender ON tender_requirements(tender_id)`,
+    // A short history of what was done on a tender: forms approved, documents saved, results recorded.
+    // Small settings kept as JSON, one row each: maintenance mode lives here.
+    `CREATE TABLE IF NOT EXISTS app_settings (
+      key        TEXT PRIMARY KEY,
+      value      JSONB NOT NULL DEFAULT '{}',
+      updated_by UUID,
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )`,
+    `CREATE TABLE IF NOT EXISTS tender_events (
+      id         SERIAL PRIMARY KEY,
+      tender_id  INTEGER NOT NULL REFERENCES tenders(id) ON DELETE CASCADE,
+      text       TEXT NOT NULL,
+      user_id    UUID,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )`,
+    `CREATE INDEX IF NOT EXISTS idx_tender_events_tender ON tender_events(tender_id, id DESC)`,
+    // A checklist and the set of forms switched on, saved to start the next notice from.
+    `CREATE TABLE IF NOT EXISTS tender_templates (
+      id           SERIAL PRIMARY KEY,
+      name         TEXT NOT NULL,
+      forms        JSONB NOT NULL DEFAULT '{}',
+      requirements JSONB NOT NULL DEFAULT '[]',
+      created_by   UUID,
+      created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )`,
     `CREATE TABLE IF NOT EXISTS tender_bidder_firms (
       bidder_id    INTEGER NOT NULL REFERENCES tender_bidders(id) ON DELETE CASCADE,
       institute_id INTEGER NOT NULL REFERENCES institutes(id) ON DELETE CASCADE,
@@ -720,6 +768,9 @@ async function runMigrations() {
     `ALTER TABLE institutes ADD COLUMN IF NOT EXISTS letter_top_margin NUMERIC`,
     `ALTER TABLE institutes ADD COLUMN IF NOT EXISTS letter_lr_padding NUMERIC`,
     `ALTER TABLE institutes ADD COLUMN IF NOT EXISTS letter_bottom_padding NUMERIC`,
+    // How big the stamp and the signature print on this firm's letters, as a multiple of the standard size.
+    `ALTER TABLE institutes ADD COLUMN IF NOT EXISTS letter_stamp_scale NUMERIC`,
+    `ALTER TABLE institutes ADD COLUMN IF NOT EXISTS letter_sign_scale NUMERIC`,
     `ALTER TABLE institutes ADD COLUMN IF NOT EXISTS mobile TEXT`,
     `ALTER TABLE institutes ADD COLUMN IF NOT EXISTS service_type TEXT`,
     `ALTER TABLE institutes ADD COLUMN IF NOT EXISTS local_level_registration TEXT`,
@@ -977,6 +1028,8 @@ fastify.all('/cap-api/*', async (request, reply) => {
 // ─── ROUTES ──────────────────────────────────────────────────────────────────
 const PORT = process.env.PORT || 4000;
 
+fastify.addHook('onRequest', require('./lib/maintenance').maintenanceHook());
+fastify.register(require('./routes/maintenance'),     { prefix: '/api/maintenance' });
 fastify.register(require('./routes/auth'),            { prefix: '/api/auth' });
 fastify.register(require('./routes/users'),           { prefix: '/api/users' });
 fastify.register(require('./routes/institutes'),      { prefix: '/api/institutes' });

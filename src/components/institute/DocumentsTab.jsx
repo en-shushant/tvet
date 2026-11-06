@@ -10,6 +10,9 @@ import { Btn, MdTextField } from '../../md.jsx';
 import { api, instToAPI } from '../../utils/api.js';
 import { safeHref } from '../../utils/safeWindow.js';
 import NepaliInput from '../ui/NepaliInput.jsx';
+import LetterPreview from '../shortlisting/LetterPreview.jsx';
+import LetterWriter from '../letters/LetterWriter.jsx';
+import { getCurrentFY } from '../../constants/data.js';
 
 const ACCEPT = 'image/*';
 
@@ -230,9 +233,11 @@ export function DocumentsTab({ institute, token, canEdit, onUpdate, isShortlistO
     sign: inst.sign || null,
     stamp: inst.stamp || null,
     serviceType: inst.serviceType || 'सीपमूलक तथा व्यावसायिक तालिम कार्यक्रमहरु सञ्चालन',
-    letterTopMargin: inst.letterTopMargin ?? 15,
-    letterBottomPadding: inst.letterBottomPadding ?? 15,
-    letterLrPadding: inst.letterLrPadding ?? 5,
+    letterTopMargin: inst.letterTopMargin ?? null,
+    letterBottomPadding: inst.letterBottomPadding ?? null,
+    letterLrPadding: inst.letterLrPadding ?? null,
+    letterStampScale: inst.letterStampScale ?? null,
+    letterSignScale: inst.letterSignScale ?? null,
     ocrRegistration: inst.ocrRegistration || null,
     ocrRenewal: inst.ocrRenewal || null,
     localLevelRegistration: inst.localLevelRegistration || null,
@@ -245,6 +250,24 @@ export function DocumentsTab({ institute, token, canEdit, onUpdate, isShortlistO
   });
 
   const [fields, setFields] = useState(() => fromInst(institute));
+  const [designing, setDesigning] = useState(false);
+  const [writing, setWriting] = useState(false);
+  /** The firm's own letter with a stand-in recipient, built from what is on screen, saved or not. */
+  const sampleRow = () => ({
+    institute_id: institute.id, institute_name: institute.name, institute_acronym: institute.acronym,
+    institute_address: institute.address, institute_phone: institute.phone, institute_mobile: institute.mobile,
+    institute_email: institute.email, institute_website: institute.website, institute_reg_no: institute.regNo,
+    institute_pan: institute.pan, institute_contact: institute.contactPerson,
+    institute_name_np: fields.nameNp, institute_address_np: fields.addressNp, institute_contact_np: fields.contactPersonNp,
+    institute_logo: institute.logo, institute_letterhead: fields.letterhead, institute_sign: fields.sign, institute_stamp: fields.stamp,
+    institute_letter_top_margin: fields.letterTopMargin, institute_letter_lr_padding: fields.letterLrPadding,
+    institute_letter_bottom_padding: fields.letterBottomPadding,
+    institute_letter_stamp_scale: fields.letterStampScale, institute_letter_sign_scale: fields.letterSignScale,
+    institute_service_type: fields.serviceType,
+    client_name_manual: 'नमूना कार्यालय', client_address_manual: 'काठमाडौं', list_addressee: 'कार्यालय प्रमुख',
+    standing_list_name: 'Standing List', fy: getCurrentFY(), list_date: new Date().toISOString().slice(0, 10),
+    status: 'Active', list_letter_type: 'basic',
+  });
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState('');
   const [saved, setSaved] = useState(false);
@@ -338,18 +361,40 @@ export function DocumentsTab({ institute, token, canEdit, onUpdate, isShortlistO
               <option value="अन्य सेवा"/>
             </datalist>
           </div>
-          <div style={{display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:'0 20px'}}>
-            {[
-              ['Top', 'letterTopMargin', 'Push text below the letterhead'],
-              ['Bottom', 'letterBottomPadding', 'Space at the bottom of the page'],
-              ['Left / Right', 'letterLrPadding', 'Horizontal margin inside the page'],
-            ].map(([label, key, hint]) => (
-              <div key={key} className="form-group">
-                <MdTextField type="number" label={`${label} padding (mm)`} value={fields[key]} disabled={!canEdit}
-                  onChange={e=>set(key, Number(e.target.value))} supporting-text={hint} style={{width:'100%'}}/>
+          <div className="dt-design">
+            <div className="dt-design-summary">
+              <div style={{fontWeight:600, fontSize:13}}>Letter design</div>
+              <div style={{fontSize:12.5, color:'var(--text2)', lineHeight:1.6}}>
+                {fields.letterTopMargin == null && fields.letterBottomPadding == null && fields.letterStampScale == null && fields.letterSignScale == null
+                  ? 'Not set yet: letters use the standard layout.'
+                  : <>Top {fields.letterTopMargin ?? 'standard'} mm · Bottom {fields.letterBottomPadding ?? 'standard'} mm · Sides {fields.letterLrPadding ?? 'standard'} mm
+                    {' · '}Stamp {Math.round((fields.letterStampScale ?? 1) * 100)}% · Signature {Math.round((fields.letterSignScale ?? 1) * 100)}%</>}
               </div>
-            ))}
+              <div style={{fontSize:12, color:'var(--text3)'}}>
+                Saved once, used by every letter this firm sends: shortlisting, experience and the letter builder. Shortlisting letters are scaled to fit one page between the margins.
+              </div>
+            </div>
+            <Btn className="btn btn-secondary" onClick={() => setWriting(true)}>
+              <span className="material-icons-round" style={{fontSize:16, verticalAlign:'middle', marginRight:4}}>edit_note</span>
+              Write a letter
+            </Btn>
+            <Btn className="btn btn-primary" onClick={() => setDesigning(true)}>
+              <span className="material-icons-round" style={{fontSize:16, verticalAlign:'middle', marginRight:4}}>tune</span>
+              {canEdit ? 'Design the letter' : 'Preview the letter'}
+            </Btn>
+            {writing && <LetterWriter institutes={[institute]} firmId={institute.id} onClose={() => setWriting(false)} />}
           </div>
+          {designing && (
+            <LetterPreview sample title="Letter design" row={sampleRow()} token={token} canSave={!!canEdit}
+              opts={{ includeSign: !!fields.sign, includeStamp: !!fields.stamp, includeLh: !!fields.letterhead, docs: {}, serviceType: fields.serviceType }}
+              onClose={() => setDesigning(false)}
+              onPdf={({ url }) => { window.open(url, '_blank', 'noopener'); }}
+              onSaved={(l) => {
+                const next = { letterTopMargin: l.top, letterBottomPadding: l.bottom, letterLrPadding: l.lr, letterStampScale: l.stamp, letterSignScale: l.sign };
+                setFields(f => ({ ...f, ...next }));
+                if (onUpdate) onUpdate({ ...institute, ...next });
+              }} />
+          )}
         </div>
       </>}
 

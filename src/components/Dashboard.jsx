@@ -5,6 +5,7 @@ import { COMPLIANCE_FY } from '../constants/data.js';
 import { api } from '../utils/api.js';
 import { fmt } from '../utils/format.js';
 import { Btn } from '../md.jsx';
+import FirmGapsPanel from './FirmGapsPanel.jsx';
 import {
   PageHeader, KpiCard, InkCard, StatusBadge, EmptyState, Skeleton,
 } from './ui/primitives.jsx';
@@ -291,6 +292,8 @@ function Dashboard({ institutes, isEditor, onNavigate }) {
         )}
         </div>
       </section>
+
+      <FirmGapsPanel institutes={alertable} onOpen={(inst) => onNavigate('detail', inst, 'profile')} />
     </div>
   );
 }

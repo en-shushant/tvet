@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { ErrorBanner } from '../ui/Modal.jsx';
 import { Btn } from '../../md.jsx';
 import { confirmDialog, toast } from '../ui/Feedback.jsx';
-import { formatCvDate } from '../../reports/cvDate.js';
+import { formatCvDate, todayISO } from '../../reports/cvDate.js';
 import { getSession } from '../../utils/auth.js';
 import { api } from '../../utils/api.js';
 import cv from '../../reports/cv.jsx';
@@ -16,6 +16,14 @@ import BiddersStep from './BiddersStep.jsx';
 import TeamStep from './TeamStep.jsx';
 import SubmitStep from './SubmitStep.jsx';
 import CopyTender from './CopyTender.jsx';
+import FormsPack from './FormsPack.jsx';
+import TenderHistory from './TenderHistory.jsx';
+import { buildPackZip } from './packZip.js';
+import { submitProblems, packNote } from './pack.js';
+import { saveAs } from 'file-saver';
+import RequirementsChecklist from './RequirementsChecklist.jsx';
+import FirmDataCheck, { tenderGapCount, bidderFirms } from './FirmDataCheck.jsx';
+import { useFirmFacts } from '../../utils/useFirmFacts.js';
 import Select from '../ui/Select.jsx';
 import { openSafeDocument } from '../../utils/safeWindow.js';
 
@@ -43,6 +51,83 @@ export default function TenderWorkspace({ tenderId, startAt, clients, institutes
   const [copying, setCopying] = useState(false);
   // The EOIs and RFPs built for this tender and saved to it.
   const [docs, setDocs] = useState([]);
+  // The forms the notice asks for and its requirements checklist.
+  const { facts: firmFacts } = useFirmFacts(token);
+  const [forms, setForms] = useState([]);
+  const [reqs, setReqs] = useState([]);
+  const [events, setEvents] = useState([]);
+  const [templates, setTemplates] = useState([]);
+  const canWrite = ['admin', 'editor', 'superadmin', 'shortlist'].includes(getSession()?.role);
+  const loadPack = useCallback(async (id) => {
+    try { setForms(await api('GET', `/tenders/${id}/forms`, null, token) || []); } catch { setForms([]); }
+    try { setReqs(await api('GET', `/tenders/${id}/requirements`, null, token) || []); } catch { setReqs([]); }
+    try { setEvents(await api('GET', `/tenders/${id}/events`, null, token) || []); } catch { setEvents([]); }
+    try { setTemplates(await api('GET', '/tenders/templates', null, token) || []); } catch { setTemplates([]); }
+  }, [token]);
+  /** Record something done on this tender, then refresh the history. */
+  const logEvent = async (text) => {
+    try { await api('POST', `/tenders/${tender.id}/events`, { text }, token); setEvents(await api('GET', `/tenders/${tender.id}/events`, null, token) || []); } catch { /* history is a convenience */ }
+  };
+  /** Stop and ask before a bid is marked submitted over open items. True to go on. */
+  const okToSubmit = async (what) => {
+    const problems = submitProblems(forms, reqs);
+    if (!problems.length) return true;
+    return confirmDialog({
+      title: `Mark ${what} as submitted?`,
+      message: `Still open: ${problems.join('; ')}. You can go on and mark it submitted anyway.`,
+      confirmLabel: 'Mark submitted anyway',
+    });
+  };
+  const saveTemplate = async (name) => {
+    try { await api('POST', `/tenders/${tender.id}/save-as-template`, { name }, token); await loadPack(tender.id); toast('Saved as a template.'); }
+    catch (e) { setErr(e.message || 'Could not save the template.'); }
+  };
+  const applyTemplate = async (id) => {
+    try { const r = await api('POST', `/tenders/${tender.id}/apply-template`, { template_id: id }, token); await loadPack(tender.id); toast(`${r.added} checklist item${r.added === 1 ? '' : 's'} added.`); }
+    catch (e) { setErr(e.message || 'Could not apply the template.'); }
+  };
+  /** Everything for one bidder in a single zip: the CV pack, the saved EOI/RFP, and a cover note. */
+  const downloadPack = async (bidder) => {
+    setBusy(true); setErr('');
+    try {
+      const files = [];
+      const names = [];
+      const pack = await api('GET', `/tenders/${tender.id}/cv?bidder_id=${bidder.id}`, null, token);
+      if (pack.cvs.length) {
+        pack.tender = { ...pack.tender, cv_date: formatCvDate(todayISO(), 'bs') };
+        const made = await cv.downloadDOCX(pack, { letters: true, capture: true });
+        files.push({ name: made.name, blob: made.blob }); names.push(made.name);
+      }
+      const mine = docs.filter(d => d.bidder_id === bidder.id && d.kind === tender.stage);
+      if (mine[0]) {
+        const res = await fetch(`/api/tenders/${tender.id}/documents/${mine[0].id}/download`, { headers: { Authorization: `Bearer ${token}` } });
+        if (res.ok) { files.push({ name: mine[0].file_name, blob: await res.blob() }); names.push(mine[0].file_name); }
+      }
+      if (!files.length) { setErr(`Nothing to put in a pack for ${bidder.display_name} yet: no team and no saved ${tender.stage}.`); return; }
+      files.push({ name: 'Pack note.txt', text: packNote(tender, forms, reqs, names) });
+      const zip = await buildPackZip(files);
+      const base = `${(tender.title || 'tender').replace(/[^\w\s-]/g, '').trim().slice(0, 40) || 'tender'} — ${bidder.display_name} — ${tender.stage} pack.zip`;
+      saveAs(zip, base);
+      await logEvent(`Downloaded the ${tender.stage} pack for ${bidder.display_name} (${names.length} file${names.length === 1 ? '' : 's'})`);
+    } catch (e) { setErr(e.message || 'Could not build the pack.'); }
+    finally { setBusy(false); }
+  };
+  const changeForm = async (key, patch) => {
+    try { await api('PUT', `/tenders/${tender.id}/forms/${key}`, patch, token); await loadPack(tender.id); }
+    catch (e) { setErr(e.message || 'Could not save that form.'); }
+  };
+  const addReqs = async (items) => {
+    try { await api('POST', `/tenders/${tender.id}/requirements`, { items }, token); await loadPack(tender.id); }
+    catch (e) { setErr(e.message || 'Could not add that.'); }
+  };
+  const updateReq = async (rid, patch) => {
+    try { await api('PUT', `/tenders/${tender.id}/requirements/${rid}`, patch, token); await loadPack(tender.id); }
+    catch (e) { setErr(e.message || 'Could not save that.'); }
+  };
+  const removeReq = async (rid) => {
+    try { await api('DELETE', `/tenders/${tender.id}/requirements/${rid}`, null, token); await loadPack(tender.id); }
+    catch (e) { setErr(e.message || 'Could not remove that.'); }
+  };
   const loadDocs = useCallback(async (id) => {
     try { setDocs(await api('GET', `/tenders/${id}/documents`, null, token) || []); } catch { setDocs([]); }
   }, [token]);
@@ -59,12 +144,13 @@ export default function TenderWorkspace({ tenderId, startAt, clients, institutes
     setVariants([...seen.values()]);
     setTender(t);
     loadDocs(id);
+    loadPack(id);
     setActiveBidder(a => (t.bidders || []).some(b => b.id === a) ? a : (t.bidders?.[0]?.id ?? null));
     setDocFamily(f => f || defaultFamilyFor(t.stage));
     // An existing tender opens on its checklist; where to go next is one click.
     if (chooseStep) setStep(0);
     return t;
-  }, [token, loadDocs]);
+  }, [token, loadDocs, loadPack]);
 
   useEffect(() => {
     if (!tenderId) { setTender({ ...BLANK_TENDER }); setStep(1); return; }
@@ -179,8 +265,11 @@ export default function TenderWorkspace({ tenderId, startAt, clients, institutes
     if (ok) putBidders(bidders.filter(x => x.id !== b.id), `${b.display_name} removed.`);
   };
 
-  const setBidderStatus = (b, status) =>
-    putBidders(bidders.map(x => x.id === b.id ? { ...x, status } : x), `${b.display_name}: ${status}.`);
+  const setBidderStatus = async (b, status) => {
+    if (status === 'Submitted' && b.status !== 'Submitted' && !(await okToSubmit(b.display_name))) return;
+    await putBidders(bidders.map(x => x.id === b.id ? { ...x, status } : x), `${b.display_name}: ${status}.`);
+    logEvent(`${b.display_name}: ${status}`);
+  };
 
   const saveTeam = (bidderId, rows) =>
     patch({ people_bidder_id: bidderId, people: rows });
@@ -305,7 +394,12 @@ export default function TenderWorkspace({ tenderId, startAt, clients, institutes
           <div className="tw-head-actions">
             <Select className="tw-in" style={{ width: 'auto' }} aria-label="Status of this tender"
               value={tender.status || 'Preparing'} disabled={busy}
-              onChange={e => patch({ status: e.target.value }, `Marked ${e.target.value}.`)}>
+              onChange={async e => {
+                const next = e.target.value;
+                if (next === 'Submitted' && tender.status !== 'Submitted' && !(await okToSubmit('this tender'))) return;
+                await patch({ status: next }, `Marked ${next}.`);
+                logEvent(`Tender marked ${next}`);
+              }}>
               {STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
             </Select>
             <Btn className="btn btn-secondary btn-sm" onClick={() => setCopying(true)}>
@@ -321,7 +415,7 @@ export default function TenderWorkspace({ tenderId, startAt, clients, institutes
         )}
       </div>
 
-      {saved && <TenderSummary tender={tender} docs={docs} onGo={go} />}
+      {saved && <TenderSummary tender={tender} docs={docs} forms={forms} reqs={reqs} firmGaps={firmFacts && bidderFirms(tender, firmFacts).length ? tenderGapCount(tender, firmFacts) : null} onGo={go} />}
 
       {copying && (
         <CopyTender tender={tender} token={token} onClose={() => setCopying(false)}
@@ -366,7 +460,8 @@ export default function TenderWorkspace({ tenderId, startAt, clients, institutes
           )}
           {step === 2 && saved && (
             <RequirementsStep key={tender.id} tender={tender} occupations={occupations} variants={variants} advanced={advanced}
-              onSave={saveRequirements} onSaveProgress={saveRequirementsProgress} footer={footer} />
+              onSave={saveRequirements} onSaveProgress={saveRequirementsProgress} footer={footer}
+              checklist={<RequirementsChecklist reqs={reqs} canWrite={canWrite} onAdd={addReqs} onUpdate={updateReq} onRemove={removeReq} templates={templates} onSaveTemplate={saveTemplate} onApplyTemplate={applyTemplate} />} />
           )}
           {step === 3 && saved && (
             <BiddersStep tender={tender} institutes={institutes} busy={busy}
@@ -379,7 +474,7 @@ export default function TenderWorkspace({ tenderId, startAt, clients, institutes
               onSaveTeam={saveTeam} footer={footer} />
           )}
           {step === 5 && saved && (
-            <SubmitStep tender={tender} busy={busy} variants={variants} advanced={advanced} docs={docs} onDownloadDoc={downloadDoc} onRemoveDoc={removeDoc}
+            <SubmitStep tender={tender} busy={busy} onDownloadPack={downloadPack} history={<TenderHistory events={events} />} formsPack={<><FormsPack forms={forms} canWrite={canWrite} onChange={changeForm} /><FirmDataCheck tender={tender} facts={firmFacts} /></>} variants={variants} advanced={advanced} docs={docs} onDownloadDoc={downloadDoc} onRemoveDoc={removeDoc}
               docFamily={docFamily || defaultFamilyFor(tender.stage)} setDocFamily={setDocFamily}
               onPrepareReport={onPrepareReport} onMakeCVs={makeCVs} onSetBidderStatus={setBidderStatus}
               onAdvance={advance} onOpenStage={openStage} onSaveVariant={saveVariant} footer={footer} />

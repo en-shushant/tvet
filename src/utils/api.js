@@ -1,5 +1,6 @@
 import { servicesTemplateIdOf } from './specificTemplates.js';
 import { OCCUPATIONS } from '../constants/data.js';
+import { getPass, clearPass } from './maintenance.js';
 
 // API base URL — reads from localStorage so self-hosted users can point at their own backend.
 export const API_URL_KEY = 'tvettrack_api_url';
@@ -18,6 +19,8 @@ export async function api(method, path, body, token, _retry = 0) {
   const headers = {};
   if (body) headers['Content-Type'] = 'application/json';
   if (token) headers['Authorization'] = `Bearer ${token}`;
+  const maintPass = getPass()?.pass;
+  if (maintPass) headers['X-Maintenance-Pass'] = maintPass;
   let res;
   try {
     res = await fetch(url, {
@@ -53,6 +56,15 @@ export async function api(method, path, body, token, _retry = 0) {
     const e = new Error(msg);
     e.status = res.status;
     e.rawBody = raw;
+    let errBody = null; try { errBody = JSON.parse(raw); } catch { /* not ours */ }
+
+    // Held by maintenance mode: the page shows the maintenance screen. A pass that no longer works is dropped.
+    if (res.status === 503 && errBody?.error === 'maintenance') {
+      e.message = errBody.message || e.message;
+      clearPass();
+      window.dispatchEvent(new CustomEvent('tvettrack:maintenance', { detail: { message: errBody.message } }));
+      throw e;
+    }
 
     /**
      * A gateway error whose body is not ours never reached the API — retry it.
@@ -101,7 +113,7 @@ export async function api(method, path, body, token, _retry = 0) {
       } catch {}
       // Refresh failed — session is genuinely invalid
       try { localStorage.removeItem('tvettrack_session'); } catch {}
-      window.dispatchEvent(new CustomEvent('tvettrack:session-expired'));
+      window.dispatchEvent(new CustomEvent('tvettrack:session-expired', { detail: { reason: errBody?.code === 'idle' ? 'idle' : 'expired' } }));
     } else if (res.status === 401 && (_retry > 0 || !token)) {
       try { localStorage.removeItem('tvettrack_session'); } catch {}
       window.dispatchEvent(new CustomEvent('tvettrack:session-expired'));
@@ -193,6 +205,8 @@ export function normInst(r) {
     letterTopMargin: r.letter_top_margin != null ? Number(r.letter_top_margin) : null,
     letterLrPadding: r.letter_lr_padding != null ? Number(r.letter_lr_padding) : null,
     letterBottomPadding: r.letter_bottom_padding != null ? Number(r.letter_bottom_padding) : null,
+    letterStampScale: r.letter_stamp_scale != null ? Number(r.letter_stamp_scale) : null,
+    letterSignScale: r.letter_sign_scale != null ? Number(r.letter_sign_scale) : null,
     serviceType: r.service_type || '',
     // Bolpatra / Standard EOI — Section 2 (Applicant's Information Form)
     constitutionType: r.constitution_type || '',

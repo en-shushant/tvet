@@ -104,9 +104,8 @@ function InstituteForm({institute, onSave, onClose, isSuperAdmin}) {
             onChange={e=>{ set('name',e.target.value); if (fieldErr.name) setFieldErr(f=>({...f,name:''})); }} placeholder="Full official name"/>
         </div>
         <div className="form-group">
-          <MdTextField label="Acronym / Short name" value={form.acronym||''}
-            onChange={e=>set('acronym',e.target.value)} placeholder="e.g. WLTTI, NVA"
-            supporting-text="Used in reports and comparison view"/>
+          <MdTextField label="Acronym / Short name (used in reports)" value={form.acronym||''}
+            onChange={e=>set('acronym',e.target.value)} placeholder="e.g. WLTTI, NVA"/>
         </div>
       </div>
       <div className="form-row form-row-3">

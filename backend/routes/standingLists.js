@@ -115,6 +115,59 @@ async function plugin(fastify) {
     return reply.code(201).send({ added: rows.length, rows });
   });
 
+  // Copy a list to another organisation: a new list with the same letter format, name,
+  // fiscal year and dates (each overridable), and the same firms. The organisation
+  // fields must be new. Per-firm things that belong to the old organisation — the
+  // shortlisting document, the contract amount, the bill — are not carried over.
+  fastify.post('/:id/copy', { preHandler: requireWriter }, async (request, reply) => {
+    const b = request.body || {};
+    const orgName = String(b.client_name_manual || '').trim();
+    if (!orgName) return reply.code(400).send({ error: 'An organisation name is required' });
+    const { rows: [src] } = await pool.query('SELECT * FROM standing_lists WHERE id=$1', [request.params.id]);
+    if (!src) return reply.code(404).send({ error: 'Standing list not found' });
+
+    const { rows: srcFirms } = await pool.query(
+      'SELECT institute_id FROM shortlists WHERE standing_list_id=$1', [src.id]);
+    const wanted = Array.isArray(b.institute_ids) ? new Set(b.institute_ids.map(Number)) : null;
+    const ids = srcFirms.map(r => r.institute_id).filter(id => !wanted || wanted.has(id));
+
+    // Only firms this user can write to are copied; the rest are reported, not silently dropped.
+    const allowed = [];
+    for (const id of ids) if (await canWriteInstitutes(request.user, [id])) allowed.push(id);
+
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+      const { rows: [list] } = await client.query(
+        `INSERT INTO standing_lists
+          (client_name_manual, client_name2_manual, client_address_manual, addressee, letter_type,
+           name, fy, list_date, valid_until, status, remarks)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING *`,
+        [orgName, String(b.client_name2_manual || '').trim() || null, String(b.client_address_manual || '').trim() || null,
+         String(b.addressee || '').trim() || null, src.letter_type || 'basic',
+         (b.name ?? src.name) || null, (b.fy ?? src.fy) || null,
+         (b.list_date ?? src.list_date) || null, (b.valid_until ?? src.valid_until) || null,
+         'Active', src.remarks || null]);
+      let added = 0;
+      if (allowed.length) {
+        const { rowCount } = await client.query(
+          `INSERT INTO shortlists
+            (standing_list_id, client_name_manual, client_address_manual, institute_id,
+             standing_list_name, fy, shortlist_date, valid_until, status)
+           SELECT $1, $2, $3, x.institute_id, $4, $5, $6, $7, 'Active'
+           FROM unnest($8::int[]) AS x(institute_id)`,
+          [list.id, list.client_name_manual, list.client_address_manual, list.name, list.fy,
+           list.list_date || new Date(), list.valid_until, allowed]);
+        added = rowCount;
+      }
+      await client.query('COMMIT');
+      return reply.code(201).send({ list, added, skipped: ids.length - allowed.length });
+    } catch (e) {
+      await client.query('ROLLBACK');
+      throw e;
+    } finally { client.release(); }
+  });
+
   // Remove a single firm from a list
   fastify.delete('/:id/firms/:instituteId', { preHandler: requireWriter }, async (request, reply) => {
     const { id, instituteId } = request.params;

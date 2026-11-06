@@ -30,7 +30,7 @@ export function bsDateLabel(adStr) {
 
 // ── Letter generator — opens print-ready A4 in new window ─────────────────────
 // Scan letterhead image for header/footer boundaries
-async function detectLetterheadMargins(dataUrl) {
+export async function detectLetterheadMargins(dataUrl) {
   if (!dataUrl) return { top: null, bottom: null };
   return new Promise((resolve) => {
     const img = new Image();
@@ -82,7 +82,7 @@ async function detectLetterheadMargins(dataUrl) {
   });
 }
 
-async function urlToDataUrl(url) {
+export async function urlToDataUrl(url) {
   if (!url) return null;
   if (url.startsWith('data:')) return url;
   try {
@@ -103,6 +103,53 @@ async function urlToDataUrl(url) {
 // does not hoist — referencing them before this line throws a ReferenceError
 // and silently kills letter generation.
 const A4_W = 794, A4_H = 1123;
+
+const MM_PX = 96 / 25.4;
+const MIN_FIT = 0.4;
+
+/**
+ * Lay the letter out on one A4 page.
+ *
+ * The page's top and bottom margins are fixed: they keep the writing clear of the
+ * letterhead's header and footer, so they must not shrink with the writing.
+ * Only the content between them is scaled, to the largest size (never above 100%)
+ * that still fits the height between the margins. The width is widened as the
+ * scale falls so lines keep the same measure, which lets text reflow shorter, so
+ * the size is found by search rather than by one division.
+ *
+ * Returns { scale, fits, availPx } — `fits` is false only if even the smallest
+ * allowed scale (40%) leaves the writing too long.
+ */
+export function fitLetter(doc, { topMm, bottomMm, lrMm }) {
+  const inner = doc.querySelector('.page-inner');
+  const fit = doc.querySelector('.fit');
+  if (!inner || !fit) return { scale: 1, fits: true, availPx: 0 };
+  inner.style.padding = `${topMm}mm ${lrMm}mm ${bottomMm}mm ${lrMm}mm`;
+  const availPx = A4_H - (Number(topMm) + Number(bottomMm)) * MM_PX;
+  const apply = (sc) => {
+    fit.style.transformOrigin = 'top left';
+    fit.style.transform = sc < 1 ? `scale(${sc})` : '';
+    fit.style.width = sc < 1 ? `${100 / sc}%` : '';
+    return fit.offsetHeight * sc;
+  };
+  // The signature row's gap is the one thing that can give before anything is scaled.
+  const sig = doc.querySelector('.sig-row');
+  if (sig) sig.style.marginTop = '';
+  if (apply(1) <= availPx) return { scale: 1, fits: true, availPx };
+  if (sig) {
+    let gap = 72;
+    while (gap > 8 && apply(1) > availPx) { gap = Math.max(8, gap - 8); sig.style.marginTop = `${gap}px`; }
+    if (apply(1) <= availPx) return { scale: 1, fits: true, availPx };
+  }
+  let lo = MIN_FIT, hi = 1;
+  if (apply(lo) > availPx) return { scale: lo, fits: false, availPx };
+  for (let n = 0; n < 9; n++) {
+    const mid = (lo + hi) / 2;
+    if (apply(mid) <= availPx) lo = mid; else hi = mid;
+  }
+  apply(lo);
+  return { scale: lo, fits: true, availPx };
+}
 
 const NEA_TEMPLATES = {
   nea_ssemd: {
@@ -159,7 +206,7 @@ function buildNeaLetterHtml({ letterType, dateBS, toTitle, toName, toName2, toAd
   .sig-block { text-align:center;min-width:130px; }
   .sig-line { border-top:1px solid #333;padding-top:4px;font-size:8pt; }
 </style></head><body>
-<div class="page"><div class="page-inner">
+<div class="page"><div class="page-inner"><div class="fit">
 
   <div class="ref-row"><span>मिति: ${dateBS}</span></div>
 
@@ -182,24 +229,36 @@ function buildNeaLetterHtml({ letterType, dateBS, toTitle, toName, toName2, toAd
   <div class="sig-row">
     <div class="sig-stamp">
       ${inclStamp && firmStamp
-        ? `<img src="${firmStamp}" style="width:26mm;height:26mm;object-fit:contain;display:block;margin:0 auto;">`
+        ? `<img src="${firmStamp}" style="width:calc(26mm * var(--stamp, 1));height:calc(26mm * var(--stamp, 1));object-fit:contain;display:block;margin:0 auto;">`
         : ''}
     </div>
     <div class="sig-block">
       ${inclSign && firmSign
-        ? `<img src="${firmSign}" style="display:block;margin:0 auto;max-height:14mm;max-width:100%;object-fit:contain;margin-bottom:4px;">`
+        ? `<img src="${firmSign}" style="display:block;margin:0 auto;max-height:calc(14mm * var(--sign, 1));max-width:100%;object-fit:contain;margin-bottom:4px;">`
         : ''}
       <div class="sig-line">${firmContactNp}<br>${firmNameNp}</div>
     </div>
   </div>
 
-</div></div>
+</div></div></div>
 </body></html>`;
 }
 
-export async function openShortlistLetter(row, opts = {}) {
-  const { includeSign = false, includeStamp = false, includeLh = true, docs = {}, serviceType: svcType } = opts;
-  const lrPadding = row.institute_letter_lr_padding ?? 20;
+/**
+ * Everything the letter is made from, short of drawing it: the HTML, the images it
+ * uses, and the margins and sizes it was laid out with. The live preview and the
+ * PDF both start here, so what is previewed is what is printed.
+ *
+ * opts.margins ({ top, bottom, lr }, in mm) and opts.stampScale / opts.signScale
+ * override the firm's saved values; without them the saved values are used, and
+ * the top and bottom are raised to clear the letterhead's artwork if it needs it.
+ */
+export async function composeLetter(row, opts = {}) {
+  const { includeSign = false, includeStamp = false, includeLh = true, docs = {}, serviceType: svcType,
+          margins = null, preview = false } = opts;
+  const stampScale = Number(opts.stampScale ?? row.institute_letter_stamp_scale ?? 1) || 1;
+  const signScale  = Number(opts.signScale  ?? row.institute_letter_sign_scale  ?? 1) || 1;
+  const lrPadding = Number(margins?.lr ?? row.institute_letter_lr_padding ?? 20);
   // Firm (institute) — letterhead owner
   const firmName        = row.institute_name || '';
   const firmAcronym     = row.institute_acronym || '';
@@ -229,11 +288,15 @@ export async function openShortlistLetter(row, opts = {}) {
   const cfgBottom = row.institute_letter_bottom_padding != null ? Number(row.institute_letter_bottom_padding) : null;
   let pageTopMargin     = cfgTop    ?? 15;
   let pageBottomPadding = cfgBottom ?? 15;
+  let detected = { top: null, bottom: null };
   if (firmLetterhead && includeLh) {
-    const { top, bottom } = await detectLetterheadMargins(firmLetterhead);
-    if (top    && top    > pageTopMargin)     pageTopMargin     = top;
-    if (bottom && bottom > pageBottomPadding) pageBottomPadding = bottom;
+    detected = await detectLetterheadMargins(firmLetterhead);
+    if (detected.top    && detected.top    > pageTopMargin)     pageTopMargin     = detected.top;
+    if (detected.bottom && detected.bottom > pageBottomPadding) pageBottomPadding = detected.bottom;
   }
+  // Margins chosen in the preview win outright; they are the person's decision.
+  if (margins && margins.top != null) pageTopMargin = Number(margins.top);
+  if (margins && margins.bottom != null) pageBottomPadding = Number(margins.bottom);
   const useLhBg = !!firmLetterhead && includeLh;
   const firmContact     = row.institute_contact || '';
   const firmNameNp      = row.institute_name_np || firmName;
@@ -359,7 +422,7 @@ export async function openShortlistLetter(row, opts = {}) {
   .chk  { line-height:1.95;padding:5px 10px; }
   .half { width:50%; }
   .w22  { width:22%; }
-  .tall { min-height:36px; }
+  .tall { min-height:36px; width:28%; }
 
   .stamp-ring { width:80px;height:80px;border-radius:50%;border:1.5px dashed #aaa;
                 display:inline-flex;align-items:center;justify-content:center;
@@ -370,7 +433,7 @@ export async function openShortlistLetter(row, opts = {}) {
 <body>
 <div class="page">
   ${useLhBg ? `<img src="${firmLetterhead}" alt="" style="position:absolute;width:1px;height:1px;opacity:0;pointer-events:none;">` : ''}
-  <div class="page-inner">
+  <div class="page-inner"><div class="fit">
 
   <div class="ref-row">
     <span class="ref-bold"></span>
@@ -446,14 +509,14 @@ export async function openShortlistLetter(row, opts = {}) {
         <div style="flex:0 0 32%;border-right:1px solid #666;text-align:center;padding:6px 4px;">
           <div style="font-size:9pt;margin-bottom:3px;">फर्मको छाप:</div>
           ${includeStamp && firmStamp
-            ? `<img src="${firmStamp}" style="display:block;margin:0 auto;width:30mm;height:30mm;object-fit:contain;background:#fff;">`
+            ? `<img src="${firmStamp}" style="display:block;margin:0 auto;width:calc(30mm * var(--stamp, 1));height:calc(30mm * var(--stamp, 1));object-fit:contain;background:#fff;">`
             : ''
           }
         </div>
         <div style="flex:1;padding:8px 10px;font-size:10pt;line-height:2;">
           <div>निवेदकको नाम: ${firmContactNp || '_______________'}</div>
           <div style="margin-top:4px;">हस्ताक्षर: ${includeSign && firmSign
-            ? `<img src="${firmSign}" style="display:inline-block;vertical-align:middle;margin-left:4px;max-height:20mm;max-width:100%;width:auto;height:auto;object-fit:contain;">`
+            ? `<img src="${firmSign}" style="display:inline-block;vertical-align:middle;margin-left:4px;max-height:calc(20mm * var(--sign, 1));max-width:100%;width:auto;height:auto;object-fit:contain;">`
             : ''
           }</div>
         </div>
@@ -461,7 +524,7 @@ export async function openShortlistLetter(row, opts = {}) {
     </td></tr>
   </table>
 
-  </div></div>
+  </div></div></div>
 </body>
 </html>`;
 
@@ -490,6 +553,35 @@ export async function openShortlistLetter(row, opts = {}) {
       kalimatiCss,
     });
   }
+
+  // Stamp and signature sizes travel as variables so the preview can change them live.
+  html = html.replace('</style>', `:root { --stamp: ${stampScale}; --sign: ${signScale}; }\n</style>`);
+  // The preview shows the letterhead behind the letter; the PDF draws it itself, underneath.
+  if (preview && useLhBg && firmLetterhead.startsWith('data:')) {
+    html = html.replace('</head>', `<style>.page { background-color:#fff !important; background-image:url("${firmLetterhead}"); background-size:100% 100%; background-repeat:no-repeat; } html { background:#fff !important; } body { display:block !important; padding:0 !important; gap:0 !important; }</style></head>`);
+  }
+
+  return {
+    html, useLhBg, firmLetterhead, firmStamp, firmSign, includeStamp, includeSign, activeDocs, parseDocFiles, kalimatiCss,
+    margins: { top: pageTopMargin, bottom: pageBottomPadding, lr: lrPadding },
+    detected, stampScale, signScale,
+  };
+}
+
+/** The shortlisting letter, with the firm's attachments, as a PDF. */
+export async function openShortlistLetter(row, opts = {}) {
+  return renderComposed(await composeLetter(row, opts));
+}
+
+/**
+ * Turn a composed letter into a PDF: the writing is laid out on one A4 page between the
+ * margins, drawn over the firm's letterhead at full sharpness, and any attachments follow.
+ * Shared by the shortlisting letter and the letters written from scratch.
+ */
+export async function renderComposed(c) {
+  const { html, useLhBg, firmLetterhead, firmStamp, firmSign, includeStamp, includeSign, activeDocs, parseDocFiles, kalimatiCss,
+          stampScale, signScale } = c;
+  const { top: pageTopMargin, bottom: pageBottomPadding, lr: lrPadding } = c.margins;
 
   // Render only the letter body into a hidden iframe — attachments are no
   // longer part of this HTML at all (see above).
@@ -540,25 +632,9 @@ export async function openShortlistLetter(row, opts = {}) {
     iframeDoc.fonts?.ready ?? Promise.resolve(),
   ]);
 
-  // If content overflows: first shrink the sig-row gap (saves ~1-2 lines without
-  // distorting the rest of the layout), then fall back to whole-page scaling.
-  const pageInnerEl = iframeDoc.querySelector('.page-inner');
-  if (pageInnerEl) {
-    const sigRowEl = iframeDoc.querySelector('.sig-row');
-    if (sigRowEl && pageInnerEl.scrollHeight > A4_H - 10) {
-      let margin = 72;
-      while (pageInnerEl.scrollHeight > A4_H - 10 && margin > 8) {
-        margin = Math.max(8, margin - 8);
-        sigRowEl.style.marginTop = `${margin}px`;
-      }
-    }
-    if (pageInnerEl.scrollHeight > A4_H - 10) {
-      const scale = Math.max(0.5, (A4_H - 10) / pageInnerEl.scrollHeight);
-      pageInnerEl.style.transformOrigin = 'top left';
-      pageInnerEl.style.transform = `scale(${scale})`;
-      pageInnerEl.style.width = `${Math.round(100 / scale)}%`;
-    }
-  }
+  // One page only: the margins stay where they are, and the writing between them is
+  // shrunk until it fits (see fitLetter).
+  const fit = fitLetter(iframeDoc, { topMm: pageTopMargin, bottomMm: pageBottomPadding, lrMm: lrPadding });
 
   const { default: html2canvas } = await import('html2canvas');
   const { PDFDocument } = await import('pdf-lib');
@@ -691,8 +767,8 @@ export async function openShortlistLetter(row, opts = {}) {
   // content. Previous sizes (stamp 38mm, sign 32mm/18mm) were tuned against a
   // blank page and were far too dominant once real document content was
   // actually visible underneath.
-  const STAMP_H_MM = 20;
-  const SIGN_H_MM  = 14;
+  const STAMP_H_MM = 20 * stampScale;
+  const SIGN_H_MM  = 14 * signScale;
   const drawOverlay = (page) => {
     if (!stampImg && !signImg) return;
     const stampW = stampImg ? STAMP_H_MM * MM : 0;
@@ -774,5 +850,5 @@ export async function openShortlistLetter(row, opts = {}) {
     skippedLabels.push('(attachments — serialization error)');
   }
   const blob = new Blob([outBytes], { type: 'application/pdf' });
-  return { url: URL.createObjectURL(blob), skipped: skippedLabels };
+  return { url: URL.createObjectURL(blob), skipped: skippedLabels, fit };
 }

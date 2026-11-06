@@ -36,6 +36,17 @@ describe('experience letter', () => {
     expect(letterHTML({ ...letter, firm: { ...firm, letterhead: 'https://x/lh.png' } }, { full_name: 'X' })).not.toContain('REGD. NO.');
   });
 
+  it('follows the firm’s saved letter design: margins, and stamp and signature sizes', () => {
+    const f = { ...firm, letterhead: 'https://x/lh.png', sign: 'https://x/s.png', stamp: 'https://x/st.png',
+      letter_top_margin: '52', letter_bottom_padding: '0', letter_lr_padding: '12', letter_stamp_scale: '1.5', letter_sign_scale: '0.8' };
+    const html = letterHTML({ ...letter, firm: f }, { full_name: 'X' });
+    expect(html).toContain('padding:52mm 12mm 0mm');                 // a saved 0 is kept, not replaced by the default
+    expect(html).toContain('--stamp:1.5;--sign:0.8');
+    const plain = letterHTML({ ...letter, firm: { ...f, letter_top_margin: null, letter_bottom_padding: null, letter_lr_padding: null, letter_stamp_scale: null, letter_sign_scale: null } }, { full_name: 'X' });
+    expect(plain).toContain('padding:45mm 20mm 30mm');               // nothing saved: the standard layout
+    expect(plain).toContain('--stamp:1;--sign:1');
+  });
+
   describe('a richer letter', () => {
     const rich = { ...letter, trades: ['Plumber', 'Assistant Tailor'], duties: ['• a', '• b', '• c', '• d', '• e', '• f'],
       programmes: [

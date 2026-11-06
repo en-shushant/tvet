@@ -122,7 +122,7 @@ describe('the summary above every step, and the saved EOI', () => {
     expect(summary).not.toBeNull();
     // each label is its icon's name followed by its words
     expect([...summary.querySelectorAll('.tw-tile-label')].map(e => e.textContent.replace(/^[a-z_0-9]+(?=[A-Z])/, '')))
-      .toEqual(['Deadline', 'What it asks for', 'Bidders', 'Team', 'EOI document']);
+      .toEqual(['Deadline', 'What it asks for', 'Bidders', 'Team', 'EOI document', 'Firm data']);
     for (const step of [...container.querySelectorAll('.tw-rail .tw-step')]) { if (!step.disabled) await click(step); expect(container.querySelector('.tw-summary')).not.toBeNull(); }
     assertNoConsoleErrors();
   });

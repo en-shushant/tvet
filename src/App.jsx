@@ -1,4 +1,4 @@
-import { useState, useEffect, Suspense } from 'react';
+import { useState, useEffect, useCallback, Suspense } from 'react';
 // Eager: needed for the very first paint on any visit — the logged-out entry,
 // the default screen, and the chrome that is always mounted. Everything else is
 // split out below, so a cold load no longer ships all sixteen screens at once.
@@ -36,6 +36,11 @@ import { api, normInst, normClient, instToAPI, nstbToAPI } from './utils/api.js'
 import { preloadLogos } from './utils/logoCache.js';
 import { getSession, setSession as setSessionStorage, clearSession } from './utils/auth.js';
 import SsoComplete from './components/SsoComplete.jsx';
+import MaintenancePage from './components/MaintenancePage.jsx';
+import IdleWarning from './components/IdleWarning.jsx';
+import { useMaintenance } from './utils/useMaintenance.js';
+import { useIdleLogout, IDLE_MINUTES } from './utils/useIdleLogout.js';
+import { isBlocked } from './utils/maintenance.js';
 
 // ─── APP ─────────────────────────────────────────────────────────────────────
 
@@ -107,6 +112,21 @@ function App() {
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [showChangePwd, setShowChangePwd] = useState(false);
   const [paletteOpen, setPaletteOpen] = useState(false);
+  // Why the last session ended, shown on the sign-in page; and whether an administrator chose to sign in during maintenance.
+  const [signedOutNote, setSignedOutNote] = useState('');
+  const [adminSignIn, setAdminSignIn] = useState(false);
+  const maint = useMaintenance();
+
+  // Idle sign-out: 15 minutes without use ends the session. Written once, so the timer is not reset by re-renders.
+  const idleOut = useCallback(() => {
+    const t = getSession()?.token;
+    if (t) api('POST', '/auth/logout', null, t).catch(() => {});
+    clearSession();
+    setSession(null);
+    setSignedOutNote(`You were signed out after ${IDLE_MINUTES} minutes of inactivity. Please sign in again.`);
+    window.location.hash = '';
+  }, []);
+  const idle = useIdleLogout({ active: !!session?.token, token: session?.token, onTimeout: idleOut });
 
   const isSuperAdmin = session?.role === 'superadmin';
   const isAdmin = session?.role === 'admin' || isSuperAdmin;
@@ -159,9 +179,10 @@ function App() {
 
   // Listen for session-expired events from the api() helper (401 responses)
   useEffect(() => {
-    const handler = () => {
+    const handler = (e) => {
       setSession(null);
-      setApiError('Your session expired. Please sign in again.');
+      if (e?.detail?.reason === 'idle') setSignedOutNote(`You were signed out after ${IDLE_MINUTES} minutes of inactivity. Please sign in again.`);
+      else setApiError('Your session expired. Please sign in again.');
     };
     window.addEventListener('tvettrack:session-expired', handler);
     return () => window.removeEventListener('tvettrack:session-expired', handler);
@@ -307,8 +328,18 @@ function App() {
   if (window.location.pathname === '/auth/sso-complete') {
     return <SsoComplete onLogin={(s) => setSession(s)} />;
   }
+  // Maintenance mode: held at the maintenance page unless a superadmin or someone with the bypass code.
+  if (isBlocked(maint.status, session, maint.pass)) {
+    if (!session && adminSignIn) return <LoginPage notice="" onLogin={(s) => { setSession(s); setAdminSignIn(false); }} />;
+    return (
+      <MaintenancePage status={maint.status} signedIn={!!session}
+        onPass={(p) => maint.givePass(p)}
+        onAdminSignIn={() => setAdminSignIn(true)}
+        onSignOut={() => { clearSession(); setSession(null); }} />
+    );
+  }
   if (!session) {
-    return <LoginPage onLogin={(s) => setSession(s)} />;
+    return <LoginPage notice={signedOutNote} onLogin={(s) => { setSignedOutNote(''); setSession(s); }} />;
   }
 
   if (loading) {
@@ -508,6 +539,16 @@ function App() {
   return (
     <>
     <a href="#main" className="skip-link">Skip to main content</a>
+    {maint.status?.on && isSuperAdmin && (
+      <div className="mt-bar" role="status">
+        <span className="material-icons-round" aria-hidden="true" style={{ fontSize: 16 }}>construction</span>
+        Maintenance mode is on: only superadmins and people with the bypass code can use the app.
+        <a href="#users">Settings</a>
+      </div>
+    )}
+    {idle.secondsLeft !== null && (
+      <IdleWarning secondsLeft={idle.secondsLeft} onStay={idle.stay} onSignOut={idleOut} />
+    )}
     <div className="app-shell">
       {/* Sidebar */}
       {mobileSidebarOpen && <div className="mobile-backdrop" onClick={()=>setMobileSidebarOpen(false)}/>}

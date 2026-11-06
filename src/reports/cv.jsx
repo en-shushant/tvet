@@ -297,7 +297,7 @@ function cvChildren(cv, tender, index) {
   return out;
 }
 
-async function downloadDOCX(pack, { letters = true } = {}) {
+async function downloadDOCX(pack, { letters = true, capture = false } = {}) {
   const { tender, cvs } = pack;
   const format = formatOf(pack);
   const date = letterDate();
@@ -323,6 +323,7 @@ async function downloadDOCX(pack, { letters = true } = {}) {
   });
   const blob = await Packer.toBlob(doc);
   const name = (tender.title || 'tender').replace(/[^\w\s-]/g, '').trim().slice(0, 50) || 'tender';
+  if (capture) return { blob, name: `${name} — CVs.docx` };
   saveAs(blob, `${name} — CVs.docx`);
 }
 

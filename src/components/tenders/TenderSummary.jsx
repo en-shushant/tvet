@@ -9,6 +9,7 @@
  */
 import { useState } from 'react';
 import { totalNeeded, teamProgress } from './common.js';
+import { packFigures } from './pack.js';
 import { parseDeadline, daysUntil, todayUtcDay } from './kpis.js';
 
 const FOLD_KEY = 'tvettrack_tender_summary';
@@ -68,12 +69,13 @@ function Tile({ label, icon, value, sub, tone = '', bar, onClick, title }) {
   );
 }
 
-export default function TenderSummary({ tender, docs = [], onGo }) {
+export default function TenderSummary({ tender, docs = [], forms = [], reqs = [], firmGaps = null, onGo }) {
   const [open, setOpen] = useState(() => { try { return localStorage.getItem(FOLD_KEY) !== 'closed'; } catch { return true; } });
   const [more, setMore] = useState(false);
   const toggle = () => setOpen(o => { try { localStorage.setItem(FOLD_KEY, o ? 'closed' : 'open'); } catch { /* private mode */ } return !o; });
 
   const s = summarise(tender);
+  const pk = packFigures(forms, reqs);
   const client = tender.client_full_name || tender.client_name_manual;
   const facts = [
     ['Employer', client], ['Reference', tender.reference_no], ['Fiscal year', tender.fy && `FY ${tender.fy}`],
@@ -129,6 +131,19 @@ export default function TenderSummary({ tender, docs = [], onGo }) {
               sub={lastSaved ? `Last saved ${lastSaved}` : s.bidders.length ? `Build the ${tender.stage} on the Submit step` : 'Needs bidders first'}
               tone={!s.bidders.length ? 'muted' : savedBidders >= s.bidders.length ? 'ok' : savedBidders > 0 ? 'warn' : 'muted'}
               onClick={() => onGo(5)} />
+            {(forms.length > 0 || reqs.length > 0) && (
+              <Tile label="Forms and checklist" icon="fact_check"
+                value={`${pk.formsApproved} of ${pk.formsOn} forms approved`}
+                sub={pk.reqTotal ? (pk.mandatoryOpen ? `${pk.mandatoryOpen} mandatory item${pk.mandatoryOpen === 1 ? '' : 's'} still open` : 'All mandatory items met') : 'No checklist yet'}
+                tone={pk.mandatoryOpen ? 'warn' : pk.formsOn && pk.formsApproved >= pk.formsOn ? 'ok' : pk.formsApproved ? 'warn' : 'muted'}
+                onClick={() => onGo(pk.mandatoryOpen && !pk.formsApproved ? 2 : 5)} title="Open the forms and checklist" />
+            )}
+            {firmGaps != null && (
+              <Tile label="Firm data" icon="domain_verification"
+                value={firmGaps ? `${firmGaps} item${firmGaps === 1 ? '' : 's'} missing` : 'Complete'}
+                sub={firmGaps ? 'In the bidding firms’ records' : 'Nothing blank in the forms'}
+                tone={firmGaps ? 'warn' : 'ok'} onClick={() => onGo(5)} title="Open the firm data check" />
+            )}
           </div>
 
           {facts.length > 0 && (

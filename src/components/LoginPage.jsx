@@ -10,6 +10,7 @@ import { getSession, setSession, clearSession, loadUsers, saveUsers, sessionFrom
 import { INSTITUTE_TYPES, OCCUPATIONS } from '../constants/data.js';
 import { confirmDialog } from './ui/Feedback.jsx';
 import { initialsFor, tintFor } from './ui/primitives.jsx';
+import MaintenanceCard from './MaintenanceCard.jsx';
 
 /**
  * Turnstile site key.
@@ -25,7 +26,7 @@ const TURNSTILE_SITE_KEY =
   import.meta.env?.VITE_TURNSTILE_SITE_KEY || '0x4AAAAAAD-IUm1QHVVxIjkr';
 
 
-function LoginPage({ onLogin }) {
+function LoginPage({ onLogin, notice = '' }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -180,6 +181,7 @@ function LoginPage({ onLogin }) {
           <div style={{marginBottom:36}}>
             <div style={{fontSize:24,fontWeight:700,color:'var(--text)',letterSpacing:-0.5,marginBottom:8}}>Welcome back</div>
             <div style={{fontSize:14,color:'var(--text3)'}}>Sign in to your TVET Track account</div>
+            {notice && <div role="status" style={{marginTop:14,padding:'10px 14px',borderRadius:10,background:'var(--warning-light)',color:'#92400e',fontSize:13,lineHeight:1.5}}>{notice}</div>}
           </div>
           <div style={{background:'var(--surface)',borderRadius:16,padding:'36px 40px',boxShadow:'var(--shadow-md)',border:'1px solid var(--border)'}}>
             <form onSubmit={handleSubmit}>
@@ -504,6 +506,7 @@ function UserManagement({institutes, isSuperAdmin}) {
   return (
     <div>
       {actionErr && <ErrorBanner msg={actionErr} onDismiss={()=>setActionErr('')}/>}
+      {isSuperAdmin && <MaintenanceCard token={getSession()?.token} />}
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
         <div className="search-wrap" style={{ flex: 1, maxWidth: 300 }}>
           <span className="search-icon material-icons-round" style={{fontSize:16}}>search</span>
@@ -534,7 +537,7 @@ function UserManagement({institutes, isSuperAdmin}) {
                         ? <img src={u.photo} alt="" style={{width:32,height:32,borderRadius:'50%',objectFit:'cover',flexShrink:0}}/>
                         : <div style={{width:32,height:32,borderRadius:'50%',background:`var(${tintFor(u.name)})`,display:'flex',alignItems:'center',justifyContent:'center',fontSize:11,fontWeight:600,color:'var(--text)',flexShrink:0}}>{initialsFor(u.name)}</div>
                       }
-                      <span style={{fontWeight:500}}>{u.name}</span>
+                      <span style={{fontWeight:500, whiteSpace:'nowrap'}}>{u.name}</span>
                     </div>
                   </td>
                   <td style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--text2)' }}>{u.email}</td>
@@ -568,9 +571,9 @@ function UserManagement({institutes, isSuperAdmin}) {
                       </span>
                     )}
                   </td>
-                  <td style={{ color: 'var(--text3)', fontSize: 12 }}>{u.created_at?.slice(0,10)}</td>
+                  <td style={{ color: 'var(--text3)', fontSize: 12, whiteSpace: 'nowrap' }}>{u.created_at?.slice(0,10)}</td>
                   <td>
-                    <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
+                    <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end', flexWrap: 'nowrap', whiteSpace: 'nowrap' }}>
                       {(u.role === 'editor' || u.role === 'shortlist') && (
                         <Btn className="btn btn-secondary btn-sm" onClick={() => setAssignModal(u)}>
                           <span className="material-icons-round" style={{fontSize:13,verticalAlign:'middle',marginRight:3}}>business</span>

@@ -44,6 +44,8 @@ async function plugin(fastify, opts) {
         i.letter_top_margin AS institute_letter_top_margin,
         i.letter_lr_padding AS institute_letter_lr_padding,
         i.letter_bottom_padding AS institute_letter_bottom_padding,
+        i.letter_stamp_scale AS institute_letter_stamp_scale,
+        i.letter_sign_scale AS institute_letter_sign_scale,
         i.service_type AS institute_service_type,
         stl.letter_type      AS list_letter_type,
         stl.addressee        AS list_addressee,

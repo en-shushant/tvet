@@ -16,7 +16,7 @@ import { parseDocUrls, FYS, ACCEPT, uploadToR2 } from './common.jsx';
 import { safeHref } from '../../utils/safeWindow.js';
 import NepaliInput from '../ui/NepaliInput.jsx';
 
-function LetterPreviewModal({ url, filename, onClose }) {
+export function LetterPreviewModal({ url, filename, onClose }) {
   const frameRef = useRef(null);
 
   const handlePrint = () => {
@@ -184,6 +184,88 @@ export function StandingListModal({ list, onSave, onClose, saving }) {
         </div>
         <div className="form-group">
           <MdTextField label="Remarks" value={f.remarks} onChange={e=>set('remarks', e.target.value)}/>
+        </div>
+      </div>
+    </Modal>
+  );
+}
+
+/**
+ * Copy a shortlist to another organisation. The organisation, its department and
+ * address, and the addressee are blank because they are the point; everything
+ * else starts as the original's. Firms come across unless unticked.
+ */
+export function CopyListModal({ list, firms = [], onSave, onClose, saving }) {
+  const [f, setF] = useState(() => ({
+    client_name_manual: '', client_name2_manual: '', client_address_manual: '', addressee: '',
+    name: list?.name || '',
+    fy: list?.fy || getCurrentFY(),
+    list_date: list?.list_date ? String(list.list_date).slice(0, 10) : new Date().toISOString().slice(0, 10),
+    valid_until: list?.valid_until ? String(list.valid_until).slice(0, 10) : '',
+  }));
+  const [picked, setPicked] = useState(() => new Set(firms.map(x => x.institute_id)));
+  const set = (k, v) => setF(p => ({ ...p, [k]: v }));
+  const toggle = (id) => setPicked(p => { const n = new Set(p); n.has(id) ? n.delete(id) : n.add(id); return n; });
+  const valid = !!f.client_name_manual.trim();
+  return (
+    <Modal title="Copy shortlist to another organization" onClose={onClose} footer={<>
+      <Btn className="btn btn-secondary" onClick={onClose}>Cancel</Btn>
+      <Btn className="btn btn-primary" data-tour="copy-go" disabled={!valid || saving}
+        onClick={() => onSave({ ...f, client_name_manual: f.client_name_manual.trim(), institute_ids: [...picked] })}>
+        {saving ? 'Copying…' : `Copy with ${picked.size} firm${picked.size === 1 ? '' : 's'}`}
+      </Btn>
+    </>}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+        <div style={{ fontSize: 13, color: 'var(--text2)' }}>
+          Copying <b>{list?.client_name_manual}</b>{list?.name ? <> — {list.name}</> : null}. The letter format,
+          name, year and dates start the same; give the new organization below. The shortlisting document and any
+          contract amounts stay with the original.
+        </div>
+        <div data-tour="copy-org" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+        <div className="form-group">
+          <label>Addressee title</label>
+          <NepaliInput className="tw-in" value={f.addressee} onChange={e => set('addressee', e.target.value)} placeholder="e.g. कार्यालय प्रमुख" />
+        </div>
+        <div className="form-group">
+          <label>New organization name *</label>
+          <NepaliInput className="tw-in" value={f.client_name_manual} onChange={e => set('client_name_manual', e.target.value)} placeholder="e.g. नेपाल विद्युत प्राधिकरण" />
+        </div>
+        <div className="form-group">
+          <label>Department / Level 2 (optional)</label>
+          <NepaliInput className="tw-in" value={f.client_name2_manual} onChange={e => set('client_name2_manual', e.target.value)} />
+        </div>
+        <div className="form-group">
+          <label>Organization address</label>
+          <NepaliInput className="tw-in" value={f.client_address_manual} onChange={e => set('client_address_manual', e.target.value)} />
+        </div>
+        </div>
+        <div className="form-group">
+          <MdTextField label="Shortlist name" value={f.name} onChange={e => set('name', e.target.value)} />
+        </div>
+        <div className="form-row form-row-2">
+          <div className="form-group">
+            <MdSelect label="Fiscal year" value={f.fy} onChange={e => set('fy', e.target.value)}>
+              {FYS.map(y => <MdOption key={y} value={y}>{y}</MdOption>)}
+            </MdSelect>
+          </div>
+          <div className="form-group">
+            <MdTextField type="date" label="Shortlist date" value={f.list_date} onChange={e => set('list_date', e.target.value)} />
+          </div>
+        </div>
+        <div className="form-group">
+          <MdTextField type="date" label="Valid until (optional)" value={f.valid_until} onChange={e => set('valid_until', e.target.value)} />
+        </div>
+        <div data-tour="copy-firms">
+          <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 6 }}>Firms to copy ({picked.size} of {firms.length})</div>
+          {firms.length === 0 && <div className="tw-hint">This list has no firms yet; only the list is copied.</div>}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 2, maxHeight: 180, overflow: 'auto' }}>
+            {firms.map(x => (
+              <label key={x.institute_id} style={{ display: 'flex', gap: 8, alignItems: 'center', fontSize: 13, minHeight: 28 }}>
+                <input type="checkbox" checked={picked.has(x.institute_id)} onChange={() => toggle(x.institute_id)} />
+                {x.institute_acronym ? `${x.institute_acronym} — ` : ''}{x.institute_name}
+              </label>
+            ))}
+          </div>
         </div>
       </div>
     </Modal>
@@ -367,6 +449,8 @@ export function LetterOptsModal({ row, token, onClose, onOpenBuilder }) {
           institute_letter_top_margin:     inst.letter_top_margin     ?? r.institute_letter_top_margin,
           institute_letter_lr_padding:     inst.letter_lr_padding     ?? r.institute_letter_lr_padding,
           institute_letter_bottom_padding: inst.letter_bottom_padding ?? r.institute_letter_bottom_padding,
+          institute_letter_stamp_scale:    inst.letter_stamp_scale    ?? r.institute_letter_stamp_scale,
+          institute_letter_sign_scale:     inst.letter_sign_scale     ?? r.institute_letter_sign_scale,
           institute_service_type:          inst.service_type          || r.institute_service_type,
           institute_logo:       inst.logo,
           institute_letterhead: inst.letterhead,
@@ -471,6 +555,10 @@ export function LetterOptsModal({ row, token, onClose, onOpenBuilder }) {
       </Btn>
     </>}>
       <div style={{display:'flex', flexDirection:'column', gap:12}}>
+
+        <div style={{fontSize:12, color:'var(--text3)', lineHeight:1.5}}>
+          Margins, stamp size and signature size come from the firm’s letter design (Institutes › Documents). The letter always fits one page.
+        </div>
 
         {genError && (
           <div style={{padding:'10px 14px', borderRadius:8, background:'rgba(220,38,38,.08)', border:'1px solid rgba(220,38,38,.25)', color:'var(--error,#dc2626)', fontSize:13, lineHeight:1.5}}>
