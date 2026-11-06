@@ -65,7 +65,7 @@ function InstituteForm({institute, onSave, onClose, isSuperAdmin}) {
 
   return (
     <>{UnsavedModal}
-    <Modal title={institute ? 'Edit Institute Profile' : 'Add New Institute'} onClose={handleClose} size="lg"
+    <Modal title={institute ? 'Edit Institute Profile' : 'Add New Institute'} onClose={handleClose} guard={false} size="lg"
       footer={<>
         <Btn className="btn btn-secondary" onClick={handleClose}>Cancel</Btn>
         <Btn className="btn btn-primary" onClick={handleSave}>

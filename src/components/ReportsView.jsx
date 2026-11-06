@@ -1,3 +1,4 @@
+import { go } from '../utils/route.js';
 import { useState, useEffect, useMemo } from 'react';
 import { getSession } from '../utils/auth.js';
 import { api, normInst } from '../utils/api.js';
@@ -770,7 +771,7 @@ function ReportsView({ institutes, clients, embedded = false }) {
     } catch (e) { toast(e.message || 'Could not save it to the tender.'); }
     finally { setSavingToTender(false); }
   };
-  const backToTender = () => { window.location.hash = `#tenders/open-${saveTarget.tenderId}-5`; };
+  const backToTender = () => { go(`tenders/open-${saveTarget.tenderId}-5`); };
 
   const canPrint = noInstitute
     ? (toolsOccIds.length > 0 && !!toolsLevel)

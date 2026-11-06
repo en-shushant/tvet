@@ -4,6 +4,9 @@ import './index.css';
 import './md.jsx'; // registers all @material/web custom elements
 import App from './App.jsx';
 import { FeedbackHost } from './components/ui/Feedback.jsx';
+import { installLegacyRedirect } from './utils/route.js';
+
+installLegacyRedirect();      // an old #link opens at its new address
 
 /**
  * Routes are code-split (ReportsView, Shortlisting, ...), so a tab left open

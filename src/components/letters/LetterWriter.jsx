@@ -6,6 +6,7 @@ import NepaliInput from '../ui/NepaliInput.jsx';
 import { fitLetter, renderComposed, bsDateLabel } from '../../utils/neaLetter.js';
 import { BLANK_LETTER, loadFirmAssets, buildLetterHtml, bodyHtml, composeWritten } from '../../utils/writtenLetter.js';
 import { LetterPreviewModal } from '../shortlisting/modals.jsx';
+import { useCloseGuard } from '../ui/Modal.jsx';
 
 /**
  * Write a letter on a firm's letterhead: the office it goes to, a subject, the body,
@@ -42,6 +43,8 @@ export default function LetterWriter({ institutes = [], firmId = '', onClose }) 
   const frameRef = useRef(null);
   const areaRef = useRef(null);
   const set = (k, v) => setC(x => ({ ...x, [k]: v }));
+  // Typing is not thrown away by a stray Close or Esc.
+  const guard = useCloseGuard(onClose);
 
   // The firm's images, fonts and layout, once per firm.
   useEffect(() => {
@@ -83,10 +86,10 @@ export default function LetterWriter({ institutes = [], firmId = '', onClose }) 
   useEffect(() => { apply(); }); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
-    const onKey = (e) => { if (e.key === 'Escape' && !pdf) onClose(); };
+    const onKey = (e) => { if (e.key === 'Escape' && !pdf) guard.requestClose(); };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [onClose, pdf]);
+  }, [guard, pdf]);
 
   const makePdf = async () => {
     setMaking(true); setErr('');
@@ -115,11 +118,11 @@ export default function LetterWriter({ institutes = [], firmId = '', onClose }) 
     : { tone: 'ok', text: 'Fits on one page at full size' };
 
   return createPortal(
-    <div className="lp-root" role="dialog" aria-modal="true" aria-label="Write a letter">
+    <div className="lp-root" role="dialog" aria-modal="true" aria-label="Write a letter" ref={guard.ref} onClickCapture={guard.onClickCapture}>
       <div className="lp-bar">
         <strong>Write a letter</strong>
         <span style={{ flex: 1 }} />
-        <button type="button" className="lp-btn" onClick={onClose}>Close</button>
+        <button type="button" className="lp-btn" onClick={guard.requestClose}>Close</button>
         <button type="button" className="lp-btn lp-primary" onClick={makePdf} disabled={!assets || making}>
           {making ? 'Making PDF…' : 'Make PDF'}</button>
       </div>
@@ -231,6 +234,7 @@ export default function LetterWriter({ institutes = [], firmId = '', onClose }) 
           </div>
         </main>
       </div>
+      {guard.prompt}
       {pdf && <LetterPreviewModal url={pdf.url} filename={pdf.name} onClose={() => setPdf(null)} />}
     </div>,
     document.body,

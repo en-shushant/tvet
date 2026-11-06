@@ -513,7 +513,7 @@ function ExperienceForm({exp, clients, institute, onSave, onClose, onDuplicate, 
 
   return (
     <>
-    <Modal title={exp ? 'Edit Assignment' : 'Add Assignment'} onClose={handleClose} size="xl"
+    <Modal title={exp ? 'Edit Assignment' : 'Add Assignment'} onClose={handleClose} guard={false} size="xl"
       footer={<>
         <Btn className="btn btn-secondary" onClick={handleClose}>Cancel</Btn>
         <span style={{flex:1}}/>

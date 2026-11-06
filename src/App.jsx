@@ -41,6 +41,7 @@ import IdleWarning from './components/IdleWarning.jsx';
 import { useMaintenance } from './utils/useMaintenance.js';
 import { useIdleLogout, IDLE_MINUTES } from './utils/useIdleLogout.js';
 import { isBlocked } from './utils/maintenance.js';
+import { currentPath, go, onRoute, linkTo } from './utils/route.js';
 
 // ─── APP ─────────────────────────────────────────────────────────────────────
 
@@ -61,11 +62,13 @@ function saveData(key, data) {
 function App() {
   const [session, setSession] = useState(() => getSession());
 
-  // Hash-based routing: #screen or #detail/instituteId
+  // Path routing: /screen or /detail/instituteId (older #links are converted when the page loads)
   const parseHash = () => {
-    const h = window.location.hash.replace('#','');
+    const h = currentPath();
     if (!h) return { screen: 'dashboard', instId: null };
     const parts = h.split('/');
+    // The sign-in pages are not screens.
+    if (parts[0] === 'login' || parts[0] === 'auth') return { screen: 'dashboard', instId: null };
     // Old #quotations links open the Contracts & quotations tab of Shortlisting.
     if (parts[0] === 'quotations') return { screen: 'shortlisting', instId: 'contracts' };
     if (parts[0] === 'office') return { screen: 'master', instId: 'office' };
@@ -124,7 +127,7 @@ function App() {
     clearSession();
     setSession(null);
     setSignedOutNote(`You were signed out after ${IDLE_MINUTES} minutes of inactivity. Please sign in again.`);
-    window.location.hash = '';
+    go('');
   }, []);
   const idle = useIdleLogout({ active: !!session?.token, token: session?.token, onTimeout: idleOut });
 
@@ -188,7 +191,7 @@ function App() {
     return () => window.removeEventListener('tvettrack:session-expired', handler);
   }, []);
 
-  // Sync screen state with browser back/forward (hashchange)
+  // Sync screen state with browser back/forward and with go()
   useEffect(() => {
     const onHashChange = () => {
       const { screen: s, instId } = parseHash();
@@ -201,13 +204,12 @@ function App() {
           // Otherwise fetch (navigated via browser back to a different detail)
           api('GET', `/institutes/${instId}`, null, getSession()?.token)
             .then(full => setSelectedInstitute(normInst(full)))
-            .catch(() => { window.location.hash = 'institutes'; setScreen('institutes'); });
+            .catch(() => { go('institutes'); setScreen('institutes'); });
           return prev; // keep showing old while loading
         });
       }
     };
-    window.addEventListener('hashchange', onHashChange);
-    return () => window.removeEventListener('hashchange', onHashChange);
+    return onRoute(onHashChange);
   }, []);
 
   // Load institutes and clients — stale-while-revalidate from sessionStorage cache
@@ -248,7 +250,7 @@ function App() {
       if (s === 'detail' && instId) {
         api('GET', `/institutes/${instId}`, null, token)
           .then(full => { setSelectedInstitute(normInst(full)); setScreen('detail'); })
-          .catch(() => { window.location.hash = 'institutes'; setScreen('institutes'); });
+          .catch(() => { go('institutes'); setScreen('institutes'); });
       } else if (s && s !== 'dashboard') {
         setScreen(s);
       }
@@ -385,15 +387,14 @@ function App() {
     clearSession();
     setSession(null);
     if (idpLogout.startsWith('https://')) { window.location.assign(idpLogout); return; }
-    window.location.hash = '';
+    go('');
     setScreen('dashboard');
   };
 
   /** A one-shot address (#hr/new, #tenders/new…) is spent once its screen has acted on it, so the same search action works again. */
   const viewHandled = () => {
     setSubRoute(null);
-    const base = window.location.hash.replace('#', '').split('/')[0];
-    window.history.replaceState(null, '', `#${base}`);
+    go(currentPath().split('/')[0], { replace: true });
   };
 
   const handleNavigate = (rawId) => {
@@ -405,7 +406,7 @@ function App() {
     if (id === 'master' && !isAdmin && !isEditor) return;
     if (id === 'users' && !isAdmin) return;
     if ((id === 'summary' || id === 'comparison' || id === 'compliance') && isEditor) return;
-    window.location.hash = sub ? `${id}/${sub}` : id;
+    go(sub ? `${id}/${sub}` : id);
     setScreen(id);
     if (id === 'institutes') setSelectedInstitute(null);
     setMobileSidebarOpen(false);
@@ -458,7 +459,7 @@ function App() {
     // Show immediately if we already have full data (has experience array)
     if (inst.experience !== undefined) {
       setSelectedInstitute(inst);
-      window.location.hash = `detail/${inst.id}`;
+      go(`detail/${inst.id}`);
       setScreen('detail');
     }
     try {
@@ -466,7 +467,7 @@ function App() {
       const normalized = normInst(full);
       setSelectedInstitute(normalized);
       setInstitutes(insts => insts.map(i => i.id === normalized.id ? normalized : i));
-      window.location.hash = `detail/${inst.id}`;
+      go(`detail/${inst.id}`);
       setScreen('detail');
     } catch (err) {
       if (inst.experience === undefined) {
@@ -507,7 +508,7 @@ function App() {
     setInstitutes(insts => insts.filter(i => i.id !== id));
     setSelectedInstitute(null);
     invalidateCache();
-    window.location.hash = 'institutes';
+    go('institutes');
     setScreen('institutes');
   };
 
@@ -543,7 +544,7 @@ function App() {
       <div className="mt-bar" role="status">
         <span className="material-icons-round" aria-hidden="true" style={{ fontSize: 16 }}>construction</span>
         Maintenance mode is on: only superadmins and people with the bypass code can use the app.
-        <a href="#users">Settings</a>
+        <a href="/users" onClick={linkTo('users')}>Settings</a>
       </div>
     )}
     {idle.secondsLeft !== null && (
@@ -640,7 +641,7 @@ function App() {
             <span className="material-icons-round" aria-hidden="true">{currentNav?.icon || 'dashboard'}</span>
             {screen === 'detail' && selectedInstitute ? (<>
               <button type="button" className="crumb-group-btn"
-                onClick={()=>{ window.location.hash='institutes'; setScreen('institutes'); }}>Institutes</button>
+                onClick={()=>{ go('institutes'); setScreen('institutes'); }}>Institutes</button>
               <span className="crumb-sep">/</span>
               <span className="crumb-page">{selectedInstitute.acronym || selectedInstitute.name}</span>
             </>) : (<>
@@ -690,7 +691,7 @@ function App() {
               institute={selectedInstitute}
               clients={clients}
               onUpdateClients={handleUpdateClients}
-              onBack={()=>{ window.location.hash='institutes'; setScreen('institutes'); setJumpToTab(null); }}
+              onBack={()=>{ go('institutes'); setScreen('institutes'); setJumpToTab(null); }}
               onUpdate={handleUpdateInstitute}
               onRefresh={handleRefreshInstitute}
               onDelete={handleDeleteInstitute}
@@ -700,7 +701,7 @@ function App() {
               isSuperAdmin={isSuperAdmin}
               isShortlistOnly={isShortlistOnly}
               jumpToTab={jumpToTab}
-              onAddNSTB={()=>{ setNstbAddInstitute(selectedInstitute); window.location.hash=`nstbAdd/${selectedInstitute.id}`; setScreen('nstbAdd'); }}
+              onAddNSTB={()=>{ setNstbAddInstitute(selectedInstitute); go(`nstbAdd/${selectedInstitute.id}`); setScreen('nstbAdd'); }}
             />
           )}
           {screen === 'nstbAdd' && nstbAddInstitute && (
@@ -709,9 +710,9 @@ function App() {
               onSave={async (rows) => {
                 await Promise.all(rows.map(row => api('POST', '/nstb', nstbToAPI(row, nstbAddInstitute.id), token)));
                 await handleRefreshInstitute(nstbAddInstitute.id);
-                window.location.hash=`detail/${nstbAddInstitute.id}`; setScreen('detail');
+                go(`detail/${nstbAddInstitute.id}`); setScreen('detail');
               }}
-              onBack={()=>{ window.location.hash=`detail/${nstbAddInstitute.id}`; setScreen('detail'); }}
+              onBack={()=>{ go(`detail/${nstbAddInstitute.id}`); setScreen('detail'); }}
             />
           )}
           {HUB_SCREENS.includes(screen) && !isShortlistOnly && (

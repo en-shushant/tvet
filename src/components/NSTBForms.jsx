@@ -29,7 +29,7 @@ function NSTBEditModal({record, onSave, onClose}) {
   };
   return (
     <>{UnsavedModal}
-    <Modal title="Edit NSTB Record" onClose={handleClose}
+    <Modal title="Edit NSTB Record" onClose={handleClose} guard={false}
       footer={<><Btn className="btn btn-secondary" onClick={handleClose}>Cancel</Btn><Btn className="btn btn-primary" onClick={handleSave}>Save</Btn></>}>
       <ErrorBanner msg={err} onDismiss={()=>setErr('')}/>
       <div className="form-row form-row-3" style={{marginBottom:12}}>

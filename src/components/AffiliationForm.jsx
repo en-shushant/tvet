@@ -23,7 +23,7 @@ function AffiliationForm({record, onSave, onClose}) {
 
   return (
     <>{UnsavedModal}
-    <Modal title={record ? 'Edit Affiliation' : 'Add Affiliation'} onClose={handleClose} size="lg"
+    <Modal title={record ? 'Edit Affiliation' : 'Add Affiliation'} onClose={handleClose} guard={false} size="lg"
       footer={<>
         <Btn className="btn btn-secondary" onClick={handleClose}>Cancel</Btn>
         <Btn className="btn btn-primary" onClick={async()=>{setErr('');try{markClean();await onSave(form);}catch(e){markDirty();setErr(e.message||'Failed to save');}}}>Save affiliation</Btn>

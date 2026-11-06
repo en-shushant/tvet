@@ -1,4 +1,5 @@
 import { gapsByForm, firmGaps } from '../../utils/firmGaps.js';
+import { linkTo } from '../../utils/route.js';
 
 /** The firms bidding on this tender that the check knows about. */
 export function bidderFirms(tender, facts) {
@@ -34,7 +35,7 @@ export default function FirmDataCheck({ tender, facts }) {
               <div className="tw-firmgap-head">
                 <strong>{f.acronym || f.name}</strong>
                 <span className="tw-hint">{n ? `${n} missing` : 'Complete'}</span>
-                {n > 0 && <a className="tw-link" href="#institutes">Open Institutes</a>}
+                {n > 0 && <a className="tw-link" href="/institutes" onClick={linkTo('institutes')}>Open Institutes</a>}
               </div>
               {groups.map(g => (
                 <div key={g.form} className="tw-firmgap-group">

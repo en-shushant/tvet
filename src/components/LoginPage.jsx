@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
 import ReactDOM from 'react-dom';
-import Modal from './ui/Modal.jsx';
+import Modal, { useCloseGuard } from './ui/Modal.jsx';
 import { ErrorBanner } from './ui/Modal.jsx';
 import { Btn, MdTextField, MdSelect, MdOption } from '../md.jsx';
 import SearchableSelect from './ui/SearchableSelect.jsx';
@@ -34,7 +34,7 @@ function LoginPage({ onLogin, notice = '' }) {
   // An SSO attempt that failed comes back as /login?sso_error=… — show it once.
   const [ssoError] = useState(() => {
     const code = new URLSearchParams(window.location.search).get('sso_error');
-    if (code) window.history.replaceState(null, '', '/login' + window.location.hash);
+    if (code) window.history.replaceState(null, '', '/login');
     return code ? (SSO_ERRORS[code] || SSO_ERRORS.generic) : '';
   });
   useEffect(() => {
@@ -43,7 +43,9 @@ function LoginPage({ onLogin, notice = '' }) {
     return () => { alive = false; };
   }, []);
   const startSso = () => {
-    const next = '/' + (window.location.hash || '');
+    // Come back to where they were, unless that was the sign-in page itself.
+    const here = window.location.pathname;
+    const next = here === '/login' || here.startsWith('/auth/') ? '/' : here;
     window.location.assign(`${getApiBase() || ''}/api/auth/oidc/login?next=${encodeURIComponent(next)}`);
   };
   const [loading, setLoading] = useState(false);
@@ -119,7 +121,7 @@ function LoginPage({ onLogin, notice = '' }) {
       const data = await api('POST', '/auth/login', { email: emailVal, password: passwordVal, 'cf-turnstile-response': capToken });
       const session = sessionFromLogin(data);
       setSession(session);
-      if (window.location.pathname === '/login') window.history.replaceState(null, '', '/' + window.location.hash);
+      if (window.location.pathname === '/login') window.history.replaceState(null, '', '/');
       onLogin(session);
     } catch (err) {
       setError(err.message || 'Invalid credentials.');
@@ -229,6 +231,7 @@ function LoginPage({ onLogin, notice = '' }) {
 }
 
 function AssignFirmsModal({ user, institutes, onSave, onClose }) {
+  const guard = useCloseGuard(onClose);
   const token = getSession()?.token;
   const [assignedIds, setAssignedIds] = useState([]);
   const [search, setSearch] = useState('');
@@ -260,11 +263,11 @@ function AssignFirmsModal({ user, institutes, onSave, onClose }) {
   };
 
   return ReactDOM.createPortal(
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal" style={{maxWidth:480}} onClick={e=>e.stopPropagation()}>
+    <div className="modal-overlay" onClick={guard.requestClose}>
+      <div className="modal" ref={guard.ref} onClickCapture={guard.onClickCapture} style={{maxWidth:480}} onClick={e=>e.stopPropagation()}>
         <div className="modal-header">
           <div className="modal-title">Assign firms — {user.name}</div>
-          <Btn className="btn btn-ghost btn-sm" onClick={onClose}><span className="material-icons-round" style={{fontSize:16}}>close</span></Btn>
+          <Btn className="btn btn-ghost btn-sm" onClick={guard.requestClose}><span className="material-icons-round" style={{fontSize:16}}>close</span></Btn>
         </div>
         <div style={{padding:'16px 24px 24px'}}>
           <div className="search-wrap" style={{marginBottom:12}}>
@@ -297,12 +300,14 @@ function AssignFirmsModal({ user, institutes, onSave, onClose }) {
           </div>
         </div>
       </div>
+      {guard.prompt}
     </div>,
     document.body
   );
 }
 
 function UserModal({ user, institutes, isSuperAdmin, onSave, onClose }) {
+  const guard = useCloseGuard(onClose);
   const token = getSession()?.token;
   const isEdit = !!user;
   const [form, setForm] = useState({
@@ -337,11 +342,11 @@ function UserModal({ user, institutes, isSuperAdmin, onSave, onClose }) {
   };
 
   return ReactDOM.createPortal(
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal" style={{ maxWidth: 460 }} onClick={e => e.stopPropagation()}>
+    <div className="modal-overlay" onClick={guard.requestClose}>
+      <div className="modal" ref={guard.ref} onClickCapture={guard.onClickCapture} style={{ maxWidth: 460 }} onClick={e => e.stopPropagation()}>
         <div className="modal-header">
           <div className="modal-title">{isEdit ? 'Edit user' : 'Add user'}</div>
-          <Btn className="btn btn-ghost btn-sm" onClick={onClose}><span className="material-icons-round" style={{fontSize:16}}>close</span></Btn>
+          <Btn className="btn btn-ghost btn-sm" onClick={guard.requestClose}><span className="material-icons-round" style={{fontSize:16}}>close</span></Btn>
         </div>
         <div style={{ padding: '20px 24px 24px' }}>
           <div style={{display:'flex', alignItems:'center', gap:16, marginBottom:16}}>
@@ -437,6 +442,7 @@ function UserModal({ user, institutes, isSuperAdmin, onSave, onClose }) {
           </div>
         </div>
       </div>
+      {guard.prompt}
     </div>,
     document.body
   );
