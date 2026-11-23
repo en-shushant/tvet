@@ -378,7 +378,8 @@ function UserModal({ user, institutes, isSuperAdmin, onSave, onClose }) {
           </div>
           <div className="form-row">
             <div className="form-group">
-              <MdTextField label="Email" value={form.email} onChange={e => setForm(f=>({...f,email:e.target.value}))} placeholder="email@example.com" disabled={isEdit}/>
+              <MdTextField label="Email (sign-in address)" type="email" value={form.email} onChange={e => setForm(f=>({...f,email:e.target.value}))} placeholder="email@example.com"
+                supporting-text={isEdit && form.email.trim().toLowerCase() !== String(user.email || '').toLowerCase() ? 'They will sign in with this address from now on.' : undefined}/>
             </div>
             <div className="form-group">
               <MdSelect label="Role" value={form.role} onChange={e => setForm(f=>({...f,role:e.target.value}))}>

@@ -26,6 +26,10 @@ const ensureUserInstitutes = async () => {
   `);
 };
 
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+/** A login email as it is stored: trimmed and lower-case, so "Ann@x.np" and "ann@x.np" are one address. */
+const normaliseEmail = (v) => String(v ?? '').trim().toLowerCase();
+
 async function plugin(fastify, opts) {
   fastify.addHook('preHandler', authenticate);
 
@@ -43,11 +47,15 @@ async function plugin(fastify, opts) {
     if ((role === 'admin' || role === 'superadmin') && request.user.role !== 'superadmin') {
       return reply.code(403).send({ error: 'Only superadmin can create admin users' });
     }
+    const loginEmail = normaliseEmail(email);
+    if (!EMAIL_RE.test(loginEmail)) return reply.code(400).send({ error: 'Enter a valid email address.' });
+    const { rows: [taken] } = await pool.query('SELECT 1 FROM users WHERE lower(email) = $1', [loginEmail]);
+    if (taken) return reply.code(409).send({ error: 'Email already registered' });
     const hash = await bcrypt.hash(password, 10);
     try {
       const { rows } = await pool.query(
         'INSERT INTO users (name, email, password, role, is_active, photo, can_access_hr, can_access_tenders) VALUES ($1,$2,$3,$4,TRUE,$5,$6,$7) RETURNING id, name, email, role, is_active, can_access_hr, can_access_tenders, photo, created_at',
-        [name, email, hash, role, photo||null, !!can_access_hr, !!can_access_tenders]
+        [name, loginEmail, hash, role, photo||null, !!can_access_hr, !!can_access_tenders]
       );
       return reply.code(201).send(rows[0]);
     } catch(e) {
@@ -74,16 +82,26 @@ async function plugin(fastify, opts) {
         return reply.code(403).send({ error: 'Only a superadmin can make someone an admin or change an admin’s role' });
       }
     }
+    // The login email may be changed. It must look like an address and not belong to anyone else.
+    // (Someone already linked to single sign-on is found by that link, so their sign-in is not affected.)
+    const loginEmail = email == null ? null : normaliseEmail(email);
+    if (loginEmail !== null) {
+      if (!EMAIL_RE.test(loginEmail)) return reply.code(400).send({ error: 'Enter a valid email address.' });
+      const { rows: [taken] } = await pool.query('SELECT 1 FROM users WHERE lower(email) = $1 AND id <> $2', [loginEmail, request.params.id]);
+      if (taken) return reply.code(409).send({ error: 'Another user already has that email.' });
+    }
     let q, params;
     if (password) {
       const hash = await bcrypt.hash(password, 10);
-      q = 'UPDATE users SET name=$1, email=$2, role=$3, is_active=$4, password=$5, photo=$6, can_access_hr=$7, can_access_tenders=$9 WHERE id=$8 RETURNING id, name, email, role, is_active, can_access_hr, can_access_tenders, photo, created_at';
-      params = [name, email, role, is_active, hash, photo||null, !!can_access_hr, request.params.id, !!can_access_tenders];
+      q = 'UPDATE users SET name=$1, email=COALESCE($2, email), role=$3, is_active=$4, password=$5, photo=$6, can_access_hr=$7, can_access_tenders=$9 WHERE id=$8 RETURNING id, name, email, role, is_active, can_access_hr, can_access_tenders, photo, created_at';
+      params = [name, loginEmail, role, is_active, hash, photo||null, !!can_access_hr, request.params.id, !!can_access_tenders];
     } else {
-      q = 'UPDATE users SET name=$1, email=$2, role=$3, is_active=$4, photo=$5, can_access_hr=$6, can_access_tenders=$8 WHERE id=$7 RETURNING id, name, email, role, is_active, can_access_hr, can_access_tenders, photo, created_at';
-      params = [name, email, role, is_active, photo||null, !!can_access_hr, request.params.id, !!can_access_tenders];
+      q = 'UPDATE users SET name=$1, email=COALESCE($2, email), role=$3, is_active=$4, photo=$5, can_access_hr=$6, can_access_tenders=$8 WHERE id=$7 RETURNING id, name, email, role, is_active, can_access_hr, can_access_tenders, photo, created_at';
+      params = [name, loginEmail, role, is_active, photo||null, !!can_access_hr, request.params.id, !!can_access_tenders];
     }
-    const { rows } = await pool.query(q, params);
+    let rows;
+    try { ({ rows } = await pool.query(q, params)); }
+    catch (e) { if (e.code === '23505') return reply.code(409).send({ error: 'Another user already has that email.' }); throw e; }
     if (!rows.length) return reply.code(404).send({ error: 'Not found' });
     return rows[0];
   });

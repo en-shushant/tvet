@@ -80,7 +80,7 @@ async function plugin(fastify, opts) {
     const remoteip = clientIp(request);
     const capResult = await verifyTurnstileToken(request.body['cf-turnstile-response'], remoteip);
     if (!capResult.ok) return reply.code(400).send({ error: capResult.reason });
-    const { rows } = await pool.query('SELECT * FROM users WHERE email = $1', [email]);
+    const { rows } = await pool.query('SELECT * FROM users WHERE lower(email) = lower($1)', [String(email).trim()]);
     if (!rows.length) return reply.code(401).send({ error: 'Invalid credentials' });
     const user = rows[0];
     // An SSO-only account has no bcrypt hash; no password can match it.
